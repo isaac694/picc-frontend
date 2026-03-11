@@ -1,3 +1,50 @@
+const MOMENTS = [
+  {
+    href: "https://web.facebook.com/photo?fbid=1513295583485291&set=a.211134133701449",
+    image: "/moments/1.jpg",
+    title: "Moment 1",
+  },
+  {
+    href: "https://web.facebook.com/photo?fbid=1512882233526626&set=a.211134133701449",
+    image: "/moments/2.jpg",
+    title: "Moment 2",
+  },
+  {
+    href: "https://web.facebook.com/photo?fbid=1512502576897925&set=a.211134133701449",
+    image: "/moments/3.jpg",
+    title: "Moment 3",
+  },
+  {
+    href: "https://web.facebook.com/photo/?fbid=1511974113617438&set=pcb.1511978686950314",
+    image: "/moments/4.jpg",
+    title: "Moment 4",
+  },
+  {
+    href: "https://web.facebook.com/photo/?fbid=1511968180284698&set=pcb.1511970876951095",
+    image: "/moments/5.jpg",
+    title: "Moment 5",
+  },
+  {
+    href: "https://web.facebook.com/photo/?fbid=1511906870290829&set=pcb.1511916916956491",
+    image: "/moments/6.jpg",
+    title: "Moment 6",
+  },
+  {
+    href: "https://web.facebook.com/photo?fbid=1511748960306620&set=a.211134133701449",
+    image: "/moments/7.jpg",
+    title: "Moment 7",
+  },
+  {
+    href: "https://web.facebook.com/photo/?fbid=1511067390374777&set=pcb.1511075417040641",
+    image: "/moments/8.jpg",
+    title: "Moment 8",
+  },
+  {
+    href: "https://web.facebook.com/photo/?fbid=1511051377043045&set=a.211134133701449",
+    image: "/moments/9.jpg",
+    title: "Moment 9",
+  },
+];
 import Link from 'next/link';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
@@ -146,59 +193,6 @@ export default function HomePage() {
 
         <QuoteSection />
 
-        {/* Latest Sermons Section */}
-        {/* <section className="py-16 bg-background">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mb-12">
-              <h2 className="text-3xl font-bold text-primary mb-2">Latest Sermons</h2>
-              <p className="text-foreground/70">Listen to inspiring messages from our pastors</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="aspect-video bg-muted relative">
-                    <Image
-                      src="/placeholder-event.jpg"
-                      alt="Sermon"
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-bold text-lg mb-2 text-primary">
-                      {i === 1 && 'Faith in Hard Times'}
-                      {i === 2 && 'The Power of Prayer'}
-                      {i === 3 && 'Living with Purpose'}
-                    </h3>
-                    <p className="text-sm text-foreground/70 mb-4">
-                      {i === 1 && 'A powerful message about trusting God through challenges'}
-                      {i === 2 && 'Understanding effective prayer and its impact on our lives'}
-                      {i === 3 && 'Discovering God\'s purpose for your life'}
-                    </p>
-                    <p className="text-xs text-foreground/50 mb-4">
-                      {i === 1 && 'Pastor James • 45 minutes'}
-                      {i === 2 && 'Pastor Sarah • 50 minutes'}
-                      {i === 3 && 'Pastor Michael • 48 minutes'}
-                    </p>
-                    <Link href="/sermons">
-                      <Button variant="outline" className="w-full">
-                        Listen Now
-                      </Button>
-                    </Link>
-                  </div>
-                </Card>
-              ))}
-            </div>
-            <div className="mt-8 text-center">
-              <Link href="/sermons">
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  View All Sermons
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section> */}
-
         {/* Upcoming Events Section */}
           <EventsCarousel />
 
@@ -227,9 +221,18 @@ export default function HomePage() {
                     <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">Listen Now</p>
                     <h2 className="text-3xl md:text-5xl font-semibold leading-tight mb-4">Listen Now</h2>
                     <p className="text-white/80 max-w-xl">
-                      Fill your heart with life-transforming messages. Available on Apple Podcasts, Google Podcasts,
-                      and Spotify.
+                      Fill your heart with life-transforming messages. Available on Spotify.
                     </p>
+                    <div className="mt-6">
+                      <Link
+                        href="https://open.spotify.com/show/4pY3cP8R60wHhzhUciLKK6?go=1&sp_cid=b98eb388c81efa9af07fa4c8a176720c&utm_source=embed_player_p&utm_medium=desktop&nd=1&dlsi=91eb8fcea8f14a34"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center rounded-full bg-white text-black px-6 py-3 text-sm font-semibold hover:bg-white/90 transition-colors"
+                      >
+                        Pastor Esau Banda
+                      </Link>
+                    </div>
                   </div>
                   <div className="bg-black/40 border border-white/10 rounded-2xl p-5 md:p-6 backdrop-blur-sm">
                     <div className="flex items-center gap-4">
@@ -242,8 +245,8 @@ export default function HomePage() {
                         />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold">Commanding Exploits</p>
-                        <p className="text-xs text-white/70">Latest message • 09:57</p>
+                        <p className="text-sm font-semibold">Flee Sexual Immorality Part 3</p>
+                        <p className="text-xs text-white/70">Latest message • 1:05:59</p>
                         <div className="mt-3 h-1.5 rounded-full bg-white/20 overflow-hidden">
                           <div className="h-full w-1/3 bg-white" />
                         </div>
@@ -257,8 +260,14 @@ export default function HomePage() {
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/80">
                       <span className="px-3 py-1 rounded-full bg-white/10">Spotify</span>
-                      <span className="px-3 py-1 rounded-full bg-white/10">Apple Podcasts</span>
-                      <span className="px-3 py-1 rounded-full bg-white/10">Google Podcasts</span>
+                      <Link
+                        href="https://open.spotify.com/show/4pY3cP8R60wHhzhUciLKK6?go=1&sp_cid=b98eb388c81efa9af07fa4c8a176720c&utm_source=embed_player_p&utm_medium=desktop&nd=1&dlsi=91eb8fcea8f14a34"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 transition-colors"
+                      >
+                        Pastor Esau Banda
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -321,41 +330,140 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Service Times Section */}
-        <section className="py-16 bg-background">
+                {/* Latest Sermons Section */}
+        <section className="py-20 md:py-28 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mb-12">
-              <h2 className="text-3xl font-bold text-primary mb-2">See You In Church!</h2>
-              <p className="text-foreground/70">Join us for worship and fellowship</p>
+            <div className="relative overflow-hidden rounded-[28px] shadow-2xl max-w-5xl mx-auto min-h-[420px] md:min-h-[480px] flex items-center">
+              <div className="absolute inset-0">
+                <Image
+                  src="/hero/hero-6.jpg"
+                  alt="Latest sermon"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/20" />
+
+              <div className="relative p-8 md:p-12 lg:p-14 text-white">
+                <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">Sermons</p>
+                <h2 className="text-3xl md:text-5xl font-semibold leading-tight mb-6 max-w-2xl">
+                  Listen to God&apos;s Word for You.
+                </h2>
+
+                <div className="flex flex-wrap gap-4">
+                  <Link href="/sermons">
+                    <Button className="bg-red-600 text-white hover:bg-red-700 rounded-full px-6 py-3">
+                      View All Sermons
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { title: 'Sunday Service', time: '10:00 AM', description: 'Main worship service with teaching and worship' },
-                { title: 'Wednesday Prayer', time: '7:00 PM', description: 'Mid-week prayer and intercession' },
-                { title: 'Youth Service', time: '6:00 PM', description: 'Service for young adults' },
-              ].map((service, i) => (
-                <Card key={i} className="p-8 text-center hover:shadow-lg transition-shadow border-2 border-muted">
-                  <h3 className="font-bold text-xl text-primary mb-2">{service.title}</h3>
-                  <p className="text-3xl font-bold text-secondary mb-4">{service.time}</p>
-                  <p className="text-foreground/70">{service.description}</p>
-                </Card>
+          </div>
+        </section>
+                {/* Moments Section */}
+        <section className="py-16 md:py-20 bg-background">
+          <div className="w-full px-0">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-primary">We Are Family</h2>
+              <p className="text-foreground/70 mt-2">Snapshots of life together. Click any image to relive it on Facebook</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {MOMENTS.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group relative block overflow-hidden shadow-lg"
+                >
+                  <div className="relative h-[30rem] md:h-[30rem]">
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
+                    />
+                  </div>
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
+                </a>
               ))}
             </div>
           </div>
         </section>
+{/* Service Times Section */}
+        <section className="py-16 md:py-20 bg-background">
+          <div className="w-full px-4 sm:px-6 lg:px-8">
+            <div className="relative overflow-hidden rounded-[28px] shadow-2xl">
+              <div className="absolute inset-0">
+                <Image
+                  src="/hero/hero-3.jpg"
+                  alt="See you in church"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/35" />
 
-        {/* CTA Section */}
-        <section className="py-16 bg-primary text-primary-foreground">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Support Our Ministry</h2>
-            <p className="text-lg text-primary-foreground/90 mb-8">
-              Your generous giving helps us continue our mission of worship, fellowship, and community service
-            </p>
-            <Link href="/give">
-              <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-8 py-6">
-                Give Today
-              </Button>
-            </Link>
+              <div className="relative p-10 md:p-14 text-white">
+                <div className="text-center max-w-3xl mx-auto">
+                  <h2 className="text-3xl md:text-5xl font-semibold mb-3">See You In Church</h2>
+                  <p className="text-white/80">Grow deeper in your walk with God this week.</p>
+                  <div className="mt-6">
+                    <Link href="/contact">
+                      <Button className="rounded-full px-6 py-3 border border-white/40 bg-transparent text-white hover:bg-white/10">
+                        Get Directions
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
+                  <div className="rounded-2xl bg-white/10 border border-white/10 p-6">
+                    <p className="text-sm uppercase tracking-[0.2em] text-white/70">Sunday</p>
+                    <p className="mt-2 text-lg font-semibold">10:00 AM</p>
+                    <p className="text-white/70 text-sm">Main worship service</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 border border-white/10 p-6">
+                    <p className="text-sm uppercase tracking-[0.2em] text-white/70">Wednesday</p>
+                    <p className="mt-2 text-lg font-semibold">7:00 PM</p>
+                    <p className="text-white/70 text-sm">Prayer & intercession</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+{/* CTA Section */}
+        <section className="py-12 md:py-14 -mt-6 bg-background">
+          <div className="w-full px-4 sm:px-6 lg:px-8">
+            <div className="relative overflow-hidden rounded-[28px] border border-primary/15 bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-8 md:p-12 w-full">
+              <div className="absolute -top-24 -right-16 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
+              <div className="absolute -bottom-24 -left-10 h-56 w-56 rounded-full bg-secondary/15 blur-3xl" />
+
+              <div className="relative grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-10 items-center">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.35em] text-foreground/60 mb-4">Support</p>
+                  <h2 className="text-3xl md:text-4xl font-bold text-primary mb-4">Support Our Ministry</h2>
+                  <p className="text-foreground/70 text-lg">
+                    Your generous giving helps us continue our mission of worship, fellowship, and community service.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4 md:justify-end">
+                  <Link href="/give">
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-8 py-6 rounded-full">
+                      Give Today
+                    </Button>
+                  </Link>
+                  <Link href="/give">
+                    <Button variant="outline" className="text-lg px-8 py-6 rounded-full border-primary/40">
+                      Learn More
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </main>
@@ -363,4 +471,3 @@ export default function HomePage() {
     </>
   );
 }
-
