@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Donation {
+  id        Int      @id @default(autoincrement())
+  amount    Float
+  donorName String?
+  email     String?
+  method    String?
+  createdAt DateTime @default(now())
+}
+
+model PrayerRequest {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String
+  phone      String?
+  request    String
+  isPrivate  Boolean  @default(true)
+  isAnswered Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  dayOfWeek   String
+  startTime   String
+  endTime     String?
+  location    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Testimony {
+  id          Int      @id @default(autoincrement())
+  name        String
+  title       String?
+  content     String
+  imageUrl    String?
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  date        DateTime
+  startTime   String?
+  endTime     String?
+  location    String?
+  imageUrl    String?
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Sermon {
+  id          Int           @id @default(autoincrement())
+  title       String
+  description String?
+  pastor      String?
+  date        DateTime
+  duration    String?
+  isPublished Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  media       SermonMedia[]
+}
+
+model SermonMedia {
+  id        Int      @id @default(autoincrement())
+  sermonId  Int
+  url       String
+  type      String?
+  createdAt DateTime @default(now())
+  sermon    Sermon   @relation(fields: [sermonId], references: [id], onDelete: Cascade)
+}
