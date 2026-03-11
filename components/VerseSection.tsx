@@ -31,6 +31,7 @@ export default function VerseSection() {
       className="
         relative 
         h-[440px] md:h-[600px] 
+        pt-12 md:pt-16 
         overflow-hidden 
         bg-gradient-to-br from-primary/5 via-background to-secondary/10
       "
@@ -48,7 +49,7 @@ export default function VerseSection() {
         // and place it in public/images/subtle-christian-pattern.png
       />
 
-      <div className="relative mx-auto max-w-5xl px-6 sm:px-10 lg:px-12">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div
           ref={ref}
           className={`
