@@ -10,7 +10,7 @@ export default function GivePage() {
       <Navigation />
       <main className="min-h-screen">
         {/* Hero Section */}
-        <section className="py-16 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
+        <section className="py-20 md:py-24 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">Support Our Ministry</h1>
             <p className="text-lg text-primary-foreground/90">
@@ -20,7 +20,7 @@ export default function GivePage() {
         </section>
 
         {/* Impact Section */}
-        <section className="py-16 bg-background">
+        <section className="py-20 md:py-24 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-primary mb-12">Your Impact</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -52,7 +52,7 @@ export default function GivePage() {
         </section>
 
         {/* Giving Options */}
-        <section className="py-16 bg-muted/30">
+        <section className="py-20 md:py-24 bg-muted/30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-primary mb-12">Ways to Give</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -110,7 +110,7 @@ export default function GivePage() {
         </section>
 
         {/* FAQ Section */}
-        <section className="py-16 bg-background">
+        <section className="py-20 md:py-24 bg-background">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-primary mb-12">Frequently Asked Questions</h2>
             <div className="space-y-6">
@@ -142,7 +142,7 @@ export default function GivePage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-12 bg-primary text-primary-foreground">
+        <section className="py-16 md:py-20 bg-primary text-primary-foreground">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-2xl font-bold mb-4">Thank You for Your Support!</h2>
             <p className="mb-6 text-primary-foreground/90">

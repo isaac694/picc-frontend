@@ -90,7 +90,7 @@ export default function EventsCarousel() {
   }, []);
 
   return (
-    <section className="py-16 bg-muted/30">
+    <section className="py-20 md:py-24 bg-muted/30">
       <style>{`
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(28px); }
@@ -123,7 +123,7 @@ export default function EventsCarousel() {
               onTransitionEnd={handleTransitionEnd}
             >
               {EXTENDED.map((slide, i) => (
-                <div key={`${slide.src}-${i}`} className="min-w-full h-[420px] md:h-[560px] relative">
+                <div key={`${slide.src}-${i}`} className="min-w-full h-[480px] md:h-[640px] relative">
                   <Image
                     src={slide.src}
                     alt={slide.alt}

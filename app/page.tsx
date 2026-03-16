@@ -81,7 +81,7 @@ export default function HomePage() {
       <Navigation />
       <main className="min-h-screen">
         {/* Hero Section */}
-        <section className="relative h-[440px] md:h-[600px] overflow-hidden flex items-center">
+        <section className="relative h-[520px] md:h-[700px] overflow-hidden flex items-center rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-3 gap-1 p-1 hero-collage">
             {HERO_IMAGES.map((src, index) => (
               <div key={src} className="relative h-full min-h-0">
@@ -127,14 +127,14 @@ export default function HomePage() {
 
 
       {/* Quick Links / "Your Faith Walk" Section */}
-      <section className="py-16 bg-[linear-gradient(180deg,#fffaf0_0%,#fff6ec_100%)]">
+      <section className="py-20 md:py-24 bg-[linear-gradient(180deg,#fffaf0_0%,#fff6ec_100%)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="text-4xl md:text-5xl font-bold text-primary mb-2">Grow in Every Season</h2>
             <p className="text-foreground/70">Whether you're new or have been with us for years — there's always more.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 px-4 sm:px-6 lg:px-8">
             {[
               {
                 href: '/about',
@@ -162,7 +162,7 @@ export default function HomePage() {
               },
             ].map((card) => (
               <Link key={card.href} href={card.href}>
-                <div className="group block rounded-2xl overflow-hidden relative h-80 md:h-96 cursor-pointer">
+                <div className="group block rounded-2xl overflow-hidden relative h-64 md:h-72 lg:h-80 cursor-pointer">
                   <div className="absolute inset-0">
                     <Image
                       src={card.img}
@@ -197,7 +197,7 @@ export default function HomePage() {
           <EventsCarousel />
 
         {/* Listen Now Section */}
-        <section className="py-16 md:py-20 bg-background">
+        <section className="py-20 md:py-24 bg-background">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <Link
               href="https://open.spotify.com/episode/6bAF7YTQklMP6rDGKBUpdM?go=1&sp_cid=b98eb388c81efa9af07fa4c8a176720c&utm_source=embed_player_p&utm_medium=desktop&nd=1&dlsi=ce4fdd6b2e8e4c84"
@@ -277,7 +277,7 @@ export default function HomePage() {
         </section>
 
         {/* Ministries Section */}
-        <section className="py-16 md:py-20 bg-background">
+        <section className="py-20 md:py-24 bg-background">
           <style>{`
             @keyframes marqueeScroll {
               0% { transform: translateX(0); }
@@ -312,7 +312,7 @@ export default function HomePage() {
               {[...MINISTRY_CARDS, ...MINISTRY_CARDS].map((item, index) => (
                 <div
                   key={`${item.title}-${index}`}
-                  className="relative w-[260px] sm:w-[300px] md:w-[340px] h-[220px] md:h-[240px] rounded-2xl overflow-hidden shadow-xl"
+                  className="relative w-[260px] sm:w-[300px] md:w-[340px] h-[260px] md:h-[300px] rounded-2xl overflow-hidden shadow-xl"
                 >
                   <Image
                     src={item.image}
@@ -331,9 +331,9 @@ export default function HomePage() {
         </section>
 
                 {/* Latest Sermons Section */}
-        <section className="py-20 md:py-28 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]">
+        <section className="py-24 md:py-32 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="relative overflow-hidden rounded-[28px] shadow-2xl max-w-5xl mx-auto min-h-[420px] md:min-h-[480px] flex items-center">
+            <div className="relative overflow-hidden rounded-[28px] shadow-2xl max-w-5xl mx-auto min-h-[480px] md:min-h-[560px] flex items-center">
               <div className="absolute inset-0">
                 <Image
                   src="/hero/hero-6.jpg"
@@ -362,7 +362,7 @@ export default function HomePage() {
           </div>
         </section>
                 {/* Moments Section */}
-        <section className="py-16 md:py-20 bg-background">
+        <section className="py-20 md:py-24 bg-background">
           <div className="w-full px-0">
             <div className="text-center mb-10">
               <h2 className="text-3xl md:text-4xl font-bold text-primary">We Are Family</h2>
@@ -378,7 +378,7 @@ export default function HomePage() {
                   rel="noreferrer"
                   className="group relative block overflow-hidden shadow-lg"
                 >
-                  <div className="relative h-[30rem] md:h-[30rem]">
+                  <div className="relative h-[34rem] md:h-[36rem]">
                     <Image
                       src={item.image}
                       alt={item.title}
@@ -387,13 +387,21 @@ export default function HomePage() {
                     />
                   </div>
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
+                  <div className="absolute bottom-3 left-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                    <div className="facebook-badge group/fb flex items-center gap-2 rounded-full bg-[#1877F2] text-white px-2.5 py-1 text-xs font-semibold shadow-lg">
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-[#1877F2] font-bold">f</span>
+                      <span className="facebook-label max-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/fb:max-w-[120px]">
+                        Facebook
+                      </span>
+                    </div>
+                  </div>
                 </a>
               ))}
             </div>
           </div>
         </section>
 {/* Service Times Section */}
-        <section className="py-16 md:py-20 bg-background">
+        <section className="py-20 md:py-24 bg-background">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[28px] shadow-2xl">
               <div className="absolute inset-0">
@@ -436,7 +444,7 @@ export default function HomePage() {
           </div>
         </section>
 {/* CTA Section */}
-        <section className="py-12 md:py-14 -mt-6 bg-background">
+        <section className="py-16 md:py-20 -mt-6 bg-background">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[28px] border border-primary/15 bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-8 md:p-12 w-full">
               <div className="absolute -top-24 -right-16 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
@@ -471,3 +479,4 @@ export default function HomePage() {
     </>
   );
 }
+

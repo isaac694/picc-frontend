@@ -30,8 +30,8 @@ export default function VerseSection() {
     <section
       className="
         relative 
-        h-[440px] md:h-[600px] 
-        pt-12 md:pt-16 
+        h-[280px] md:h-[360px] 
+        pt-10 md:pt-12 
         overflow-hidden 
         bg-gradient-to-br from-primary/5 via-background to-secondary/10
       "

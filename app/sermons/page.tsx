@@ -79,7 +79,7 @@ export default function SermonsPage() {
       <Navigation />
       <main className="min-h-screen">
         {/* Hero Section */}
-        <section className="py-12 bg-muted/50">
+        <section className="py-16 md:py-20 bg-muted/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">Sermon Library</h1>
             <p className="text-lg text-foreground/70">Listen to inspiring messages from our pastors</p>
@@ -87,7 +87,7 @@ export default function SermonsPage() {
         </section>
 
         {/* Search Section */}
-        <section className="py-8 bg-background border-b border-border">
+        <section className="py-10 md:py-12 bg-background border-b border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex gap-2">
               <Input
@@ -104,13 +104,13 @@ export default function SermonsPage() {
         </section>
 
         {/* Sermons Grid */}
-        <section className="py-16 bg-background">
+        <section className="py-20 md:py-24 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {filteredSermons.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredSermons.map((sermon) => (
                   <Card key={sermon.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
-                    <div className="aspect-video bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center relative">
+                    <div className="aspect-[4/3] bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center relative">
                       <Image
                         src="/placeholder-event.jpg"
                         alt={sermon.title}
@@ -143,7 +143,7 @@ export default function SermonsPage() {
         </section>
 
         {/* Subscription CTA */}
-        <section className="py-12 bg-muted/30">
+        <section className="py-16 md:py-20 bg-muted/30">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-2xl font-bold text-primary mb-4">Never Miss a Sermon</h2>
             <p className="text-foreground/70 mb-6">Subscribe to receive notifications when new sermons are added</p>

@@ -4,7 +4,7 @@ import Image from 'next/image';
 
 export default function QuoteSection() {
   return (
-    <section className="relative overflow-visible py-20 md:py-28 min-h-[520px] flex items-center">
+    <section className="relative overflow-visible py-24 md:py-32 min-h-[600px] flex items-center">
       <style>{`
         /* Background gradient using site primary blues */
         .quote-bg {
