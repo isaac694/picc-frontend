@@ -22,19 +22,22 @@ export default function MissionSection() {
 
           {/* Right: Mission text */}
           <div className="space-y-6 md:space-y-8 text-center md:text-left">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary leading-tight tracking-tight">
+            <p className="text-xs md:text-sm font-semibold tracking-[0.35em] text-foreground/60">
               OUR MISSION
+            </p>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground leading-tight tracking-tight">
+              To Bring Hope To the Hopeless and Life To the Dying
             </h2>
-            <p className="text-lg md:text-xl leading-relaxed text-foreground/80">
-            The mandate of the Pentecost International Christian Center (PICC) is derived from Genesis 2:10, which says, "Now a river went out of Eden to water the garden, and from there it parted and became four riverheads." 
-            Thus PICC is a river operating in the power of the Holy Spirit to water multitudes with the gospel of life and hope in all the four corners of the earth. In this regard, its core mandate is to bring hope to the 
-            hopeless and life to the dying and help them become true deciples of Jesus Christ.
+            <p className="text-base md:text-lg leading-relaxed text-foreground/70 max-w-xl mx-auto md:mx-0">
+              The mandate of Pentecost International Christian Center (PICC) is derived from Genesis 2:10, which says "Now a river went 
+              out of Eden to water the garden, and from there it parted and became four riverheads." Thus PICC is a river operating in the power of the Holy
+              Spirit to water multitudes with the gospel of life and hope in all four corners of the earth. 
             </p>
 
-            <div className="pt-4 md:pt-6">
+            <div className="pt-2 md:pt-4">
               <Link href="/about">
-                <button className="inline-flex items-center justify-center rounded-full bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 text-lg font-medium shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105">
-                  Learn More About Us
+                <button className="inline-flex items-center justify-center rounded-full bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-sm md:text-base font-semibold shadow-md transition-all duration-300">
+                  Learn More
                 </button>
               </Link>
             </div>

@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   title: 'Church Website - Welcome to Our Community',
   description:
     'Join our church community for worship, fellowship, and spiritual growth. ' +
-    'Sunday services, prayer requests, sermons, and more.',
+    'Sunday services, prayer requests, livestreams, and more.',
   generator: 'v0.app',
   icons: {
     icon: [

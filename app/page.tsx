@@ -1,50 +1,3 @@
-const MOMENTS = [
-  {
-    href: "https://web.facebook.com/photo?fbid=1513295583485291&set=a.211134133701449",
-    image: "/moments/1.jpg",
-    title: "Moment 1",
-  },
-  {
-    href: "https://web.facebook.com/photo?fbid=1512882233526626&set=a.211134133701449",
-    image: "/moments/2.jpg",
-    title: "Moment 2",
-  },
-  {
-    href: "https://web.facebook.com/photo?fbid=1512502576897925&set=a.211134133701449",
-    image: "/moments/3.jpg",
-    title: "Moment 3",
-  },
-  {
-    href: "https://web.facebook.com/photo/?fbid=1511974113617438&set=pcb.1511978686950314",
-    image: "/moments/4.jpg",
-    title: "Moment 4",
-  },
-  {
-    href: "https://web.facebook.com/photo/?fbid=1511968180284698&set=pcb.1511970876951095",
-    image: "/moments/5.jpg",
-    title: "Moment 5",
-  },
-  {
-    href: "https://web.facebook.com/photo/?fbid=1511906870290829&set=pcb.1511916916956491",
-    image: "/moments/6.jpg",
-    title: "Moment 6",
-  },
-  {
-    href: "https://web.facebook.com/photo?fbid=1511748960306620&set=a.211134133701449",
-    image: "/moments/7.jpg",
-    title: "Moment 7",
-  },
-  {
-    href: "https://web.facebook.com/photo/?fbid=1511067390374777&set=pcb.1511075417040641",
-    image: "/moments/8.jpg",
-    title: "Moment 8",
-  },
-  {
-    href: "https://web.facebook.com/photo/?fbid=1511051377043045&set=a.211134133701449",
-    image: "/moments/9.jpg",
-    title: "Moment 9",
-  },
-];
 import Link from 'next/link';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
@@ -55,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import MissionSection from '@/components/MissionSection';  
 import EventsCarousel from '@/components/EventsCarousel';
 import QuoteSection from '@/components/QuoteSection';
+import MomentsSection from '@/components/MomentsSection';
 
 const HERO_IMAGES = [
   '/hero/hero-1.jpg',
@@ -106,7 +60,7 @@ export default function HomePage() {
                 A place of worship, fellowship, and spiritual growth for all
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="https://www.youtube.com/results?search_query=esau+banda" target="_blank" rel="noreferrer">
+                <Link href="/livestream">
                   <Button className="w-full sm:w-auto bg-primary text-primary-foreground border border-primary-foreground/60 hover:bg-primary/90 text-base px-8 py-6">
                     Livestream
                   </Button>
@@ -199,12 +153,7 @@ export default function HomePage() {
         {/* Listen Now Section */}
         <section className="py-20 md:py-24 bg-background">
           <div className="w-full px-4 sm:px-6 lg:px-8">
-            <Link
-              href="https://open.spotify.com/episode/6bAF7YTQklMP6rDGKBUpdM?go=1&sp_cid=b98eb388c81efa9af07fa4c8a176720c&utm_source=embed_player_p&utm_medium=desktop&nd=1&dlsi=ce4fdd6b2e8e4c84"
-              target="_blank"
-              rel="noreferrer"
-              className="relative block overflow-hidden rounded-[28px] group"
-            >
+            <div className="relative overflow-hidden rounded-[28px] group">
               <div className="absolute inset-0">
                 <Image
                   src="/pastor/pastor-photo.jpg"
@@ -221,58 +170,39 @@ export default function HomePage() {
                     <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">Listen Now</p>
                     <h2 className="text-3xl md:text-5xl font-semibold leading-tight mb-4">Listen Now</h2>
                     <p className="text-white/80 max-w-xl">
-                      Fill your heart with life-transforming messages. Available on Spotify.
+                      Fill your heart with life-transforming messages right here on the page.
                     </p>
-                    <div className="mt-6">
+                    <div className="mt-6 flex flex-wrap gap-3">
                       <Link
-                        href="https://open.spotify.com/show/4pY3cP8R60wHhzhUciLKK6?go=1&sp_cid=b98eb388c81efa9af07fa4c8a176720c&utm_source=embed_player_p&utm_medium=desktop&nd=1&dlsi=91eb8fcea8f14a34"
+                        href="https://open.spotify.com/show/4pY3cP8R60wHhzhUciLKK6"
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center justify-center rounded-full bg-white text-black px-6 py-3 text-sm font-semibold hover:bg-white/90 transition-colors"
                       >
-                        Pastor Esau Banda
+                        Open on Spotify
+                      </Link>
+                      <Link
+                        href="https://open.spotify.com/show/4pY3cP8R60wHhzhUciLKK6"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center rounded-full border border-white/50 bg-transparent text-white px-6 py-3 text-sm font-semibold hover:bg-white/10 transition-colors"
+                      >
+                        Follow Podcast
                       </Link>
                     </div>
                   </div>
-                  <div className="bg-black/40 border border-white/10 rounded-2xl p-5 md:p-6 backdrop-blur-sm">
-                    <div className="flex items-center gap-4">
-                      <div className="relative w-16 h-16 rounded-xl overflow-hidden">
-                        <Image
-                          src="/pastor/pastor-photo.jpg"
-                          alt="Podcast cover"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold">Flee Sexual Immorality Part 3</p>
-                        <p className="text-xs text-white/70">Latest message • 1:05:59</p>
-                        <div className="mt-3 h-1.5 rounded-full bg-white/20 overflow-hidden">
-                          <div className="h-full w-1/3 bg-white" />
-                        </div>
-                      </div>
-                      <button
-                        className="w-12 h-12 rounded-full bg-white text-black grid place-items-center font-bold"
-                        aria-label="Play"
-                      >
-                        ▶
-                      </button>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/80">
-                      <span className="px-3 py-1 rounded-full bg-white/10">Spotify</span>
-                      <Link
-                        href="https://open.spotify.com/show/4pY3cP8R60wHhzhUciLKK6?go=1&sp_cid=b98eb388c81efa9af07fa4c8a176720c&utm_source=embed_player_p&utm_medium=desktop&nd=1&dlsi=91eb8fcea8f14a34"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 transition-colors"
-                      >
-                        Pastor Esau Banda
-                      </Link>
-                    </div>
+                  <div className="bg-black/40 border border-white/10 rounded-2xl p-4 md:p-5 backdrop-blur-sm">
+                    <iframe
+                      title="Pastor Esau Banda on Spotify"
+                      className="w-full h-[232px] md:h-[260px] rounded-xl"
+                      src="https://open.spotify.com/embed/show/4pY3cP8R60wHhzhUciLKK6"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                    />
                   </div>
                 </div>
               </div>
-            </Link>
+            </div>
           </div>
         </section>
 
@@ -330,14 +260,14 @@ export default function HomePage() {
           </div>
         </section>
 
-                {/* Latest Sermons Section */}
+                {/* Latest Livestreams Section */}
         <section className="py-24 md:py-32 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[28px] shadow-2xl max-w-5xl mx-auto min-h-[480px] md:min-h-[560px] flex items-center">
               <div className="absolute inset-0">
                 <Image
                   src="/hero/hero-6.jpg"
-                  alt="Latest sermon"
+                  alt="Latest livestream"
                   fill
                   className="object-cover"
                 />
@@ -345,15 +275,15 @@ export default function HomePage() {
               <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/20" />
 
               <div className="relative p-8 md:p-12 lg:p-14 text-white">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">Sermons</p>
+                <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">Livestream</p>
                 <h2 className="text-3xl md:text-5xl font-semibold leading-tight mb-6 max-w-2xl">
                   Listen to God&apos;s Word for You.
                 </h2>
 
                 <div className="flex flex-wrap gap-4">
-                  <Link href="/sermons">
+                  <Link href="/livestream">
                     <Button className="bg-red-600 text-white hover:bg-red-700 rounded-full px-6 py-3">
-                      View All Sermons
+                      View Livestream
                     </Button>
                   </Link>
                 </div>
@@ -362,44 +292,8 @@ export default function HomePage() {
           </div>
         </section>
                 {/* Moments Section */}
-        <section className="py-20 md:py-24 bg-background">
-          <div className="w-full px-0">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl md:text-4xl font-bold text-primary">We Are Family</h2>
-              <p className="text-foreground/70 mt-2">Snapshots of life together. Click any image to relive it on Facebook</p>
-            </div>
+        <MomentsSection />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {MOMENTS.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group relative block overflow-hidden shadow-lg"
-                >
-                  <div className="relative h-[34rem] md:h-[36rem]">
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      fill
-                      className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
-                    />
-                  </div>
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
-                  <div className="absolute bottom-3 left-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                    <div className="facebook-badge group/fb flex items-center gap-2 rounded-full bg-[#1877F2] text-white px-2.5 py-1 text-xs font-semibold shadow-lg">
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-[#1877F2] font-bold">f</span>
-                      <span className="facebook-label max-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/fb:max-w-[120px]">
-                        Facebook
-                      </span>
-                    </div>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>
 {/* Service Times Section */}
         <section className="py-20 md:py-24 bg-background">
           <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -414,32 +308,70 @@ export default function HomePage() {
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/35" />
 
-              <div className="relative p-10 md:p-14 text-white">
-                <div className="text-center max-w-3xl mx-auto">
-                  <h2 className="text-3xl md:text-5xl font-semibold mb-3">See You In Church</h2>
-                  <p className="text-white/80">Grow deeper in your walk with God this week.</p>
-                  <div className="mt-6">
-                    <Link href="/contact">
-                      <Button className="rounded-full px-6 py-3 border border-white/40 bg-transparent text-white hover:bg-white/10">
-                        Get Directions
-                      </Button>
-                    </Link>
+                <div className="relative p-10 md:p-14 text-white">
+                  <div className="text-center max-w-3xl mx-auto">
+                    <h2 className="text-3xl md:text-5xl font-semibold mb-3">See You In Church</h2>
+                    <p className="text-white/80">Grow deeper in your walk with God this week.</p>
+                    <div className="mt-6">
+                      <Link href="/locations">
+                        <Button className="rounded-full px-6 py-3 border border-white/40 bg-transparent text-white hover:bg-white/10">
+                          Get Directions
+                        </Button>
+                      </Link>
                   </div>
-                </div>
+                  </div>
 
-                <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
-                  <div className="rounded-2xl bg-white/10 border border-white/10 p-6">
-                    <p className="text-sm uppercase tracking-[0.2em] text-white/70">Sunday</p>
-                    <p className="mt-2 text-lg font-semibold">10:00 AM</p>
-                    <p className="text-white/70 text-sm">Main worship service</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/10 border border-white/10 p-6">
-                    <p className="text-sm uppercase tracking-[0.2em] text-white/70">Wednesday</p>
-                    <p className="mt-2 text-lg font-semibold">7:00 PM</p>
-                    <p className="text-white/70 text-sm">Prayer & intercession</p>
+                  <div className="mt-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 text-left">
+                    {[
+                      {
+                        day: 'Tuesday',
+                        time: '5:30 PM – 7:30 PM',
+                        title: 'Home Church Service',
+                      },
+                      {
+                        day: 'Wednesday',
+                        time: '9:00 AM – 12:00 PM',
+                        title: 'Intercession, Counselling & Deliverance',
+                      },
+                      {
+                        day: 'Thursday',
+                        time: '6:00 PM – 8:00 PM',
+                        title: 'Special Word Encounter Service',
+                      },
+                      {
+                        day: 'Sunday',
+                        time: '7:00 AM – 12:00 PM',
+                        title: 'Miracles & Celebration Service',
+                      },
+                      {
+                        day: 'Everyday',
+                        time: '5:00 AM – 6:00 AM',
+                        title: 'Morning Glory Prayer',
+                      },
+                      {
+                        day: 'Saturday',
+                        time: '8:30 AM – 11:00 AM',
+                        title: 'Corporate Soul Winning',
+                      },
+                      {
+                        day: 'Sunday',
+                        time: '4:00 PM – 6:00 PM',
+                        title: 'Launch of 17th Cohort of Hope School Ministry',
+                      },
+                      {
+                        day: 'Sunday',
+                        time: 'After the last service',
+                        title: 'One on One Prayers and Counseling',
+                      },
+                    ].map((program) => (
+                      <div key={`${program.day}-${program.title}`} className="rounded-2xl bg-white/10 border border-white/10 p-6">
+                        <p className="text-sm uppercase tracking-[0.2em] text-white/70">{program.day}</p>
+                        <p className="mt-2 text-lg font-semibold">{program.time}</p>
+                        <p className="text-white/70 text-sm">{program.title}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
             </div>
           </div>
         </section>
@@ -479,4 +411,6 @@ export default function HomePage() {
     </>
   );
 }
+
+
 

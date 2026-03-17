@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -20,12 +20,12 @@ const AUTO_PLAY_MS = 4000;
 
 export default function EventsCarousel() {
   // Start at index 1 (the real first slide, after the cloned last)
-  const [index, setIndex]       = useState(1);
-  const [paused, setPaused]     = useState(false);
+  const [index, setIndex] = useState(1);
+  const [paused, setPaused] = useState(false);
   const [transition, setTransition] = useState(true);
-  const [visible, setVisible]   = useState(false);
-  const contentRef              = useRef(null);
-  const isJumping               = useRef(false);
+  const [visible, setVisible] = useState(false);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const isJumping = useRef(false);
 
   // Real dot index (0-based, maps back to SLIDES)
   const dotIndex = index === 0
@@ -34,27 +34,27 @@ export default function EventsCarousel() {
     ? 0
     : index - 1;
 
-  const goTo = (realIndex) => {
+  const goTo = useCallback((realIndex: number) => {
     setTransition(true);
     setIndex(realIndex + 1); // +1 because EXTENDED is offset by 1
-  };
+  }, []);
 
-  const next = () => {
+  const next = useCallback(() => {
     if (isJumping.current) return;
     setTransition(true);
     setIndex((i) => i + 1);
-  };
+  }, []);
 
-  const prev = () => {
+  const prev = useCallback(() => {
     if (isJumping.current) return;
     setTransition(true);
     setIndex((i) => i - 1);
-  };
+  }, []);
 
   // When we land on a clone, silently jump to the real slide
-  const handleTransitionEnd = () => {
+  const handleTransitionEnd = useCallback(() => {
     if (index === 0) {
-      // Landed on cloned-last → jump to real last
+      // Landed on cloned-last -> jump to real last
       isJumping.current = true;
       setTransition(false);
       setIndex(SLIDES.length);
@@ -62,7 +62,7 @@ export default function EventsCarousel() {
         requestAnimationFrame(() => { isJumping.current = false; });
       });
     } else if (index === EXTENDED.length - 1) {
-      // Landed on cloned-first → jump to real first
+      // Landed on cloned-first -> jump to real first
       isJumping.current = true;
       setTransition(false);
       setIndex(1);
@@ -70,14 +70,14 @@ export default function EventsCarousel() {
         requestAnimationFrame(() => { isJumping.current = false; });
       });
     }
-  };
+  }, [index]);
 
   // Auto-play
   useEffect(() => {
     if (paused) return;
     const id = setInterval(next, AUTO_PLAY_MS);
     return () => clearInterval(id);
-  }, [paused, index]);
+  }, [paused, index, next]);
 
   // Scroll-triggered content animation
   useEffect(() => {
@@ -152,7 +152,7 @@ export default function EventsCarousel() {
               </button>
             ))}
 
-            {/* Dot indicators — always reflect real slide position */}
+            {/* Dot indicators - always reflect real slide position */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
               {SLIDES.map((_, i) => (
                 <button
@@ -172,7 +172,7 @@ export default function EventsCarousel() {
             ref={contentRef}
             className={`px-2 md:px-6 ${visible ? 'content-visible' : ''}`}
           >
-        <p className="anim-item text-sm font-semibold tracking-wide text-foreground/60 mb-4">
+            <p className="anim-item text-sm font-semibold tracking-wide text-foreground/60 mb-4">
               CONNECT WITH US
             </p>
             <h3 className="anim-item text-4xl md:text-5xl font-bold leading-tight mb-4">
@@ -200,5 +200,3 @@ export default function EventsCarousel() {
     </section>
   );
 }
-
-

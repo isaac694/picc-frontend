@@ -49,7 +49,7 @@ export default function VerseSection() {
         // and place it in public/images/subtle-christian-pattern.png
       />
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto w-full max-w-none px-4 sm:px-6 lg:px-8">
         <div
           ref={ref}
           className={`
@@ -68,22 +68,9 @@ export default function VerseSection() {
                 font-serif
               "
             >
-              "And let us consider how we may spur one another on toward love and good deeds, not giving up meeting
-              together, as some are in the habit of doing, but encouraging one another—and all the more as you see the
-              Day approaching."
+              "Now a river went out of Eden to water the garden, and from there it parted and became four riverheads." — Genesis 2:10
             </p>
 
-            <footer
-              className="
-                mt-6 md:mt-8 
-                text-lg md:text-xl 
-                text-foreground/60 
-                font-medium 
-                tracking-wide
-              "
-            >
-              — Hebrews 10:24-25
-            </footer>
           </blockquote>
         </div>
       </div>
