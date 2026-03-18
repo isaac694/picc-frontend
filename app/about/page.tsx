@@ -28,7 +28,7 @@ export default function AboutPage() {
         {/* Hero Section */}
         <section className="relative overflow-hidden py-36 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('/hero/hero-2.jpg')] bg-cover bg-center" />
+            <div className="absolute inset-0 bg-[url('/about/header.JPG')] bg-cover bg-center" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
           </div>
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -47,9 +47,9 @@ export default function AboutPage() {
         <section className="py-20 md:py-24 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-start">
-              <div className="relative h-[28rem] md:h-[34rem] rounded-3xl overflow-hidden shadow-xl">
+              <div className="relative h-[40rem] md:h-[60rem] rounded-3xl overflow-hidden shadow-xl">
                 <Image
-                  src="/images/our-church.JPG"
+                  src="/about/tenets-1.JPG"
                   alt="Our church family"
                   fill
                   className="object-cover"
@@ -61,25 +61,36 @@ export default function AboutPage() {
                   <br />
                   OF <span className="text-secondary">FAITH.</span>
                 </h2>
-                <p className="text-foreground/70 mb-4 leading-relaxed italic">
-                  &quot;Bringing Hope To the Hopeless and Life To the Dying.&quot;
-                </p>
-                <p className="text-foreground/70 mb-4 leading-relaxed">
-                  The Bible
-                  We believe that the entire bible, Old and New Testaments, are written by the inspiration of the Holy Spirit. (2 Tim 3:16, 17 2 Peter 1:20, 21)
-                </p>
-                <p className="text-foreground/70 mb-4 leading-relaxed">
-                  About God
-                  As revealed to us by the Bible, we beliebe in the existence of only one God, who created the universe and is revealed as Triune God the Father, the Son and the Holy Spirit. (Gen 1:1; Mat. 3:16,17; 28:19; 2 Cor. 13:14; Gen 1:26)
-                </p>
-                <p className="text-foreground/70 mb-4 leading-relaxed">
-                The Depraved Nature of Man
-                We believe that all men have sinned and come short of the glory of God (Romans 3:23, Gen 3:1-19; 6:23; Mat 13:41, 42), and need Repentance (Acts 2:38; Mat. 4:17; Acts 20:21) and Regeneration (John 3:3, 5; Titus 3:5)
-                </p>
-                <p className="text-secondary font-medium italic">
-                  &quot;I will build my church; and the gates of hell shall not prevail against it.&quot;
-                  <span className="ml-2">Matthew 16:18b.</span>
-                </p>
+                <div className="space-y-8">
+                  {[
+                    {
+                      title: 'The Bible',
+                      description: 'We believe that the entire bible, both Old and New Testaments, are written by the inspiration of the Holy Spirit.(2 Tim 3:16, 17; 2 Peter 1:20, 21).'
+                    },
+                    {
+                      title: 'About God',
+                      description: 'As revealed to us by the Bible, we believe in the exis- tence of only one God, who created the universe and is revealed as Triune God the Father, the Son and the Holy Spirit. (Gen 1:1; Mat. 3:16,17; 28:19; 2 Cor. 13:14; Gen 1:26)'
+                    },
+                    {
+                      title: 'The Depraved Nature of Man',
+                      description: 'We believe that all men have sinned and come short of the glory of God (Romans 3:23, Gen 3:1-19; 6:23; Mat 13:41, 42), and need Repentance (Acts 2:38; Mat. 4:17; Acts 20:21) and Regeneration. (John 3:3, 5; Titus 3:5)'
+                    },
+                    {
+                      title: 'The Saviour',
+                      description: 'We believe mans need of a Saviour has been met in the person of Jesus Christ (Mat. 1:21; John 4:42; Eph. 5:23; Ph. 2:6-11), because of His Deity (Acts 2:36; John 1:1; 20:28; Romans 9:5; Titus 2:13, 14; Isaiah 9:6), Vir- gin Birth (Isaiah 7:14; Mat. 1:18; Luke 1:25-26), Sinless Life (John 8:46; Heb. 4:15; 2 Cor. 5:21), Atoning death (Romans 3:25; Heb. 9:22; 1 John 2:2), Resurrection (Acts 2:36; 10:39, 40; Mat. 28:5-7; Acts 2:24; 1 Cor. 15:3,4) and Ascension (Acts 1:9-11; 2:33-36), His abiding interces- sion (Heb. 7:25; Romans 8:34) and His second coming to judge the living and the dead (Rev. 22:12, 20; 1 Thes. 4:16-18; 2 Tim 4:1; Acts 1:11; 10:42).'
+                    },
+                    {
+                      title: 'Holy Communion',
+                      description: 'We believe in the covenant practice of taking the Lords Supper or Holy Communion for all Christians and this should be partaken by all members who are in full fel- lowship (Luke 22:19, 20; Acts 20:7; 1 Cor. 11:23-33).'
+                    },
+                  ].map((belief, i) => (
+                    <div key={i}>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">{belief.title}</h3>
+                      <p className="text-foreground/70 leading-relaxed">{belief.description}</p>
+                    </div>
+                  ))}
+                </div>
+
               </div>
             </div>
           </div>
@@ -88,25 +99,42 @@ export default function AboutPage() {
         {/* Join Us */}
         <section className="py-16 md:py-20 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl md:text-4xl font-semibold text-foreground leading-tight mb-4">
+                MORE TENETS OF FAITH
+                </h2>
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.05fr] gap-12 items-center">
-              <div>
-                <h3 className="text-2xl md:text-3xl font-semibold text-foreground mb-4">Join Us</h3>
-                <p className="text-foreground/70 mb-4 leading-relaxed">
-                  At Pentecost International Christian Center, our foundation is Christ, the Solid Rock.
-                  We welcome you to worship, fellowship, and grow with us. Our services and programs are
-                  designed to build faith, strengthen families, and impact communities.
-                </p>
-                <p className="text-foreground/70 mb-4 leading-relaxed">
-                  You can worship with us at any of our branches or connect with us online. We believe
-                  there is a place for you to belong and serve.
-                </p>
-                <a href="/locations" className="text-secondary font-semibold underline underline-offset-4">
-                  Locate a fellowship today
-                </a>
-              </div>
-              <div className="relative h-[22rem] md:h-[28rem] rounded-3xl overflow-hidden shadow-xl">
+                <div className="space-y-8">
+                  {[
+                    {
+                      title: 'Water Baptism',
+                      description: 'We believe in the sacrament of Baptism by immersion as a testimony of a convert who has attained a respon-sible age of 13 years (Mat. 3:16; Mark 1:9, 10; 16:16; Mat. 28:19; Acts 2:38). Infants and children are not baptized but are dedicated to the Lord (Luke 2:22-24, 34; Mark 10:13-16).'
+                    },
+                    {
+                      title: 'Repentance, Justification and Sanctification',
+                      description: 'We believe all men have to repent and confess their sins before God (Acts 2:38; 3:19; 17:30; Luke 5:17) and believe in the vicarious death of Jesus Christ before they can be justified before God (Romans 4:25; 5:1). We believe in the sanctification of the believer through the working of the Holy Spirit (1 Cor. 1:30; 6:11) and Gods gift of eternal life to the believer (Romans 6:23b; John 17:2, 3; 10:27, 28; 1 John 5:11-13).'
+                    },
+                    {
+                      title: 'Holy Communion',
+                      description: 'We believe in the covenant practice of taking the Lords Supper or Holy Communion for all Christians and this should be partaken by all members who are in full fel- lowship (Luke 22:19, 20; Acts 20:7; 1 Cor. 11:23-33).'
+                    },
+                    {
+                      title: 'Baptism, Gifts and Fruit of The Holy Spirit',
+                      description: 'We believe in the Baptism of the Holy Spirit for all be- lievers with the initial evidence of speaking in tongues (Joel 2:28, 29; Acts 2:3,4,38,39; 10:44-46; 19:1-6); and in the operation of the gifts and fruit of the Holy Spirit (1 Cor. 12:8-11; 28-30; Rom. 12:6-8 and Gal. 5:22,23).'
+                    },
+                    {
+                      title: 'Divine Healing',
+                      description: 'We believe that divine healing is biblical and is pro- vided for Gods people in the atonement (Isaiah 53:4,5; Mat. 8:7-13, 16,17; James 5:14-16; Luke 13:10-16; Acts 10:38; Mark 16:17,18).'
+                    },
+                  ].map((belief, i) => (
+                    <div key={i}>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">{belief.title}</h3>
+                      <p className="text-foreground/70 leading-relaxed">{belief.description}</p>
+                    </div>
+                  ))}
+                </div>
+              <div className="relative h-[40rem] md:h-[60rem] rounded-3xl overflow-hidden shadow-xl">
                 <Image
-                  src="/images/pastor-preaching-bw.jpg"
+                  src="/about/tenets-2.JPG"
                   alt="Worship service"
                   fill
                   className="object-cover"
@@ -185,40 +213,22 @@ export default function AboutPage() {
 
         {/* What We Believe */}
         <section className="py-20 md:py-24 bg-muted/30">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-primary mb-12">What We Believe</h2>
-            <div className="space-y-10">
-              {[
-                {
-                  title: 'The Bible',
-                  description: 'We believe the Bible is God\'s authoritative word and the foundation for our faith and practice.'
-                },
-                {
-                  title: 'Jesus Christ',
-                  description: 'We believe Jesus Christ is the Son of God, our Savior, and Lord who died for our sins and rose again.'
-                },
-                {
-                  title: 'Salvation',
-                  description: 'We believe salvation comes through faith in Jesus Christ and His transformative grace.'
-                },
-                {
-                  title: 'The Holy Spirit',
-                  description: 'We believe the Holy Spirit empowers believers and guides the church in fulfilling God\'s purpose.'
-                },
-                {
-                  title: 'The Church',
-                  description: 'We believe the church is the body of Christ, called to worship God and serve humanity with love.'
-                },
-                {
-                  title: 'Community',
-                  description: 'We believe strong Christian community is essential for spiritual growth and living out our faith.'
-                },
-              ].map((belief, i) => (
-                <div key={i}>
-                  <h3 className="text-lg font-semibold text-foreground mb-3">{belief.title}</h3>
-                  <p className="text-foreground/70 leading-relaxed">{belief.description}</p>
-                </div>
-              ))}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-start">
+              <div className="relative h-[24rem] md:h-[30rem] rounded-3xl overflow-hidden shadow-xl">
+                <Image
+                  src="/about/other.JPG"
+                  alt="About PICC"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div>
+                <h2 className="text-3xl md:text-4xl font-semibold text-foreground mb-6">
+                  The PICC Tenets of Faith.
+                </h2>
+
+              </div>
             </div>
           </div>
         </section>
