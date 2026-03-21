@@ -180,7 +180,7 @@ export default function HomePage() {
         </section>
 
         {/* Listen Now Section */}
-        <section className="py-20 md:py-24 bg-background">
+        <section id="see-you-in-church" className="py-20 md:py-24 bg-background scroll-mt-24">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[28px] group">
               <div className="absolute inset-0">
@@ -337,7 +337,7 @@ export default function HomePage() {
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/35" />
 
-                <div className="relative p-10 md:p-14 text-white">
+                <div id="see-you-in-church" className="relative p-10 md:p-14 text-white scroll-mt-24">
                   <div className="text-center max-w-3xl mx-auto">
                     <h2 className="text-3xl md:text-5xl font-semibold mb-3">See You In Church</h2>
                     <p className="text-white/80">Grow deeper in your walk with God this week.</p>

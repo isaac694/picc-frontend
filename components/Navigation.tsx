@@ -14,11 +14,19 @@ export default function Navigation() {
   const navLinks = [
     { href: '/', label: 'Home' },
     { href: '/about', label: 'About' },
-    { href: '/services', label: 'Services' },
-    { href: '/forms', label: 'Forms' },
+    { href: '/forms', label: 'Membership Form' },
     { href: '/livestream', label: 'Livestream' },
     { href: '/events', label: 'Events' },
     { href: '/contact', label: 'Contact' },
+  ];
+  const ministryLinks = [
+    { href: '/ministries/icd', label: 'ICD' },
+    { href: '/ministries/men-of-valour', label: 'Men of Valour' },
+    { href: '/ministries/prison-ministry', label: 'Prison Ministry' },
+    { href: '/ministries/youth-church-ministry', label: 'Youth Church Ministry' },
+    { href: '/ministries/women-of-hope', label: 'Women of Hope' },
+    { href: '/ministries/hope-and-beauty', label: 'Hope and Beauty' },
+    { href: '/ministries/heritage-ministry', label: 'Heritage Ministry' },
   ];
 
   return (
@@ -68,6 +76,41 @@ export default function Navigation() {
                 {link.label}
               </Link>
             ))}
+            <div className="relative group">
+              <button
+                type="button"
+                className={
+                  isDarkNav
+                    ? 'text-white/80 hover:text-white transition-colors text-sm font-medium'
+                    : 'text-foreground hover:text-primary transition-colors text-sm font-medium'
+                }
+              >
+                Ministries
+              </button>
+              <div
+                className={
+                  isDarkNav
+                    ? 'absolute left-0 top-full mt-3 w-56 rounded-lg border border-white/10 bg-black/95 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all'
+                    : 'absolute left-0 top-full mt-3 w-56 rounded-lg border border-border bg-white shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all'
+                }
+              >
+                <div className="py-2">
+                  {ministryLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={
+                        isDarkNav
+                          ? 'block px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10'
+                          : 'block px-4 py-2 text-sm text-foreground hover:text-primary hover:bg-muted'
+                      }
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
             <div className="relative group">
               <button
                 type="button"
@@ -148,6 +191,23 @@ export default function Navigation() {
             }
           >
             {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={
+                  isDarkNav
+                    ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                    : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                }
+                onClick={() => setIsOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className={isDarkNav ? 'px-4 pt-2 text-white/60 text-xs uppercase tracking-[0.2em]' : 'px-4 pt-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'}>
+              Ministries
+            </div>
+            {ministryLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
