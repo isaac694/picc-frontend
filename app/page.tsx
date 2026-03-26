@@ -11,12 +11,15 @@ import QuoteSection from '@/components/QuoteSection';
 import MomentsSection from '@/components/MomentsSection';
 
 const HERO_IMAGES = [
-  '/hero/hero-1.jpg',
-  '/hero/hero-2.jpg',
-  '/hero/hero-3.jpg',
-  '/hero/hero-4.jpg',
-  '/hero/hero-5.jpg',
-  '/hero/hero-6.jpg',
+  { src: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
+  { src: '/hero/hero-10.JPG', className: 'col-span-2 row-span-2' },
+  { src: '/hero/hero-9.JPG', className: 'col-span-2 row-span-1' },
+  { src: '/hero/hero-8.JPG', className: 'col-span-2 row-span-2' },
+  { src: '/hero/hero-7.JPG', className: 'col-span-2 row-span-1' },
+  { src: '/hero/hero-2.jpg', className: 'col-span-2 row-span-2' },
+  { src: '/hero/hero-1.jpg', className: 'col-span-2 row-span-1' },
+  { src: '/hero/hero-5.jpg', className: 'col-span-2 row-span-1 hidden md:block' },
+  { src: '/hero/hero-3.JPG', className: 'col-span-2 row-span-1 hidden md:block' },
 ];
 
 const MINISTRY_CARDS = [
@@ -36,21 +39,24 @@ export default function HomePage() {
       <main className="min-h-screen">
         {/* Hero Section */}
         <section className="relative h-[520px] md:h-[700px] overflow-hidden flex items-center rounded-b-[36px] md:rounded-b-[48px]">
-          <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-3 gap-1 p-1 hero-collage">
-            {HERO_IMAGES.map((src, index) => (
-              <div key={src} className="relative h-full min-h-0">
-                <Image
-                  src={src}
-                  alt={`PICC hero background ${index + 1}`}
-                  fill
-                  priority={index < 2}
-                  className="object-cover"
-                />
-              </div>
-            ))}
+          <div className="absolute inset-0 hero-collage p-3 md:p-4" aria-hidden="true">
+            <div className="grid h-full w-full grid-cols-2 md:grid-cols-6 grid-rows-4 md:grid-rows-3 gap-3 md:gap-4">
+              {HERO_IMAGES.map((item, index) => (
+                <div key={item.src} className={`${item.className} relative overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]`}>
+                  <Image
+                    src={item.src}
+                    alt={`PICC hero background ${index + 1}`}
+                    fill
+                    priority={index < 2}
+                    className="object-cover"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/66 to-black/72" />
-          <div className="absolute inset-0 bg-primary/45" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/40 to-black/45" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.015)_0%,rgba(0,0,0,0.28)_55%,rgba(0,0,0,0.45)_100%)]" />
+          <div className="absolute inset-0 bg-primary/12" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <div className="max-w-4xl mx-auto text-center">
               <h1 className="text-3xl md:text-5xl font-bold text-primary-foreground mb-4 leading-tight">

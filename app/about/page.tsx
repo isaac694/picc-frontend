@@ -21,6 +21,29 @@ export default function AboutPage() {
   const [slideTransition, setSlideTransition] = useState(true);
   const [openTenet, setOpenTenet] = useState<number | null>(0);
   const [openCoreValue, setOpenCoreValue] = useState<number | null>(0);
+  const [showAllThemes, setShowAllThemes] = useState(false);
+
+  const yearlyThemes = [
+    { year: 2010, theme: 'Theme to be updated' },
+    { year: 2011, theme: 'Theme to be updated' },
+    { year: 2012, theme: 'Theme to be updated' },
+    { year: 2013, theme: 'Theme to be updated' },
+    { year: 2014, theme: 'Theme to be updated' },
+    { year: 2015, theme: 'Theme to be updated' },
+    { year: 2016, theme: 'Theme to be updated' },
+    { year: 2017, theme: 'Theme to be updated' },
+    { year: 2018, theme: 'Theme to be updated' },
+    { year: 2019, theme: 'Theme to be updated' },
+    { year: 2020, theme: 'Theme to be updated' },
+    { year: 2021, theme: 'Theme to be updated' },
+    { year: 2022, theme: 'Theme to be updated' },
+    { year: 2023, theme: 'Theme to be updated' },
+    { year: 2024, theme: 'Theme to be updated' },
+    { year: 2025, theme: 'Theme to be updated' },
+    { year: 2026, theme: 'Theme to be updated' },
+  ];
+  const currentYearTheme = yearlyThemes.find((entry) => entry.year === 2026);
+  const otherYearThemes = yearlyThemes.filter((entry) => entry.year !== 2026);
 
   return (
     <>
@@ -314,10 +337,16 @@ export default function AboutPage() {
               src="/about/themes.jpeg"
               alt="PICC yearly themes"
               fill
-              className="object-cover"
+              className="object-cover object-[center_30%]"
             />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/60 to-black/70" />
+          <div
+            className={
+              showAllThemes
+                ? 'absolute inset-0 bg-gradient-to-b from-black/75 via-black/60 to-black/70'
+                : 'absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/55'
+            }
+          />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-white">
             <div className="mb-12">
               <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3">
@@ -332,44 +361,60 @@ export default function AboutPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                { year: 2010, theme: 'Theme to be updated' },
-                { year: 2011, theme: 'Theme to be updated' },
-                { year: 2012, theme: 'Theme to be updated' },
-                { year: 2013, theme: 'Theme to be updated' },
-                { year: 2014, theme: 'Theme to be updated' },
-                { year: 2015, theme: 'Theme to be updated' },
-                { year: 2016, theme: 'Theme to be updated' },
-                { year: 2017, theme: 'Theme to be updated' },
-                { year: 2018, theme: 'Theme to be updated' },
-                { year: 2019, theme: 'Theme to be updated' },
-                { year: 2020, theme: 'Theme to be updated' },
-                { year: 2021, theme: 'Theme to be updated' },
-                { year: 2022, theme: 'Theme to be updated' },
-                { year: 2023, theme: 'Theme to be updated' },
-                { year: 2024, theme: 'Theme to be updated' },
-                { year: 2025, theme: 'Theme to be updated' },
-                { year: 2026, theme: 'Theme to be updated' },
-              ].map((entry) => (
+              {currentYearTheme && (
                 <div
-                  key={entry.year}
+                  key={currentYearTheme.year}
                   className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow text-white"
                 >
                   <div className="flex items-center gap-4">
                     <div className="min-w-[72px] text-center rounded-xl bg-white/15 text-white font-semibold py-3 border border-white/20">
-                      {entry.year}
+                      {currentYearTheme.year}
                     </div>
                     <div>
                       <p className="text-xs uppercase tracking-[0.25em] text-white/70 mb-2">
                         Yearly Theme
                       </p>
                       <h3 className="text-lg md:text-xl font-semibold text-white">
-                        {entry.theme}
+                        {currentYearTheme.theme}
                       </h3>
                     </div>
                   </div>
                 </div>
-              ))}
+              )}
+
+              {showAllThemes &&
+                otherYearThemes.map((entry) => (
+                  <div
+                    key={entry.year}
+                    className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow text-white"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="min-w-[72px] text-center rounded-xl bg-white/15 text-white font-semibold py-3 border border-white/20">
+                        {entry.year}
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.25em] text-white/70 mb-2">
+                          Yearly Theme
+                        </p>
+                        <h3 className="text-lg md:text-xl font-semibold text-white">
+                          {entry.theme}
+                        </h3>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            <div className="mt-8">
+              <button
+                type="button"
+                onClick={() => setShowAllThemes((prev) => !prev)}
+                className="inline-flex items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-white transition-colors hover:bg-white/20"
+              >
+                {showAllThemes
+                  ? 'Hide themes from other years'
+                  : 'View themes from other years'}
+              </button>
             </div>
           </div>
         </section>
