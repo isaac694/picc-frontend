@@ -27,7 +27,7 @@ export default async function DevotionsPage() {
     <>
       <Navigation />
       <main className="min-h-screen">
-        <section className="py-20 md:py-24 bg-[linear-gradient(180deg,#fffaf0_0%,#fff6ec_100%)]">
+        <section className="py-16 sm:py-20 md:py-24 bg-[linear-gradient(180deg,#fffaf0_0%,#fff6ec_100%)]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-10">
               <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-3">
@@ -89,3 +89,4 @@ export default async function DevotionsPage() {
     </>
   );
 }
+

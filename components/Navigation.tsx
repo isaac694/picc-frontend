@@ -14,6 +14,7 @@ export default function Navigation() {
   const navLinks = [
     { href: '/', label: 'Home' },
     { href: '/about', label: 'About' },
+    { href: '/media', label: 'Media' },
     { href: '/forms', label: 'Membership Form' },
     { href: '/livestream', label: 'Livestream' },
     { href: '/events', label: 'Events' },
@@ -56,13 +57,16 @@ export default function Navigation() {
               className="h-9 w-9 object-contain"
               priority
             />
-            <span className="text-sm md:text-base leading-tight">
+            <span className="text-sm md:text-base leading-tight hidden sm:inline">
               Welcome to PICC
+            </span>
+            <span className="text-sm leading-tight sm:hidden">
+              PICC
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-6">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -173,7 +177,7 @@ export default function Navigation() {
 
           {/* Mobile Menu Button */}
           <button
-            className={isDarkNav ? 'md:hidden text-white' : 'md:hidden'}
+            className={isDarkNav ? 'lg:hidden text-white' : 'lg:hidden'}
             onClick={() => setIsOpen(!isOpen)}
             aria-label="Toggle menu"
           >
@@ -186,8 +190,8 @@ export default function Navigation() {
           <div
             className={
               isDarkNav
-                ? 'md:hidden pb-4 space-y-2 bg-black'
-                : 'md:hidden pb-4 space-y-2'
+                ? 'lg:hidden pb-4 space-y-2 bg-black'
+                : 'lg:hidden pb-4 space-y-2'
             }
           >
             {navLinks.map((link) => (

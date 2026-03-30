@@ -93,14 +93,19 @@ export default function EventsCarousel() {
         const response = await fetch(apiUrl('/api/events?take=12'));
         if (!response.ok) return;
         const data = await response.json();
+        const resolveImageUrl = (url: string) => {
+          if (url.startsWith('http')) return url;
+          if (url.startsWith('/uploads')) return apiUrl(url);
+          return url;
+        };
+
         const incoming = (data.events || [])
-          .filter((event: any) => event.imageUrl)
+          .filter((event: any) => event.imageUrl && !String(event.imageUrl).includes('placeholder-event'))
           .map((event: any, idx: number) => ({
-            src: event.imageUrl.startsWith('http')
-              ? event.imageUrl
-              : apiUrl(event.imageUrl),
+            src: resolveImageUrl(event.imageUrl),
             alt: event.title || `Event ${idx + 1}`,
-          }));
+          }))
+          .filter((event: any) => Boolean(event.src));
         if (incoming.length > 0) {
           setSlides(incoming);
         }
@@ -160,7 +165,10 @@ export default function EventsCarousel() {
               onTransitionEnd={handleTransitionEnd}
             >
               {extended.map((slide, i) => (
-                <div key={`${slide.src}-${i}`} className="min-w-full h-[480px] md:h-[640px] relative">
+                <div
+                  key={`${slide.src}-${i}`}
+                  className="min-w-full h-[320px] sm:h-[420px] md:h-[520px] lg:h-[640px] relative"
+                >
                   <Image
                     src={slide.src}
                     alt={slide.alt}

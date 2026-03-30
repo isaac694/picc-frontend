@@ -10,26 +10,57 @@ import QuoteSection from '@/components/QuoteSection';
 import MomentsSection from '@/components/MomentsSection';
 import { apiUrl } from '@/lib/api';
 
-const HERO_IMAGES = [
-  { src: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
-  { src: '/hero/hero-10.JPG', className: 'col-span-2 row-span-2' },
-  { src: '/hero/hero-9.JPG', className: 'col-span-2 row-span-1' },
-  { src: '/hero/hero-8.JPG', className: 'col-span-2 row-span-2' },
-  { src: '/hero/hero-7.JPG', className: 'col-span-2 row-span-1' },
-  { src: '/hero/hero-2.jpg', className: 'col-span-2 row-span-2' },
-  { src: '/hero/hero-1.jpg', className: 'col-span-2 row-span-1' },
-  { src: '/hero/hero-5.jpg', className: 'col-span-2 row-span-1 hidden md:block' },
-  { src: '/hero/hero-3.JPG', className: 'col-span-2 row-span-1 hidden md:block' },
+const HOME_HERO_SLOTS = [
+  { key: 'home-hero-1', fallback: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
+  { key: 'home-hero-2', fallback: '/hero/hero-10.JPG', className: 'col-span-2 row-span-2' },
+  { key: 'home-hero-3', fallback: '/hero/hero-9.JPG', className: 'col-span-2 row-span-1' },
+  { key: 'home-hero-4', fallback: '/hero/hero-8.JPG', className: 'col-span-2 row-span-2' },
+  { key: 'home-hero-5', fallback: '/hero/hero-7.JPG', className: 'col-span-2 row-span-1' },
+  { key: 'home-hero-6', fallback: '/hero/hero-2.jpg', className: 'col-span-2 row-span-2' },
+  { key: 'home-hero-7', fallback: '/hero/hero-1.jpg', className: 'col-span-2 row-span-1' },
+  { key: 'home-hero-8', fallback: '/hero/hero-5.jpg', className: 'col-span-2 row-span-1 hidden md:block' },
+  { key: 'home-hero-9', fallback: '/hero/hero-3.JPG', className: 'col-span-2 row-span-1 hidden md:block' },
+];
+
+const GROW_CARD_SLOTS = [
+  {
+    key: 'home-grow-card-1',
+    label: 'DISCOVER',
+    title: 'Who We Are',
+    href: '/about',
+    fallback: '/cards/about-church.jpg',
+  },
+  {
+    key: 'home-grow-card-2',
+    label: 'ATTEND',
+    title: 'Join a Service',
+    href: '/service-times',
+    fallback: '/cards/service-times.jpg',
+  },
+  {
+    key: 'home-grow-card-3',
+    label: 'CONNECT',
+    title: 'Get Involved',
+    href: '/events',
+    fallback: '/cards/upcoming-events.jpg',
+  },
+  {
+    key: 'home-grow-card-4',
+    label: 'GIVE',
+    title: 'Support the Mission',
+    href: '/give',
+    fallback: '/cards/give-offerings.jpg',
+  },
 ];
 
 const MINISTRY_CARDS = [
-  { title: 'Women of Hope', image: '/hero/hero-2.jpg' },
-  { title: 'ICD', image: '/hero/hero-5.jpg' },
-  { title: 'Men of Valour', image: '/hero/hero-1.jpg' },
-  { title: 'Prison Ministry', image: '/hero/hero-6.jpg' },
-  { title: 'Youth Church Ministry', image: '/hero/hero-3.jpg' },
-  { title: 'Hope and Beauty', image: '/hero/hero-4.jpg' },
-  { title: 'Heritage Ministry', image: '/cards/about-church.jpg' },
+  { title: 'Women of Hope', key: 'home-ministry-card-1', fallback: '/hero/hero-2.jpg' },
+  { title: 'ICD', key: 'home-ministry-card-2', fallback: '/hero/hero-5.jpg' },
+  { title: 'Men of Valour', key: 'home-ministry-card-3', fallback: '/hero/hero-1.jpg' },
+  { title: 'Prison Ministry', key: 'home-ministry-card-4', fallback: '/hero/hero-6.jpg' },
+  { title: 'Youth Church Ministry', key: 'home-ministry-card-5', fallback: '/hero/hero-3.jpg' },
+  { title: 'Hope and Beauty', key: 'home-ministry-card-6', fallback: '/hero/hero-4.jpg' },
+  { title: 'Heritage Ministry', key: 'home-ministry-card-7', fallback: '/cards/about-church.jpg' },
 ];
 
 const DEFAULT_SERVICES = [
@@ -122,6 +153,24 @@ async function getQuoteOfMonth() {
   }
 }
 
+async function getSiteImages(keys: string[]) {
+  const entries = await Promise.all(
+    keys.map(async (key) => {
+      try {
+        const response = await fetch(apiUrl(`/api/site-content/${key}`), {
+          next: { revalidate: 300 },
+        });
+        if (!response.ok) return [key, null] as const;
+        const data = await response.json();
+        return [key, data.imageUrl ?? null] as const;
+      } catch (error) {
+        return [key, null] as const;
+      }
+    })
+  );
+  return Object.fromEntries(entries);
+}
+
 function normalizeImageUrl(url?: string | null) {
   if (!url) return null;
   if (url.startsWith('http')) return url;
@@ -129,11 +178,22 @@ function normalizeImageUrl(url?: string | null) {
 }
 
 export default async function HomePage() {
-  const [devotion, services, seeYouInChurch, quoteOfMonth] = await Promise.all([
+  const imageKeys = [
+    ...HOME_HERO_SLOTS.map((slot) => slot.key),
+    'home-mission-image',
+    ...GROW_CARD_SLOTS.map((slot) => slot.key),
+    'home-pastors-image',
+    'home-listen-now-bg',
+    ...MINISTRY_CARDS.map((slot) => slot.key),
+    'home-livestream-bg',
+  ];
+
+  const [devotion, services, seeYouInChurch, quoteOfMonth, siteImages] = await Promise.all([
     getDailyDevotion(),
     getServices(),
     getSeeYouInChurch(),
     getQuoteOfMonth(),
+    getSiteImages(imageKeys),
   ]);
   const devotionDate = devotion?.publishAt
     ? new Intl.DateTimeFormat('en-US', {
@@ -143,18 +203,34 @@ export default async function HomePage() {
       }).format(new Date(devotion.publishAt))
     : null;
 
-  const seeYouImageUrl = normalizeImageUrl(seeYouInChurch?.imageUrl) || '/hero/hero-3.jpg';
+  const seeYouImageUrl = normalizeImageUrl(seeYouInChurch?.imageUrl) || '/home/see-you-in-church.JPG';
   const quoteImageUrl = normalizeImageUrl(quoteOfMonth?.imageUrl);
+  const heroImages = HOME_HERO_SLOTS.map((slot) => ({
+    ...slot,
+    src: normalizeImageUrl(siteImages[slot.key]) || slot.fallback,
+  }));
+  const missionImage = normalizeImageUrl(siteImages['home-mission-image']) || '/images/pastor-preaching-bw.jpg';
+  const growCards = GROW_CARD_SLOTS.map((slot) => ({
+    ...slot,
+    img: normalizeImageUrl(siteImages[slot.key]) || slot.fallback,
+  }));
+  const pastorsImage = normalizeImageUrl(siteImages['home-pastors-image']) || '/images/pastor-preaching-bw.jpg';
+  const listenNowImage = normalizeImageUrl(siteImages['home-listen-now-bg']) || '/pastor/pastor-photo.jpg';
+  const ministryCards = MINISTRY_CARDS.map((slot) => ({
+    ...slot,
+    image: normalizeImageUrl(siteImages[slot.key]) || slot.fallback,
+  }));
+  const livestreamImage = normalizeImageUrl(siteImages['home-livestream-bg']) || '/hero/hero-6.jpg';
 
   return (
     <>
       <Navigation />
       <main className="min-h-screen">
         {/* Hero Section */}
-        <section className="relative h-[520px] md:h-[700px] overflow-hidden flex items-center rounded-b-[36px] md:rounded-b-[48px]">
-          <div className="absolute inset-0 hero-collage p-3 md:p-4" aria-hidden="true">
-            <div className="grid h-full w-full grid-cols-2 md:grid-cols-6 grid-rows-4 md:grid-rows-3 gap-3 md:gap-4">
-              {HERO_IMAGES.map((item, index) => (
+        <section className="relative h-[420px] sm:h-[520px] md:h-[700px] overflow-hidden flex items-center rounded-b-[28px] sm:rounded-b-[36px] md:rounded-b-[48px]">
+          <div className="absolute inset-0 hero-collage p-2 sm:p-3 md:p-4" aria-hidden="true">
+            <div className="grid h-full w-full grid-cols-2 md:grid-cols-6 grid-rows-4 md:grid-rows-3 gap-2 sm:gap-3 md:gap-4">
+              {heroImages.map((item, index) => (
                 <div key={item.src} className={`${item.className} relative overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]`}>
                   <Image
                     src={item.src}
@@ -172,10 +248,10 @@ export default async function HomePage() {
           <div className="absolute inset-0 bg-primary/12" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <div className="max-w-4xl mx-auto text-center">
-              <h1 className="text-3xl md:text-5xl font-bold text-primary-foreground mb-4 leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-primary-foreground mb-3 md:mb-4 leading-tight">
                 Welcome to Pentecost International Christian Center
               </h1>
-              <p className="text-lg text-primary-foreground/90 mb-8">
+              <p className="text-base sm:text-lg text-primary-foreground/90 mb-6 md:mb-8">
                 A place of worship, fellowship, and spiritual growth for all
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -196,12 +272,12 @@ export default async function HomePage() {
 
         <VerseSection />
         
-        <MissionSection />
+        <MissionSection imageUrl={missionImage} />
 
         {/* Daily Devotions Section */}
-        <section className="py-20 md:py-24 bg-background">
+        <section className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-10 items-start">
               <div>
                 <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-3">
                   Daily Devotions
@@ -222,7 +298,7 @@ export default async function HomePage() {
                   </Link>
                 </div>
               </div>
-              <div className="relative rounded-[28px] border border-primary/10 bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-8 md:p-10 shadow-xl">
+              <div className="relative rounded-[24px] sm:rounded-[28px] border border-primary/10 bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-6 sm:p-8 md:p-10 shadow-xl">
                 <p className="text-sm uppercase tracking-[0.3em] text-foreground/60 mb-3">
                   Today&apos;s Reflection
                 </p>
@@ -243,42 +319,17 @@ export default async function HomePage() {
 
 
       {/* Quick Links / "Your Faith Walk" Section */}
-      <section className="py-20 md:py-24 bg-[linear-gradient(180deg,#fffaf0_0%,#fff6ec_100%)]">
+      <section className="py-16 sm:py-16 sm:py-20 md:py-24 bg-[linear-gradient(180deg,#fffaf0_0%,#fff6ec_100%)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="text-4xl md:text-5xl font-bold text-primary mb-2">Grow in Every Season</h2>
             <p className="text-foreground/70">Whether you're new or have been with us for years — there's always more.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 px-4 sm:px-6 lg:px-8">
-            {[
-              {
-                href: '/about',
-                label: 'DISCOVER',
-                title: 'Who We Are',
-                img: '/cards/about-church.jpg',
-              },
-              {
-                href: '/service-times',
-                label: 'ATTEND',
-                title: 'Join a Service',
-                img: '/cards/service-times.jpg',
-              },
-              {
-                href: '/events',
-                label: 'CONNECT',
-                title: 'Get Involved',
-                img: '/cards/upcoming-events.jpg',
-              },
-              {
-                href: '/give',
-                label: 'GIVE',
-                title: 'Support the Mission',
-                img: '/cards/give-offerings.jpg',
-              },
-            ].map((card) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8">
+            {growCards.map((card) => (
               <Link key={card.href} href={card.href}>
-                <div className="group block rounded-2xl overflow-hidden relative h-64 md:h-72 lg:h-80 cursor-pointer">
+                <div className="group block rounded-2xl overflow-hidden relative h-56 sm:h-64 md:h-72 lg:h-80 cursor-pointer">
                   <div className="absolute inset-0">
                     <Image
                       src={card.img}
@@ -317,7 +368,7 @@ export default async function HomePage() {
           <EventsCarousel />
 
         {/* Pastors Section */}
-        <section className="py-20 md:py-24 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white">
+        <section className="py-16 sm:py-16 sm:py-20 md:py-24 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
               <div className="space-y-5">
@@ -335,7 +386,7 @@ export default async function HomePage() {
               </div>
               <div className="relative aspect-[4/3] rounded-[28px] overflow-hidden shadow-2xl bg-white/5">
                 <Image
-                  src="/images/pastor-preaching-bw.jpg"
+                  src={pastorsImage}
                   alt="Pastor Esau Banda and Pastor Loyce Banda"
                   fill
                   className="object-cover"
@@ -346,12 +397,12 @@ export default async function HomePage() {
         </section>
 
         {/* Listen Now Section */}
-        <section id="see-you-in-church" className="py-20 md:py-24 bg-background scroll-mt-24">
+        <section id="see-you-in-church" className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background scroll-mt-24">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[28px] group">
               <div className="absolute inset-0">
                 <Image
-                  src="/pastor/pastor-photo.jpg"
+                  src={listenNowImage}
                   alt="Listen now background"
                   fill
                   className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
@@ -359,7 +410,7 @@ export default async function HomePage() {
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
 
-              <div className="relative p-8 md:p-12 lg:p-16 text-white">
+              <div className="relative p-6 sm:p-8 md:p-12 lg:p-16 text-white">
                 <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center">
                   <div>
                     <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">Listen Now</p>
@@ -389,7 +440,7 @@ export default async function HomePage() {
                   <div className="bg-black/40 border border-white/10 rounded-2xl p-4 md:p-5 backdrop-blur-sm">
                     <iframe
                       title="Pastor Esau Banda on Spotify"
-                      className="w-full h-[232px] md:h-[260px] rounded-xl"
+                      className="w-full h-[200px] sm:h-[232px] md:h-[260px] rounded-xl"
                       src="https://open.spotify.com/embed/show/4pY3cP8R60wHhzhUciLKK6"
                       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                       loading="lazy"
@@ -402,7 +453,7 @@ export default async function HomePage() {
         </section>
 
         {/* Ministries Section */}
-        <section className="py-20 md:py-24 bg-background">
+        <section className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background">
           <style>{`
             @keyframes marqueeScroll {
               0% { transform: translateX(0); }
@@ -434,10 +485,10 @@ export default async function HomePage() {
 
           <div className="ministry-marquee overflow-hidden">
             <div className="ministry-track flex gap-6 w-[200%] px-6">
-              {[...MINISTRY_CARDS, ...MINISTRY_CARDS].map((item, index) => (
+              {[...ministryCards, ...ministryCards].map((item, index) => (
                 <div
                   key={`${item.title}-${index}`}
-                  className="relative w-[260px] sm:w-[300px] md:w-[340px] h-[260px] md:h-[300px] rounded-2xl overflow-hidden shadow-xl"
+                  className="relative w-[220px] sm:w-[260px] md:w-[320px] lg:w-[340px] h-[220px] sm:h-[260px] md:h-[300px] rounded-2xl overflow-hidden shadow-xl"
                 >
                   <Image
                     src={item.image}
@@ -456,12 +507,12 @@ export default async function HomePage() {
         </section>
 
                 {/* Latest Livestreams Section */}
-        <section className="py-24 md:py-32 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]">
+        <section className="py-16 sm:py-16 sm:py-24 md:py-32 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="relative overflow-hidden rounded-[28px] shadow-2xl max-w-5xl mx-auto min-h-[480px] md:min-h-[560px] flex items-center">
+            <div className="relative overflow-hidden rounded-[28px] shadow-2xl max-w-5xl mx-auto min-h-[360px] sm:min-h-[440px] md:min-h-[560px] flex items-center">
               <div className="absolute inset-0">
                 <Image
-                  src="/hero/hero-6.jpg"
+                  src={livestreamImage}
                   alt="Latest livestream"
                   fill
                   className="object-cover"
@@ -490,7 +541,7 @@ export default async function HomePage() {
         <MomentsSection />
 
 {/* Service Times Section */}
-        <section className="py-20 md:py-24 bg-background">
+        <section className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[28px] shadow-2xl">
               <div className="absolute inset-0">
@@ -503,7 +554,7 @@ export default async function HomePage() {
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/35" />
 
-                <div id="see-you-in-church" className="relative p-10 md:p-14 text-white scroll-mt-24">
+                <div id="see-you-in-church" className="relative p-6 sm:p-10 md:p-14 text-white scroll-mt-24">
                   <div className="text-center max-w-3xl mx-auto">
                     <h2 className="text-3xl md:text-5xl font-semibold mb-3">
                       {seeYouInChurch?.title || 'See You In Church'}
@@ -531,7 +582,7 @@ export default async function HomePage() {
                       return (
                         <div
                           key={`${program.dayOfWeek || program.day}-${program.title}`}
-                          className="rounded-2xl bg-white/10 border border-white/10 p-6"
+                          className="rounded-2xl bg-white/10 border border-white/10 p-4 sm:p-6"
                         >
                           <p className="text-sm uppercase tracking-[0.2em] text-white/70">
                             {program.dayOfWeek || program.day}
@@ -577,5 +628,6 @@ export default async function HomePage() {
     </>
   );
 }
+
 
 

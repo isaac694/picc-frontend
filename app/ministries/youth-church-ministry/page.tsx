@@ -8,7 +8,7 @@ export default function YouthChurchMinistryPage() {
     <>
       <Navigation />
       <main className="min-h-screen bg-background">
-        <section className="py-24 md:py-32 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white rounded-b-[36px] md:rounded-b-[48px]">
+        <section className="py-16 sm:py-24 md:py-32 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white rounded-b-[36px] md:rounded-b-[48px]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3">Ministry</p>
             <h1 className="text-4xl md:text-6xl font-semibold mb-3">Youth Church Ministry</h1>
@@ -22,3 +22,4 @@ export default function YouthChurchMinistryPage() {
     </>
   );
 }
+

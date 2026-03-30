@@ -7,6 +7,62 @@ import { Button } from '@/components/ui/button';
 
 const TOKEN_KEY = 'picc_admin_token';
 
+const IMAGE_SECTIONS = [
+  {
+    id: 'home',
+    title: 'Home Page Images',
+    description: 'Update hero, mission, and ministry visuals used on the home page.',
+    items: [
+      { key: 'home-hero-1', label: 'Hero Image 1', fallback: '/hero/hero-4.JPG' },
+      { key: 'home-hero-2', label: 'Hero Image 2', fallback: '/hero/hero-10.JPG' },
+      { key: 'home-hero-3', label: 'Hero Image 3', fallback: '/hero/hero-9.JPG' },
+      { key: 'home-hero-4', label: 'Hero Image 4', fallback: '/hero/hero-8.JPG' },
+      { key: 'home-hero-5', label: 'Hero Image 5', fallback: '/hero/hero-7.JPG' },
+      { key: 'home-hero-6', label: 'Hero Image 6', fallback: '/hero/hero-2.jpg' },
+      { key: 'home-hero-7', label: 'Hero Image 7', fallback: '/hero/hero-1.jpg' },
+      { key: 'home-hero-8', label: 'Hero Image 8', fallback: '/hero/hero-5.jpg' },
+      { key: 'home-hero-9', label: 'Hero Image 9', fallback: '/hero/hero-3.JPG' },
+      { key: 'home-mission-image', label: 'Our Mission Image', fallback: '/images/pastor-preaching-bw.jpg' },
+      { key: 'home-grow-card-1', label: 'Grow Card 1', fallback: '/cards/about-church.jpg' },
+      { key: 'home-grow-card-2', label: 'Grow Card 2', fallback: '/cards/service-times.jpg' },
+      { key: 'home-grow-card-3', label: 'Grow Card 3', fallback: '/cards/upcoming-events.jpg' },
+      { key: 'home-grow-card-4', label: 'Grow Card 4', fallback: '/cards/give-offerings.jpg' },
+      { key: 'home-pastors-image', label: 'Our Pastors Image', fallback: '/images/pastor-preaching-bw.jpg' },
+      { key: 'home-listen-now-bg', label: 'Listen Now Background', fallback: '/pastor/pastor-photo.jpg' },
+      { key: 'home-ministry-card-1', label: 'You Were Made For This 1', fallback: '/hero/hero-2.jpg' },
+      { key: 'home-ministry-card-2', label: 'You Were Made For This 2', fallback: '/hero/hero-5.jpg' },
+      { key: 'home-ministry-card-3', label: 'You Were Made For This 3', fallback: '/hero/hero-1.jpg' },
+      { key: 'home-ministry-card-4', label: 'You Were Made For This 4', fallback: '/hero/hero-6.jpg' },
+      { key: 'home-ministry-card-5', label: 'You Were Made For This 5', fallback: '/hero/hero-3.jpg' },
+      { key: 'home-ministry-card-6', label: 'You Were Made For This 6', fallback: '/hero/hero-4.jpg' },
+      { key: 'home-ministry-card-7', label: 'You Were Made For This 7', fallback: '/cards/about-church.jpg' },
+      { key: 'home-livestream-bg', label: "Listen to God's Word Background", fallback: '/hero/hero-6.jpg' },
+    ],
+  },
+  {
+    id: 'about',
+    title: 'About Page Images',
+    description: 'Images for About page hero, tenets, values, and yearly themes.',
+    items: [
+      { key: 'about-header-bg', label: 'About Header Background', fallback: '/about/header.JPG' },
+      { key: 'about-tenets-image', label: 'Tenets of Faith Image', fallback: '/about/tenets-1.JPG' },
+      { key: 'about-core-values-image', label: 'Core Values Image', fallback: '/about/core-values.JPG' },
+      { key: 'about-themes-bg', label: 'Yearly Themes Background', fallback: '/about/themes.jpeg' },
+      { key: 'about-worship-image', label: 'Worship With Us Image', fallback: '/about/worship-with-us.jpg' },
+    ],
+  },
+  {
+    id: 'contact',
+    title: 'Contact Page Images',
+    description: 'Hero, location, and contact form images for the Contact page.',
+    items: [
+      { key: 'contact-header-bg', label: 'Contact Header Background', fallback: '/images/our-church.JPG' },
+      { key: 'contact-locate-image', label: 'Locate Us Image', fallback: '/images/our-church.JPG' },
+      { key: 'contact-send-message-image', label: 'Send Us a Message Image', fallback: '/images/send-message-2.JPG' },
+    ],
+  },
+];
+
 export default function DevotionsAdminPage() {
   const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState('');
@@ -21,7 +77,7 @@ export default function DevotionsAdminPage() {
   const [allDevotions, setAllDevotions] = useState<any[]>([]);
   const [seeYouTitle, setSeeYouTitle] = useState('See You In Church');
   const [seeYouSubtitle, setSeeYouSubtitle] = useState('Grow deeper in your walk with God this week.');
-  const [seeYouImageUrl, setSeeYouImageUrl] = useState('');
+  const [seeYouImageUrl, setSeeYouImageUrl] = useState('/home/see-you-in-church.JPG');
   const [services, setServices] = useState<any[]>([]);
   const [serviceDraft, setServiceDraft] = useState({
     title: '',
@@ -42,6 +98,9 @@ export default function DevotionsAdminPage() {
   const [quoteAuthor, setQuoteAuthor] = useState('');
   const [quoteImageUrl, setQuoteImageUrl] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [pageImages, setPageImages] = useState<Record<string, string>>({});
+  const [savingImages, setSavingImages] = useState(false);
+  const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
@@ -167,6 +226,29 @@ export default function DevotionsAdminPage() {
             : '';
           setQuoteImageUrl(imageUrl);
         }
+
+        const imageKeys = IMAGE_SECTIONS.flatMap((section) => section.items.map((item) => item.key));
+        const imageEntries = await Promise.all(
+          imageKeys.map(async (key) => {
+            try {
+              const response = await fetch(apiUrl(`/api/site-content/${key}`));
+              if (!response.ok) {
+                return [key, ''] as const;
+              }
+              const data = await response.json();
+              const imageUrl = data.imageUrl
+                ? data.imageUrl.startsWith('http')
+                  ? data.imageUrl
+                  : apiUrl(data.imageUrl)
+                : '';
+              return [key, imageUrl] as const;
+            } catch (error) {
+              return [key, ''] as const;
+            }
+          })
+        );
+
+        setPageImages(Object.fromEntries(imageEntries));
       } catch (error) {
         // ignore fetch errors here; individual sections can still work
       }
@@ -535,6 +617,47 @@ export default function DevotionsAdminPage() {
     }
   };
 
+  const updatePageImage = (key: string, value: string) => {
+    setPageImages((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const updateUploadName = (key: string, name: string) => {
+    setUploadNames((prev) => ({ ...prev, [key]: name }));
+  };
+
+  const saveImageSection = async (sectionId: string) => {
+    if (!token) return;
+    const section = IMAGE_SECTIONS.find((item) => item.id === sectionId);
+    if (!section) return;
+    setSavingImages(true);
+    setStatus('');
+    try {
+      const responses = await Promise.all(
+        section.items.map((item) =>
+          fetch(apiUrl(`/api/site-content/${item.key}`), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              imageUrl: pageImages[item.key] || null,
+            }),
+          })
+        )
+      );
+      if (responses.some((response) => !response.ok)) {
+        setStatus(`Unable to save ${section.title.toLowerCase()}.`);
+        return;
+      }
+      setStatus(`${section.title} updated.`);
+    } catch (error) {
+      setStatus(`Unable to save ${section.title.toLowerCase()}.`);
+    } finally {
+      setSavingImages(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-background py-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -763,17 +886,6 @@ export default function DevotionsAdminPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Background Image URL
-                  </label>
-                  <input
-                    type="text"
-                    value={seeYouImageUrl}
-                    onChange={(event) => setSeeYouImageUrl(event.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
                     Upload Background Image
                   </label>
                   <input
@@ -783,11 +895,36 @@ export default function DevotionsAdminPage() {
                       const file = event.target.files?.[0];
                       if (!file) return;
                       const url = await uploadImage(file);
-                      if (url) setSeeYouImageUrl(url);
+                      if (url) {
+                        setSeeYouImageUrl(url);
+                        updateUploadName('see-you', file.name);
+                      }
                     }}
                     className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
                   />
                 </div>
+                <div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSeeYouImageUrl('');
+                      updateUploadName('see-you', '');
+                    }}
+                  >
+                    Remove Background Image
+                  </Button>
+                </div>
+                {seeYouImageUrl && (
+                  <div className="rounded-xl border border-border/60 bg-background p-3">
+                    <div
+                      className="h-32 rounded-lg bg-cover bg-center"
+                      style={{ backgroundImage: `url(${seeYouImageUrl})` }}
+                    />
+                    <p className="mt-2 text-xs text-foreground/60">
+                      {uploadNames['see-you'] ? `Selected: ${uploadNames['see-you']}` : 'Current image'}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <Button onClick={saveSeeYouInChurch}>
                     Save Section
@@ -798,7 +935,7 @@ export default function DevotionsAdminPage() {
                     <div
                       className="relative h-48 bg-cover bg-center"
                       style={{
-                        backgroundImage: `url(${seeYouImageUrl || '/hero/hero-3.jpg'})`,
+                        backgroundImage: `url(${seeYouImageUrl || '/home/see-you-in-church.JPG'})`,
                       }}
                     >
                       <div className="absolute inset-0 bg-black/55" />
@@ -971,13 +1108,6 @@ export default function DevotionsAdminPage() {
                     onChange={(event) => setEventDraft((prev) => ({ ...prev, location: event.target.value }))}
                     className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
                   />
-                  <input
-                    type="text"
-                    placeholder="Image URL"
-                    value={eventDraft.imageUrl}
-                    onChange={(event) => setEventDraft((prev) => ({ ...prev, imageUrl: event.target.value }))}
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -992,11 +1122,34 @@ export default function DevotionsAdminPage() {
                       const url = await uploadImage(file);
                       if (url) {
                         setEventDraft((prev) => ({ ...prev, imageUrl: url }));
+                        updateUploadName('event-draft', file.name);
                       }
                     }}
                     className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
                   />
                 </div>
+                <div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setEventDraft((prev) => ({ ...prev, imageUrl: '' }));
+                      updateUploadName('event-draft', '');
+                    }}
+                  >
+                    Remove Event Image
+                  </Button>
+                </div>
+                {eventDraft.imageUrl && (
+                  <div className="rounded-xl border border-border/60 bg-background p-3">
+                    <div
+                      className="h-32 rounded-lg bg-cover bg-center"
+                      style={{ backgroundImage: `url(${eventDraft.imageUrl})` }}
+                    />
+                    <p className="mt-2 text-xs text-foreground/60">
+                      {uploadNames['event-draft'] ? `Selected: ${uploadNames['event-draft']}` : 'Current image'}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <textarea
                     placeholder="Description"
@@ -1050,16 +1203,6 @@ export default function DevotionsAdminPage() {
                           }
                           className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
                         />
-                        <input
-                          type="text"
-                          value={event.imageUrl || ''}
-                          onChange={(e) =>
-                            setEvents((prev) =>
-                              prev.map((item) => (item.id === event.id ? { ...item, imageUrl: e.target.value } : item))
-                            )
-                          }
-                          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                        />
                       </div>
                       <div className="mt-3">
                         <label className="block text-xs uppercase tracking-[0.25em] text-foreground/50 mb-2">
@@ -1076,10 +1219,39 @@ export default function DevotionsAdminPage() {
                             setEvents((prev) =>
                               prev.map((item) => (item.id === event.id ? { ...item, imageUrl: url } : item))
                             );
+                            updateUploadName(`event-${event.id}`, file.name);
                           }}
                           className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
                         />
                       </div>
+                      <div className="mt-3">
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            {
+                              setEvents((prev) =>
+                                prev.map((item) => (item.id === event.id ? { ...item, imageUrl: '' } : item))
+                              );
+                              updateUploadName(`event-${event.id}`, '');
+                            }
+                          }
+                        >
+                          Remove Event Image
+                        </Button>
+                      </div>
+                      {event.imageUrl && (
+                        <div className="mt-3 rounded-xl border border-border/60 bg-background p-3">
+                          <div
+                            className="h-28 rounded-lg bg-cover bg-center"
+                            style={{ backgroundImage: `url(${event.imageUrl})` }}
+                          />
+                          <p className="mt-2 text-xs text-foreground/60">
+                            {uploadNames[`event-${event.id}`]
+                              ? `Selected: ${uploadNames[`event-${event.id}`]}`
+                              : 'Current image'}
+                          </p>
+                        </div>
+                      )}
                       <div className="mt-3">
                         <textarea
                           value={event.description || ''}
@@ -1150,17 +1322,6 @@ export default function DevotionsAdminPage() {
                       className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Photo Image URL
-                    </label>
-                    <input
-                      type="text"
-                      value={quoteImageUrl}
-                      onChange={(event) => setQuoteImageUrl(event.target.value)}
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                    />
-                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -1173,11 +1334,36 @@ export default function DevotionsAdminPage() {
                       const file = event.target.files?.[0];
                       if (!file) return;
                       const url = await uploadImage(file);
-                      if (url) setQuoteImageUrl(url);
+                      if (url) {
+                        setQuoteImageUrl(url);
+                        updateUploadName('quote', file.name);
+                      }
                     }}
                     className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
                   />
                 </div>
+                <div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setQuoteImageUrl('');
+                      updateUploadName('quote', '');
+                    }}
+                  >
+                    Remove Quote Photo
+                  </Button>
+                </div>
+                {quoteImageUrl && (
+                  <div className="rounded-xl border border-border/60 bg-background p-3">
+                    <div
+                      className="h-32 rounded-lg bg-cover bg-center"
+                      style={{ backgroundImage: `url(${quoteImageUrl})` }}
+                    />
+                    <p className="mt-2 text-xs text-foreground/60">
+                      {uploadNames.quote ? `Selected: ${uploadNames.quote}` : 'Current image'}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <Button onClick={handleSaveQuote}>Save Quote</Button>
                 </div>
@@ -1198,6 +1384,95 @@ export default function DevotionsAdminPage() {
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Page Images</h2>
+                  <p className="text-sm text-foreground/60">
+                    Upload new images for the Home, About, and Contact pages.
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-foreground/40">
+                  {savingImages ? 'Saving...' : 'Images'}
+                </div>
+              </div>
+
+              <div className="space-y-10">
+                {IMAGE_SECTIONS.map((section) => (
+                  <div key={section.id} className="rounded-2xl border border-border/60 bg-background p-5">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
+                          {section.title}
+                        </p>
+                        <p className="text-sm text-foreground/60">{section.description}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => saveImageSection(section.id)}
+                        disabled={savingImages}
+                      >
+                        Save {section.title}
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {section.items.map((item) => {
+                        const currentUrl = pageImages[item.key] || '';
+                        const previewUrl = currentUrl || item.fallback;
+                        return (
+                          <div key={item.key} className="rounded-2xl border border-border/60 bg-card p-4">
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                                <p className="text-[11px] text-foreground/50">{item.key}</p>
+                              </div>
+                              <span className="text-[10px] uppercase tracking-[0.2em] text-foreground/40">
+                                {currentUrl ? 'Custom' : 'Default'}
+                              </span>
+                            </div>
+                            <div
+                              className="h-40 rounded-xl border border-border/60 bg-cover bg-center"
+                              style={{ backgroundImage: `url(${previewUrl})` }}
+                            />
+                            <div className="mt-4 space-y-3">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (event) => {
+                                  const file = event.target.files?.[0];
+                                  if (!file) return;
+                                  const url = await uploadImage(file);
+                                  if (!url) return;
+                                  updatePageImage(item.key, url);
+                                  updateUploadName(`page-${item.key}`, file.name);
+                                }}
+                                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+                              />
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  updatePageImage(item.key, '');
+                                  updateUploadName(`page-${item.key}`, '');
+                                }}
+                              >
+                                Remove Image
+                              </Button>
+                              {uploadNames[`page-${item.key}`] && (
+                                <p className="text-xs text-foreground/60">
+                                  Selected: {uploadNames[`page-${item.key}`]}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

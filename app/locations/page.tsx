@@ -305,7 +305,7 @@ export default function LocationsPage() {
     <>
       <Navigation />
       <main className="min-h-screen bg-white text-black">
-        <section className="relative overflow-hidden py-36 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
+        <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[url('/hero/hero-2.jpg')] bg-cover bg-center" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
@@ -444,7 +444,7 @@ export default function LocationsPage() {
                   <div key={slideIndex} className="min-w-full">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                       {slide.map((src, idx) => (
-                        <div key={`${src}-${idx}`} className="relative h-[22rem] md:h-[28rem]">
+                        <div key={`${src}-${idx}`} className="relative h-[16rem] sm:h-[20rem] md:h-[28rem]">
                           <Image
                             src={src}
                             alt="We are family moment"
@@ -482,3 +482,4 @@ export default function LocationsPage() {
     </>
   );
 }
+

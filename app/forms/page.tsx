@@ -25,7 +25,7 @@ export default function FormsPage() {
           <div className="pb-24">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-10 items-stretch">
-                <div className="relative min-h-[28rem] md:min-h-[34rem] lg:min-h-[38rem] rounded-3xl overflow-hidden shadow-2xl bg-white/10">
+                <div className="relative min-h-[20rem] sm:min-h-[26rem] md:min-h-[34rem] lg:min-h-[38rem] rounded-3xl overflow-hidden shadow-2xl bg-white/10">
                   <Image
                     src="/images/our-church.JPG"
                     alt="PICC church family"
@@ -130,7 +130,7 @@ export default function FormsPage() {
           </div>
         </section>
 
-        <section className="py-20 md:py-24">
+        <section className="py-16 sm:py-20 md:py-24">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.05fr] gap-10 items-stretch">
               <Card className="bg-white/10 backdrop-blur-sm text-foreground border border-border/20 shadow-2xl rounded-3xl h-full">
@@ -168,7 +168,7 @@ export default function FormsPage() {
                 </div>
               </Card>
 
-              <div className="relative min-h-[28rem] md:min-h-[34rem] lg:min-h-[38rem] rounded-3xl overflow-hidden shadow-2xl bg-white/5">
+              <div className="relative min-h-[20rem] sm:min-h-[26rem] md:min-h-[34rem] lg:min-h-[38rem] rounded-3xl overflow-hidden shadow-2xl bg-white/5">
                 <Image
                   src="/images/send-message-2.JPG"
                   alt="Share your testimony"
@@ -279,7 +279,7 @@ export default function FormsPage() {
                   </form>
                 </div>
 
-                <div className="relative min-h-[26rem] md:min-h-[30rem] lg:min-h-[34rem] rounded-3xl overflow-hidden bg-white/10 shadow-2xl">
+                <div className="relative min-h-[20rem] sm:min-h-[24rem] md:min-h-[30rem] lg:min-h-[34rem] rounded-3xl overflow-hidden bg-white/10 shadow-2xl">
                   <Image
                     src="/images/our-church.JPG"
                     alt="Prayer request"
@@ -296,3 +296,4 @@ export default function FormsPage() {
     </>
   );
 }
+

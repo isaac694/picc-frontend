@@ -56,7 +56,7 @@ export default function SermonsPage() {
       <Navigation />
       <main className="min-h-screen bg-background">
         {/* Hero */}
-        <section className="relative overflow-hidden py-36 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
+        <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[url('/sermons/header.JPG')] bg-cover bg-center" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
@@ -128,3 +128,4 @@ export default function SermonsPage() {
     </>
   );
 }
+

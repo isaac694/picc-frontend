@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { apiUrl } from '@/lib/api';
 
 export default function AboutPage() {
+  const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const familySlides = [
     ['/moments/1.jpg', '/moments/2.jpg', '/moments/3.jpg'],
     ['/moments/4.jpg', '/moments/5.jpg', '/moments/6.jpg'],
@@ -22,6 +24,42 @@ export default function AboutPage() {
   const [openTenet, setOpenTenet] = useState<number | null>(0);
   const [openCoreValue, setOpenCoreValue] = useState<number | null>(0);
   const [showAllThemes, setShowAllThemes] = useState(false);
+
+  useEffect(() => {
+    const imageKeys = [
+      'about-header-bg',
+      'about-tenets-image',
+      'about-core-values-image',
+      'about-themes-bg',
+      'about-worship-image',
+    ];
+
+    const fetchImages = async () => {
+      const entries = await Promise.all(
+        imageKeys.map(async (key) => {
+          try {
+            const response = await fetch(apiUrl(`/api/site-content/${key}`));
+            if (!response.ok) return [key, ''] as const;
+            const data = await response.json();
+            const imageUrl = data.imageUrl
+              ? data.imageUrl.startsWith('http')
+                ? data.imageUrl
+                : apiUrl(data.imageUrl)
+              : '';
+            return [key, imageUrl] as const;
+          } catch (error) {
+            return [key, ''] as const;
+          }
+        })
+      );
+
+      setPageImages(Object.fromEntries(entries));
+    };
+
+    fetchImages();
+  }, []);
+
+  const resolveImage = (key: string, fallback: string) => pageImages[key] || fallback;
 
   const yearlyThemes = [
     { year: 2010, theme: 'Theme to be updated' },
@@ -50,9 +88,14 @@ export default function AboutPage() {
       <Navigation />
       <main className="min-h-screen">
         {/* Hero Section */}
-        <section className="relative overflow-hidden py-36 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
+        <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('/about/header.JPG')] bg-cover bg-center" />
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url(${resolveImage('about-header-bg', '/about/header.JPG')})`,
+              }}
+            />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
           </div>
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -68,18 +111,18 @@ export default function AboutPage() {
         </section>
 
         {/* Our Story */}
-        <section className="py-20 md:py-24 bg-background">
+        <section className="py-16 sm:py-20 md:py-24 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-start">
-              <div className="relative h-[40rem] md:h-[60rem] rounded-3xl overflow-hidden shadow-xl">
+              <div className="relative h-[26rem] sm:h-[34rem] md:h-[50rem] lg:h-[60rem] rounded-3xl overflow-hidden shadow-xl">
                 <Image
-                  src="/about/tenets-1.JPG"
+                  src={resolveImage('about-tenets-image', '/about/tenets-1.JPG')}
                   alt="Our church family"
                   fill
                   className="object-cover"
                 />
               </div>
-              <div className="h-[40rem] md:h-[60rem] flex flex-col">
+              <div className="h-[26rem] sm:h-[34rem] md:h-[50rem] lg:h-[60rem] flex flex-col">
                 <h2 className="text-3xl md:text-4xl font-semibold text-foreground leading-tight mb-4">
                   THE <span className="text-secondary">PICC</span> TENETS
                   <br />
@@ -281,9 +324,9 @@ export default function AboutPage() {
                   );
                 })}
               </div>
-              <div className="relative h-[40rem] md:h-[60rem] rounded-3xl overflow-hidden shadow-xl">
+              <div className="relative h-[26rem] sm:h-[34rem] md:h-[50rem] lg:h-[60rem] rounded-3xl overflow-hidden shadow-xl">
                 <Image
-                  src="/about/core-values.JPG"
+                  src={resolveImage('about-core-values-image', '/about/core-values.JPG')}
                   alt="PICC core values"
                   fill
                   className="object-cover"
@@ -294,7 +337,7 @@ export default function AboutPage() {
         </section>
 
         {/* Watch Our Story */}
-        <section className="py-20 md:py-24 bg-primary text-primary-foreground">
+        <section className="py-16 sm:py-20 md:py-24 bg-primary text-primary-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-xs uppercase tracking-[0.4em] text-primary-foreground/80">
               Our 28th Anniversary Documentary
@@ -331,10 +374,10 @@ export default function AboutPage() {
         </section>
 
         {/* Yearly Themes Archive */}
-        <section className="relative py-20 md:py-24">
+        <section className="relative py-16 sm:py-20 md:py-24">
           <div className="absolute inset-0">
             <Image
-              src="/about/themes.jpeg"
+              src={resolveImage('about-themes-bg', '/about/themes.jpeg')}
               alt="PICC yearly themes"
               fill
               className="object-cover object-[center_30%]"
@@ -427,9 +470,9 @@ export default function AboutPage() {
             </p>
             <div className="overflow-hidden rounded-[36px] bg-primary text-primary-foreground shadow-xl">
               <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr]">
-                <div className="relative min-h-[24rem] md:min-h-[32rem] lg:min-h-[36rem]">
+                <div className="relative min-h-[18rem] sm:min-h-[22rem] md:min-h-[32rem] lg:min-h-[36rem]">
                   <Image
-                    src="/about/worship-with-us.jpg"
+                    src={resolveImage('about-worship-image', '/about/worship-with-us.jpg')}
                     alt="Worship with us"
                     fill
                     className="object-cover"
@@ -499,7 +542,7 @@ export default function AboutPage() {
                   <div key={slideIndex} className="min-w-full">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                       {slide.map((src, idx) => (
-                        <div key={`${src}-${idx}`} className="relative h-[22rem] md:h-[28rem]">
+                        <div key={`${src}-${idx}`} className="relative h-[16rem] sm:h-[20rem] md:h-[28rem]">
                           <Image
                             src={src}
                             alt="We are family moment"
@@ -537,3 +580,4 @@ export default function AboutPage() {
     </>
   );
 }
+
