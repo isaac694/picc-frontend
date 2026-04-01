@@ -215,7 +215,7 @@ export default async function HomePage() {
   const missionImage = normalizeImageUrl(siteImages['home-mission-image']) || '/images/pastor-preaching-bw.jpg';
   const growCards = GROW_CARD_SLOTS.map((slot) => ({
     ...slot,
-    img: normalizeImageUrl(siteImages[slot.key]) || slot.fallback,
+    image: normalizeImageUrl(siteImages[slot.key]) || slot.fallback,
   }));
   const pastorsImage = normalizeImageUrl(siteImages['home-pastors-image']) || '/images/pastor-preaching-bw.jpg';
   const listenNowImage = normalizeImageUrl(siteImages['home-listen-now-bg']) || '/pastor/pastor-photo.jpg';
@@ -341,9 +341,6 @@ export default async function HomePage() {
                   </Link>
                 </div>
                 <div className="mt-8 border-t border-primary/10 pt-6">
-                  <p className="text-sm uppercase tracking-[0.3em] text-foreground/60 mb-3">
-                    Today&apos;s Reflection
-                  </p>
                   {devotionDate && (
                     <p className="text-xs uppercase tracking-[0.25em] text-foreground/50 mb-4">
                       {devotionDate}
@@ -351,7 +348,7 @@ export default async function HomePage() {
                   )}
                   <div className="space-y-4 text-foreground/80 leading-relaxed">
                     {Array.isArray(devotionData.content) ? (
-                      devotionData.content.map((line, index) => (
+                      devotionData.content.map((line: string, index: number) => (
                         <p key={`${line}-${index}`}>{line}</p>
                       ))
                     ) : (
@@ -378,8 +375,8 @@ export default async function HomePage() {
                 <Link key={card.href} href={card.href}>
                   <div className="group block rounded-2xl overflow-hidden relative h-56 sm:h-64 md:h-72 lg:h-80 cursor-pointer">
                     <div className="absolute inset-0">
-                      <Image
-                        src={card.img}
+                      <image
+                        src={card.image}
                         alt={card.title}
                         fill
                         className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-105"
