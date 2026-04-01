@@ -9,6 +9,7 @@ import EventsCarousel from '@/components/EventsCarousel';
 import QuoteSection from '@/components/QuoteSection';
 import MomentsSection from '@/components/MomentsSection';
 import SpotifyFollowDialog from '@/components/SpotifyFollowDialog';
+import DevotionReadMore from '@/components/DevotionReadMore';
 import { apiUrl } from '@/lib/api';
 
 const HOME_HERO_SLOTS = [
@@ -344,15 +345,7 @@ export default async function HomePage() {
                       {devotionDate}
                     </p>
                   )}
-                  <div className="space-y-4 text-foreground/80 leading-relaxed">
-                    {Array.isArray(devotionData.content) ? (
-                      devotionData.content.map((line: string, index: number) => (
-                        <p key={`${line}-${index}`}>{line}</p>
-                      ))
-                    ) : (
-                      <p>{devotionData.content}</p>
-                    )}
-                  </div>
+                  <DevotionReadMore content={devotionData.content} />
                 </div>
               </div>
             </div>
