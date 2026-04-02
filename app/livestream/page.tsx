@@ -16,57 +16,33 @@ export default function LivestreamPage() {
   const livestreams = [
     {
       id: 1,
-      title: 'Faith in Hard Times',
-      pastor: 'Pastor James',
-      date: 'March 3, 2024',
-      duration: 45,
-      description: 'A powerful message about trusting God through challenges',
-      type: 'audio'
+      title: 'Sunday Service Highlight',
+      pastor: 'PICC',
+      date: 'Watch on YouTube',
+      duration: 0,
+      description: 'Replay of a powerful service moment.',
+      type: 'video',
+      href: 'https://www.youtube.com/watch?v=wAwMiy57iXg',
     },
     {
       id: 2,
-      title: 'The Power of Prayer',
-      pastor: 'Pastor Sarah',
-      date: 'February 25, 2024',
-      duration: 50,
-      description: 'Understanding effective prayer and its impact on our lives',
-      type: 'audio'
+      title: 'Midweek Word Encounter',
+      pastor: 'PICC',
+      date: 'Watch on YouTube',
+      duration: 0,
+      description: 'A message to strengthen your faith.',
+      type: 'video',
+      href: 'https://www.youtube.com/watch?v=ED_nMbVeytM',
     },
     {
       id: 3,
-      title: 'Living with Purpose',
-      pastor: 'Pastor Michael',
-      date: 'February 18, 2024',
-      duration: 48,
-      description: 'Discovering God\'s purpose for your life and ministry',
-      type: 'audio'
-    },
-    {
-      id: 4,
-      title: 'Grace and Redemption',
-      pastor: 'Pastor James',
-      date: 'February 11, 2024',
-      duration: 52,
-      description: 'Understanding the transformative power of God\'s grace',
-      type: 'audio'
-    },
-    {
-      id: 5,
-      title: 'Community and Fellowship',
-      pastor: 'Pastor Sarah',
-      date: 'February 4, 2024',
-      duration: 46,
-      description: 'Building strong relationships in Christ',
-      type: 'audio'
-    },
-    {
-      id: 6,
-      title: 'The Kingdom of God',
-      pastor: 'Pastor Michael',
-      date: 'January 28, 2024',
-      duration: 55,
-      description: 'Understanding what the Kingdom of God means for us today',
-      type: 'audio'
+      title: 'Prayer & Worship Session',
+      pastor: 'PICC',
+      date: 'Watch on YouTube',
+      duration: 0,
+      description: 'A time of worship and prayer.',
+      type: 'video',
+      href: 'https://www.youtube.com/watch?v=abOVO5i-P3g',
     },
   ];
 
@@ -95,8 +71,14 @@ export default function LivestreamPage() {
         <section className="py-12 md:py-16 bg-black">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5">
-              <div className="aspect-video bg-white/10 flex items-center justify-center text-white/70">
-                Sunday Livestream Placeholder
+              <div className="aspect-video bg-black">
+                <iframe
+                  className="h-full w-full"
+                  src="https://www.youtube.com/embed/ydTADwZRquA"
+                  title="Sunday Livestream"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
               </div>
               <div className="bg-white text-black px-6 py-5">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -115,7 +97,7 @@ export default function LivestreamPage() {
                       href="/forms"
                       className="inline-flex items-center gap-2 rounded-full bg-[#CFF6DF] px-3 py-1 text-xs font-medium text-[#137A3D] hover:bg-[#BDEFD3] transition-colors"
                     >
-                      Expectation form
+                      Membership form
                     </Link>
                     <Button asChild size="sm" className="rounded-full px-4 bg-[#39D98A] text-black hover:bg-[#2FC77C]">
                       <Link href="/give">Give</Link>
@@ -164,12 +146,14 @@ export default function LivestreamPage() {
                       <h3 className="font-bold text-lg text-black mb-2 line-clamp-2">{stream.title}</h3>
                       <p className="text-sm text-black/70 mb-4 flex-1 line-clamp-2">{stream.description}</p>
                       <div className="space-y-2 text-sm text-black/60 mb-4">
-                        <p>👤 {stream.pastor}</p>
-                        <p>📅 {stream.date}</p>
-                        <p>⏱️ {stream.duration} minutes</p>
+                        <p>Pastor: {stream.pastor}</p>
+                        <p>{stream.date}</p>
+                        {stream.duration > 0 && <p>{stream.duration} minutes</p>}
                       </div>
-                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        Watch Livestream
+                      <Button asChild className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                        <Link href={stream.href} target="_blank" rel="noreferrer">
+                          Watch Livestream
+                        </Link>
                       </Button>
                     </div>
                   </Card>
@@ -188,6 +172,7 @@ export default function LivestreamPage() {
     </>
   );
 }
+
 
 
 
