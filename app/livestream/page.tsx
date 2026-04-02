@@ -7,7 +7,6 @@ import LivestreamFooter from '@/components/LivestreamFooter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
-import { apiUrl } from '@/lib/api';
 
 declare global {
   interface Window {
@@ -28,20 +27,21 @@ type YouTubeVideo = {
   thumbnail: string;
   url: string;
   embedUrl: string;
+  isLive?: boolean;
 };
 
 const TOOL_CONFIG = {
   bible: {
     label: 'Bible',
-    url: 'https://www.youbible.app/',
+    url: 'https://app.fetch.bible',
   },
   notepad: {
     label: 'Notepad',
-    url: 'https://www.rapidtables.com/tools/notepad.html',
+    url: 'https://notepadweb.co/',
   },
   chat: {
     label: 'Live Chat',
-    url: 'https://tlk.io/picc-worldwide-live',
+    url: 'https://embed.tlk.io/picc-worldwide-live',
   },
 } as const;
 
@@ -54,6 +54,7 @@ export default function LivestreamPage() {
 
   const CHANNEL_ID = 'UC6auo8Q1xb5cgyY_pGJbfdw';
   const FALLBACK_HERO_ID = 'ydTADwZRquA';
+  const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 
   const featuredVideo = videos[0] || null;
   const gridVideos = videos.slice(1, 4);
@@ -67,19 +68,78 @@ export default function LivestreamPage() {
 
   useEffect(() => {
     let isMounted = true;
+
+    const toVideo = (item: any): YouTubeVideo | null => {
+      const videoId = item?.id?.videoId;
+      if (!videoId) return null;
+      const snippet = item.snippet || {};
+      return {
+        videoId,
+        title: snippet.title || '',
+        publishedAt: snippet.publishedAt || '',
+        updatedAt: snippet.publishedAt || '',
+        channelTitle: snippet.channelTitle || '',
+        description: snippet.description || '',
+        thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        embedUrl: `https://www.youtube.com/embed/${videoId}`,
+        isLive: snippet.liveBroadcastContent === 'live',
+      };
+    };
+
+    const fetchJson = async (url: string) => {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to load videos');
+      }
+      return response.json();
+    };
+
     const fetchVideos = async () => {
       try {
         setIsLoading(true);
         setLoadError(null);
-        const response = await fetch(
-          apiUrl(`/api/youtube/latest?channelId=${encodeURIComponent(CHANNEL_ID)}&limit=4`)
-        );
-        if (!response.ok) {
-          throw new Error('Failed to load videos');
+
+        if (!YOUTUBE_API_KEY) {
+          throw new Error('Missing API key');
         }
-        const data = await response.json();
+
+        const liveUrl = new URL('https://www.googleapis.com/youtube/v3/search');
+        liveUrl.searchParams.set('part', 'snippet');
+        liveUrl.searchParams.set('channelId', CHANNEL_ID);
+        liveUrl.searchParams.set('eventType', 'live');
+        liveUrl.searchParams.set('type', 'video');
+        liveUrl.searchParams.set('maxResults', '1');
+        liveUrl.searchParams.set('key', YOUTUBE_API_KEY);
+
+        const recentUrl = new URL('https://www.googleapis.com/youtube/v3/search');
+        recentUrl.searchParams.set('part', 'snippet');
+        recentUrl.searchParams.set('channelId', CHANNEL_ID);
+        recentUrl.searchParams.set('order', 'date');
+        recentUrl.searchParams.set('type', 'video');
+        recentUrl.searchParams.set('maxResults', '4');
+        recentUrl.searchParams.set('key', YOUTUBE_API_KEY);
+
+        const [liveData, recentData] = await Promise.all([
+          fetchJson(liveUrl.toString()),
+          fetchJson(recentUrl.toString()),
+        ]);
+
+        const liveVideo = Array.isArray(liveData?.items) ? toVideo(liveData.items[0]) : null;
+        const recentVideos = Array.isArray(recentData?.items)
+          ? recentData.items.map(toVideo).filter(Boolean)
+          : [];
+
+        const merged: YouTubeVideo[] = [];
+        if (liveVideo) merged.push(liveVideo);
+        recentVideos.forEach((video) => {
+          if (!merged.find((existing) => existing.videoId === video?.videoId) && video) {
+            merged.push(video);
+          }
+        });
+
         if (isMounted) {
-          setVideos(Array.isArray(data.videos) ? data.videos : []);
+          setVideos(merged.slice(0, 4));
         }
       } catch (error) {
         if (isMounted) {
@@ -95,7 +155,7 @@ export default function LivestreamPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [YOUTUBE_API_KEY]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
