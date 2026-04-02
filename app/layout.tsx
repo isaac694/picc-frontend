@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Poppins } from "next/font/google";
+import ScrollActions from '@/components/ScrollActions';
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -59,6 +60,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={poppins.className}>
         {children}
+        <ScrollActions />
       </body>
     </html>
   );

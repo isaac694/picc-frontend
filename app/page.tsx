@@ -11,7 +11,6 @@ import MomentsSection from '@/components/MomentsSection';
 import SpotifyFollowDialog from '@/components/SpotifyFollowDialog';
 import DevotionReadMore from '@/components/DevotionReadMore';
 import { apiUrl } from '@/lib/api';
-import ScrollActions from '@/components/ScrollActions';
 
 const HOME_HERO_SLOTS = [
   { key: 'home-hero-1', fallback: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
@@ -516,26 +515,6 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 px-4 sm:hidden">
-            {ministryCards.map((item) => (
-              <div
-                key={item.title}
-                className="relative h-40 rounded-2xl overflow-hidden shadow-lg"
-              >
-                <Image
-                  src={item.image}
-                  alt={item.title}
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-black/35" />
-                <div className="absolute inset-0 p-4 flex items-end">
-                  <p className="text-white text-sm font-semibold leading-tight">{item.title}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
           <div className="ministry-marquee overflow-hidden">
             <div className="ministry-track flex gap-4 sm:gap-6 w-[200%] px-4 sm:px-6">
               {[...ministryCards, ...ministryCards].map((item, index) => (
@@ -678,7 +657,6 @@ export default async function HomePage() {
         </section>
       </main>
       <Footer />
-      <ScrollActions />
     </>
   );
 }

@@ -27,7 +27,7 @@ export default function ScrollActions({ showAfter = 240 }: ScrollActionsProps) {
       <a
         href="#top"
         aria-label="Back to top"
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
       >
         <ArrowUp className="h-5 w-5" />
       </a>
