@@ -83,8 +83,8 @@ export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionPr
       </div>
 
       {/* Bottom-right photo, partially visible like the reference */}
-      <div className="absolute -bottom-12 lg:-bottom-16 right-6 hidden md:block">
-        <div className="floating-photo relative w-[360px] h-[220px] lg:w-[460px] lg:h-[280px] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
+      <div className="absolute -bottom-12 sm:-bottom-14 md:-bottom-16 right-1/2 translate-x-1/2 md:right-6 md:translate-x-0">
+        <div className="floating-photo relative w-[88vw] max-w-[420px] h-[200px] sm:h-[220px] md:w-[360px] md:h-[220px] lg:w-[460px] lg:h-[280px] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
           <Image
             src={resolvedImage}
             alt={resolvedAuthor}

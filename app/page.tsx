@@ -11,6 +11,7 @@ import MomentsSection from '@/components/MomentsSection';
 import SpotifyFollowDialog from '@/components/SpotifyFollowDialog';
 import DevotionReadMore from '@/components/DevotionReadMore';
 import { apiUrl } from '@/lib/api';
+import ScrollActions from '@/components/ScrollActions';
 
 const HOME_HERO_SLOTS = [
   { key: 'home-hero-1', fallback: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
@@ -254,6 +255,7 @@ export default async function HomePage() {
     <>
       <Navigation />
       <main className="min-h-screen">
+        <div id="top" className="sr-only" aria-hidden="true" />
         {/* Hero Section */}
         <section className="relative h-[420px] sm:h-[520px] md:h-[700px] overflow-hidden flex items-center rounded-b-[28px] sm:rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0 hero-collage p-2 sm:p-3 md:p-4" aria-hidden="true">
@@ -534,12 +536,12 @@ export default async function HomePage() {
             ))}
           </div>
 
-          <div className="ministry-marquee overflow-hidden hidden sm:block">
-            <div className="ministry-track flex gap-6 w-[200%] px-6">
+          <div className="ministry-marquee overflow-hidden">
+            <div className="ministry-track flex gap-4 sm:gap-6 w-[200%] px-4 sm:px-6">
               {[...ministryCards, ...ministryCards].map((item, index) => (
                 <div
                   key={`${item.title}-${index}`}
-                  className="relative w-[220px] sm:w-[260px] md:w-[320px] lg:w-[340px] h-[220px] sm:h-[260px] md:h-[300px] rounded-2xl overflow-hidden shadow-xl"
+                  className="relative min-w-[70vw] w-[70vw] sm:min-w-[44vw] sm:w-[44vw] md:min-w-[320px] md:w-[320px] lg:min-w-[340px] lg:w-[340px] h-[200px] sm:h-[240px] md:h-[300px] rounded-2xl overflow-hidden shadow-xl"
                 >
                   <Image
                     src={item.image}
@@ -549,7 +551,7 @@ export default async function HomePage() {
                   />
                   <div className="absolute inset-0 bg-black/35" />
                   <div className="absolute inset-0 p-5 flex flex-col justify-end">
-                    <p className="text-white text-lg md:text-xl font-semibold">{item.title}</p>
+                    <p className="text-white text-base sm:text-lg md:text-xl font-semibold">{item.title}</p>
                   </div>
                 </div>
               ))}
@@ -676,6 +678,7 @@ export default async function HomePage() {
         </section>
       </main>
       <Footer />
+      <ScrollActions />
     </>
   );
 }
