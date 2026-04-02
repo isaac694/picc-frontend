@@ -37,11 +37,11 @@ const TOOL_CONFIG = {
   },
   notepad: {
     label: 'Notepad',
-    url: 'https://notepadweb.co/',
+    url: 'https://www.rapidtables.com/tools/notepad.html',
   },
   chat: {
     label: 'Live Chat',
-    url: 'https://embed.tlk.io/picc-worldwide-live',
+    url: 'https://organizations.minnit.chat/159105126892909/c/Main?embed',
   },
 } as const;
 
@@ -319,7 +319,14 @@ export default function LivestreamPage() {
                   />
                 </div>
                 <div className="flex items-center justify-between border-t border-white/10 px-4 py-3 text-xs text-white/70">
-                  <span>{TOOL_CONFIG[activeTool].label}</span>
+                  <span>
+                    {TOOL_CONFIG[activeTool].label}
+                    {activeTool === 'notepad' && (
+                      <span className="ml-2 text-white/50">
+                        Tip: use the save/download button inside the notepad.
+                      </span>
+                    )}
+                  </span>
                   <Link
                     href={TOOL_CONFIG[activeTool].url}
                     target="_blank"
