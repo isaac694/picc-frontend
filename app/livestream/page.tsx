@@ -126,13 +126,15 @@ export default function LivestreamPage() {
         ]);
 
         const liveVideo = Array.isArray(liveData?.items) ? toVideo(liveData.items[0]) : null;
-        const recentVideos = Array.isArray(recentData?.items)
-          ? recentData.items.map(toVideo).filter(Boolean)
+        const recentVideos: YouTubeVideo[] = Array.isArray(recentData?.items)
+          ? recentData.items
+            .map(toVideo)
+            .filter((item: YouTubeVideo | null): item is YouTubeVideo => Boolean(item))
           : [];
 
         const merged: YouTubeVideo[] = [];
         if (liveVideo) merged.push(liveVideo);
-        recentVideos.forEach((video) => {
+        recentVideos.forEach((video: YouTubeVideo) => {
           if (!merged.find((existing) => existing.videoId === video?.videoId) && video) {
             merged.push(video);
           }
