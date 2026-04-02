@@ -6,8 +6,8 @@ import Navigation from '@/components/Navigation';
 import LivestreamFooter from '@/components/LivestreamFooter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 declare global {
   interface Window {
@@ -17,6 +17,18 @@ declare global {
 }
 
 type ToolKey = 'bible' | 'notepad' | 'chat' | null;
+
+type YouTubeVideo = {
+  videoId: string;
+  title: string;
+  publishedAt: string;
+  updatedAt: string;
+  channelTitle: string;
+  description: string;
+  thumbnail: string;
+  url: string;
+  embedUrl: string;
+};
 
 const TOOL_CONFIG = {
   bible: {
@@ -34,50 +46,56 @@ const TOOL_CONFIG = {
 } as const;
 
 export default function LivestreamPage() {
-  const [searchTerm, setSearchTerm] = useState('');
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
+  const [videos, setVideos] = useState<YouTubeVideo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const livestreams = [
-    {
-      id: 1,
-      title: '01 April 2026',
-      channel: 'PICC WorldWide',
-      date: '',
-      duration: 0,
-      description: 'Morning Glory Prayers.',
-      type: 'video',
-      href: '',
-      embed: 'https://www.youtube.com/embed/ED_nMbVeytM',
-    },
-    {
-      id: 2,
-      title: '30 March 2026',
-      channel: 'PICC WorldWide',
-      date: '',
-      duration: 0,
-      description: 'Morning Glory Prayers.',
-      type: 'video',
-      href: '',
-      embed: 'https://www.youtube.com/embed/abOVO5i-P3g',
-    },
-    {
-      id: 3,
-      title: '31 March 2026',
-      channel: 'PICC WorldWide',
-      date: '',
-      duration: 0,
-      description: 'Morning Glory Prayers.',
-      type: 'video',
-      href: '',
-      embed: 'https://www.youtube.com/embed/wAwMiy57iXg',
-    },
-  ];
+  const CHANNEL_ID = 'UC6auo8Q1xb5cgyY_pGJbfdw';
+  const FALLBACK_HERO_ID = 'ydTADwZRquA';
 
-  const filteredLivestreams = livestreams.filter((stream) =>
-    stream.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    stream.channel.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const featuredVideo = videos[0] || null;
+  const gridVideos = videos.slice(1, 4);
+
+  const formatDate = (value: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchVideos = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const response = await fetch(
+          apiUrl(`/api/youtube/latest?channelId=${encodeURIComponent(CHANNEL_ID)}&limit=4`)
+        );
+        if (!response.ok) {
+          throw new Error('Failed to load videos');
+        }
+        const data = await response.json();
+        if (isMounted) {
+          setVideos(Array.isArray(data.videos) ? data.videos : []);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setLoadError('Unable to load the latest videos right now.');
+          setVideos([]);
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    fetchVideos();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -146,10 +164,10 @@ export default function LivestreamPage() {
               <div className="aspect-video bg-black">
                 <iframe
                   className="h-full w-full"
-                  data-yt-id="ydTADwZRquA"
+                  data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
                   id="yt-hero"
-                  src="https://www.youtube.com/embed/ydTADwZRquA?enablejsapi=1&rel=0"
-                  title="Sunday Livestream"
+                  src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
+                  title={featuredVideo?.title || 'Sunday Livestream'}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />
@@ -157,7 +175,14 @@ export default function LivestreamPage() {
               <div className="bg-white text-black px-6 py-5">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div>
-                    <h3 className="text-lg font-semibold">Stream in English</h3>
+                    <h3 className="text-lg font-semibold">
+                      {featuredVideo?.title || 'Stream in English'}
+                    </h3>
+                    {featuredVideo?.publishedAt && (
+                      <p className="text-xs text-black/60 mt-1">
+                        {formatDate(featuredVideo.publishedAt)}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -209,16 +234,24 @@ export default function LivestreamPage() {
         {/* Livestreams Grid */}
         <section className="py-16 sm:py-20 md:py-24 bg-black">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {filteredLivestreams.length > 0 ? (
+            {isLoading ? (
+              <div className="text-center py-12">
+                <p className="text-lg text-white/70">Loading latest videos...</p>
+              </div>
+            ) : loadError ? (
+              <div className="text-center py-12">
+                <p className="text-lg text-white/70">{loadError}</p>
+              </div>
+            ) : gridVideos.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredLivestreams.map((stream) => (
-                  <Card key={stream.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white border-black/10 text-black">
+                {gridVideos.map((stream) => (
+                  <Card key={stream.videoId} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white border-black/10 text-black">
                     <div className="aspect-video bg-black">
                       <iframe
                         className="h-full w-full"
-                        data-yt-id={stream.embed.split('/embed/')[1]}
-                        id={`yt-${stream.id}`}
-                        src={`${stream.embed}?enablejsapi=1&rel=0`}
+                        data-yt-id={stream.videoId}
+                        id={`yt-${stream.videoId}`}
+                        src={`${stream.embedUrl}?enablejsapi=1&rel=0`}
                         title={stream.title}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowFullScreen
@@ -228,14 +261,13 @@ export default function LivestreamPage() {
                       <h3 className="font-bold text-lg text-black mb-2 line-clamp-2">{stream.title}</h3>
                       <p className="text-sm text-black/70 mb-3 line-clamp-2">{stream.description}</p>
                       <div className="space-y-1 text-sm text-black/60 mb-2">
-                        <p>{stream.channel}</p>
-                        {stream.date && <p>{stream.date}</p>}
-                        {stream.duration > 0 && <p>{stream.duration} minutes</p>}
+                        <p>{stream.channelTitle}</p>
+                        {stream.publishedAt && <p>{formatDate(stream.publishedAt)}</p>}
                       </div>
-                      {stream.href && (
+                      {stream.url && (
                         <Button asChild className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                          <Link href={stream.href} target="_blank" rel="noreferrer">
-                            Watch Livestream
+                          <Link href={stream.url} target="_blank" rel="noreferrer">
+                            Watch on YouTube
                           </Link>
                         </Button>
                       )}
@@ -245,7 +277,7 @@ export default function LivestreamPage() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-lg text-white/70">No streams found matching your search.</p>
+                <p className="text-lg text-white/70">No recent videos available yet.</p>
               </div>
             )}
           </div>
@@ -311,7 +343,5 @@ export default function LivestreamPage() {
     </>
   );
 }
-
-
 
 

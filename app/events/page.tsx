@@ -252,11 +252,6 @@ export default function EventsPage() {
                 <Button className="rounded-full px-6 bg-[#7C9BFF] text-white hover:bg-[#6B8BF5]">
                   Find Events
                 </Button>
-                <div className="ml-auto flex items-center gap-3 text-xs text-foreground/60">
-                  <button className="text-primary font-semibold">List</button>
-                  <button className="hover:text-foreground">Month</button>
-                  <button className="hover:text-foreground">Day</button>
-                </div>
               </div>
 
               <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-foreground/60">
