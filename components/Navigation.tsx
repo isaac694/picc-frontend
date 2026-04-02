@@ -4,10 +4,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { ChevronDown, Menu, X } from 'lucide-react';
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
+  const [mobileMinistriesOpen, setMobileMinistriesOpen] = useState(false);
+  const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
   const pathname = usePathname();
   const isDarkNav = pathname?.startsWith('/livestream');
 
@@ -29,6 +31,22 @@ export default function Navigation() {
     { href: '/ministries/hope-and-beauty', label: 'Hope and Beauty' },
     { href: '/ministries/heritage-ministry', label: 'Heritage Ministry' },
   ];
+
+  const handleToggleMenu = () => {
+    setIsOpen((prev) => {
+      const next = !prev;
+      if (!next) {
+        setMobileMinistriesOpen(false);
+        setMobileResourcesOpen(false);
+      }
+      return next;
+    });
+  };
+  const closeMenu = () => {
+    setIsOpen(false);
+    setMobileMinistriesOpen(false);
+    setMobileResourcesOpen(false);
+  };
 
   return (
     <nav
@@ -178,7 +196,7 @@ export default function Navigation() {
           {/* Mobile Menu Button */}
           <button
             className={isDarkNav ? 'lg:hidden text-white' : 'lg:hidden'}
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={handleToggleMenu}
             aria-label="Toggle menu"
           >
             {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -203,68 +221,104 @@ export default function Navigation() {
                     ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
                     : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
                 }
-                onClick={() => setIsOpen(false)}
+                onClick={closeMenu}
               >
                 {link.label}
               </Link>
             ))}
-            <div className={isDarkNav ? 'px-4 pt-2 text-white/60 text-xs uppercase tracking-[0.2em]' : 'px-4 pt-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'}>
-              Ministries
-            </div>
-            {ministryLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
+            <div>
+              <button
+                type="button"
                 className={
                   isDarkNav
-                    ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
-                    : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                    ? 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-white/80 text-xs uppercase tracking-[0.2em]'
+                    : 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'
                 }
-                onClick={() => setIsOpen(false)}
+                onClick={() => setMobileMinistriesOpen((prev) => !prev)}
+                aria-expanded={mobileMinistriesOpen}
               >
-                {link.label}
-              </Link>
-            ))}
-            <div className={isDarkNav ? 'px-4 pt-2 text-white/60 text-xs uppercase tracking-[0.2em]' : 'px-4 pt-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'}>
-              Resources
+                <span>Ministries</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${mobileMinistriesOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {mobileMinistriesOpen && (
+                <div className="space-y-1">
+                  {ministryLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={
+                        isDarkNav
+                          ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                          : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                      }
+                      onClick={closeMenu}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
-            <Link
-              href="/locations"
-              className={
-                isDarkNav
-                  ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
-                  : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
-              }
-              onClick={() => setIsOpen(false)}
-            >
-              Church Locations
-            </Link>
-            <Link
-              href="/forms"
-              className={
-                isDarkNav
-                  ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
-                  : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
-              }
-              onClick={() => setIsOpen(false)}
-            >
-              Forms
-            </Link>
-            <Link
-              href="/sermons"
-              className={
-                isDarkNav
-                  ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
-                  : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
-              }
-              onClick={() => setIsOpen(false)}
-            >
-              Sermons
-            </Link>
+            <div>
+              <button
+                type="button"
+                className={
+                  isDarkNav
+                    ? 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-white/80 text-xs uppercase tracking-[0.2em]'
+                    : 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'
+                }
+                onClick={() => setMobileResourcesOpen((prev) => !prev)}
+                aria-expanded={mobileResourcesOpen}
+              >
+                <span>Resources</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${mobileResourcesOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {mobileResourcesOpen && (
+                <div className="space-y-1">
+                  <Link
+                    href="/locations"
+                    className={
+                      isDarkNav
+                        ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                        : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                    }
+                    onClick={closeMenu}
+                  >
+                    Church Locations
+                  </Link>
+                  <Link
+                    href="/forms"
+                    className={
+                      isDarkNav
+                        ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                        : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                    }
+                    onClick={closeMenu}
+                  >
+                    Forms
+                  </Link>
+                  <Link
+                    href="/sermons"
+                    className={
+                      isDarkNav
+                        ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                        : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                    }
+                    onClick={closeMenu}
+                  >
+                    Sermons
+                  </Link>
+                </div>
+              )}
+            </div>
             <Link
               href="/give"
               className="block px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/90 transition-colors"
-              onClick={() => setIsOpen(false)}
+              onClick={closeMenu}
             >
               Give
             </Link>

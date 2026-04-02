@@ -16,10 +16,10 @@ const HOME_HERO_SLOTS = [
   { key: 'home-hero-1', fallback: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
   { key: 'home-hero-2', fallback: '/hero/hero-10.JPG', className: 'col-span-2 row-span-2' },
   { key: 'home-hero-3', fallback: '/hero/hero-9.JPG', className: 'col-span-2 row-span-1' },
-  { key: 'home-hero-4', fallback: '/hero/hero-8.JPG', className: 'col-span-2 row-span-2' },
-  { key: 'home-hero-5', fallback: '/hero/hero-7.JPG', className: 'col-span-2 row-span-1' },
-  { key: 'home-hero-6', fallback: '/hero/hero-2.jpg', className: 'col-span-2 row-span-2' },
-  { key: 'home-hero-7', fallback: '/hero/hero-1.jpg', className: 'col-span-2 row-span-1' },
+  { key: 'home-hero-4', fallback: '/hero/hero-8.JPG', className: 'col-span-2 row-span-2 hidden sm:block' },
+  { key: 'home-hero-5', fallback: '/hero/hero-7.JPG', className: 'col-span-2 row-span-1 hidden sm:block' },
+  { key: 'home-hero-6', fallback: '/hero/hero-2.jpg', className: 'col-span-2 row-span-2 hidden sm:block' },
+  { key: 'home-hero-7', fallback: '/hero/hero-1.jpg', className: 'col-span-2 row-span-1 hidden sm:block' },
   { key: 'home-hero-8', fallback: '/hero/hero-5.jpg', className: 'col-span-2 row-span-1 hidden md:block' },
   { key: 'home-hero-9', fallback: '/hero/hero-3.JPG', className: 'col-span-2 row-span-1 hidden md:block' },
 ];
@@ -257,7 +257,7 @@ export default async function HomePage() {
         {/* Hero Section */}
         <section className="relative h-[420px] sm:h-[520px] md:h-[700px] overflow-hidden flex items-center rounded-b-[28px] sm:rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0 hero-collage p-2 sm:p-3 md:p-4" aria-hidden="true">
-            <div className="grid h-full w-full grid-cols-2 md:grid-cols-6 grid-rows-4 md:grid-rows-3 gap-2 sm:gap-3 md:gap-4">
+            <div className="grid h-full w-full grid-cols-2 md:grid-cols-6 grid-rows-3 md:grid-rows-3 gap-2 sm:gap-3 md:gap-4">
               {heroImages.map((item, index) => (
                 <div key={item.src} className={`${item.className} relative overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]`}>
                   <Image
@@ -327,7 +327,7 @@ export default async function HomePage() {
                   Daily Devotions
                 </p>
                 <h2 className="text-3xl md:text-5xl font-semibold text-foreground mb-4">
-                  Daily Devotions
+                  Rivers of Hope Devotion
                 </h2>
                 <p className="text-foreground/70 text-lg leading-relaxed">
                   {devotionData.title}
