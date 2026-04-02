@@ -69,6 +69,7 @@ export default function LivestreamPage() {
   const CHANNEL_ID = 'UC6auo8Q1xb5cgyY_pGJbfdw';
   const FALLBACK_HERO_ID = 'ydTADwZRquA';
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
+  const activeEmbedTool = activeTool && activeTool !== 'testimony' ? TOOL_CONFIG[activeTool] : null;
 
   const featuredVideo = videos[0] || null;
   const gridVideos = videos.slice(1, 4);
@@ -347,12 +348,12 @@ export default function LivestreamPage() {
                     Embedded view
                   </span>
                 </div>
-                {activeTool && activeTool !== 'testimony' && (
+                {activeEmbedTool && (
                   <div className="aspect-[4/3] w-full bg-black">
                     <iframe
                       className="h-full w-full"
-                      src={TOOL_CONFIG[activeTool as Exclude<ToolKey, 'testimony'>].url}
-                      title={TOOL_CONFIG[activeTool as Exclude<ToolKey, 'testimony'>].label}
+                      src={activeEmbedTool.url}
+                      title={activeEmbedTool.label}
                       allow="clipboard-write; fullscreen"
                     />
                   </div>
@@ -437,16 +438,16 @@ export default function LivestreamPage() {
                   <span>
                     {activeTool === 'testimony'
                       ? 'Testimony Form'
-                      : TOOL_CONFIG[activeTool as Exclude<ToolKey, 'testimony'>].label}
+                      : activeEmbedTool?.label}
                     {activeTool === 'notepad' && (
                       <span className="ml-2 text-white/50">
                         Tip: use the save/download button inside the notepad.
                       </span>
                     )}
                   </span>
-                  {activeTool && activeTool !== 'testimony' && (
+                  {activeEmbedTool && (
                     <Link
-                      href={TOOL_CONFIG[activeTool as Exclude<ToolKey, 'testimony'>].url}
+                      href={activeEmbedTool.url}
                       target="_blank"
                       rel="noreferrer"
                       className="text-white/80 hover:text-white hover:underline"
