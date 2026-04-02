@@ -20,11 +20,13 @@ export default function EventsPage() {
   const events = [
     {
       id: 1,
-      title: 'Uniport Miracle Crusade',
-      date: '2026-03-27',
-      time: '5:00 PM - 9:00 PM',
-      image: '/events/event-1.jpg',
-      location: 'Abuja Campus, Lawn Tennis Court (Open Field)',
+      title: '2026 Chatroom',
+      date: '2026-04-11',
+      time: '8:00 AM - 4:00 PM',
+      image: '/events/upcoming.JPG',
+      location: 'African Bible College',
+      description:
+        'PICC Teens Ministry presents 2026 Chatroom. Registration fee MK18,000 (includes snacks and lunch). Age group 12–19 years. With Pastor Loyce Banda.',
     },
   ];
 
@@ -76,9 +78,10 @@ export default function EventsPage() {
       `DTEND:${dtEnd}`,
       `SUMMARY:${escapeIcsText(event.title)}`,
       `LOCATION:${escapeIcsText(event.location)}`,
+      event.description ? `DESCRIPTION:${escapeIcsText(event.description)}` : null,
       'END:VEVENT',
       'END:VCALENDAR',
-    ].join('\r\n');
+    ].filter(Boolean).join('\r\n');
   };
 
   const downloadIcs = (event: typeof events[number], filename: string) => {
@@ -177,7 +180,14 @@ export default function EventsPage() {
   const calendarLinks = useMemo(() => {
     if (!calendarEvent) return null;
     const { start, end } = getEventDateRange(calendarEvent);
-    const details = `${calendarEvent.title}\n${calendarEvent.time}\n${calendarEvent.location}`;
+    const details = [
+      calendarEvent.title,
+      calendarEvent.time,
+      calendarEvent.location,
+      calendarEvent.description,
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     const googleUrl = new URL('https://calendar.google.com/calendar/render');
     googleUrl.searchParams.set('action', 'TEMPLATE');

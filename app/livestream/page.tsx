@@ -188,7 +188,7 @@ export default function LivestreamPage() {
                       href="/forms"
                       className="inline-flex items-center gap-2 rounded-full bg-[#CFF6DF] px-3 py-1 text-xs font-medium text-[#137A3D] hover:bg-[#BDEFD3] transition-colors"
                     >
-                      Membership form
+                      Church Forms
                     </Link>
                     <Button asChild size="sm" className="rounded-full px-4 bg-[#39D98A] text-black hover:bg-[#2FC77C]">
                       <Link href="/give">Give</Link>
