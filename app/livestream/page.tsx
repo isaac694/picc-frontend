@@ -37,7 +37,7 @@ const TOOL_CONFIG = {
   },
   notepad: {
     label: 'Notepad',
-    url: 'https://www.rapidtables.com/tools/notepad.html',
+    url: 'https://notepadweb.co/',
   },
   chat: {
     label: 'Live Chat',
