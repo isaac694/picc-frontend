@@ -67,15 +67,15 @@ const BOOKS = [
     file: '/fire_altar/FIRE%20ON%20THE%20ALTAR%20Vol%203.24.pdf',
   },
   {
-    title: 'Walking in Purpose',
+    title: 'Fire on the Altar Volume 2',
     author: 'PICC Publishing',
-    description: 'Placeholder description for book downloads.',
+    description: 'A focused teaching on prayer, consecration, and spiritual hunger.',
     cover: '/fire_altar/fire-on-altar-cover.jpg',
   },
   {
-    title: 'Grace and Growth',
+    title: 'Fire on the Altar Volume 1',
     author: 'PICC Publishing',
-    description: 'Placeholder description for book downloads.',
+    description: 'A focused teaching on prayer, consecration, and spiritual hunger.',
     cover: '/fire_altar/fire-on-altar-cover.jpg',
   },
 ];
