@@ -16,7 +16,7 @@ export default function LivestreamPage() {
     {
       id: 1,
       title: '01 April 2026',
-      pastor: 'PICC WorldWide',
+      channel: 'PICC WorldWide',
       date: '',
       duration: 0,
       description: 'Morning Glory Prayers.',
@@ -27,7 +27,7 @@ export default function LivestreamPage() {
     {
       id: 2,
       title: '30 March 2026',
-      pastor: 'PICC WorldWide',
+      channel: 'PICC WorldWide',
       date: '',
       duration: 0,
       description: 'Morning Glory Prayers.',
@@ -38,7 +38,7 @@ export default function LivestreamPage() {
     {
       id: 3,
       title: '31 March 2026',
-      pastor: 'PICC WorldWide',
+      channel: 'PICC WorldWide',
       date: '',
       duration: 0,
       description: 'Morning Glory Prayers.',
@@ -50,7 +50,7 @@ export default function LivestreamPage() {
 
   const filteredLivestreams = livestreams.filter((stream) =>
     stream.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    stream.pastor.toLowerCase().includes(searchTerm.toLowerCase())
+    stream.channel.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -133,11 +133,11 @@ export default function LivestreamPage() {
                         allowFullScreen
                       />
                     </div>
-                    <div className="p-6 flex flex-col flex-1">
+                    <div className="p-4 flex flex-col">
                       <h3 className="font-bold text-lg text-black mb-2 line-clamp-2">{stream.title}</h3>
-                      <p className="text-sm text-black/70 mb-4 flex-1 line-clamp-2">{stream.description}</p>
-                      <div className="space-y-2 text-sm text-black/60 mb-4">
-                        <p>Pastor: {stream.pastor}</p>
+                      <p className="text-sm text-black/70 mb-3 line-clamp-2">{stream.description}</p>
+                      <div className="space-y-1 text-sm text-black/60 mb-2">
+                        <p>{stream.channel}</p>
                         {stream.date && <p>{stream.date}</p>}
                         {stream.duration > 0 && <p>{stream.duration} minutes</p>}
                       </div>
