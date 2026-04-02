@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
@@ -8,6 +9,63 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export default function FormsPage() {
+  const [memberForm, setMemberForm] = useState({
+    fullName: '',
+    gender: '',
+    email: '',
+    phone: '',
+    city: '',
+    country: '',
+  });
+  const [testimonyForm, setTestimonyForm] = useState({
+    fullName: '',
+    phone: '',
+    area: '',
+    situation: '',
+    testimony: '',
+  });
+
+  const handleMemberChange = (field: keyof typeof memberForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    setMemberForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleMemberSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const subject = 'Membership Form Submission';
+    const body = [
+      `Full Name: ${memberForm.fullName}`,
+      `Gender: ${memberForm.gender}`,
+      `Email: ${memberForm.email}`,
+      `Phone Number: ${memberForm.phone}`,
+      `City/District: ${memberForm.city}`,
+      `Country: ${memberForm.country}`,
+    ].join('\n');
+
+    window.location.href = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handleTestimonyChange = (field: keyof typeof testimonyForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setTestimonyForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleTestimonySubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const subject = 'Testimony Submission';
+    const body = [
+      `Full Name: ${testimonyForm.fullName}`,
+      `Phone Number: ${testimonyForm.phone || 'N/A'}`,
+      `Area of Testimony: ${testimonyForm.area || 'N/A'}`,
+      '',
+      'How the situation was like:',
+      testimonyForm.situation,
+      '',
+      'What God has done:',
+      testimonyForm.testimony,
+    ].join('\n');
+
+    window.location.href = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
   return (
     <>
       <Navigation />
@@ -41,7 +99,7 @@ export default function FormsPage() {
                       If you made a decision today, we would love to connect with you.
                     </p>
 
-                    <form className="space-y-4">
+                    <form className="space-y-4" onSubmit={handleMemberSubmit}>
                       <div>
                         <label className="text-xs uppercase tracking-[0.2em] text-white/70">
                           Full Name
@@ -49,8 +107,34 @@ export default function FormsPage() {
                         <input
                           type="text"
                           placeholder="Full Name"
+                          required
+                          value={memberForm.fullName}
+                          onChange={handleMemberChange('fullName')}
                           className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                         />
+                      </div>
+                      <div>
+                        <label className="text-xs uppercase tracking-[0.2em] text-white/70">
+                          Gender
+                        </label>
+                        <div className="mt-2 grid grid-cols-2 gap-3">
+                          {['Male', 'Female'].map((option) => (
+                            <label
+                              key={option}
+                              className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/85 px-3 py-2 text-sm text-foreground shadow-sm"
+                            >
+                              <input
+                                type="radio"
+                                name="gender"
+                                value={option}
+                                required
+                                checked={memberForm.gender === option}
+                                onChange={handleMemberChange('gender')}
+                              />
+                              <span>{option}</span>
+                            </label>
+                          ))}
+                        </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -60,6 +144,9 @@ export default function FormsPage() {
                           <input
                             type="email"
                             placeholder="Email Address"
+                            required
+                            value={memberForm.email}
+                            onChange={handleMemberChange('email')}
                             className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                           />
                         </div>
@@ -70,6 +157,9 @@ export default function FormsPage() {
                           <input
                             type="tel"
                             placeholder="Mobile Number"
+                            required
+                            value={memberForm.phone}
+                            onChange={handleMemberChange('phone')}
                             className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                           />
                         </div>
@@ -77,33 +167,14 @@ export default function FormsPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                            Address
+                            City/District
                           </label>
                           <input
                             type="text"
-                            placeholder="Address"
-                            className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                            City
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="City"
-                            className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                            State
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="State"
+                            placeholder="City/District"
+                            required
+                            value={memberForm.city}
+                            onChange={handleMemberChange('city')}
                             className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                           />
                         </div>
@@ -114,13 +185,16 @@ export default function FormsPage() {
                           <input
                             type="text"
                             placeholder="Country"
+                            required
+                            value={memberForm.country}
+                            onChange={handleMemberChange('country')}
                             className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                           />
                         </div>
                       </div>
 
                       <Button className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                        Let&apos;s Get You Started
+                        Submit
                       </Button>
                     </form>
                   </div>
@@ -140,7 +214,7 @@ export default function FormsPage() {
                     Share what God has done in your life and encourage others.
                   </p>
 
-                  <form className="space-y-4">
+                  <form className="space-y-4" onSubmit={handleTestimonySubmit}>
                     <div>
                       <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
                         Full Name
@@ -148,16 +222,59 @@ export default function FormsPage() {
                       <input
                         type="text"
                         placeholder="Full Name"
+                        required
+                        value={testimonyForm.fullName}
+                        onChange={handleTestimonyChange('fullName')}
                         className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
                     <div>
                       <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                        Testimony
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="Phone Number"
+                        value={testimonyForm.phone}
+                        onChange={handleTestimonyChange('phone')}
+                        className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
+                        Area of Testimony
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Area of Testimony"
+                        value={testimonyForm.area}
+                        onChange={handleTestimonyChange('area')}
+                        className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
+                        How the situation was like
                       </label>
                       <textarea
                         rows={5}
-                        placeholder="Share your testimony"
+                        placeholder="Describe the situation"
+                        required
+                        value={testimonyForm.situation}
+                        onChange={handleTestimonyChange('situation')}
+                        className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
+                        What God has done
+                      </label>
+                      <textarea
+                        rows={5}
+                        placeholder="Share what God has done"
+                        required
+                        value={testimonyForm.testimony}
+                        onChange={handleTestimonyChange('testimony')}
                         className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
