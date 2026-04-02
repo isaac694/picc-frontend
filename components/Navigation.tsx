@@ -205,49 +205,89 @@ export default function Navigation() {
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div
-            className={
-              isDarkNav
-                ? 'lg:hidden pb-4 space-y-2 bg-black'
-                : 'lg:hidden pb-4 space-y-2'
-            }
-          >
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={
-                  isDarkNav
-                    ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
-                    : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
-                }
-                onClick={closeMenu}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div>
-              <button
-                type="button"
-                className={
-                  isDarkNav
-                    ? 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-white/80 text-xs uppercase tracking-[0.2em]'
-                    : 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'
-                }
-                onClick={() => setMobileMinistriesOpen((prev) => !prev)}
-                aria-expanded={mobileMinistriesOpen}
-              >
-                <span>Ministries</span>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${mobileMinistriesOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {mobileMinistriesOpen && (
-                <div className="space-y-1">
-                  {ministryLinks.map((link) => (
+          <div className="lg:hidden">
+            <button
+              type="button"
+              aria-label="Close menu"
+              className="fixed inset-0 z-40 bg-black/40"
+              onClick={closeMenu}
+            />
+            <div
+              className={
+                isDarkNav
+                  ? 'relative z-50 pb-4 space-y-2 bg-black'
+                  : 'relative z-50 pb-4 space-y-2 bg-background'
+              }
+            >
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={
+                    isDarkNav
+                      ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                      : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                  }
+                  onClick={closeMenu}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <div>
+                <button
+                  type="button"
+                  className={
+                    isDarkNav
+                      ? 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-white/80 text-xs uppercase tracking-[0.2em]'
+                      : 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'
+                  }
+                  onClick={() => setMobileMinistriesOpen((prev) => !prev)}
+                  aria-expanded={mobileMinistriesOpen}
+                >
+                  <span>Ministries</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${mobileMinistriesOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {mobileMinistriesOpen && (
+                  <div className="space-y-1">
+                    {ministryLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={
+                          isDarkNav
+                            ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                            : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                        }
+                        onClick={closeMenu}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <button
+                  type="button"
+                  className={
+                    isDarkNav
+                      ? 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-white/80 text-xs uppercase tracking-[0.2em]'
+                      : 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'
+                  }
+                  onClick={() => setMobileResourcesOpen((prev) => !prev)}
+                  aria-expanded={mobileResourcesOpen}
+                >
+                  <span>Resources</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${mobileResourcesOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {mobileResourcesOpen && (
+                  <div className="space-y-1">
                     <Link
-                      key={link.href}
-                      href={link.href}
+                      href="/locations"
                       className={
                         isDarkNav
                           ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
@@ -255,73 +295,41 @@ export default function Navigation() {
                       }
                       onClick={closeMenu}
                     >
-                      {link.label}
+                      Church Locations
                     </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div>
-              <button
-                type="button"
-                className={
-                  isDarkNav
-                    ? 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-white/80 text-xs uppercase tracking-[0.2em]'
-                    : 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'
-                }
-                onClick={() => setMobileResourcesOpen((prev) => !prev)}
-                aria-expanded={mobileResourcesOpen}
+                    <Link
+                      href="/forms"
+                      className={
+                        isDarkNav
+                          ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                          : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                      }
+                      onClick={closeMenu}
+                    >
+                      Forms
+                    </Link>
+                    <Link
+                      href="/sermons"
+                      className={
+                        isDarkNav
+                          ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                          : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                      }
+                      onClick={closeMenu}
+                    >
+                      Sermons
+                    </Link>
+                  </div>
+                )}
+              </div>
+              <Link
+                href="/give"
+                className="block px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/90 transition-colors"
+                onClick={closeMenu}
               >
-                <span>Resources</span>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${mobileResourcesOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {mobileResourcesOpen && (
-                <div className="space-y-1">
-                  <Link
-                    href="/locations"
-                    className={
-                      isDarkNav
-                        ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
-                        : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
-                    }
-                    onClick={closeMenu}
-                  >
-                    Church Locations
-                  </Link>
-                  <Link
-                    href="/forms"
-                    className={
-                      isDarkNav
-                        ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
-                        : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
-                    }
-                    onClick={closeMenu}
-                  >
-                    Forms
-                  </Link>
-                  <Link
-                    href="/sermons"
-                    className={
-                      isDarkNav
-                        ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
-                        : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
-                    }
-                    onClick={closeMenu}
-                  >
-                    Sermons
-                  </Link>
-                </div>
-              )}
+                Give
+              </Link>
             </div>
-            <Link
-              href="/give"
-              className="block px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/90 transition-colors"
-              onClick={closeMenu}
-            >
-              Give
-            </Link>
           </div>
         )}
       </div>
