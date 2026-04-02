@@ -347,7 +347,7 @@ export default function LivestreamPage() {
                     Embedded view
                   </span>
                 </div>
-                {activeTool !== 'testimony' && (
+                {activeTool && activeTool !== 'testimony' && (
                   <div className="aspect-[4/3] w-full bg-black">
                     <iframe
                       className="h-full w-full"
@@ -444,7 +444,7 @@ export default function LivestreamPage() {
                       </span>
                     )}
                   </span>
-                  {activeTool !== 'testimony' && (
+                  {activeTool && activeTool !== 'testimony' && (
                     <Link
                       href={TOOL_CONFIG[activeTool as Exclude<ToolKey, 'testimony'>].url}
                       target="_blank"
