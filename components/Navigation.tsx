@@ -219,6 +219,20 @@ export default function Navigation() {
                   : 'relative z-50 pb-4 space-y-2 bg-background'
               }
             >
+              <div className="flex items-center justify-end px-4 pt-3">
+                <button
+                  type="button"
+                  aria-label="Close menu"
+                  className={
+                    isDarkNav
+                      ? 'inline-flex h-9 w-9 items-center justify-center rounded-full text-white/80 hover:bg-white/10'
+                      : 'inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground/80 hover:bg-muted'
+                  }
+                  onClick={closeMenu}
+                >
+                  <X size={20} />
+                </button>
+              </div>
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
