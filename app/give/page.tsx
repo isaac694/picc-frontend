@@ -149,25 +149,25 @@ export default function GivePage() {
                   </div>
 
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
                       <span className="sm:min-w-[110px] text-foreground/70">Booklet No.</span>
                       <input
                         type="text"
                         name="bookletNumber"
                         value={formData.bookletNumber}
                         onChange={handleChange}
-                        className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                        className="w-full min-w-0 flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
                         placeholder="..............."
                       />
                     </label>
-                    <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
                       <span className="sm:min-w-[70px] text-foreground/70">Date</span>
                       <input
                         type="date"
                         name="givingDate"
                         value={formData.givingDate}
                         onChange={handleChange}
-                        className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                        className="w-full min-w-0 flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
                       />
                     </label>
                   </div>
@@ -196,29 +196,29 @@ export default function GivePage() {
                           </label>
                         ))}
                       </div>
-                      <label className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm">
+                      <label className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm min-w-0">
                         <span className="sm:min-w-[130px] text-foreground/70">Special Recipient</span>
                         <input
                           type="text"
                           name="specialRecipient"
                           value={formData.specialRecipient}
                           onChange={handleChange}
-                          className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                          className="w-full min-w-0 flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
                           placeholder="........................"
                         />
                       </label>
                     </div>
 
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-[110px_1fr] items-start sm:items-center gap-3 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-[110px_1fr] items-start sm:items-center gap-3 text-sm min-w-0">
                         <span className="text-foreground/70">Amount</span>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
                           <select
                             id="currency"
                             name="currency"
                             value={formData.currency}
                             onChange={handleChange}
-                            className="h-10 rounded-full border border-border bg-background px-3 text-xs"
+                            className="h-10 w-full sm:w-auto rounded-full border border-border bg-background px-3 text-xs"
                           >
                             <option value="MWK">MWK</option>
                             <option value="USD">USD</option>
@@ -233,44 +233,44 @@ export default function GivePage() {
                             min="1"
                             step="any"
                             inputMode="decimal"
-                            className="h-10 flex-1 rounded-full border border-border bg-background px-3 text-sm"
+                            className="h-10 w-full min-w-0 flex-1 rounded-full border border-border bg-background px-3 text-sm"
                             required
                           />
                         </div>
                       </div>
 
-                      <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm">
+                      <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm min-w-0">
                         <span className="sm:min-w-[110px] text-foreground/70">Full Names</span>
                         <input
                           type="text"
                           name="fullName"
                           value={formData.fullName}
                           onChange={handleChange}
-                          className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                          className="w-full min-w-0 flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
                           placeholder="...................................."
                           required
                         />
                       </label>
 
                       <div className="grid grid-cols-1 gap-3 text-sm">
-                        <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                        <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
                           <span className="sm:min-w-[110px] text-foreground/70">Email</span>
                           <input
                             type="email"
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
-                            className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                            className="w-full min-w-0 flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
                             placeholder="name@email.com"
                           />
                         </label>
-                        <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 min-w-0">
                           <select
                             id="phoneCountry"
                             name="phoneCountry"
                             value={formData.phoneCountry}
                             onChange={handleChange}
-                            className="h-10 rounded-full border border-border bg-background px-3 text-xs"
+                            className="h-10 w-full rounded-full border border-border bg-background px-3 text-xs"
                           >
                             <option value="+265">Malawi (+265)</option>
                             <option value="+233">Ghana (+233)</option>
@@ -289,7 +289,7 @@ export default function GivePage() {
                             value={formData.phone}
                             onChange={handleChange}
                             placeholder="Phone number"
-                            className="h-10 rounded-full border border-border bg-background px-3 text-sm"
+                            className="h-10 w-full min-w-0 rounded-full border border-border bg-background px-3 text-sm"
                             required
                           />
                         </div>
