@@ -126,8 +126,8 @@ export default function GivePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-primary mb-12">Give Now</h2>
             <form onSubmit={handleSubmit} className="space-y-10">
-              <div className="rounded-3xl bg-background p-8 shadow-sm border border-border/60">
-                <div className="border-2 border-foreground/30 rounded-2xl p-6 sm:p-8">
+              <div className="rounded-3xl bg-background p-6 sm:p-8 shadow-sm border border-border/60">
+                <div className="border-2 border-foreground/30 rounded-2xl p-4 sm:p-8">
                   <div className="text-center space-y-2">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-foreground/20 bg-white shadow-sm">
                       <Image
@@ -149,8 +149,8 @@ export default function GivePage() {
                   </div>
 
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <label className="flex items-center gap-3">
-                      <span className="min-w-[110px] text-foreground/70">Booklet No.</span>
+                    <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                      <span className="sm:min-w-[110px] text-foreground/70">Booklet No.</span>
                       <input
                         type="text"
                         name="bookletNumber"
@@ -160,8 +160,8 @@ export default function GivePage() {
                         placeholder="..............."
                       />
                     </label>
-                    <label className="flex items-center gap-3">
-                      <span className="min-w-[70px] text-foreground/70">Date</span>
+                    <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                      <span className="sm:min-w-[70px] text-foreground/70">Date</span>
                       <input
                         type="date"
                         name="givingDate"
@@ -196,8 +196,8 @@ export default function GivePage() {
                           </label>
                         ))}
                       </div>
-                      <label className="mt-4 flex items-center gap-3 text-sm">
-                        <span className="min-w-[130px] text-foreground/70">Special Recipient</span>
+                      <label className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm">
+                        <span className="sm:min-w-[130px] text-foreground/70">Special Recipient</span>
                         <input
                           type="text"
                           name="specialRecipient"
@@ -210,9 +210,9 @@ export default function GivePage() {
                     </div>
 
                     <div className="space-y-4">
-                      <div className="grid grid-cols-[110px_1fr] items-center gap-3 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-[110px_1fr] items-start sm:items-center gap-3 text-sm">
                         <span className="text-foreground/70">Amount</span>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                           <select
                             id="currency"
                             name="currency"
@@ -239,8 +239,8 @@ export default function GivePage() {
                         </div>
                       </div>
 
-                      <label className="flex items-center gap-3 text-sm">
-                        <span className="min-w-[110px] text-foreground/70">Full Names</span>
+                      <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm">
+                        <span className="sm:min-w-[110px] text-foreground/70">Full Names</span>
                         <input
                           type="text"
                           name="fullName"
@@ -253,8 +253,8 @@ export default function GivePage() {
                       </label>
 
                       <div className="grid grid-cols-1 gap-3 text-sm">
-                        <label className="flex items-center gap-3">
-                          <span className="min-w-[110px] text-foreground/70">Email</span>
+                        <label className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                          <span className="sm:min-w-[110px] text-foreground/70">Email</span>
                           <input
                             type="email"
                             name="email"
@@ -264,7 +264,7 @@ export default function GivePage() {
                             placeholder="name@email.com"
                           />
                         </label>
-                        <div className="grid grid-cols-[120px_1fr] gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3">
                           <select
                             id="phoneCountry"
                             name="phoneCountry"
@@ -298,7 +298,7 @@ export default function GivePage() {
                   </div>
                 </div>
               </div>
-              <div className="rounded-3xl bg-background p-8 shadow-sm border border-border/60">
+              <div className="rounded-3xl bg-background p-6 sm:p-8 shadow-sm border border-border/60">
                 <h3 className="text-xl font-semibold text-primary mb-6">Payment Info</h3>
                 <div className="flex flex-col gap-2">
                   <span className="text-sm font-medium text-foreground">Payment Method</span>
