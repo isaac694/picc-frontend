@@ -44,6 +44,30 @@ async function getDevotions(): Promise<DevotionsResult> {
 export default async function DevotionsPage() {
   const { devotions, debugMessage } = await getDevotions();
   const showDebug = process.env.NODE_ENV !== 'production' && debugMessage;
+  const fallbackDevotion = {
+    id: 'fallback-2026-04-03',
+    title: 'Be Prayerful',
+    publishAt: '2026-04-03T00:00:00.000Z',
+    content: [
+      'Please Find Your Daily Rivers of Hope Devotional',
+      'Friday, 3 April 2026',
+      '',
+      'Be Prayerful',
+      '',
+      'Friends, prayer is indispensable in our lives. It is a vital channel for divine assistance. God said, “Call to Me, and I will answer you, and show you great and mighty things, which you do not know” (Jeremiah 33:3). When we call to Him, He will come down to assist us. He will answer our prayers and grant us the desires of our hearts.',
+      '',
+      'In 1 Chronicles 4:9-10, we read about Jabez whose life was battered, shattered and tattered. It was quite a painful experience for him. It did not look like he would get through. However, when he decided to pray, God came down with explosive assistance. The hand of God rested upon him and he became more honourable than his brothers.',
+      '',
+      'Prayer is our instrument for empowerment. When we pray, we generate power for success and exploits in life. When our Lord Jesus Christ came back from a prayer and fasting retreat, He returned in the power of the Spirit by which He did mighty exploits during His earthly ministry. The Bible says, “Then Jesus returned in the power of the Spirit to Galilee, and news of Him went out through all the surrounding region. And He taught in their synagogues, being glorified by all” (Luke 4:14-15).',
+      '',
+      'To be prayerful is to be powerful. The early Church also operated in great power for exploits. When they prayed, the place where they had gathered shook and they were all filled with the Holy Spirit and spoke the word of God with boldness. They gave witness to the resurrection of Jesus Christ with great power (Acts 4:31, 33).',
+      '',
+      'Your Prayer Today',
+      '',
+      'Father, endue me with the spirit of prayer and supplication in Jesus mighty name!',
+    ],
+  };
+  const visibleDevotions = devotions.length > 0 ? devotions : [fallbackDevotion];
 
   return (
     <>
@@ -64,7 +88,7 @@ export default async function DevotionsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {devotions.length === 0 ? (
+              {visibleDevotions.length === 0 ? (
                 <div className="rounded-2xl border border-border/60 bg-white p-6">
                   <p className="text-foreground/70">
                     No devotions have been published yet. Check back soon.
@@ -81,7 +105,7 @@ export default async function DevotionsPage() {
                   </div>
                 </div>
               ) : (
-                devotions.map((devotion: any) => {
+                visibleDevotions.map((devotion: any) => {
                   const formattedDate = devotion.publishAt
                     ? new Intl.DateTimeFormat('en-US', {
                         month: 'long',

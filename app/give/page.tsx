@@ -96,8 +96,18 @@ export default function GivePage() {
       setFormSuccess('Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment.');
       setFormData((prev) => ({
         ...prev,
+        currency: 'MWK',
         amount: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        phoneCountry: '+265',
+        bookletNumber: '',
+        givingDate: '',
+        givingType: '',
+        specialRecipient: '',
         reason: '',
+        paymentMethod: 'airtel',
       }));
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Something went wrong.');
