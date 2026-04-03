@@ -23,6 +23,7 @@ export default function Navigation() {
     { href: '/store', label: 'Store' },
     { href: '/contact', label: 'Contact' },
     
+    
   ];
   const ministryLinks = [
     { href: '/ministries/icd', label: 'ICD' },
@@ -164,16 +165,6 @@ export default function Navigation() {
                   >
                     Church Locations
                   </Link>
-                                    <Link
-                    href="/ministries"
-                    className={
-                      isDarkNav
-                        ? 'block px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10'
-                        : 'block px-4 py-2 text-sm text-foreground hover:text-primary hover:bg-muted'
-                    }
-                  >
-                    Ministries
-                  </Link>
                   <Link
                     href="/forms"
                     className={
@@ -259,41 +250,7 @@ export default function Navigation() {
                   {link.label}
                 </Link>
               ))}
-              <div>
-                <button
-                  type="button"
-                  className={
-                    isDarkNav
-                      ? 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-white/80 text-xs uppercase tracking-[0.2em]'
-                      : 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'
-                  }
-                  onClick={() => setMobileMinistriesOpen((prev) => !prev)}
-                  aria-expanded={mobileMinistriesOpen}
-                >
-                  <span>Ministries</span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${mobileMinistriesOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
-                {mobileMinistriesOpen && (
-                  <div className="space-y-1">
-                    {ministryLinks.map((link) => (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className={
-                          isDarkNav
-                            ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
-                            : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
-                        }
-                        onClick={closeMenu}
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+
               <div>
                 <button
                   type="button"
