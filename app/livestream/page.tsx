@@ -55,6 +55,7 @@ const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'form' }> 
 export default function LivestreamPage() {
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
+  const [mobileSheetSize, setMobileSheetSize] = useState<'compact' | 'balanced' | 'focus'>('balanced');
   const [testimonyForm, setTestimonyForm] = useState({
     fullName: '',
     phone: '',
@@ -463,23 +464,63 @@ export default function LivestreamPage() {
             <section className="md:hidden">
               <div className="fixed bottom-0 left-0 right-0 z-40">
                 <div className="rounded-t-3xl border border-white/10 bg-[#1f1f1f] shadow-[0_-12px_40px_rgba(0,0,0,0.55)]">
-                  <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3 text-xs font-semibold text-white/70">
-                    {TOOL_TABS.map((tool) => (
+                  <div className="border-b border-white/10 px-4 py-3">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white/70">
+                      {TOOL_TABS.map((tool) => (
+                        <button
+                          key={tool.key}
+                          type="button"
+                          onClick={() => setActiveTool(tool.key)}
+                          className={`rounded-full px-3 py-1 transition-colors ${
+                            activeTool === tool.key
+                              ? 'bg-white text-black'
+                              : 'bg-white/10 text-white'
+                          }`}
+                        >
+                          {tool.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-white/60">
+                      <span>Panel size:</span>
                       <button
-                        key={tool.key}
                         type="button"
-                        onClick={() => setActiveTool(tool.key)}
-                        className={`rounded-full px-3 py-1 transition-colors ${
-                          activeTool === tool.key
-                            ? 'bg-white text-black'
-                            : 'bg-white/10 text-white'
+                        onClick={() => setMobileSheetSize('compact')}
+                        className={`rounded-full px-2 py-1 ${
+                          mobileSheetSize === 'compact' ? 'bg-white text-black' : 'bg-white/10 text-white'
                         }`}
                       >
-                        {tool.label}
+                        Compact
                       </button>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() => setMobileSheetSize('balanced')}
+                        className={`rounded-full px-2 py-1 ${
+                          mobileSheetSize === 'balanced' ? 'bg-white text-black' : 'bg-white/10 text-white'
+                        }`}
+                      >
+                        Balanced
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMobileSheetSize('focus')}
+                        className={`rounded-full px-2 py-1 ${
+                          mobileSheetSize === 'focus' ? 'bg-white text-black' : 'bg-white/10 text-white'
+                        }`}
+                      >
+                        Focus
+                      </button>
+                    </div>
                   </div>
-                  <div className="h-[62vh] overflow-y-auto">
+                  <div
+                    className={`overflow-y-auto ${
+                      mobileSheetSize === 'compact'
+                        ? 'h-[45vh]'
+                        : mobileSheetSize === 'focus'
+                          ? 'h-[75vh]'
+                          : 'h-[62vh]'
+                    }`}
+                  >
                     {activeEmbedTool && (
                       <div className="aspect-[4/3] w-full bg-black">
                         <iframe
