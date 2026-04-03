@@ -56,13 +56,13 @@ const GROW_CARD_SLOTS = [
 ];
 
 const MINISTRY_CARDS = [
-  { title: 'Women of Hope', key: 'home-ministry-card-1', fallback: '/hero/hero-2.jpg' },
-  { title: 'ICD', key: 'home-ministry-card-2', fallback: '/hero/hero-5.jpg' },
-  { title: 'Men of Valour', key: 'home-ministry-card-3', fallback: '/hero/hero-1.jpg' },
-  { title: 'Prison Ministry', key: 'home-ministry-card-4', fallback: '/hero/hero-6.jpg' },
-  { title: 'Youth Church Ministry', key: 'home-ministry-card-5', fallback: '/hero/hero-3.jpg' },
-  { title: 'Hope and Beauty', key: 'home-ministry-card-6', fallback: '/hero/hero-4.jpg' },
-  { title: 'Heritage Ministry', key: 'home-ministry-card-7', fallback: '/cards/about-church.jpg' },
+  { title: 'Women of Hope', key: 'home-ministry-card-1', fallback: '/hero/hero-8-woh.jpg' },
+  { title: 'ICD', key: 'home-ministry-card-2', fallback: '/hero/hero-11-icd.jpg' },
+  { title: 'Men of Valour', key: 'home-ministry-card-3', fallback: '/hero/hero-7-mov.jpg' },
+  { title: 'Prison Ministry', key: 'home-ministry-card-4', fallback: '/hero/hero-14.jpg' },
+  { title: 'Youth Church Ministry', key: 'home-ministry-card-5', fallback: '/hero/hero-10-yc.jpg' },
+  { title: 'Hope and Beauty', key: 'home-ministry-card-6', fallback: '/hero/hero-13-hb.jpg' },
+  { title: 'Heritage Ministry', key: 'home-ministry-card-7', fallback: '/hero/hero-12-heritage.jpg' },
 ];
 
 const DEFAULT_SERVICES = [
@@ -222,7 +222,7 @@ export default async function HomePage() {
     ...slot,
     image: normalizeImageUrl(siteImages[slot.key]) || slot.fallback,
   }));
-  const livestreamImage = normalizeImageUrl(siteImages['home-livestream-bg']) || '/hero/hero-6.jpg';
+  const livestreamImage = normalizeImageUrl(siteImages['home-livestream-bg']) || '/hero/hero-15.png';
   const fallbackDevotion = {
     title: 'God Is Good',
     content: [
