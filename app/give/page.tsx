@@ -4,9 +4,7 @@ import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, TrendingUp, Users } from 'lucide-react';
 import { apiUrl } from '@/lib/api';
 
 export default function GivePage() {
@@ -16,16 +14,16 @@ export default function GivePage() {
   const [formData, setFormData] = useState({
     currency: 'MWK',
     amount: '',
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
     phone: '',
     phoneCountry: '+265',
-    address: '',
-    country: '',
+    bookletNumber: '',
+    givingDate: '',
+    givingType: '',
+    specialRecipient: '',
     reason: '',
     paymentMethod: 'airtel',
-    message: '',
   });
 
   const normalizePaychanguPhone = (countryCode: string, rawPhone: string) => {
@@ -48,16 +46,27 @@ export default function GivePage() {
     setFormError(null);
     setFormSuccess(null);
 
-    if (!formData.amount || !formData.firstName || !formData.lastName || !formData.phone) {
+    if (!formData.amount || !formData.fullName || !formData.phone) {
       setFormError('Please complete the required fields before submitting.');
       return;
     }
+
+    const nameParts = formData.fullName.trim().split(/\s+/).filter(Boolean);
+    if (nameParts.length < 2) {
+      setFormError('Please enter your full name (first and last).');
+      return;
+    }
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
 
     const normalizedPhone = normalizePaychanguPhone(formData.phoneCountry, formData.phone);
     if (formData.phoneCountry === '+265' && normalizedPhone.length !== 9) {
       setFormError('Please enter a valid Malawi mobile number with 9 digits.');
       return;
     }
+
+    const resolvedReason =
+      formData.reason || formData.givingType || 'Giving';
 
     setIsSubmitting(true);
     try {
@@ -66,11 +75,11 @@ export default function GivePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: formData.amount,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          firstName,
+          lastName,
           phone: normalizedPhone,
           paymentMethod: formData.paymentMethod,
-          reason: formData.reason,
+          reason: resolvedReason,
         }),
       });
 
@@ -88,7 +97,6 @@ export default function GivePage() {
         ...prev,
         amount: '',
         reason: '',
-        message: '',
       }));
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Something went wrong.');
@@ -118,183 +126,165 @@ export default function GivePage() {
             <h2 className="text-3xl font-bold text-primary mb-12">Give Now</h2>
             <form onSubmit={handleSubmit} className="space-y-10">
               <div className="rounded-3xl bg-background p-8 shadow-sm border border-border/60">
-                <h3 className="text-xl font-semibold text-primary mb-6">Enter Amount</h3>
-                <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4">
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="currency" className="text-sm font-medium text-foreground">
-                      Currency
-                    </label>
-                    <select
-                      id="currency"
-                    name="currency"
-                    value={formData.currency}
-                    onChange={handleChange}
-                    className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                    >
-                      <option value="MWK">MWK</option>
-                      <option value="USD">USD</option>
-                    </select>
+                <div className="border-2 border-foreground/30 rounded-2xl p-6 sm:p-8">
+                  <div className="text-center space-y-2">
+                    <p className="text-xs uppercase tracking-[0.35em] text-foreground/50">
+                      Pentecost International Christian Centre
+                    </p>
+                    <h3 className="text-2xl font-semibold text-foreground">Kingdom Investments Records</h3>
+                    <p className="text-sm italic text-foreground/60">Honour the Lord with your Substance</p>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="amount" className="text-sm font-medium text-foreground">
-                      Amount
-                    </label>
-                    <input
-                      id="amount"
-                      type="number"
-                      name="amount"
-                      value={formData.amount}
-                      onChange={handleChange}
-                      placeholder="0.00"
-                      min="1"
-                      step="any"
-                      inputMode="decimal"
-                      className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
 
-              <div className="rounded-3xl bg-background p-8 shadow-sm border border-border/60">
-                <h3 className="text-xl font-semibold text-primary mb-6">Personal Info</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="firstName" className="text-sm font-medium text-foreground">
-                      First Name
-                    </label>
-                    <input
-                      id="firstName"
-                      type="text"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      placeholder="First Name"
-                      className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="lastName" className="text-sm font-medium text-foreground">
-                      Last Name
-                    </label>
-                    <input
-                      id="lastName"
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      placeholder="Last Name"
-                      className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="email" className="text-sm font-medium text-foreground">
-                      Email Address
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="Email Address"
-                      className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                    />
-                  </div>
-                  <div className="grid grid-cols-[140px_1fr] gap-3">
-                    <div className="flex flex-col gap-2">
-                      <label htmlFor="phoneCountry" className="text-sm font-medium text-foreground">
-                        Country Code
-                      </label>
-                      <select
-                        id="phoneCountry"
-                        name="phoneCountry"
-                        value={formData.phoneCountry}
-                        onChange={handleChange}
-                        className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                      >
-                        <option value="+265">🇲🇼 Malawi (+265)</option>
-                        <option value="+233">🇬🇭 Ghana (+233)</option>
-                        <option value="+234">🇳🇬 Nigeria (+234)</option>
-                        <option value="+254">🇰🇪 Kenya (+254)</option>
-                        <option value="+255">🇹🇿 Tanzania (+255)</option>
-                        <option value="+260">🇿🇲 Zambia (+260)</option>
-                        <option value="+27">🇿🇦 South Africa (+27)</option>
-                        <option value="+44">🇬🇧 United Kingdom (+44)</option>
-                        <option value="+1">🇺🇸 United States (+1)</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label htmlFor="phone" className="text-sm font-medium text-foreground">
-                        Phone Number
-                      </label>
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <label className="flex items-center gap-3">
+                      <span className="min-w-[110px] text-foreground/70">Booklet No.</span>
                       <input
-                        id="phone"
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
+                        type="text"
+                        name="bookletNumber"
+                        value={formData.bookletNumber}
                         onChange={handleChange}
-                        placeholder="Phone Number"
-                        className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                        required
+                        className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                        placeholder="..............."
                       />
+                    </label>
+                    <label className="flex items-center gap-3">
+                      <span className="min-w-[70px] text-foreground/70">Date</span>
+                      <input
+                        type="date"
+                        name="givingDate"
+                        value={formData.givingDate}
+                        onChange={handleChange}
+                        className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground/70 mb-3">Tick where appropriate</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        {[
+                          'First Fruit',
+                          'Tithe',
+                          'Project Offering',
+                          'Thanks Giving',
+                          "Prophet's Offering",
+                        ].map((label) => (
+                          <label key={label} className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name="givingType"
+                              value={label}
+                              checked={formData.givingType === label}
+                              onChange={handleChange}
+                              className="h-4 w-4 border border-foreground/40"
+                            />
+                            <span className="text-foreground/70">{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <label className="mt-4 flex items-center gap-3 text-sm">
+                        <span className="min-w-[130px] text-foreground/70">Special Recipient</span>
+                        <input
+                          type="text"
+                          name="specialRecipient"
+                          value={formData.specialRecipient}
+                          onChange={handleChange}
+                          className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                          placeholder="........................"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-[110px_1fr] items-center gap-3 text-sm">
+                        <span className="text-foreground/70">Amount</span>
+                        <div className="flex items-center gap-3">
+                          <select
+                            id="currency"
+                            name="currency"
+                            value={formData.currency}
+                            onChange={handleChange}
+                            className="h-10 rounded-full border border-border bg-background px-3 text-xs"
+                          >
+                            <option value="MWK">MWK</option>
+                            <option value="USD">USD</option>
+                          </select>
+                          <input
+                            id="amount"
+                            type="number"
+                            name="amount"
+                            value={formData.amount}
+                            onChange={handleChange}
+                            placeholder="0.00"
+                            min="1"
+                            step="any"
+                            inputMode="decimal"
+                            className="h-10 flex-1 rounded-full border border-border bg-background px-3 text-sm"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <label className="flex items-center gap-3 text-sm">
+                        <span className="min-w-[110px] text-foreground/70">Full Names</span>
+                        <input
+                          type="text"
+                          name="fullName"
+                          value={formData.fullName}
+                          onChange={handleChange}
+                          className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                          placeholder="...................................."
+                          required
+                        />
+                      </label>
+
+                      <div className="grid grid-cols-1 gap-3 text-sm">
+                        <label className="flex items-center gap-3">
+                          <span className="min-w-[110px] text-foreground/70">Email</span>
+                          <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                            placeholder="name@email.com"
+                          />
+                        </label>
+                        <div className="grid grid-cols-[120px_1fr] gap-3">
+                          <select
+                            id="phoneCountry"
+                            name="phoneCountry"
+                            value={formData.phoneCountry}
+                            onChange={handleChange}
+                            className="h-10 rounded-full border border-border bg-background px-3 text-xs"
+                          >
+                            <option value="+265">Malawi (+265)</option>
+                            <option value="+233">Ghana (+233)</option>
+                            <option value="+234">Nigeria (+234)</option>
+                            <option value="+254">Kenya (+254)</option>
+                            <option value="+255">Tanzania (+255)</option>
+                            <option value="+260">Zambia (+260)</option>
+                            <option value="+27">South Africa (+27)</option>
+                            <option value="+44">United Kingdom (+44)</option>
+                            <option value="+1">United States (+1)</option>
+                          </select>
+                          <input
+                            id="phone"
+                            type="tel"
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleChange}
+                            placeholder="Phone number"
+                            className="h-10 rounded-full border border-border bg-background px-3 text-sm"
+                            required
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="address" className="text-sm font-medium text-foreground">
-                      Address
-                    </label>
-                    <input
-                      id="address"
-                      type="text"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      placeholder="Address"
-                      className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="country" className="text-sm font-medium text-foreground">
-                      Country
-                    </label>
-                    <select
-                      id="country"
-                      name="country"
-                      value={formData.country}
-                      onChange={handleChange}
-                      className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                    >
-                      <option value="">Select Country</option>
-                      <option value="Malawi">🇲🇼 Malawi</option>
-                      <option value="Ghana">🇬🇭 Ghana</option>
-                      <option value="Nigeria">🇳🇬 Nigeria</option>
-                      <option value="Kenya">🇰🇪 Kenya</option>
-                      <option value="Tanzania">🇹🇿 Tanzania</option>
-                      <option value="Zambia">🇿🇲 Zambia</option>
-                      <option value="South Africa">🇿🇦 South Africa</option>
-                      <option value="United Kingdom">🇬🇧 United Kingdom</option>
-                      <option value="United States">🇺🇸 United States</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-4 flex flex-col gap-2">
-                  <label htmlFor="message" className="text-sm font-medium text-foreground">
-                    Comment
-                  </label>
-                  <textarea
-                    id="message"
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
-                    placeholder="Write a Comment"
-                    className="min-h-[140px] w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm"
-                  />
                 </div>
               </div>
-
               <div className="rounded-3xl bg-background p-8 shadow-sm border border-border/60">
                 <h3 className="text-xl font-semibold text-primary mb-6">Payment Info</h3>
                 <div className="flex flex-col gap-2">
