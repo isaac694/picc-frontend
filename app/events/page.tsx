@@ -8,6 +8,14 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export default function EventsPage() {
   const [filter, setFilter] = useState<'today' | 'week' | 'month' | 'year'>('today');
@@ -15,6 +23,14 @@ export default function EventsPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [activeEvent, setActiveEvent] = useState<typeof events[number] | null>(null);
+  const [registerForm, setRegisterForm] = useState({
+    fullName: '',
+    residence: '',
+    phone: '',
+    email: '',
+  });
   const pageSize = 3;
 
   const events = [
@@ -40,6 +56,11 @@ export default function EventsPage() {
     if (period?.toUpperCase() === 'AM' && hours === 12) hours = 0;
 
     return { hours, minutes };
+  };
+
+  const parseDateOnly = (dateValue: string) => {
+    const [year, month, day] = dateValue.split('-').map(Number);
+    return new Date(year, month - 1, day);
   };
 
   const getEventDateRange = (event: typeof events[number]) => {
@@ -98,7 +119,7 @@ export default function EventsPage() {
   };
 
   const filteredEvents = useMemo(() => {
-    const baseDate = selectedDate ? new Date(selectedDate) : new Date();
+    const baseDate = selectedDate ? parseDateOnly(selectedDate) : new Date();
     const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const endOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
     const startOfWeek = (date: Date) => {
@@ -136,7 +157,7 @@ export default function EventsPage() {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     return events
-      .map((event) => ({ ...event, dateObj: new Date(event.date) }))
+      .map((event) => ({ ...event, dateObj: parseDateOnly(event.date) }))
       .filter((event) =>
         rangeEnd
           ? event.dateObj >= rangeStart && event.dateObj <= rangeEnd
@@ -229,6 +250,30 @@ export default function EventsPage() {
       outlookLive: outlookLive.toString(),
     };
   }, [calendarEvent]);
+
+  const openRegister = (event: typeof events[number]) => {
+    setActiveEvent(event);
+    setIsRegisterOpen(true);
+  };
+
+  const submitRegistration = () => {
+    if (!activeEvent) return;
+    const subject = `Event Registration: ${activeEvent.title}`;
+    const body = [
+      `Event: ${activeEvent.title}`,
+      `Date: ${activeEvent.date}`,
+      '',
+      `Full name: ${registerForm.fullName}`,
+      `Area of residence: ${registerForm.residence}`,
+      `Phone number: ${registerForm.phone}`,
+      `Email address: ${registerForm.email}`,
+    ].join('\n');
+
+    const mailto = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(
+      subject,
+    )}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+  };
 
   return (
     <>
@@ -334,11 +379,13 @@ export default function EventsPage() {
                               </p>
                               <p className="text-sm text-foreground/60 mt-2">{event.location}</p>
                               <div className="mt-4">
-                                <Link href="/contact">
-                                  <Button variant="outline" className="rounded-full px-5 text-sm">
-                                    Learn More
-                                  </Button>
-                                </Link>
+                                <Button
+                                  variant="outline"
+                                  className="rounded-full px-5 text-sm"
+                                  onClick={() => openRegister(event)}
+                                >
+                                  Register for Event
+                                </Button>
                               </div>
                             </div>
                             <div className="relative aspect-[3/4] max-w-[240px] w-full justify-self-center md:justify-self-end overflow-hidden rounded-xl shadow-sm">
@@ -453,6 +500,83 @@ export default function EventsPage() {
           </div>
         </section>
       </main>
+      <Dialog
+        open={isRegisterOpen}
+        onOpenChange={(open) => {
+          setIsRegisterOpen(open);
+          if (!open) {
+            setActiveEvent(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Register for Event</DialogTitle>
+            <DialogDescription>
+              {activeEvent ? `You're registering for ${activeEvent.title}.` : 'Event registration'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm">
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Full name</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={registerForm.fullName}
+                onChange={(event) =>
+                  setRegisterForm((prev) => ({ ...prev, fullName: event.target.value }))
+                }
+                type="text"
+                placeholder="Your full name"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Area of residence</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={registerForm.residence}
+                onChange={(event) =>
+                  setRegisterForm((prev) => ({ ...prev, residence: event.target.value }))
+                }
+                type="text"
+                placeholder="City or area"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Phone number</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={registerForm.phone}
+                onChange={(event) =>
+                  setRegisterForm((prev) => ({ ...prev, phone: event.target.value }))
+                }
+                type="tel"
+                placeholder="Phone number"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Email address</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={registerForm.email}
+                onChange={(event) =>
+                  setRegisterForm((prev) => ({ ...prev, email: event.target.value }))
+                }
+                type="email"
+                placeholder="Email address"
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button
+              className="rounded-full px-5"
+              onClick={submitRegistration}
+              disabled={!activeEvent}
+            >
+              Register
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Footer />
     </>
   );
