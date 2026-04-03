@@ -20,13 +20,14 @@ const HERO_IMAGES = [
 ];
 
 const MINISTRY_CARDS = [
-  { title: 'Women of Hope', image: '/hero/hero-2.jpg' },
-  { title: 'ICD', image: '/hero/hero-5.jpg' },
-  { title: 'Men of Valour', image: '/hero/hero-1.jpg' },
-  { title: 'Prison Ministry', image: '/hero/hero-6.jpg' },
-  { title: 'Youth Church Ministry', image: '/hero/hero-3.jpg' },
-  { title: 'Hope and Beauty', image: '/hero/hero-4.jpg' },
-  { title: 'Heritage Ministry', image: '/cards/about-church.jpg' },
+  { title: 'Women of Hope', image: '/hero/hero-8-woh.jpg' },
+  { title: 'ICD', image: '/hero/hero-11-icd.jpg' },
+  { title: 'Men of Valour', image: '/hero/hero-7-mov.jpg' },
+  { title: 'Prison Ministry', image: '/hero/hero-14.jpg' },
+  { title: 'Youth Church Ministry', image: '/hero/hero-10-yc.jpg' },
+  { title: 'Hope and Beauty', image: '/hero/hero-13-hb.jpg' },
+  { title: 'Heritage Ministry', image: '/hero/hero-12-heritage.jpg' },
+  { title: 'Called to Greatness', image: '/logos/called-to-greatness-logo.jpg' },
 ];
 
 export default function HomePage() {

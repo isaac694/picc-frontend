@@ -18,7 +18,9 @@ export default function Navigation() {
     { href: '/forms', label: 'Forms' },
     { href: '/livestream', label: 'Livestream' },
     { href: '/events', label: 'Events' },
+    { href: '/store', label: 'Store' },
     { href: '/contact', label: 'Contact' },
+    
   ];
 
   return (
@@ -97,6 +99,16 @@ export default function Navigation() {
                   >
                     Church Locations
                   </Link>
+                                    <Link
+                    href="/ministries"
+                    className={
+                      isDarkNav
+                        ? 'block px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10'
+                        : 'block px-4 py-2 text-sm text-foreground hover:text-primary hover:bg-muted'
+                    }
+                  >
+                    Ministries
+                  </Link>
                   <Link
                     href="/forms"
                     className={
@@ -174,6 +186,17 @@ export default function Navigation() {
               onClick={() => setIsOpen(false)}
             >
               Church Locations
+            </Link>
+                        <Link
+              href="/ministries"
+              className={
+                isDarkNav
+                  ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                  : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+              }
+              onClick={() => setIsOpen(false)}
+            >
+              Ministries
             </Link>
             <Link
               href="/forms"
