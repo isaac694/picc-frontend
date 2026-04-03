@@ -1,8 +1,18 @@
-'use client';
-
 import Image from 'next/image';
 
-export default function QuoteSection() {
+type QuoteSectionProps = {
+  quote?: string | null;
+  author?: string | null;
+  imageUrl?: string | null;
+};
+
+export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionProps) {
+  const resolvedQuote =
+    quote ||
+    'Every promise of God requires your corresponding faith for it to be accomplished.';
+  const resolvedAuthor = author || 'Pastor Esau Banda';
+  const resolvedImage = imageUrl || '/pastor/pastor-photo.jpg';
+
   return (
     <section className="relative overflow-visible py-24 md:py-32 min-h-[680px] md:min-h-[760px] flex items-center">
       <style>{`
@@ -62,10 +72,10 @@ export default function QuoteSection() {
               Quote of the Month
             </p>
             <blockquote className="quote-text text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight mb-8 max-w-6xl mx-auto">
-              &ldquo;Every promise of God requires your corresponding faith for it to be accomplished.&rdquo;
+              &ldquo;{resolvedQuote}&rdquo;
             </blockquote>
             <p className="quote-author text-sm text-white/70 tracking-[0.18em] uppercase">
-              — Pastor Esau Banda
+              -- {resolvedAuthor}
             </p>
           </div>
 
@@ -73,11 +83,11 @@ export default function QuoteSection() {
       </div>
 
       {/* Bottom-right photo, partially visible like the reference */}
-      <div className="absolute -bottom-12 lg:-bottom-16 right-6 hidden md:block">
-        <div className="floating-photo relative w-[360px] h-[220px] lg:w-[460px] lg:h-[280px] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
+      <div className="absolute -bottom-12 sm:-bottom-14 md:-bottom-16 right-1/2 translate-x-1/2 md:right-6 md:translate-x-0">
+        <div className="floating-photo relative w-[88vw] max-w-[420px] h-[200px] sm:h-[220px] md:w-[360px] md:h-[220px] lg:w-[460px] lg:h-[280px] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
           <Image
-            src="/pastor/pastor-photo.jpg"
-            alt="Pastor Esau Banda"
+            src={resolvedImage}
+            alt={resolvedAuthor}
             fill
             className="object-cover object-top"
             style={{ filter: 'grayscale(25%) contrast(1.05)' }}

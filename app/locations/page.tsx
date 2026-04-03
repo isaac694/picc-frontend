@@ -5,39 +5,271 @@ import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
-const locations = [
+const regions = [
+  { id: 'lilongwe', label: 'Lilongwe' },
+  { id: 'central', label: 'Other Central' },
+  { id: 'southern', label: 'Southern Region' },
+  { id: 'northern', label: 'Northern Region' },
+  { id: 'international', label: 'International' },
+] as const;
+
+const branches = [
   {
+    region: 'lilongwe',
     name: 'PICC Headquarters',
-    address: 'Area 49, Lilongwe, Malawi',
-    district: 'Lilongwe',
-    details: 'Main campus and administrative offices.',
-    image: '/hero/hero-4.jpg',
-    directionsUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3086.6576842444136!2d33.7453956!3d-13.9240918!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1921d5bac6745c93%3A0x8c408a3504600518!2sPICC%20Headquarters!5e0!3m2!1sen!2sus!4v1730985600000!5m2!1sen!2sus',
+    pastor: 'Apostle Grace Malenga',
+    location: 'Area 49, New Gulliver',
+    phone: '+265 992 433 333',
+    email: 'apostle@picc.org.mw',
   },
   {
-    name: 'PICC Blantyre',
-    address: 'Blantyre, Malawi',
-    district: 'Blantyre',
-    details: 'Weekend services and community outreach.',
-    image: '/hero/hero-3.jpg',
-    directionsUrl: 'https://www.google.com/maps/dir/-15.911896,34.9530116/PICC+Blantyre+Central+Church,+Chirimba+Industrial+Area,+Chileka+Road,+Blantyre/@-15.8279659,34.9080129,12z/data=!3m1!4b1!4m9!4m8!1m1!4e1!1m5!1m1!1s0x18d8450025b58813:0x153845a2c8758ee3!2m2!1d35.0036706!2d-15.7538942?entry=ttu&g_ep=EgoyMDI2MDMxMS4wIKXMDSoASAFQAw%3D%3D',
+    region: 'lilongwe',
+    name: 'Old Town Mega Church',
+    pastor: 'Pastor John Mwale',
+    location: 'Malangalanga, Lilongwe',
+    phone: '+265 882 433 333',
+    email: 'john@picc.org.mw',
   },
   {
-    name: 'PICC Mzuzu',
-    address: 'Mzuzu, Malawi',
-    district: 'Mzuzu',
-    details: 'Sunday worship and weekly Bible study.',
-    image: '/hero/hero-5.jpg',
-    directionsUrl: '',
+    region: 'lilongwe',
+    name: 'Hope Tabernacle Mega Church',
+    pastor: 'Prophetess Doris Banda',
+    location: 'Airwing 4ways, Lilongwe',
+    phone: '+265 999 111 222',
+    email: 'doris@picc.org.mw',
+  },
+  {
+    region: 'lilongwe',
+    name: 'Area 25 Mega Church',
+    pastor: 'Elder Peter Chimala',
+    location: 'Area 25B, Lilongwe',
+    phone: '+265 888 222 333',
+    email: 'peter@picc.org.mw',
+  },
+  {
+    region: 'lilongwe',
+    name: 'Area 23 Mega Church',
+    pastor: 'Pastor Lucy Kadango',
+    location: 'Area 23, Lilongwe',
+    phone: '+265 997 333 444',
+    email: 'luce@picc.org.mw',
+  },
+  {
+    region: 'lilongwe',
+    name: 'Njewa Mega Church',
+    pastor: 'Pastor James Tembo',
+    location: 'Njewa',
+    phone: '+265 885 444 555',
+    email: 'james@picc.org.mw',
+  },
+  {
+    region: 'lilongwe',
+    name: 'Area 18 Mega Church',
+    pastor: 'Pastor Mary Banda',
+    location: 'Area 18, Lilongwe',
+    phone: '+265 996 555 666',
+    email: 'mary@picc.org.mw',
+  },
+  {
+    region: 'lilongwe',
+    name: 'Area 51 Mega Church',
+    pastor: 'Pastor David Mphande',
+    location: 'Lilongwe',
+    phone: '+265 886 666 777',
+    email: 'david@picc.org.mw',
+  },
+  {
+    region: 'lilongwe',
+    name: 'Lumbadzi Mega Church',
+    pastor: 'Pastor Grace Mwale',
+    location: 'Lumbadzi',
+    phone: '+265 995 777 888',
+    email: 'grace.mwale@picc.org.mw',
+  },
+  {
+    region: 'central',
+    name: 'Mponela Mega Church',
+    pastor: 'Pastor David Mwale',
+    location: 'Mponela',
+    phone: '+265 884 888 999',
+    email: 'david.mponela@picc.org.mw',
+  },
+  {
+    region: 'central',
+    name: 'Madisi Mega Church',
+    pastor: 'Pastor Paul Mwase',
+    location: 'Madisi',
+    phone: '+265 994 999 000',
+    email: 'paul@picc.org.mw',
+  },
+  {
+    region: 'central',
+    name: 'Kasungu Mega Church',
+    pastor: 'Pastor Esther Chawinga',
+    location: 'Kasungu',
+    phone: '+265 883 000 111',
+    email: 'esther@picc.org.mw',
+  },
+  {
+    region: 'central',
+    name: 'Salima Mega Church',
+    pastor: 'Pastor Joseph Mwenda',
+    location: 'Salima',
+    phone: '+265 993 111 222',
+    email: 'joseph@picc.org.mw',
+  },
+  {
+    region: 'central',
+    name: 'Nkhotakota Mega Church',
+    pastor: 'Pastor Anna Mwale',
+    location: 'Nkhotakota',
+    phone: '+265 887 222 333',
+    email: 'anna@picc.org.mw',
+  },
+  {
+    region: 'central',
+    name: 'Dedza Mega Church',
+    pastor: 'Pastor Samuel Mwale',
+    location: 'Dedza',
+    phone: '+265 998 333 444',
+    email: 'samuel@picc.org.mw',
+  },
+  {
+    region: 'southern',
+    name: 'Ntchewu Mega Church',
+    pastor: 'Pastor Elizabeth Mwale',
+    location: 'Ntchewu',
+    phone: '+265 889 444 555',
+    email: 'elizabeth@picc.org.mw',
+  },
+  {
+    region: 'southern',
+    name: 'Balaka Mega Church',
+    pastor: 'Pastor Joseph Mwale',
+    location: 'Balaka',
+    phone: '+265 999 555 666',
+    email: 'joseph.balaka@picc.org.mw',
+  },
+  {
+    region: 'southern',
+    name: 'Zomba Mega Church',
+    pastor: 'Pastor Mary Chawinga',
+    location: 'Zomba',
+    phone: '+265 881 666 777',
+    email: 'mary.zomba@picc.org.mw',
+  },
+  {
+    region: 'southern',
+    name: 'Thyolo Mega Church',
+    pastor: 'Pastor Grace Chawinga',
+    location: 'Thyolo',
+    phone: '+265 991 777 888',
+    email: 'grace.thyolo@picc.org.mw',
+  },
+  {
+    region: 'southern',
+    name: 'Mulanje Mega Church',
+    pastor: 'Pastor John Chawinga',
+    location: 'Mulanje',
+    phone: '+265 882 888 999',
+    email: 'john.mulanje@picc.org.mw',
+  },
+  {
+    region: 'southern',
+    name: 'Blantyre Central Church (BCC)',
+    pastor: 'Bishop Thomas Chikoti',
+    location: 'Blantyre',
+    phone: '+265 992 999 000',
+    email: 'bishop@picc.org.mw',
+  },
+  {
+    region: 'southern',
+    name: 'Zingwangwa Mega Church',
+    pastor: 'Pastor Lucy Mwale',
+    location: 'Zingwangwa, Blantyre',
+    phone: '+265 883 000 111',
+    email: 'luce.zing@picc.org.mw',
+  },
+  {
+    region: 'southern',
+    name: 'Limbe Mega Church',
+    pastor: 'Pastor Peter Mwale',
+    location: 'Limbe',
+    phone: '+265 993 111 222',
+    email: 'peter.limbe@picc.org.mw',
+  },
+  {
+    region: 'northern',
+    name: 'Mzuzu Mega Church',
+    pastor: 'Pastor David Chawinga',
+    location: 'Mzuzu',
+    phone: '+265 884 222 333',
+    email: 'david.mzuzu@picc.org.mw',
+  },
+  {
+    region: 'northern',
+    name: 'Karonga Mega Church',
+    pastor: 'Pastor Esther Mwale',
+    location: 'Karonga',
+    phone: '+265 994 333 444',
+    email: 'esther.karonga@picc.org.mw',
+  },
+  {
+    region: 'northern',
+    name: 'Mzimba Mega Church',
+    pastor: 'Pastor Paul Mwale',
+    location: 'Mzimba',
+    phone: '+265 885 444 555',
+    email: 'paul.mzimba@picc.org.mw',
+  },
+  {
+    region: 'northern',
+    name: 'Rumphi Mega Church',
+    pastor: 'Pastor Grace Mwale',
+    location: 'Rumphi',
+    phone: '+265 995 555 666',
+    email: 'grace.rumphi@picc.org.mw',
+  },
+  {
+    region: 'northern',
+    name: 'Jenda Mega Church',
+    pastor: 'Pastor Samuel Chawinga',
+    location: 'Jenda',
+    phone: '+265 886 666 777',
+    email: 'samuel.jenda@picc.org.mw',
+  },
+  {
+    region: 'northern',
+    name: 'Nkhatabay Mega Church',
+    pastor: 'Pastor Elizabeth Chawinga',
+    location: 'Nkhatabay',
+    phone: '+265 996 777 888',
+    email: 'elizabeth.nkhata@picc.org.mw',
+  },
+  {
+    region: 'international',
+    name: 'PICC UK Mega Church',
+    pastor: 'Tiwonge Kaluwa',
+    location: 'Nottingham, UK',
+    phone: '+44 790 408 381',
+    email: 'piccuk2024@gmail.com',
+  },
+  {
+    region: 'international',
+    name: 'PICC Harare Mega Church',
+    pastor: 'Joseph Chirwa',
+    location: '147 Westwood, Harare',
+    phone: '+263 788 803 790',
+    email: 'picchararemegachurch@gmail.com',
   },
 ];
 
 export default function LocationsPage() {
   const [search, setSearch] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<(typeof regions)[number]['id']>('lilongwe');
   const familySlides = [
     ['/moments/1.jpg', '/moments/2.jpg', '/moments/3.jpg'],
     ['/moments/4.jpg', '/moments/5.jpg', '/moments/6.jpg'],
@@ -52,18 +284,28 @@ export default function LocationsPage() {
   const [slideTransition, setSlideTransition] = useState(true);
 
   const filteredLocations = useMemo(() => {
-    const query = appliedSearch.trim().toLowerCase();
-    if (!query) return locations;
-    return locations.filter((location) =>
-      location.district.toLowerCase().includes(query)
-    );
-  }, [appliedSearch]);
+    const query = search.trim().toLowerCase();
+    return branches.filter((branch) => {
+      if (branch.region !== activeTab) return false;
+      if (!query) return true;
+      const haystack = [
+        branch.name,
+        branch.pastor,
+        branch.location,
+        branch.phone,
+        branch.email,
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [search, activeTab]);
 
   return (
     <>
       <Navigation />
       <main className="min-h-screen bg-white text-black">
-        <section className="relative overflow-hidden py-36 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
+        <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[url('/hero/hero-2.jpg')] bg-cover bg-center" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
@@ -85,55 +327,97 @@ export default function LocationsPage() {
             <div className="text-center mb-10">
               <h2 className="text-3xl md:text-4xl font-semibold">All Locations</h2>
             </div>
-            <div className="max-w-3xl mx-auto">
-              <div className="flex flex-col sm:flex-row gap-3">
+            <div className="max-w-2xl mx-auto">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/50" />
                 <Input
-                  placeholder="Search by district (e.g., Lilongwe)"
+                  placeholder="Search by church name, location, or pastor..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  className="w-full rounded-full border-black/10 bg-white shadow-sm"
+                  className="w-full rounded-full border-black/10 bg-white pl-11 shadow-sm"
                 />
-                <Button
-                  className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => setAppliedSearch(search)}
-                >
-                  Search
-                </Button>
               </div>
-              <p className="mt-3 text-xs text-black/60 text-center sm:text-left">
-                Search by district name (e.g., Lilongwe, Blantyre, Mzuzu).
-              </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
-              {filteredLocations.map((location) => (
-                <Card key={location.name} className="bg-white text-black border-black/10 overflow-hidden">
-                  <div className="relative h-56">
-                    <Image src={location.image} alt={location.name} fill className="object-cover" />
-                  </div>
-                  <div className="px-6 pb-6">
-                    <h3 className="text-lg font-semibold">{location.name}</h3>
-                    <p className="text-sm text-black/70 mt-1">{location.address}</p>
-                    <p className="text-sm text-black/60 mt-3">{location.details}</p>
-                    {location.directionsUrl ? (
-                      <Button asChild className="mt-5 bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        <a href={location.directionsUrl} target="_blank" rel="noreferrer">
-                          Get directions
-                        </a>
-                      </Button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="mt-5 inline-flex items-center justify-center rounded-md bg-secondary/40 px-4 py-2 text-sm font-medium text-secondary-foreground/70 cursor-not-allowed"
-                        disabled
-                      >
-                        Get directions
-                      </button>
-                    )}
-                  </div>
-                </Card>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {regions.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`rounded-full border px-4 py-2 text-sm transition ${
+                    activeTab === tab.id
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-white text-black border-black/10 hover:bg-black/5'
+                  }`}
+                >
+                  {tab.label}
+                </button>
               ))}
             </div>
+
+            <h3 className="mt-10 text-xl font-semibold text-center text-black">
+              {regions.find((tab) => tab.id === activeTab)?.label}
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+              {filteredLocations.map((branch) => {
+                const phoneHref = branch.phone.replace(/\s+/g, '');
+                const phoneDigits = branch.phone.replace(/[^\d]/g, '');
+                const whatsappHref = `https://wa.me/${phoneDigits}`;
+                const gmailHref = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+                  branch.email,
+                )}`;
+                return (
+                  <Card key={branch.name} className="bg-white text-black border-black/10 p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                        P
+                      </div>
+                      <h4 className="text-lg font-semibold">{branch.name}</h4>
+                    </div>
+                    <p className="text-sm text-black/70">
+                      <span className="font-semibold text-primary">Pastor:</span> {branch.pastor}
+                    </p>
+                    <p className="text-sm text-black/70 mt-2">
+                      <span className="font-semibold text-primary">Location:</span> {branch.location}
+                    </p>
+                    <p className="text-sm text-black/70 mt-2">
+                      <span className="font-semibold text-primary">Phone:</span> {branch.phone}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <a
+                        href={`tel:${phoneHref}`}
+                        className="rounded-md border border-black/10 px-3 py-2 text-xs font-semibold text-green-600 hover:bg-black/5"
+                      >
+                        Call
+                      </a>
+                      <a
+                        href={whatsappHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-md border border-black/10 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-black/5"
+                      >
+                        Text
+                      </a>
+                      <a
+                        href={gmailHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-md border border-black/10 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-black/5"
+                      >
+                        Email
+                      </a>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+            {filteredLocations.length === 0 && (
+              <p className="mt-8 text-center text-sm text-black/60">
+                No locations match your search in this region.
+              </p>
+            )}
           </div>
         </section>
 
@@ -169,7 +453,7 @@ export default function LocationsPage() {
                   <div key={slideIndex} className="min-w-full">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                       {slide.map((src, idx) => (
-                        <div key={`${src}-${idx}`} className="relative h-[22rem] md:h-[28rem]">
+                        <div key={`${src}-${idx}`} className="relative h-[16rem] sm:h-[20rem] md:h-[28rem]">
                           <Image
                             src={src}
                             alt="We are family moment"
@@ -207,3 +491,4 @@ export default function LocationsPage() {
     </>
   );
 }
+

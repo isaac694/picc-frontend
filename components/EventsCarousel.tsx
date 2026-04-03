@@ -1,11 +1,12 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { apiUrl } from '@/lib/api';
 
-const SLIDES = [
+const FALLBACK_SLIDES = [
   { src: '/events/event-1.jpg', alt: 'Event 1' },
   { src: '/events/event-2.jpg', alt: 'Event 2' },
   { src: '/events/event-3.jpg', alt: 'Event 3' },
@@ -13,55 +14,62 @@ const SLIDES = [
   { src: '/events/event-5.jpg', alt: 'Event 5' },
 ];
 
-// Cloned list: [last, ...all, first] for seamless infinite loop
-const EXTENDED = [SLIDES[SLIDES.length - 1], ...SLIDES, SLIDES[0]];
-
 const AUTO_PLAY_MS = 4000;
 
 export default function EventsCarousel() {
+  const [slides, setSlides] = useState(FALLBACK_SLIDES);
   // Start at index 1 (the real first slide, after the cloned last)
-  const [index, setIndex] = useState(1);
+  const [index, setIndex] = useState(slides.length > 1 ? 1 : 0);
   const [paused, setPaused] = useState(false);
   const [transition, setTransition] = useState(true);
   const [visible, setVisible] = useState(false);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const isJumping = useRef(false);
 
-  // Real dot index (0-based, maps back to SLIDES)
-  const dotIndex = index === 0
-    ? SLIDES.length - 1
-    : index === EXTENDED.length - 1
+  const extended = useMemo(() => {
+    if (slides.length <= 1) return slides;
+    return [slides[slides.length - 1], ...slides, slides[0]];
+  }, [slides]);
+
+  // Real dot index (0-based, maps back to slides)
+  const dotIndex = slides.length <= 1
+    ? 0
+    : index === 0
+    ? slides.length - 1
+    : index === extended.length - 1
     ? 0
     : index - 1;
 
   const goTo = useCallback((realIndex: number) => {
+    if (slides.length <= 1) return;
     setTransition(true);
     setIndex(realIndex + 1); // +1 because EXTENDED is offset by 1
-  }, []);
+  }, [slides.length]);
 
   const next = useCallback(() => {
-    if (isJumping.current) return;
+    if (isJumping.current || slides.length <= 1) return;
     setTransition(true);
     setIndex((i) => i + 1);
-  }, []);
+  }, [slides.length]);
 
   const prev = useCallback(() => {
-    if (isJumping.current) return;
+    if (isJumping.current || slides.length <= 1) return;
     setTransition(true);
     setIndex((i) => i - 1);
-  }, []);
+  }, [slides.length]);
 
   // When we land on a clone, silently jump to the real slide
   const handleTransitionEnd = useCallback(() => {
+    if (slides.length <= 1) return;
     if (index === 0) {
       // Landed on cloned-last -> jump to real last
       isJumping.current = true;
       setTransition(false);
-      setIndex(SLIDES.length);
+      setIndex(slides.length);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => { isJumping.current = false; });
       });
-    } else if (index === EXTENDED.length - 1) {
+    } else if (index === extended.length - 1) {
       // Landed on cloned-first -> jump to real first
       isJumping.current = true;
       setTransition(false);
@@ -70,14 +78,48 @@ export default function EventsCarousel() {
         requestAnimationFrame(() => { isJumping.current = false; });
       });
     }
-  }, [index]);
+  }, [index, slides.length, extended.length]);
 
   // Auto-play
   useEffect(() => {
-    if (paused) return;
+    if (paused || slides.length <= 1) return;
     const id = setInterval(next, AUTO_PLAY_MS);
     return () => clearInterval(id);
-  }, [paused, index, next]);
+  }, [paused, index, next, slides.length]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch(apiUrl('/api/events?take=12'));
+        if (!response.ok) return;
+        const data = await response.json();
+        const resolveImageUrl = (url: string) => {
+          if (url.startsWith('http')) return url;
+          if (url.startsWith('/uploads')) return apiUrl(url);
+          return url;
+        };
+
+        const incoming = (data.events || [])
+          .filter((event: any) => event.imageUrl && !String(event.imageUrl).includes('placeholder-event'))
+          .map((event: any, idx: number) => ({
+            src: resolveImageUrl(event.imageUrl),
+            alt: event.title || `Event ${idx + 1}`,
+          }))
+          .filter((event: any) => Boolean(event.src));
+        if (incoming.length > 0) {
+          setSlides(incoming);
+        }
+      } catch (error) {
+        // keep fallback slides
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  useEffect(() => {
+    setIndex(slides.length > 1 ? 1 : 0);
+  }, [slides.length]);
 
   // Scroll-triggered content animation
   useEffect(() => {
@@ -122,8 +164,11 @@ export default function EventsCarousel() {
               style={{ transform: `translateX(-${index * 100}%)` }}
               onTransitionEnd={handleTransitionEnd}
             >
-              {EXTENDED.map((slide, i) => (
-                <div key={`${slide.src}-${i}`} className="min-w-full h-[480px] md:h-[640px] relative">
+              {extended.map((slide, i) => (
+                <div
+                  key={`${slide.src}-${i}`}
+                  className="min-w-full h-[320px] sm:h-[420px] md:h-[520px] lg:h-[640px] relative"
+                >
                   <Image
                     src={slide.src}
                     alt={slide.alt}
@@ -136,35 +181,38 @@ export default function EventsCarousel() {
             </div>
 
             {/* Prev / Next */}
-            {[
-              { label: 'Previous slide', onClick: prev, side: 'left-3',  path: 'M15 18l-6-6 6-6' },
-              { label: 'Next slide',     onClick: next, side: 'right-3', path: 'M9 6l6 6-6 6'    },
-            ].map(({ label, onClick, side, path }) => (
-              <button
-                key={label}
-                aria-label={label}
-                onClick={onClick}
-                className={`absolute ${side} top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-black/60 transition-colors`}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d={path} />
-                </svg>
-              </button>
-            ))}
+            {slides.length > 1 &&
+              [
+                { label: 'Previous slide', onClick: prev, side: 'left-3',  path: 'M15 18l-6-6 6-6' },
+                { label: 'Next slide',     onClick: next, side: 'right-3', path: 'M9 6l6 6-6 6'    },
+              ].map(({ label, onClick, side, path }) => (
+                <button
+                  key={label}
+                  aria-label={label}
+                  onClick={onClick}
+                  className={`absolute ${side} top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-black/60 transition-colors`}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d={path} />
+                  </svg>
+                </button>
+              ))}
 
             {/* Dot indicators - always reflect real slide position */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-              {SLIDES.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goTo(i)}
-                  aria-label={`Go to slide ${i + 1}`}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    i === dotIndex ? 'bg-white' : 'bg-white/50'
-                  }`}
-                />
-              ))}
-            </div>
+            {slides.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                {slides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goTo(i)}
+                    aria-label={`Go to slide ${i + 1}`}
+                    className={`w-2 h-2 rounded-full transition-colors ${
+                      i === dotIndex ? 'bg-white' : 'bg-white/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Animated Content */}

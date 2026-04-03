@@ -56,27 +56,19 @@ export default function SermonsPage() {
       <Navigation />
       <main className="min-h-screen bg-background">
         {/* Hero */}
-        <section className="pt-10 md:pt-14">
-          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="relative overflow-hidden rounded-[28px] md:rounded-[36px]">
-              <div className="absolute inset-0">
-                <Image
-                  src="/hero/hero-6.jpg"
-                  alt="Latest sermons"
-                  fill
-                  className="object-cover"
-                  priority
-                />
+        <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
+          <div className="absolute inset-0">
+            <div className="absolute inset-0 bg-[url('/sermons/header.JPG')] bg-cover bg-center" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
+          </div>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl mt-24 md:mt-32">
+              <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3">
+                <a href="/" className="hover:text-white">Home</a>
+                <span className="text-white/50">/</span>
+                <a href="/sermons" className="hover:text-white">Sermons</a>
               </div>
-              <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/25" />
-              <div className="relative px-6 py-12 md:px-10 md:py-16 text-white">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3">
-                  Home / Sermons
-                </p>
-                <h1 className="text-3xl md:text-5xl font-semibold tracking-tight">
-                  Latest Sermons
-                </h1>
-              </div>
+              <h1 className="text-4xl md:text-6xl font-semibold mb-4">Latest Sermons</h1>
             </div>
           </div>
         </section>
@@ -136,3 +128,4 @@ export default function SermonsPage() {
     </>
   );
 }
+

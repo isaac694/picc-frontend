@@ -1,6 +1,5 @@
-
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -17,81 +16,80 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-
 :root {
-  --background: #FFFFFF;
-  --foreground: #1A1A1A;
-  --card: #FFFFFF;
-  --card-foreground: #1A1A1A;
-  --popover: #FFFFFF;
-  --popover-foreground: #1A1A1A;
-  --primary: #1E3A5F;
-  --primary-foreground: #FFFFFF;
-  --secondary: #D4AF37;
-  --secondary-foreground: #1A1A1A;
-  --muted: #F5F5F5;
-  --muted-foreground: #6B7280;
-  --accent: #D4AF37;
-  --accent-foreground: #1A1A1A;
-  --destructive: #DC2626;
-  --destructive-foreground: #FFFFFF;
-  --border: #E5E7EB;
-  --input: #F9FAFB;
-  --ring: #1E3A5F;
-  --chart-1: #1E3A5F;
-  --chart-2: #D4AF37;
-  --chart-3: #2D5A8C;
-  --chart-4: #B8860B;
-  --chart-5: #4B7BA7;
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #1e3a5f;
+  --primary-foreground: #ffffff;
+  --secondary: #d4af37;
+  --secondary-foreground: #1a1a1a;
+  --muted: #f5f5f5;
+  --muted-foreground: #6b7280;
+  --accent: #d4af37;
+  --accent-foreground: #1a1a1a;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #f9fafb;
+  --ring: #1e3a5f;
+  --chart-1: #1e3a5f;
+  --chart-2: #d4af37;
+  --chart-3: #2d5a8c;
+  --chart-4: #b8860b;
+  --chart-5: #4b7ba7;
   --radius: 0.625rem;
-  --sidebar: #F9FAFB;
-  --sidebar-foreground: #1A1A1A;
-  --sidebar-primary: #1E3A5F;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #D4AF37;
-  --sidebar-accent-foreground: #1A1A1A;
-  --sidebar-border: #E5E7EB;
-  --sidebar-ring: #1E3A5F;
+  --sidebar: #f9fafb;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #1e3a5f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #d4af37;
+  --sidebar-accent-foreground: #1a1a1a;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #1e3a5f;
 }
 
 .dark {
-  --background: #0F1419;
-  --foreground: #F9FAFB;
-  --card: #1A2332;
-  --card-foreground: #F9FAFB;
-  --popover: #1A2332;
-  --popover-foreground: #F9FAFB;
-  --primary: #60A5FA;
-  --primary-foreground: #1A2332;
-  --secondary: #D4AF37;
-  --secondary-foreground: #1A2332;
-  --muted: #2D3E52;
-  --muted-foreground: #9CA3AF;
-  --accent: #D4AF37;
-  --accent-foreground: #1A2332;
-  --destructive: #EF4444;
-  --destructive-foreground: #FFFFFF;
-  --border: #2D3E52;
-  --input: #1F2937;
-  --ring: #60A5FA;
-  --chart-1: #60A5FA;
-  --chart-2: #D4AF37;
-  --chart-3: #3B82F6;
-  --chart-4: #FCD34D;
-  --chart-5: #93C5FD;
-  --sidebar: #1A2332;
-  --sidebar-foreground: #F9FAFB;
-  --sidebar-primary: #60A5FA;
-  --sidebar-primary-foreground: #1A2332;
-  --sidebar-accent: #D4AF37;
-  --sidebar-accent-foreground: #1A2332;
-  --sidebar-border: #2D3E52;
-  --sidebar-ring: #60A5FA;
+  --background: #0f1419;
+  --foreground: #f9fafb;
+  --card: #1a2332;
+  --card-foreground: #f9fafb;
+  --popover: #1a2332;
+  --popover-foreground: #f9fafb;
+  --primary: #60a5fa;
+  --primary-foreground: #1a2332;
+  --secondary: #d4af37;
+  --secondary-foreground: #1a2332;
+  --muted: #2d3e52;
+  --muted-foreground: #9ca3af;
+  --accent: #d4af37;
+  --accent-foreground: #1a2332;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #2d3e52;
+  --input: #1f2937;
+  --ring: #60a5fa;
+  --chart-1: #60a5fa;
+  --chart-2: #d4af37;
+  --chart-3: #3b82f6;
+  --chart-4: #fcd34d;
+  --chart-5: #93c5fd;
+  --sidebar: #1a2332;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: #60a5fa;
+  --sidebar-primary-foreground: #1a2332;
+  --sidebar-accent: #d4af37;
+  --sidebar-accent-foreground: #1a2332;
+  --sidebar-border: #2d3e52;
+  --sidebar-ring: #60a5fa;
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -139,6 +137,6 @@ body {
   }
 }
 
-.hero-collage img {
+.hero-collage image {
   filter: grayscale(25%) brightness(0.62) saturate(0.8);
 }

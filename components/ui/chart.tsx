@@ -109,6 +109,7 @@ type ChartTooltipContentProps = React.ComponentProps<'div'> & {
   payload?: any[]
   label?: React.ReactNode
   labelFormatter?: (value: React.ReactNode, payload: any[]) => React.ReactNode
+  labelClassName?: string
   formatter?: (
     value: any,
     name: any,
@@ -270,7 +271,10 @@ function ChartLegendContent({
   verticalAlign = 'bottom',
   nameKey,
 }: React.ComponentProps<'div'> &
-  Pick<RechartsPrimitive.LegendProps, 'payload' | 'verticalAlign'> & {
+  Pick<
+    RechartsPrimitive.DefaultLegendContentProps,
+    'payload' | 'verticalAlign'
+  > & {
     hideIcon?: boolean
     nameKey?: string
   }) {

@@ -7,6 +7,15 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export default function EventsPage() {
   const [filter, setFilter] = useState<'today' | 'week' | 'month' | 'year'>('today');
@@ -14,21 +23,103 @@ export default function EventsPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [activeEvent, setActiveEvent] = useState<typeof events[number] | null>(null);
+  const [registerForm, setRegisterForm] = useState({
+    fullName: '',
+    residence: '',
+    phone: '',
+    email: '',
+  });
   const pageSize = 3;
 
   const events = [
     {
       id: 1,
-      title: 'Uniport Miracle Crusade',
-      date: '2026-03-27',
-      time: '5:00 PM - 9:00 PM',
-      image: '/events/event-1.jpg',
-      location: 'Abuja Campus, Lawn Tennis Court (Open Field)',
+      title: '2026 Chatroom',
+      date: '2026-04-11',
+      time: '8:00 AM - 4:00 PM',
+      image: '/events/upcoming.JPG',
+      location: 'African Bible College',
+      description:
+        'PICC Teens Ministry presents 2026 Chatroom. Registration fee MK18,000 (includes snacks and lunch). Age group 12–19 years. With Pastor Loyce Banda.',
     },
   ];
 
+  const parseTime = (timeValue: string) => {
+    const [time, period] = timeValue.trim().split(' ');
+    const [rawHours, rawMinutes] = time.split(':').map(Number);
+    let hours = rawHours;
+    const minutes = Number.isNaN(rawMinutes) ? 0 : rawMinutes;
+
+    if (period?.toUpperCase() === 'PM' && hours < 12) hours += 12;
+    if (period?.toUpperCase() === 'AM' && hours === 12) hours = 0;
+
+    return { hours, minutes };
+  };
+
+  const parseDateOnly = (dateValue: string) => {
+    const [year, month, day] = dateValue.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const getEventDateRange = (event: typeof events[number]) => {
+    const [startLabel, endLabel] = event.time.split(' - ');
+    const [year, month, day] = event.date.split('-').map(Number);
+    const startTime = parseTime(startLabel);
+    const endTime = parseTime(endLabel ?? startLabel);
+
+    const start = new Date(year, month - 1, day, startTime.hours, startTime.minutes, 0);
+    const end = new Date(year, month - 1, day, endTime.hours, endTime.minutes, 0);
+
+    return { start, end };
+  };
+
+  const formatIcsDate = (date: Date) =>
+    date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+
+  const escapeIcsText = (value: string) =>
+    value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+
+  const buildIcsFile = (event: typeof events[number]) => {
+    const { start, end } = getEventDateRange(event);
+    const dtStamp = formatIcsDate(new Date());
+    const dtStart = formatIcsDate(start);
+    const dtEnd = formatIcsDate(end);
+
+    return [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//PICC//Events//EN',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:${event.id}@picc-events`,
+      `DTSTAMP:${dtStamp}`,
+      `DTSTART:${dtStart}`,
+      `DTEND:${dtEnd}`,
+      `SUMMARY:${escapeIcsText(event.title)}`,
+      `LOCATION:${escapeIcsText(event.location)}`,
+      event.description ? `DESCRIPTION:${escapeIcsText(event.description)}` : null,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].filter(Boolean).join('\r\n');
+  };
+
+  const downloadIcs = (event: typeof events[number], filename: string) => {
+    const ics = buildIcsFile(event);
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredEvents = useMemo(() => {
-    const baseDate = selectedDate ? new Date(selectedDate) : new Date();
+    const baseDate = selectedDate ? parseDateOnly(selectedDate) : new Date();
     const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const endOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
     const startOfWeek = (date: Date) => {
@@ -45,9 +136,14 @@ export default function EventsPage() {
     const endOfYear = (date: Date) => new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999);
 
     let rangeStart = startOfDay(baseDate);
-    let rangeEnd = endOfDay(baseDate);
+    let rangeEnd: Date | null = endOfDay(baseDate);
 
-    if (filter === 'week') {
+    if (selectedDate) {
+      rangeStart = startOfDay(baseDate);
+      rangeEnd = endOfDay(baseDate);
+    } else if (filter === 'today') {
+      rangeEnd = null;
+    } else if (filter === 'week') {
       rangeStart = startOfWeek(baseDate);
       rangeEnd = endOfWeek(baseDate);
     } else if (filter === 'month') {
@@ -61,8 +157,12 @@ export default function EventsPage() {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     return events
-      .map((event) => ({ ...event, dateObj: new Date(event.date) }))
-      .filter((event) => event.dateObj >= rangeStart && event.dateObj <= rangeEnd)
+      .map((event) => ({ ...event, dateObj: parseDateOnly(event.date) }))
+      .filter((event) =>
+        rangeEnd
+          ? event.dateObj >= rangeStart && event.dateObj <= rangeEnd
+          : event.dateObj >= rangeStart,
+      )
       .filter((event) => {
         if (!normalizedSearch) return true;
         return (
@@ -98,10 +198,82 @@ export default function EventsPage() {
     return groups;
   }, [pagedEvents.items]);
 
-  const formattedSelectedDate = useMemo(() => {
-    const date = selectedDate ? new Date(selectedDate) : new Date();
+  const formattedToday = useMemo(() => {
+    const date = new Date();
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }, [selectedDate]);
+  }, []);
+
+  const calendarEvent = useMemo(() => {
+    return filteredEvents[0] ?? events[0] ?? null;
+  }, [filteredEvents, events]);
+
+  const calendarLinks = useMemo(() => {
+    if (!calendarEvent) return null;
+    const { start, end } = getEventDateRange(calendarEvent);
+    const details = [
+      calendarEvent.title,
+      calendarEvent.time,
+      calendarEvent.location,
+      calendarEvent.description,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const googleUrl = new URL('https://calendar.google.com/calendar/render');
+    googleUrl.searchParams.set('action', 'TEMPLATE');
+    googleUrl.searchParams.set('text', calendarEvent.title);
+    googleUrl.searchParams.set('dates', `${formatIcsDate(start)}/${formatIcsDate(end)}`);
+    googleUrl.searchParams.set('details', details);
+    googleUrl.searchParams.set('location', calendarEvent.location);
+
+    const outlookBase = new URL('https://outlook.office.com/calendar/0/deeplink/compose');
+    outlookBase.searchParams.set('path', '/calendar/action/compose');
+    outlookBase.searchParams.set('rru', 'addevent');
+    outlookBase.searchParams.set('subject', calendarEvent.title);
+    outlookBase.searchParams.set('startdt', start.toISOString());
+    outlookBase.searchParams.set('enddt', end.toISOString());
+    outlookBase.searchParams.set('body', details);
+    outlookBase.searchParams.set('location', calendarEvent.location);
+
+    const outlookLive = new URL('https://outlook.live.com/calendar/0/deeplink/compose');
+    outlookLive.searchParams.set('path', '/calendar/action/compose');
+    outlookLive.searchParams.set('rru', 'addevent');
+    outlookLive.searchParams.set('subject', calendarEvent.title);
+    outlookLive.searchParams.set('startdt', start.toISOString());
+    outlookLive.searchParams.set('enddt', end.toISOString());
+    outlookLive.searchParams.set('body', details);
+    outlookLive.searchParams.set('location', calendarEvent.location);
+
+    return {
+      google: googleUrl.toString(),
+      outlook365: outlookBase.toString(),
+      outlookLive: outlookLive.toString(),
+    };
+  }, [calendarEvent]);
+
+  const openRegister = (event: typeof events[number]) => {
+    setActiveEvent(event);
+    setIsRegisterOpen(true);
+  };
+
+  const submitRegistration = () => {
+    if (!activeEvent) return;
+    const subject = `Event Registration: ${activeEvent.title}`;
+    const body = [
+      `Event: ${activeEvent.title}`,
+      `Date: ${activeEvent.date}`,
+      '',
+      `Full name: ${registerForm.fullName}`,
+      `Area of residence: ${registerForm.residence}`,
+      `Phone number: ${registerForm.phone}`,
+      `Email address: ${registerForm.email}`,
+    ].join('\n');
+
+    const mailto = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(
+      subject,
+    )}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+  };
 
   return (
     <>
@@ -125,13 +297,32 @@ export default function EventsPage() {
                     }}
                   />
                 </div>
-                <Button className="rounded-full px-6 bg-[#7C9BFF] text-white hover:bg-[#6B8BF5]">
-                  Find Events
-                </Button>
-                <div className="ml-auto flex items-center gap-3 text-xs text-foreground/60">
-                  <button className="text-primary font-semibold">List</button>
-                  <button className="hover:text-foreground">Month</button>
-                  <button className="hover:text-foreground">Day</button>
+                <div className="relative flex items-center gap-2">
+                  <Button className="rounded-full px-6 bg-[#7C9BFF] text-white hover:bg-[#6B8BF5]">
+                    Find Events
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCalendarOpen((open) => !open)}
+                    className="rounded-full px-4 text-foreground/80 hover:text-foreground"
+                  >
+                    Pick Date
+                  </Button>
+                  {isCalendarOpen && (
+                    <div className="absolute right-0 z-10 mt-12 w-56 rounded-xl border border-border bg-white p-3 shadow-lg">
+                      <input
+                        type="date"
+                        className="w-full rounded-lg border border-border px-3 py-2 text-xs text-foreground"
+                        value={selectedDate}
+                        onChange={(event) => {
+                          setSelectedDate(event.target.value);
+                          setPage(1);
+                          setIsCalendarOpen(false);
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -154,27 +345,9 @@ export default function EventsPage() {
                   <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-primary/70">▾</span>
                 </div>
                 <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsCalendarOpen((open) => !open)}
-                    className="rounded-full border border-border bg-white px-3 py-1 text-foreground/80 hover:text-foreground"
-                  >
-                    {formattedSelectedDate}
-                  </button>
-                  {isCalendarOpen && (
-                    <div className="absolute z-10 mt-2 w-56 rounded-xl border border-border bg-white p-3 shadow-lg">
-                      <input
-                        type="date"
-                        className="w-full rounded-lg border border-border px-3 py-2 text-xs text-foreground"
-                        value={selectedDate}
-                        onChange={(event) => {
-                          setSelectedDate(event.target.value);
-                          setPage(1);
-                          setIsCalendarOpen(false);
-                        }}
-                      />
-                    </div>
-                  )}
+                  <span className="rounded-full border border-border bg-white px-3 py-1 text-foreground/80">
+                    {formattedToday}
+                  </span>
                 </div>
               </div>
 
@@ -206,11 +379,13 @@ export default function EventsPage() {
                               </p>
                               <p className="text-sm text-foreground/60 mt-2">{event.location}</p>
                               <div className="mt-4">
-                                <Link href="/contact">
-                                  <Button variant="outline" className="rounded-full px-5 text-sm">
-                                    Learn More
-                                  </Button>
-                                </Link>
+                                <Button
+                                  variant="outline"
+                                  className="rounded-full px-5 text-sm"
+                                  onClick={() => openRegister(event)}
+                                >
+                                  Register for Event
+                                </Button>
                               </div>
                             </div>
                             <div className="relative aspect-[3/4] max-w-[240px] w-full justify-self-center md:justify-self-end overflow-hidden rounded-xl shadow-sm">
@@ -250,13 +425,158 @@ export default function EventsPage() {
             </div>
 
             <div className="mt-6 flex justify-end">
-              <button className="rounded-full bg-black text-white px-6 py-3 text-sm font-semibold shadow-lg">
-                Subscribe to calendar
-              </button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button className="rounded-full bg-black text-white px-6 py-3 text-sm font-semibold shadow-lg hover:bg-black/90">
+                    Subscribe to calendar
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  side="bottom"
+                  sideOffset={8}
+                  avoidCollisions={false}
+                  className="w-64 p-2"
+                >
+                  <p className="px-2 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/50">
+                    Add to calendar
+                  </p>
+                  {calendarEvent && calendarLinks ? (
+                    <div className="mt-2 grid gap-1">
+                      <a
+                        href={calendarLinks.google}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg px-3 py-2 text-sm hover:bg-muted"
+                      >
+                        Google Calendar
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => downloadIcs(calendarEvent, 'picc-event.ics')}
+                        className="rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                      >
+                        iCalendar
+                      </button>
+                      <a
+                        href={calendarLinks.outlook365}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg px-3 py-2 text-sm hover:bg-muted"
+                      >
+                        Outlook 365
+                      </a>
+                      <a
+                        href={calendarLinks.outlookLive}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg px-3 py-2 text-sm hover:bg-muted"
+                      >
+                        Outlook Live
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => downloadIcs(calendarEvent, 'picc-event.ics')}
+                        className="rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                      >
+                        Export .ics file
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadIcs(calendarEvent, 'picc-event-outlook.ics')}
+                        className="rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                      >
+                        Export Outlook .ics file
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="px-3 py-2 text-sm text-foreground/60">
+                      No upcoming events to subscribe.
+                    </p>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </section>
       </main>
+      <Dialog
+        open={isRegisterOpen}
+        onOpenChange={(open) => {
+          setIsRegisterOpen(open);
+          if (!open) {
+            setActiveEvent(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Register for Event</DialogTitle>
+            <DialogDescription>
+              {activeEvent ? `You're registering for ${activeEvent.title}.` : 'Event registration'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm">
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Full name</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={registerForm.fullName}
+                onChange={(event) =>
+                  setRegisterForm((prev) => ({ ...prev, fullName: event.target.value }))
+                }
+                type="text"
+                placeholder="Your full name"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Area of residence</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={registerForm.residence}
+                onChange={(event) =>
+                  setRegisterForm((prev) => ({ ...prev, residence: event.target.value }))
+                }
+                type="text"
+                placeholder="City or area"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Phone number</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={registerForm.phone}
+                onChange={(event) =>
+                  setRegisterForm((prev) => ({ ...prev, phone: event.target.value }))
+                }
+                type="tel"
+                placeholder="Phone number"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Email address</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={registerForm.email}
+                onChange={(event) =>
+                  setRegisterForm((prev) => ({ ...prev, email: event.target.value }))
+                }
+                type="email"
+                placeholder="Email address"
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button
+              className="rounded-full px-5"
+              onClick={submitRegistration}
+              disabled={!activeEvent}
+            >
+              Register
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Footer />
     </>
   );

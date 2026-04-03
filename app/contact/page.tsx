@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Image from 'next/image';
 import Footer from '@/components/Footer';
@@ -8,9 +8,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiUrl } from '@/lib/api';
-import { Mail, Phone, MapPin, Clock } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ContactPage() {
+  const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const familySlides = [
     ['/moments/1.jpg', '/moments/2.jpg', '/moments/3.jpg'],
     ['/moments/4.jpg', '/moments/5.jpg', '/moments/6.jpg'],
@@ -31,6 +32,40 @@ export default function ContactPage() {
     subject: '',
     message: ''
   });
+
+  useEffect(() => {
+    const imageKeys = [
+      'contact-header-bg',
+      'contact-locate-image',
+      'contact-send-message-image',
+    ];
+
+    const fetchImages = async () => {
+      const entries = await Promise.all(
+        imageKeys.map(async (key) => {
+          try {
+            const response = await fetch(apiUrl(`/api/site-content/${key}`));
+            if (!response.ok) return [key, ''] as const;
+            const data = await response.json();
+            const imageUrl = data.imageUrl
+              ? data.imageUrl.startsWith('http')
+                ? data.imageUrl
+                : apiUrl(data.imageUrl)
+              : '';
+            return [key, imageUrl] as const;
+          } catch (error) {
+            return [key, ''] as const;
+          }
+        })
+      );
+
+      setPageImages(Object.fromEntries(entries));
+    };
+
+    fetchImages();
+  }, []);
+
+  const resolveImage = (key: string, fallback: string) => pageImages[key] || fallback;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -63,9 +98,14 @@ export default function ContactPage() {
       <Navigation />
       <main className="min-h-screen">
         {/* Hero Section */}
-        <section className="relative overflow-hidden py-32 md:py-40 text-white rounded-b-[36px] md:rounded-b-[48px]">
+        <section className="relative overflow-hidden py-24 sm:py-28 md:py-40 text-white rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('/hero/hero-3.jpg')] bg-cover bg-center" />
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url(${resolveImage('contact-header-bg', '/images/our-church.JPG')})`,
+              }}
+            />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
           </div>
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -92,28 +132,30 @@ export default function ContactPage() {
                 <p className="text-foreground/70 mb-6">
                   We&apos;re here to help. Reach out anytime and we&apos;ll respond as soon as we can.
                 </p>
-                <div className="space-y-4 text-sm">
-                  <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-secondary mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-foreground">Phone</p>
-                      <p className="text-foreground/70">+265 992 433 333</p>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm">
+                  <div>
+                    <p className="font-semibold text-foreground">ADDRESS:</p>
+                    <p className="text-foreground/80 leading-relaxed">
+                      Malawi, Lilongwe, Area 49, Baghdad
+                    </p>
+                    <p className="text-foreground/80 leading-relaxed">
+                      PICC Headquarters
+                    </p>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <Mail className="w-5 h-5 text-secondary mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-foreground">Email</p>
-                      <p className="text-foreground/70">info@piccworldwide.org</p>
-                    </div>
+                  <div>
+                    <p className="font-semibold text-foreground">SERVICE TIMES:</p>
+                    <ul className="space-y-2 text-foreground/80">
+                      <li>Sunday - 7:00 AM - 12:00 PM</li>
+                      <li>Tuesday - 5:30 AM - 7:30 PM</li>
+                      <li>Wednesday - 9:00 AM - 12:00 PM</li>
+                      <li>Thursday - 6:00 PM - 8:00 PM</li>
+                      <li>Saturday - 8:30 AM - 11:00 AM</li>
+                    </ul>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-secondary mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-foreground">Location</p>
-                      <p className="text-foreground/70">Malawi, Lilongwe, Area 49, Baghdad</p>
-                    </div>
-                  </div>
+                </div>
+                <div className="mt-8 text-sm text-foreground/80">
+                  <p><span className="font-semibold text-foreground">PHONE:</span> +265 992 433 333</p>
+                  <p><span className="font-semibold text-foreground">EMAIL:</span> info@piccworldwide.org</p>
                 </div>
               </div>
 
@@ -131,15 +173,75 @@ export default function ContactPage() {
           </div>
         </section>
 
+        {/* Locate Us Section */}
+        <section className="py-16 sm:py-20 md:py-24 bg-background">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl md:text-4xl font-semibold text-center text-foreground mb-10">
+              Locate Us
+            </h2>
+
+            <div className="relative w-full max-w-4xl mx-auto aspect-[16/9] rounded-3xl overflow-hidden shadow-xl">
+              <Image
+                src={resolveImage('contact-locate-image', '/images/our-church.JPG')}
+                alt="PICC Headquarters"
+                fill
+                className="object-cover"
+              />
+            </div>
+
+            <div className="max-w-4xl mx-auto mt-10">
+              <h3 className="text-xl md:text-2xl font-semibold text-foreground mb-4">
+                Pentecost International Christian Center Headquarters
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm">
+                <div>
+                  <p className="text-[11px] tracking-[0.24em] uppercase text-foreground/60 font-bold mb-3">
+                    Address:
+                  </p>
+                  <p className="text-foreground/80 leading-relaxed">
+                    Malawi, Lilongwe, Area 49, Baghdad
+                  </p>
+                  <p className="text-foreground/80 leading-relaxed">
+                    PICC Headquarters
+                  </p>
+                  <div className="mt-4 text-sm text-foreground">
+                    <a
+                      href="https://www.google.com/maps/place/PICC+Headquarters/@-13.9240918,33.745401,17z/data=!3m1!4b1!4m6!3m5!1s0x1921d5bac6745c93:0x8c408a3504600518!8m2!3d-13.9240918!4d33.7479759!16s%2Fg%2F11ghzntzhp?entry=ttu&g_ep=EgoyMDI2MDMxNS4wIKXMDSoASAFQAw%3D%3D"
+                      className="underline underline-offset-4"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Get Directions
+                    </a>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] tracking-[0.24em] uppercase text-foreground/60 font-bold mb-3">
+                    Service Times:
+                  </p>
+                  <p className="text-foreground/80">Sunday - 10:00 AM - 11:30 AM</p>
+                  <p className="text-foreground/80">Wednesday - 7:00 PM - 8:30 PM</p>
+                  <p className="text-foreground/80">Friday - 6:00 PM - 7:30 PM</p>
+                  <div className="mt-4">
+                    <Link href="/locations" className="underline underline-offset-4 text-foreground">
+                      Locate A Branch Near You
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Contact Info & Form Section */}
-        <section className="py-20 md:py-24 bg-background">
+        <section className="py-16 sm:py-20 md:py-24 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
               {/* Image */}
-              <div className="relative min-h-[520px] rounded-2xl overflow-hidden">
+              <div className="relative min-h-[360px] sm:min-h-[440px] md:min-h-[520px] rounded-2xl overflow-hidden">
                 <Image
-                  src="/hero/hero-4.jpg"
-                  alt="PICC community"
+                  src={resolveImage('contact-send-message-image', '/images/send-message-2.JPG')}
+                  alt="Send us a message"
                   fill
                   className="object-cover"
                 />
@@ -222,7 +324,7 @@ export default function ContactPage() {
 
 
         {/* We Are Family Section */}
-        <section className="py-20 md:py-24 bg-background">
+        <section className="py-16 sm:py-20 md:py-24 bg-background">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
               <h2 className="text-3xl md:text-4xl font-bold text-primary">We Are Family</h2>
@@ -253,7 +355,7 @@ export default function ContactPage() {
                   <div key={slideIndex} className="min-w-full">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                       {slide.map((src, idx) => (
-                        <div key={`${src}-${idx}`} className="relative h-[22rem] md:h-[28rem]">
+                        <div key={`${src}-${idx}`} className="relative h-[16rem] sm:h-[20rem] md:h-[28rem]">
                           <Image
                             src={src}
                             alt="We are family moment"
@@ -292,3 +394,4 @@ export default function ContactPage() {
     </>
   );
 }
+

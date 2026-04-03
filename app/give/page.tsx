@@ -1,155 +1,366 @@
+'use client';
+
+import { useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, TrendingUp, Users } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 export default function GivePage() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    currency: 'MWK',
+    amount: '',
+    fullName: '',
+    email: '',
+    phone: '',
+    phoneCountry: '+265',
+    bookletNumber: '',
+    givingDate: '',
+    givingType: '',
+    specialRecipient: '',
+    reason: '',
+    paymentMethod: 'airtel',
+  });
+
+  const normalizePaychanguPhone = (countryCode: string, rawPhone: string) => {
+    const digits = rawPhone.replace(/\D/g, '');
+    if (countryCode === '+265') {
+      return digits.replace(/^0+/, '');
+    }
+    return `${countryCode}${digits}`;
+  };
+
+  const handleChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError(null);
+    setFormSuccess(null);
+
+    if (!formData.amount || !formData.fullName || !formData.phone) {
+      setFormError('Please complete the required fields before submitting.');
+      return;
+    }
+
+    const nameParts = formData.fullName.trim().split(/\s+/).filter(Boolean);
+    if (nameParts.length < 2) {
+      setFormError('Please enter your full name (first and last).');
+      return;
+    }
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
+
+    const normalizedPhone = normalizePaychanguPhone(formData.phoneCountry, formData.phone);
+    if (formData.phoneCountry === '+265' && normalizedPhone.length !== 9) {
+      setFormError('Please enter a valid Malawi mobile number with 9 digits.');
+      return;
+    }
+
+    const resolvedReason =
+      formData.reason || formData.givingType || 'Giving';
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(apiUrl('/api/paychangu/initialize'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: formData.amount,
+          firstName,
+          lastName,
+          phone: normalizedPhone,
+          paymentMethod: formData.paymentMethod,
+          reason: resolvedReason,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        const errorMessage =
+          typeof data?.error === 'string'
+            ? data.error
+            : data?.message || JSON.stringify(data?.error) || 'Payment initialization failed.';
+        throw new Error(errorMessage);
+      }
+
+      setFormSuccess('Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment.');
+      setFormData((prev) => ({
+        ...prev,
+        amount: '',
+        reason: '',
+      }));
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Something went wrong.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <Navigation />
       <main className="min-h-screen">
-        {/* Hero Section */}
-        <section className="py-20 md:py-24 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Support Our Ministry</h1>
-            <p className="text-lg text-primary-foreground/90">
-              Your generous giving enables us to continue our mission of worship, fellowship, and community service.
-            </p>
-          </div>
-        </section>
-
-        {/* Impact Section */}
-        <section className="py-20 md:py-24 bg-background">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-primary mb-12">Your Impact</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-                <Heart className="w-12 h-12 text-secondary mx-auto mb-4" />
-                <h3 className="font-bold text-xl text-primary mb-2">Local Ministry</h3>
-                <p className="text-foreground/70">
-                  Your gifts support our worship services, prayer programs, and community outreach initiatives.
-                </p>
-              </Card>
-
-              <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-                <Users className="w-12 h-12 text-secondary mx-auto mb-4" />
-                <h3 className="font-bold text-xl text-primary mb-2">Community Care</h3>
-                <p className="text-foreground/70">
-                  We support families in crisis, community food banks, and various benevolence programs.
-                </p>
-              </Card>
-
-              <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-                <TrendingUp className="w-12 h-12 text-secondary mx-auto mb-4" />
-                <h3 className="font-bold text-xl text-primary mb-2">Growth & Education</h3>
-                <p className="text-foreground/70">
-                  We invest in discipleship programs, youth ministries, and spiritual education initiatives.
-                </p>
-              </Card>
+        {/* Header */}
+        <section className="bg-background">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-14 pb-6 md:pb-8">
+            <div className="text-sm text-foreground/60 flex items-center gap-3">
+              <a href="/" className="hover:text-foreground">Home</a>
+              <span className="text-foreground/30">›</span>
+              <span className="text-foreground/40">Give</span>
             </div>
           </div>
         </section>
 
-        {/* Giving Options */}
-        <section className="py-20 md:py-24 bg-muted/30">
+        {/* Donate Now */}
+        <section className="py-16 sm:py-20 md:py-24 bg-muted/30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-primary mb-12">Ways to Give</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Online Giving */}
-              <Card className="p-8 hover:shadow-lg transition-shadow">
-                <h3 className="font-bold text-2xl text-primary mb-4">Online Giving</h3>
-                <p className="text-foreground/70 mb-6">
-                  Give securely through our online portal. You can set up one-time donations or recurring monthly giving.
-                </p>
-                <ul className="space-y-2 text-sm text-foreground/70 mb-6">
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-secondary rounded-full"></span>
-                    Secure payment processing
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-secondary rounded-full"></span>
-                    Recurring giving options
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-secondary rounded-full"></span>
-                    Automatic tax receipts
-                  </li>
-                </ul>
-                <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                  Give Online
-                </Button>
-              </Card>
+            <h2 className="text-3xl font-bold text-primary mb-12">Give Now</h2>
+            <form onSubmit={handleSubmit} className="space-y-10">
+              <div className="rounded-3xl bg-background p-8 shadow-sm border border-border/60">
+                <div className="border-2 border-foreground/30 rounded-2xl p-6 sm:p-8">
+                  <div className="text-center space-y-2">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-foreground/20 bg-white shadow-sm">
+                      <Image
+                        src="/logo.png"
+                        alt="PICC logo"
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 object-contain"
+                      />
+                    </div>
+                    <p className="text-xs uppercase tracking-[0.35em] text-foreground/50">
+                      Pentecost International Christian Centre
+                    </p>
+                    <p className="text-xs italic text-foreground/60">
+                      Bringing hope to the hopeless and life to the dying
+                    </p>
+                    <h3 className="text-2xl font-semibold text-foreground">Kingdom Investments Records</h3>
+                    <p className="text-sm italic text-foreground/60">Honour the Lord with your Substance</p>
+                  </div>
 
-              {/* Other Methods */}
-              <Card className="p-8 hover:shadow-lg transition-shadow">
-                <h3 className="font-bold text-2xl text-primary mb-4">Other Ways to Give</h3>
-                <p className="text-foreground/70 mb-6">
-                  We also accept gifts through several other methods for your convenience.
-                </p>
-                <ul className="space-y-3 text-sm text-foreground/70 mb-6">
-                  <li>
-                    <strong className="text-primary">Check:</strong> Send to 123 Main Street, City, State 12345
-                  </li>
-                  <li>
-                    <strong className="text-primary">Cash:</strong> Offering envelopes available in church
-                  </li>
-                  <li>
-                    <strong className="text-primary">Bank Transfer:</strong> Contact the office for details
-                  </li>
-                  <li>
-                    <strong className="text-primary">Mobile App:</strong> Use our giving app available on iOS and Android
-                  </li>
-                </ul>
-                <Button variant="outline" className="w-full">
-                  Learn More
-                </Button>
-              </Card>
-            </div>
-          </div>
-        </section>
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <label className="flex items-center gap-3">
+                      <span className="min-w-[110px] text-foreground/70">Booklet No.</span>
+                      <input
+                        type="text"
+                        name="bookletNumber"
+                        value={formData.bookletNumber}
+                        onChange={handleChange}
+                        className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                        placeholder="..............."
+                      />
+                    </label>
+                    <label className="flex items-center gap-3">
+                      <span className="min-w-[70px] text-foreground/70">Date</span>
+                      <input
+                        type="date"
+                        name="givingDate"
+                        value={formData.givingDate}
+                        onChange={handleChange}
+                        className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                      />
+                    </label>
+                  </div>
 
-        {/* FAQ Section */}
-        <section className="py-20 md:py-24 bg-background">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-primary mb-12">Frequently Asked Questions</h2>
-            <div className="space-y-6">
-              {[
-                {
-                  q: 'Is my giving tax-deductible?',
-                  a: 'Yes, our church is a 501(c)(3) nonprofit organization. All monetary gifts are tax-deductible. You will receive a tax receipt for your records.'
-                },
-                {
-                  q: 'Can I set up recurring giving?',
-                  a: 'Absolutely! You can set up monthly, weekly, or custom giving schedules through our online giving platform or by contacting the church office.'
-                },
-                {
-                  q: 'How is my money used?',
-                  a: 'Our finances support worship services, community outreach, youth programs, staff compensation, and building maintenance. Our full annual budget is available upon request.'
-                },
-                {
-                  q: 'Is my giving information private?',
-                  a: 'Yes, all giving information is confidential and secure. We never share donor information with third parties.'
-                },
-              ].map((item, i) => (
-                <div key={i} className="border-b border-border pb-6">
-                  <h3 className="font-bold text-lg text-primary mb-2">{item.q}</h3>
-                  <p className="text-foreground/70">{item.a}</p>
+                  <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground/70 mb-3">Tick where appropriate</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        {[
+                          'First Fruit',
+                          'Tithe',
+                          'Project Offering',
+                          'Thanks Giving',
+                          "Prophet's Offering",
+                        ].map((label) => (
+                          <label key={label} className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name="givingType"
+                              value={label}
+                              checked={formData.givingType === label}
+                              onChange={handleChange}
+                              className="h-4 w-4 border border-foreground/40"
+                            />
+                            <span className="text-foreground/70">{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <label className="mt-4 flex items-center gap-3 text-sm">
+                        <span className="min-w-[130px] text-foreground/70">Special Recipient</span>
+                        <input
+                          type="text"
+                          name="specialRecipient"
+                          value={formData.specialRecipient}
+                          onChange={handleChange}
+                          className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                          placeholder="........................"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-[110px_1fr] items-center gap-3 text-sm">
+                        <span className="text-foreground/70">Amount</span>
+                        <div className="flex items-center gap-3">
+                          <select
+                            id="currency"
+                            name="currency"
+                            value={formData.currency}
+                            onChange={handleChange}
+                            className="h-10 rounded-full border border-border bg-background px-3 text-xs"
+                          >
+                            <option value="MWK">MWK</option>
+                            <option value="USD">USD</option>
+                          </select>
+                          <input
+                            id="amount"
+                            type="number"
+                            name="amount"
+                            value={formData.amount}
+                            onChange={handleChange}
+                            placeholder="0.00"
+                            min="1"
+                            step="any"
+                            inputMode="decimal"
+                            className="h-10 flex-1 rounded-full border border-border bg-background px-3 text-sm"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <label className="flex items-center gap-3 text-sm">
+                        <span className="min-w-[110px] text-foreground/70">Full Names</span>
+                        <input
+                          type="text"
+                          name="fullName"
+                          value={formData.fullName}
+                          onChange={handleChange}
+                          className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                          placeholder="...................................."
+                          required
+                        />
+                      </label>
+
+                      <div className="grid grid-cols-1 gap-3 text-sm">
+                        <label className="flex items-center gap-3">
+                          <span className="min-w-[110px] text-foreground/70">Email</span>
+                          <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            className="flex-1 border-b border-dashed border-foreground/40 bg-transparent py-1 outline-none"
+                            placeholder="name@email.com"
+                          />
+                        </label>
+                        <div className="grid grid-cols-[120px_1fr] gap-3">
+                          <select
+                            id="phoneCountry"
+                            name="phoneCountry"
+                            value={formData.phoneCountry}
+                            onChange={handleChange}
+                            className="h-10 rounded-full border border-border bg-background px-3 text-xs"
+                          >
+                            <option value="+265">Malawi (+265)</option>
+                            <option value="+233">Ghana (+233)</option>
+                            <option value="+234">Nigeria (+234)</option>
+                            <option value="+254">Kenya (+254)</option>
+                            <option value="+255">Tanzania (+255)</option>
+                            <option value="+260">Zambia (+260)</option>
+                            <option value="+27">South Africa (+27)</option>
+                            <option value="+44">United Kingdom (+44)</option>
+                            <option value="+1">United States (+1)</option>
+                          </select>
+                          <input
+                            id="phone"
+                            type="tel"
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleChange}
+                            placeholder="Phone number"
+                            className="h-10 rounded-full border border-border bg-background px-3 text-sm"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+              <div className="rounded-3xl bg-background p-8 shadow-sm border border-border/60">
+                <h3 className="text-xl font-semibold text-primary mb-6">Payment Info</h3>
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-foreground">Payment Method</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label htmlFor="paymentMethodAirtel" className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3">
+                      <input
+                        id="paymentMethodAirtel"
+                        type="radio"
+                        name="paymentMethod"
+                        value="airtel"
+                        checked={formData.paymentMethod === 'airtel'}
+                        onChange={handleChange}
+                      />
+                      <span className="text-sm font-medium text-foreground">Airtel Money</span>
+                    </label>
+                    <label htmlFor="paymentMethodMpamba" className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3">
+                      <input
+                        id="paymentMethodMpamba"
+                        type="radio"
+                        name="paymentMethod"
+                        value="mpamba"
+                        checked={formData.paymentMethod === 'mpamba'}
+                        onChange={handleChange}
+                      />
+                      <span className="text-sm font-medium text-foreground">Mpamba</span>
+                    </label>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col gap-2">
+                  <label htmlFor="reason" className="text-sm font-medium text-foreground">
+                    Giving Reason
+                  </label>
+                  <input
+                    id="reason"
+                    type="text"
+                    name="reason"
+                    value={formData.reason}
+                    onChange={handleChange}
+                    placeholder="Giving Reason"
+                    className="h-12 rounded-full border border-border bg-background px-4 text-sm"
+                  />
+                </div>
+                <div className="mt-6">
+                  <Button
+                    type="submit"
+                    className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Processing...' : 'Give'}
+                  </Button>
+                </div>
+                {formError && (
+                  <p className="mt-4 text-sm text-red-600">{formError}</p>
+                )}
+                {formSuccess && (
+                  <p className="mt-4 text-sm text-green-600">{formSuccess}</p>
+                )}
+              </div>
+            </form>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-16 md:py-20 bg-primary text-primary-foreground">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Thank You for Your Support!</h2>
-            <p className="mb-6 text-primary-foreground/90">
-              Your generosity makes a real difference in our church and community.
-            </p>
-          </div>
-        </section>
       </main>
       <Footer />
     </>

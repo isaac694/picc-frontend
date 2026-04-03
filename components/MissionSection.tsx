@@ -3,7 +3,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
-export default function MissionSection() {
+type MissionSectionProps = {
+  imageUrl?: string;
+};
+
+export default function MissionSection({ imageUrl }: MissionSectionProps) {
+  const resolvedImage = imageUrl || '/images/pastor-preaching-bw.jpg';
   return (
     <section className="py-20 md:py-28 lg:py-36 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -11,10 +16,10 @@ export default function MissionSection() {
           {/* Left: Grayscale image of pastor preaching */}
           <div className="relative aspect-[4/5] md:aspect-square lg:aspect-[4/5] overflow-hidden rounded-2xl shadow-xl">
             <Image
-              src="/images/pastor-preaching-bw.jpg"  // ← Add your actual photo here (upload to public/images/)
+              src={resolvedImage}
               alt="Our Pastor / Founder Preaching the Gospel"
               fill
-              className="object-cover contrast-125"  // grayscale + slight contrast for impact
+              className="object-cover contrast-125"
               sizes="(max-width: 768px) 100vw, 50vw"
               priority
             />
