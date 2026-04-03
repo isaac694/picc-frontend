@@ -117,7 +117,10 @@ export default function EventsPage() {
     let rangeStart = startOfDay(baseDate);
     let rangeEnd: Date | null = endOfDay(baseDate);
 
-    if (filter === 'today') {
+    if (selectedDate) {
+      rangeStart = startOfDay(baseDate);
+      rangeEnd = endOfDay(baseDate);
+    } else if (filter === 'today') {
       rangeEnd = null;
     } else if (filter === 'week') {
       rangeStart = startOfWeek(baseDate);
@@ -174,10 +177,10 @@ export default function EventsPage() {
     return groups;
   }, [pagedEvents.items]);
 
-  const formattedSelectedDate = useMemo(() => {
-    const date = selectedDate ? new Date(selectedDate) : new Date();
+  const formattedToday = useMemo(() => {
+    const date = new Date();
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }, [selectedDate]);
+  }, []);
 
   const calendarEvent = useMemo(() => {
     return filteredEvents[0] ?? events[0] ?? null;
@@ -249,9 +252,33 @@ export default function EventsPage() {
                     }}
                   />
                 </div>
-                <Button className="rounded-full px-6 bg-[#7C9BFF] text-white hover:bg-[#6B8BF5]">
-                  Find Events
-                </Button>
+                <div className="relative flex items-center gap-2">
+                  <Button className="rounded-full px-6 bg-[#7C9BFF] text-white hover:bg-[#6B8BF5]">
+                    Find Events
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCalendarOpen((open) => !open)}
+                    className="rounded-full px-4 text-foreground/80 hover:text-foreground"
+                  >
+                    Pick Date
+                  </Button>
+                  {isCalendarOpen && (
+                    <div className="absolute right-0 z-10 mt-12 w-56 rounded-xl border border-border bg-white p-3 shadow-lg">
+                      <input
+                        type="date"
+                        className="w-full rounded-lg border border-border px-3 py-2 text-xs text-foreground"
+                        value={selectedDate}
+                        onChange={(event) => {
+                          setSelectedDate(event.target.value);
+                          setPage(1);
+                          setIsCalendarOpen(false);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-foreground/60">
@@ -273,27 +300,9 @@ export default function EventsPage() {
                   <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-primary/70">▾</span>
                 </div>
                 <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsCalendarOpen((open) => !open)}
-                    className="rounded-full border border-border bg-white px-3 py-1 text-foreground/80 hover:text-foreground"
-                  >
-                    {formattedSelectedDate}
-                  </button>
-                  {isCalendarOpen && (
-                    <div className="absolute z-10 mt-2 w-56 rounded-xl border border-border bg-white p-3 shadow-lg">
-                      <input
-                        type="date"
-                        className="w-full rounded-lg border border-border px-3 py-2 text-xs text-foreground"
-                        value={selectedDate}
-                        onChange={(event) => {
-                          setSelectedDate(event.target.value);
-                          setPage(1);
-                          setIsCalendarOpen(false);
-                        }}
-                      />
-                    </div>
-                  )}
+                  <span className="rounded-full border border-border bg-white px-3 py-1 text-foreground/80">
+                    {formattedToday}
+                  </span>
                 </div>
               </div>
 
