@@ -3,25 +3,47 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { apiUrl } from '@/lib/api';
 
-async function getDevotions() {
+type DevotionsResult = {
+  devotions: any[];
+  debugMessage?: string;
+};
+
+async function getDevotions(): Promise<DevotionsResult> {
   try {
-    const response = await fetch(apiUrl('/api/devotions/all?take=500'), {
+    const response = await fetch(apiUrl('/api/devotions?take=500'), {
       next: { revalidate: 300 },
     });
 
     if (!response.ok) {
-      return [];
+      return { devotions: [], debugMessage: 'Devotions list endpoint returned a non-OK response.' };
     }
 
     const data = await response.json();
-    return data.devotions || [];
+    const devotions = data.devotions || [];
+
+    if (devotions.length > 0) {
+      return { devotions };
+    }
+
+    const latestResponse = await fetch(apiUrl('/api/devotions/latest'), {
+      next: { revalidate: 300 },
+    });
+    if (!latestResponse.ok) {
+      return { devotions: [], debugMessage: 'Latest devotion endpoint returned a non-OK response.' };
+    }
+    const latestData = await latestResponse.json();
+    return {
+      devotions: latestData.devotion ? [latestData.devotion] : [],
+      debugMessage: latestData.devotion ? undefined : 'Latest devotion endpoint returned no devotion.',
+    };
   } catch (error) {
-    return [];
+    return { devotions: [], debugMessage: 'Unable to reach devotion endpoints.' };
   }
 }
 
 export default async function DevotionsPage() {
-  const devotions = await getDevotions();
+  const { devotions, debugMessage } = await getDevotions();
+  const showDebug = process.env.NODE_ENV !== 'production' && debugMessage;
 
   return (
     <>
@@ -47,6 +69,11 @@ export default async function DevotionsPage() {
                   <p className="text-foreground/70">
                     No devotions have been published yet. Check back soon.
                   </p>
+                  {showDebug ? (
+                    <p className="mt-3 text-xs text-foreground/50">
+                      Debug: {debugMessage}
+                    </p>
+                  ) : null}
                   <div className="mt-4">
                     <Link href="/">
                       <span className="text-primary hover:underline">Return home</span>
