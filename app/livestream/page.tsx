@@ -59,7 +59,6 @@ const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'form' }> 
 export default function LivestreamPage() {
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
-  const [mobileSheetSize, setMobileSheetSize] = useState<'compact' | 'balanced' | 'focus'>('balanced');
   const [testimonyForm, setTestimonyForm] = useState({
     fullName: '',
     phone: '',
@@ -353,18 +352,6 @@ export default function LivestreamPage() {
     }
   };
 
-  const mobilePanelHeight = mobileSheetSize === 'compact'
-    ? 'h-[45vh]'
-    : mobileSheetSize === 'focus'
-      ? 'h-[75vh]'
-      : 'h-[62vh]';
-
-  const mobilePanelSpacerHeight = mobileSheetSize === 'compact'
-    ? 'h-[calc(45vh+16px)]'
-    : mobileSheetSize === 'focus'
-      ? 'h-[calc(75vh+16px)]'
-      : 'h-[calc(62vh+16px)]';
-
   return (
     <>
       <Navigation />
@@ -453,10 +440,6 @@ export default function LivestreamPage() {
             </div>
           </div>
         </section>
-
-        {activeTool && (
-          <div className={`md:hidden ${mobilePanelSpacerHeight}`} />
-        )}
 
         {activeTool && (
           <>
@@ -830,10 +813,21 @@ export default function LivestreamPage() {
               </div>
             </section>
             <section className="md:hidden">
-              <div className="fixed bottom-0 left-0 right-0 z-40">
-                <div className="rounded-t-3xl border border-white/10 bg-[#1f1f1f] shadow-[0_-12px_40px_rgba(0,0,0,0.55)]">
+              <div className="fixed inset-0 z-40 bg-black">
+                <div className="h-[40vh] bg-black">
+                  <iframe
+                    className="h-full w-full"
+                    data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
+                    id="yt-mobile"
+                    src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
+                    title={featuredVideo?.title || 'Sunday Livestream'}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+                <div className="flex h-[60vh] flex-col overflow-hidden border-t border-white/10 bg-[#111111]">
                   <div className="border-b border-white/10 px-4 py-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white/70">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-white/70">
                       {TOOL_TABS.map((tool) => (
                         <button
                           key={tool.key}
@@ -848,43 +842,18 @@ export default function LivestreamPage() {
                           {tool.label}
                         </button>
                       ))}
-                    </div>
-                    <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-white/60">
-                      <span>Panel size:</span>
                       <button
                         type="button"
-                        onClick={() => setMobileSheetSize('compact')}
-                        className={`rounded-full px-2 py-1 ${
-                          mobileSheetSize === 'compact' ? 'bg-white text-black' : 'bg-white/10 text-white'
-                        }`}
+                        onClick={() => setActiveTool(null)}
+                        className="ml-auto rounded-full bg-white/10 px-3 py-1 text-xs text-white hover:bg-white/20"
                       >
-                        Compact
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMobileSheetSize('balanced')}
-                        className={`rounded-full px-2 py-1 ${
-                          mobileSheetSize === 'balanced' ? 'bg-white text-black' : 'bg-white/10 text-white'
-                        }`}
-                      >
-                        Balanced
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMobileSheetSize('focus')}
-                        className={`rounded-full px-2 py-1 ${
-                          mobileSheetSize === 'focus' ? 'bg-white text-black' : 'bg-white/10 text-white'
-                        }`}
-                      >
-                        Focus
+                        Close
                       </button>
                     </div>
                   </div>
-                  <div
-                    className={`overflow-y-auto ${mobilePanelHeight}`}
-                  >
+                  <div className="flex-1 overflow-y-auto px-4 py-5 text-white">
                     {activeEmbedTool && (
-                      <div className="aspect-[4/3] w-full bg-black">
+                      <div className="aspect-[4/3] w-full bg-black mb-4">
                         <iframe
                           className="h-full w-full"
                           src={activeEmbedTool.url}
@@ -894,7 +863,7 @@ export default function LivestreamPage() {
                       </div>
                     )}
                     {activeTool === 'testimony' && (
-                      <div className="px-4 py-5 text-white">
+                      <div>
                         <h3 className="text-lg font-semibold mb-2">Submit a testimony</h3>
                         <p className="text-white/70 mb-5">
                           Share what God has done in your life and encourage others.
@@ -1207,8 +1176,7 @@ export default function LivestreamPage() {
           </>
         )}
 
-        {/* Search Section */}
-        <section className="py-10 md:py-12 bg-black border-b border-white/10">
+        {/* Search Section */}        <section className="py-10 md:py-12 bg-black border-b border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           </div>
         </section>
