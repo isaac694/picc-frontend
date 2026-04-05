@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
 import { apiUrl } from '@/lib/api';
+import { sendGivingNotification } from '@/lib/email';
 
 declare global {
   interface Window {
@@ -348,6 +349,26 @@ export default function LivestreamPage() {
             ? paymentData.error
             : paymentData?.message || JSON.stringify(paymentData?.error) || 'Payment initialization failed.';
         throw new Error(errorMessage);
+      }
+
+      try {
+        await sendGivingNotification({
+          userEmail: giveForm.email || undefined,
+          churchEmail: 'info@piccworldwide.org',
+          fullName: giveForm.fullName,
+          amount: giveForm.amount,
+          currency: giveForm.currency,
+          phone: normalizedPhone,
+          phoneCountry: giveForm.phoneCountry,
+          paymentMethod: giveForm.paymentMethod,
+          reason: resolvedReason,
+          givingType: giveForm.givingType,
+          specialRecipient: giveForm.specialRecipient,
+          givingDate: giveForm.givingDate,
+          bookletNumber: giveForm.bookletNumber,
+        });
+      } catch (emailError) {
+        console.error('Giving notification email failed:', emailError);
       }
 
       setFormSuccess('Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment.');

@@ -7,6 +7,7 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { apiUrl } from '@/lib/api';
+import { sendGivingNotification } from '@/lib/email';
 
 export default function GivePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,6 +118,26 @@ export default function GivePage() {
             ? paymentData.error
             : paymentData?.message || JSON.stringify(paymentData?.error) || 'Payment initialization failed.';
         throw new Error(errorMessage);
+      }
+
+      try {
+        await sendGivingNotification({
+          userEmail: formData.email || undefined,
+          churchEmail: 'info@piccworldwide.org',
+          fullName: formData.fullName,
+          amount: formData.amount,
+          currency: formData.currency,
+          phone: normalizedPhone,
+          phoneCountry: formData.phoneCountry,
+          paymentMethod: formData.paymentMethod,
+          reason: resolvedReason,
+          givingType: formData.givingType,
+          specialRecipient: formData.specialRecipient,
+          givingDate: formData.givingDate,
+          bookletNumber: formData.bookletNumber,
+        });
+      } catch (emailError) {
+        console.error('Giving notification email failed:', emailError);
       }
 
       setFormSuccess('Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment.');
