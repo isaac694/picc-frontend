@@ -304,7 +304,33 @@ export default function LivestreamPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(apiUrl('/api/paychangu/initialize'), {
+      // First, save the giving record to the database
+      const givingResponse = await fetch(apiUrl('/api/giving'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookletNumber: giveForm.bookletNumber,
+          givingDate: giveForm.givingDate,
+          givingType: giveForm.givingType,
+          specialRecipient: giveForm.specialRecipient,
+          amount: parseFloat(giveForm.amount),
+          currency: giveForm.currency,
+          fullName: giveForm.fullName,
+          email: giveForm.email,
+          phone: normalizedPhone,
+          phoneCountry: giveForm.phoneCountry,
+          paymentMethod: giveForm.paymentMethod,
+          reason: resolvedReason,
+        }),
+      });
+
+      if (!givingResponse.ok) {
+        const givingData = await givingResponse.json();
+        throw new Error(givingData.error || 'Failed to save giving record');
+      }
+
+      // Then proceed with PayChangu payment
+      const paymentResponse = await fetch(apiUrl('/api/paychangu/initialize'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -317,12 +343,12 @@ export default function LivestreamPage() {
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok) {
+      const paymentData = await paymentResponse.json();
+      if (!paymentResponse.ok) {
         const errorMessage =
-          typeof data?.error === 'string'
-            ? data.error
-            : data?.message || JSON.stringify(data?.error) || 'Payment initialization failed.';
+          typeof paymentData?.error === 'string'
+            ? paymentData.error
+            : paymentData?.message || JSON.stringify(paymentData?.error) || 'Payment initialization failed.';
         throw new Error(errorMessage);
       }
 

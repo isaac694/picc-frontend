@@ -24,6 +24,18 @@ export default function FormsPage() {
     situation: '',
     testimony: '',
   });
+  const [prayerForm, setPrayerForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    country: '',
+    bornAgain: '',
+    areaOfNeed: '',
+    request: '',
+  });
 
   const handleMemberChange = (field: keyof typeof memberForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setMemberForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -61,6 +73,31 @@ export default function FormsPage() {
       '',
       'What God has done:',
       testimonyForm.testimony,
+    ].join('\n');
+
+    window.location.href = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handlePrayerChange = (field: keyof typeof prayerForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setPrayerForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handlePrayerSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const subject = 'Prayer Request Submission';
+    const body = [
+      `Full Name: ${prayerForm.fullName}`,
+      `Email: ${prayerForm.email || 'N/A'}`,
+      `Phone: ${prayerForm.phone || 'N/A'}`,
+      `Address: ${prayerForm.address || 'N/A'}`,
+      `City: ${prayerForm.city || 'N/A'}`,
+      `State: ${prayerForm.state || 'N/A'}`,
+      `Country: ${prayerForm.country || 'N/A'}`,
+      `Born Again: ${prayerForm.bornAgain || 'N/A'}`,
+      `Area of Need: ${prayerForm.areaOfNeed || 'N/A'}`,
+      '',
+      'Prayer Request:',
+      prayerForm.request,
     ].join('\n');
 
     window.location.href = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -303,7 +340,7 @@ export default function FormsPage() {
               <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-10 items-stretch">
                 <div className="flex flex-col justify-center">
                   <h2 className="text-3xl md:text-4xl font-semibold mb-4">Prayer Request</h2>
-                  <form className="space-y-4">
+                  <form className="space-y-4" onSubmit={handlePrayerSubmit}>
                     <div>
                       <label className="text-xs uppercase tracking-[0.2em] text-white/70">
                         Full Name
@@ -311,6 +348,9 @@ export default function FormsPage() {
                       <input
                         type="text"
                         placeholder="Full Name"
+                        required
+                        value={prayerForm.fullName}
+                        onChange={handlePrayerChange('fullName')}
                         className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                       />
                     </div>
@@ -322,6 +362,8 @@ export default function FormsPage() {
                         <input
                           type="email"
                           placeholder="Email Address"
+                          value={prayerForm.email}
+                          onChange={handlePrayerChange('email')}
                           className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                         />
                       </div>
@@ -332,6 +374,8 @@ export default function FormsPage() {
                         <input
                           type="tel"
                           placeholder="Mobile Number"
+                          value={prayerForm.phone}
+                          onChange={handlePrayerChange('phone')}
                           className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                         />
                       </div>
@@ -344,6 +388,8 @@ export default function FormsPage() {
                         <input
                           type="text"
                           placeholder="Address"
+                          value={prayerForm.address}
+                          onChange={handlePrayerChange('address')}
                           className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                         />
                       </div>
@@ -354,6 +400,8 @@ export default function FormsPage() {
                         <input
                           type="text"
                           placeholder="City"
+                          value={prayerForm.city}
+                          onChange={handlePrayerChange('city')}
                           className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                         />
                       </div>
@@ -366,6 +414,8 @@ export default function FormsPage() {
                         <input
                           type="text"
                           placeholder="State"
+                          value={prayerForm.state}
+                          onChange={handlePrayerChange('state')}
                           className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                         />
                       </div>
@@ -376,9 +426,60 @@ export default function FormsPage() {
                         <input
                           type="text"
                           placeholder="Country"
+                          value={prayerForm.country}
+                          onChange={handlePrayerChange('country')}
                           className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                         />
                       </div>
+                    </div>
+                    <div>
+                      <label className="text-xs uppercase tracking-[0.2em] text-white/70">
+                        Are you born again?
+                      </label>
+                      <div className="mt-2 grid grid-cols-2 gap-3">
+                        {['Yes', 'No'].map((option) => (
+                          <label
+                            key={option}
+                            className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/90 px-3 py-2 text-sm text-foreground shadow-sm"
+                          >
+                            <input
+                              type="radio"
+                              name="bornAgain"
+                              value={option}
+                              required
+                              checked={prayerForm.bornAgain === option}
+                              onChange={handlePrayerChange('bornAgain')}
+                            />
+                            <span>{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs uppercase tracking-[0.2em] text-white/70">
+                        Area of Need
+                      </label>
+                      <select
+                        value={prayerForm.areaOfNeed}
+                        onChange={handlePrayerChange('areaOfNeed')}
+                        className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
+                        required
+                      >
+                        <option value="">Select area of need</option>
+                        <option value="Spiritual Growth">Spiritual Growth</option>
+                        <option value="Healing">Healing</option>
+                        <option value="Financial">Financial</option>
+                        <option value="Family">Family</option>
+                        <option value="Marriage">Marriage</option>
+                        <option value="Children">Children</option>
+                        <option value="Career/Job">Career/Job</option>
+                        <option value="Education">Education</option>
+                        <option value="Relationships">Relationships</option>
+                        <option value="Deliverance">Deliverance</option>
+                        <option value="Guidance">Guidance</option>
+                        <option value="Salvation">Salvation</option>
+                        <option value="Other">Other</option>
+                      </select>
                     </div>
                     <div>
                       <label className="text-xs uppercase tracking-[0.2em] text-white/70">
@@ -387,6 +488,9 @@ export default function FormsPage() {
                       <textarea
                         rows={4}
                         placeholder="What would you like us to pray with you about?"
+                        required
+                        value={prayerForm.request}
+                        onChange={handlePrayerChange('request')}
                         className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                       />
                     </div>
