@@ -35,8 +35,8 @@ type YouTubeVideo = {
 
 const TOOL_CONFIG = {
   bible: {
-    label: 'Bible',
-    url: 'https://app.fetch.bible',
+    label: 'YouBible',
+    url: 'https://www.youversion.com/bible',
   },
   notepad: {
     label: 'Notepad',
@@ -51,7 +51,7 @@ const TOOL_CONFIG = {
 const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'form' }> = [
   { key: 'chat', label: 'Live Chat', kind: 'embed' },
   { key: 'notepad', label: 'Notepad', kind: 'embed' },
-  { key: 'bible', label: 'Bible', kind: 'embed' },
+  { key: 'bible', label: 'YouBible', kind: 'embed' },
   { key: 'testimony', label: 'Send Testimony', kind: 'form' },
   { key: 'give', label: 'Give', kind: 'form' },
 ];
@@ -402,7 +402,7 @@ export default function LivestreamPage() {
                       className="inline-flex items-center gap-2 rounded-full bg-[#EAF2FF] px-3 py-1 text-xs font-medium text-[#1E4FA3] hover:bg-[#DCEAFF] transition-colors"
                     >
                       <BookOpenText size={12} />
-                      Bible
+                      YouBible
                     </button>
                     <button
                       type="button"
