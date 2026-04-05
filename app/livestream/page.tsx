@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import LivestreamFooter from '@/components/LivestreamFooter';
 import LiveChat from '@/components/LiveChat';
+import QuillEditor from '@/components/QuillEditor';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
@@ -39,15 +40,11 @@ const TOOL_CONFIG = {
     label: 'Bible',
     url: 'https://app.fetch.bible',
   },
-  notepad: {
-    label: 'Notepad',
-    url: 'https://notepadweb.co/',
-  },
 } as const;
 
 const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'component' | 'form' }> = [
   { key: 'chat', label: 'Live Chat', kind: 'component' },
-  { key: 'notepad', label: 'Notepad', kind: 'embed' },
+  { key: 'notepad', label: 'Notepad', kind: 'component' },
   { key: 'bible', label: 'Bible', kind: 'embed' },
   { key: 'testimony', label: 'Send Testimony', kind: 'form' },
   { key: 'give', label: 'Give', kind: 'form' },
@@ -56,6 +53,7 @@ const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'component
 export default function LivestreamPage() {
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
+  const [notepadContent, setNotepadContent] = useState('');
   const [testimonyForm, setTestimonyForm] = useState({
     fullName: '',
     phone: '',
@@ -87,7 +85,7 @@ export default function LivestreamPage() {
   const CHANNEL_ID = 'UC5iA3dWaUBlP_PBlGSQvgNQ';
   const FALLBACK_HERO_ID = 'ydTADwZRquA';
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
-  const activeEmbedTool = activeTool && activeTool !== 'testimony' && activeTool !== 'give' && activeTool !== 'chat'
+  const activeEmbedTool = activeTool && activeTool !== 'testimony' && activeTool !== 'give' && activeTool !== 'chat' && activeTool !== 'notepad'
     ? TOOL_CONFIG[activeTool]
     : null;
 
@@ -501,6 +499,34 @@ export default function LivestreamPage() {
                   {activeTool === 'chat' && (
                     <div className="h-[400px] w-full bg-black">
                       <LiveChat />
+                    </div>
+                  )}
+                  {activeTool === 'notepad' && (
+                    <div className="bg-black text-white p-6">
+                      <div className="space-y-3">
+                        <div>
+                          <h3 className="text-lg font-semibold mb-2">Notepad</h3>
+                          <p className="text-white/70 text-sm mb-4">
+                            Take notes during the livestream. Your notes are saved locally in your browser.
+                          </p>
+                        </div>
+                        <div className="bg-white rounded-lg overflow-hidden">
+                          <QuillEditor
+                            value={notepadContent}
+                            onChange={setNotepadContent}
+                            placeholder="Type your notes here..."
+                            modules={{
+                              toolbar: [
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{ list: 'ordered' }, { list: 'bullet' }],
+                                ['blockquote', 'code-block'],
+                                ['link'],
+                                ['clean'],
+                              ],
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
                   {activeTool === 'testimony' && (
