@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import LivestreamFooter from '@/components/LivestreamFooter';
+import LiveChat from '@/components/LiveChat';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
@@ -35,23 +36,19 @@ type YouTubeVideo = {
 
 const TOOL_CONFIG = {
   bible: {
-    label: 'YouBible',
-    url: 'https://www.youversion.com/bible',
+    label: 'Bible',
+    url: 'https://app.fetch.bible',
   },
   notepad: {
     label: 'Notepad',
     url: 'https://notepadweb.co/',
   },
-  chat: {
-    label: 'Live Chat',
-    url: 'https://organizations.minnit.chat/159105126892909/c/Main?embed',
-  },
 } as const;
 
-const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'form' }> = [
-  { key: 'chat', label: 'Live Chat', kind: 'embed' },
+const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'component' | 'form' }> = [
+  { key: 'chat', label: 'Live Chat', kind: 'component' },
   { key: 'notepad', label: 'Notepad', kind: 'embed' },
-  { key: 'bible', label: 'YouBible', kind: 'embed' },
+  { key: 'bible', label: 'Bible', kind: 'embed' },
   { key: 'testimony', label: 'Send Testimony', kind: 'form' },
   { key: 'give', label: 'Give', kind: 'form' },
 ];
@@ -90,7 +87,7 @@ export default function LivestreamPage() {
   const CHANNEL_ID = 'UC6auo8Q1xb5cgyY_pGJbfdw';
   const FALLBACK_HERO_ID = 'ydTADwZRquA';
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
-  const activeEmbedTool = activeTool && activeTool !== 'testimony' && activeTool !== 'give'
+  const activeEmbedTool = activeTool && activeTool !== 'testimony' && activeTool !== 'give' && activeTool !== 'chat'
     ? TOOL_CONFIG[activeTool]
     : null;
 
@@ -402,7 +399,7 @@ export default function LivestreamPage() {
                       className="inline-flex items-center gap-2 rounded-full bg-[#EAF2FF] px-3 py-1 text-xs font-medium text-[#1E4FA3] hover:bg-[#DCEAFF] transition-colors"
                     >
                       <BookOpenText size={12} />
-                      YouBible
+                      Bible
                     </button>
                     <button
                       type="button"
@@ -473,6 +470,11 @@ export default function LivestreamPage() {
                         title={activeEmbedTool.label}
                         allow="clipboard-write; fullscreen"
                       />
+                    </div>
+                  )}
+                  {activeTool === 'chat' && (
+                    <div className="h-[400px] w-full bg-black">
+                      <LiveChat />
                     </div>
                   )}
                   {activeTool === 'testimony' && (
@@ -791,7 +793,9 @@ export default function LivestreamPage() {
                         ? 'Testimony Form'
                         : activeTool === 'give'
                           ? 'Giving Form'
-                        : activeEmbedTool?.label}
+                          : activeTool === 'chat'
+                            ? 'Live Chat'
+                            : activeEmbedTool?.label}
                       {activeTool === 'notepad' && (
                         <span className="ml-2 text-white/50">
                           Tip: use the save/download button inside the notepad.
@@ -860,6 +864,11 @@ export default function LivestreamPage() {
                           title={activeEmbedTool.label}
                           allow="clipboard-write; fullscreen"
                         />
+                      </div>
+                    )}
+                    {activeTool === 'chat' && (
+                      <div className="h-[300px] w-full bg-black mb-4">
+                        <LiveChat />
                       </div>
                     )}
                     {activeTool === 'testimony' && (
