@@ -84,7 +84,7 @@ export default function LivestreamPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const CHANNEL_ID = 'UC6auo8Q1xb5cgyY_pGJbfdw';
+  const CHANNEL_ID = 'UC5iA3dWaUBlP_PBlGSQvgNQ';
   const FALLBACK_HERO_ID = 'ydTADwZRquA';
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
   const activeEmbedTool = activeTool && activeTool !== 'testimony' && activeTool !== 'give' && activeTool !== 'chat'
