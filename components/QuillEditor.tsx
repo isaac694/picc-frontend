@@ -44,6 +44,7 @@ export default function QuillEditor({
       if (!isMounted || !editorContainerRef.current) return;
 
       const Quill = mod.default;
+      editorContainerRef.current.innerHTML = '';
       editorRef.current = new Quill(editorContainerRef.current, {
         theme,
         placeholder,
@@ -72,6 +73,9 @@ export default function QuillEditor({
       if (editorRef.current) {
         editorRef.current.off('text-change');
         editorRef.current = null;
+      }
+      if (editorContainerRef.current) {
+        editorContainerRef.current.innerHTML = '';
       }
     };
   }, [isClient, modules, placeholder, readOnly, theme, value]);
