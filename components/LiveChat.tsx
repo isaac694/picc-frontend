@@ -18,7 +18,7 @@ interface ChatMessage {
 
 interface User {
   id: string;
-  username: string;
+  name: string;
   email: string;
 }
 
@@ -356,7 +356,7 @@ export default function LiveChat() {
       <div className="flex items-center justify-between p-4 border-b border-white/10">
         <div>
           <h3 className="text-lg font-semibold text-white">Live Chat</h3>
-          <p className="text-sm text-white/70">Welcome, {user.username}!</p>
+          <p className="text-sm text-white/70">Welcome, {user.name}!</p>
         </div>
         <Button
           variant="outline"
