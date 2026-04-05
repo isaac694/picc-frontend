@@ -102,7 +102,7 @@ export default function GivePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: formData.amount,
+          amount: parseFloat(formData.amount),
           firstName,
           lastName,
           phone: normalizedPhone,
