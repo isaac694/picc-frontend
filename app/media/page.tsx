@@ -80,6 +80,21 @@ const BOOKS = [
   },
 ];
 
+const MAGAZINES = [
+  {
+    title: 'Church Magazine Issue 1',
+    cover: '/magazine/magazine-1.jpeg',
+  },
+  {
+    title: 'Church Magazine Issue 2',
+    cover: '/magazine/magazine-2.JPG',
+  },
+  {
+    title: 'Church Magazine Issue 3',
+    cover: '/magazine/magazine-3.jpeg',
+  },
+];
+
 const EVENT_GALLERY = [
   { title: 'Worship Service', category: 'Worship', image: '/hero/hero-10.JPG' },
   { title: 'Community Outreach', category: 'Outreach', image: '/hero/hero-8.JPG' },
@@ -285,6 +300,48 @@ export default function MediaPage() {
                       Download (Coming Soon)
                     </Button>
                   )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="py-16 sm:py-20 md:py-24 bg-background">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start mb-12">
+              <div>
+                <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-3">
+                  Magazines
+                </p>
+                <h2 className="text-3xl md:text-4xl font-semibold text-foreground">
+                  Church Magazines
+                </h2>
+                <p className="text-foreground/70 mt-4 max-w-xl">
+                  Explore recent church magazine covers. Full issues will be available soon.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {MAGAZINES.map((item) => (
+                <div key={item.title} className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm">
+                  <div className="relative mb-4 h-56 overflow-hidden rounded-xl">
+                    <Image
+                      src={item.cover}
+                      alt={item.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-foreground/50 mb-3">
+                    PICC Magazine
+                  </p>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
+                    {item.title}
+                  </h3>
+                  <Button variant="outline" className="rounded-full px-5" disabled>
+                    Coming Soon
+                  </Button>
                 </div>
               ))}
             </div>

@@ -39,7 +39,7 @@ export default function LiveChat() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Check for existing auth token on mount
@@ -61,9 +61,11 @@ export default function LiveChat() {
     }
   }, [user]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll within the chat panel when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
   }, [messages]);
 
   const fetchUserInfo = async (token: string) => {
@@ -277,7 +279,7 @@ export default function LiveChat() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Welcome to Live Chat</DialogTitle>
+              <DialogTitle>Welcome to PICC Live Chat</DialogTitle>
             </DialogHeader>
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
@@ -400,18 +402,18 @@ export default function LiveChat() {
           <h3 className="text-lg font-semibold text-white">Live Chat</h3>
           <p className="text-sm text-white/70">Welcome, {user.name}!</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleLogout}
-          className="text-white border-white/20 hover:bg-white/10"
-        >
-          Logout
-        </Button>
+<Button
+  variant="outline"
+  size="sm"
+  onClick={handleLogout}
+  className="bg-gray-900 text-white border-gray-700 hover:bg-gray-800"
+>
+  Logout
+</Button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (
           <div className="text-center text-white/50 py-8">
             <p>No messages yet. Be the first to start the conversation!</p>
@@ -429,7 +431,6 @@ export default function LiveChat() {
             </div>
           ))
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}

@@ -289,15 +289,6 @@ export default function LivestreamPage() {
     });
   }, [ytReady, activeTool]);
 
-  useEffect(() => {
-    if (!ytReady || !isMobileViewport || !activeTool) return;
-    playersRef.current.forEach((player) => {
-      if (typeof player?.pauseVideo === 'function') {
-        player.pauseVideo();
-      }
-    });
-  }, [activeTool, isMobileViewport, ytReady]);
-
   const handleTestimonyChange = (field: keyof typeof testimonyForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setTestimonyForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
