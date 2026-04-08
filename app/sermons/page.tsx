@@ -58,76 +58,72 @@ export default function SermonsPage() {
     <>
       <Navigation />
       <main className="min-h-screen bg-background">
-        {/* Hero */}
-        <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
-          <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('/sermons/header.JPG')] bg-cover bg-center" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
-          </div>
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mt-24 md:mt-32">
-              <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3">
-                <a href="/" className="hover:text-white">Home</a>
-                <span className="text-white/50">/</span>
-                <a href="/sermons" className="hover:text-white">Sermons</a>
-              </div>
-              <h1 className="text-4xl md:text-6xl font-semibold mb-4">Latest Sermons</h1>
+        {/* Hero / Selected Sermon */}
+        {selectedSermon ? (
+          <section className="relative overflow-hidden py-20 sm:py-24 md:py-32 text-white rounded-b-[36px] md:rounded-b-[48px]">
+            <div className="absolute inset-0">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]" />
+              <div className="absolute inset-0 bg-black/20" />
             </div>
-          </div>
-        </section>
+            <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col items-center text-center">
+                <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">
+                  Listen to this sermon
+                </p>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold mb-4">
+                  {selectedSermon.title}
+                </h1>
+                <p className="text-white/80 mb-6">{selectedSermon.date}</p>
+                <div className="relative w-full max-w-4xl aspect-[16/9] rounded-[24px] overflow-hidden shadow-2xl bg-black/30">
+                  <Image
+                    src={selectedSermon.image}
+                    alt={selectedSermon.title}
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/15" />
+                </div>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    Play Sermon
+                  </button>
+                  <span className="text-sm text-white/80">{selectedSermon.views} views</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSermon(null)}
+                    className="inline-flex items-center justify-center rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white/90 hover:bg-white/10 transition-colors"
+                  >
+                    Back to all sermons
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
+            <div className="absolute inset-0">
+              <div className="absolute inset-0 bg-[url('/sermons/header.JPG')] bg-cover bg-center" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
+            </div>
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="max-w-3xl mt-24 md:mt-32">
+                <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3">
+                  <a href="/" className="hover:text-white">Home</a>
+                  <span className="text-white/50">/</span>
+                  <a href="/sermons" className="hover:text-white">Sermons</a>
+                </div>
+                <h1 className="text-4xl md:text-6xl font-semibold mb-4">Latest Sermons</h1>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Grid */}
         <section className="py-16 md:py-20">
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-            {selectedSermon && (
-              <div className="mb-12 rounded-[28px] border border-primary/15 bg-white shadow-xl overflow-hidden">
-                <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
-                  <div className="relative min-h-[240px] sm:min-h-[320px] lg:min-h-[360px]">
-                    <Image
-                      src={selectedSermon.image}
-                      alt={selectedSermon.title}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/35 to-black/10" />
-                    <div className="absolute bottom-6 left-6 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white">
-                      Featured Sermon
-                    </div>
-                  </div>
-                  <div className="p-6 sm:p-8 lg:p-10 bg-gradient-to-br from-primary/5 via-background to-secondary/10">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.25em] text-foreground/60 mb-2">
-                          {selectedSermon.date}
-                        </p>
-                        <h2 className="text-2xl sm:text-3xl font-semibold text-foreground mb-3">
-                          {selectedSermon.title}
-                        </h2>
-                        <p className="text-foreground/70 mb-6">
-                          Listen to this sermon and be encouraged in faith and purpose.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSermon(null)}
-                        className="rounded-full border border-foreground/20 px-3 py-1 text-xs font-semibold text-foreground/70 hover:bg-foreground/5"
-                      >
-                        Close
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-                      >
-                        Play Sermon
-                      </button>
-                      <span className="text-sm text-foreground/60">{selectedSermon.views} views</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {SERMONS.map((sermon) => (
                 <article key={sermon.id} className="group">

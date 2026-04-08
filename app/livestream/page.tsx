@@ -963,7 +963,7 @@ export default function LivestreamPage() {
                 <div
                   className={
                     mobilePlayerActive
-                      ? 'flex h-[60vh] flex-col overflow-hidden border-t border-white/10 bg-[#111111] pt-[40vh]'
+                      ? 'flex h-full flex-col overflow-hidden border-t border-white/10 bg-[#111111] pt-[40vh]'
                       : 'flex h-full flex-col overflow-hidden border-t border-white/10 bg-[#111111]'
                   }
                 >

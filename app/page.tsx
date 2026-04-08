@@ -36,7 +36,7 @@ const GROW_CARD_SLOTS = [
     key: 'home-grow-card-2',
     label: 'ATTEND',
     title: 'Join a Service',
-    href: '/service-times',
+    href: '/#service-times',
     fallback: '/cards/service-times.jpg',
   },
   {
@@ -491,7 +491,7 @@ export default async function HomePage() {
         </section>
 
         {/* Ministries Section */}
-        <section className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background">
+        <section id="service-times" className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background scroll-mt-24">
           <style>{`
             @keyframes marqueeScroll {
               0% { transform: translateX(0); }
