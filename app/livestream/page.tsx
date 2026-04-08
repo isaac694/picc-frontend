@@ -51,6 +51,16 @@ const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'component
   { key: 'give', label: 'Give', kind: 'form' },
 ];
 
+const QUILL_MODULES = {
+  toolbar: [
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    ['blockquote', 'code-block'],
+    ['link'],
+    ['clean'],
+  ],
+};
+
 export default function LivestreamPage() {
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
@@ -596,15 +606,7 @@ export default function LivestreamPage() {
                             value={notepadContent}
                             onChange={setNotepadContent}
                             placeholder="Type your notes here..."
-                            modules={{
-                              toolbar: [
-                                ['bold', 'italic', 'underline', 'strike'],
-                                [{ list: 'ordered' }, { list: 'bullet' }],
-                                ['blockquote', 'code-block'],
-                                ['link'],
-                                ['clean'],
-                              ],
-                            }}
+                            modules={QUILL_MODULES}
                           />
                         </div>
                       </div>
