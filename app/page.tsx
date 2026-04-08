@@ -318,7 +318,7 @@ export default async function HomePage() {
                   Declarations
                 </p>
                 <h2 className="text-3xl md:text-5xl font-semibold text-foreground mb-6">
-                  Declarations
+                  My Confession
                 </h2>
                 <div className="relative h-[400px] sm:h-[480px] md:h-[550px] rounded-2xl overflow-hidden">
                   <Image

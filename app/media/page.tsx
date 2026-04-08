@@ -215,6 +215,13 @@ export default function MediaPage() {
                   <div className="absolute bottom-4 left-4 rounded-full bg-primary/90 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-primary-foreground">
                     {item.category}
                   </div>
+                  <div className="absolute right-4 bottom-4 opacity-0 translate-y-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                    <a href={item.image} download>
+                      <Button variant="outline" className="rounded-full px-4 py-2 text-[11px]">
+                        Download Photo
+                      </Button>
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>
@@ -261,11 +268,18 @@ export default function MediaPage() {
                     {item.description}
                   </p>
                   {item.file ? (
-                    <a href={item.file} download>
-                      <Button variant="outline" className="rounded-full px-5">
-                        Download PDF
-                      </Button>
-                    </a>
+                    <div className="flex flex-wrap gap-3">
+                      <a href={item.file} target="_blank" rel="noreferrer">
+                        <Button variant="outline" className="rounded-full px-5">
+                          View PDF
+                        </Button>
+                      </a>
+                      <a href={item.file} download>
+                        <Button variant="outline" className="rounded-full px-5">
+                          Download PDF
+                        </Button>
+                      </a>
+                    </div>
                   ) : (
                     <Button variant="outline" className="rounded-full px-5" disabled>
                       Download (Coming Soon)

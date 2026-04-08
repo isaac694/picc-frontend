@@ -154,8 +154,18 @@ export default function ContactPage() {
                   </div>
                 </div>
                 <div className="mt-8 text-sm text-foreground/80">
-                  <p><span className="font-semibold text-foreground">PHONE:</span> +265 992 433 333</p>
-                  <p><span className="font-semibold text-foreground">EMAIL:</span> info@piccworldwide.org</p>
+                  <p>
+                    <span className="font-semibold text-foreground">PHONE:</span>{' '}
+                    <a href="tel:+265992433333" className="underline underline-offset-4">
+                      +265 992 433 333
+                    </a>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-foreground">EMAIL:</span>{' '}
+                    <a href="mailto:info@piccworldwide.org" className="underline underline-offset-4">
+                      info@piccworldwide.org
+                    </a>
+                  </p>
                 </div>
               </div>
 
@@ -202,7 +212,7 @@ export default function ContactPage() {
                     Malawi, Lilongwe, Area 49, Baghdad
                   </p>
                   <p className="text-foreground/80 leading-relaxed">
-                    PICC Headquarters
+                    The Camp of God Cathedral 
                   </p>
                   <div className="mt-4 text-sm text-foreground">
                     <a
@@ -219,9 +229,21 @@ export default function ContactPage() {
                   <p className="text-[11px] tracking-[0.24em] uppercase text-foreground/60 font-bold mb-3">
                     Service Times:
                   </p>
-                  <p className="text-foreground/80">Sunday - 10:00 AM - 11:30 AM</p>
-                  <p className="text-foreground/80">Wednesday - 7:00 PM - 8:30 PM</p>
-                  <p className="text-foreground/80">Friday - 6:00 PM - 7:30 PM</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-foreground/80">
+                    <div className="space-y-2">
+                      <p>Prophetic Sunday Service - 6:00 AM - 7:15 AM</p>
+                      <p>Prophetic Sunday Service (Second) - 7:30 AM - 9:30 AM</p>
+                      <p>Prophetic Sunday Service (Third) - 10:00 AM - 12:30 PM</p>
+                      <p>Sunday Youth Church - 1:30 PM - 3:30 PM</p>
+                      <p>Last Sunday of the Month - Miracle and Celebration Service - 7:00 AM - 12:00 PM</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p>Every Quarter of the Year - Mega Sunday Service - 7:00 AM - 12:00 PM</p>
+                      <p>Everyday - Morning Glory - 5:00 AM - 6:00 AM</p>
+                      <p>Every Tuesday - Home Church - 5:30 PM - 7:00 PM</p>
+                      <p>Every Thursday - Special Word Encounter - 6:00 PM - 8:00 PM</p>
+                    </div>
+                  </div>
                   <div className="mt-4">
                     <Link href="/locations" className="underline underline-offset-4 text-foreground">
                       Locate A Branch Near You
@@ -394,4 +416,3 @@ export default function ContactPage() {
     </>
   );
 }
-

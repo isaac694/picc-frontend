@@ -78,10 +78,11 @@ export default function AboutPage() {
     { year: 2023, theme: 'Theme to be updated' },
     { year: 2024, theme: 'Theme to be updated' },
     { year: 2025, theme: 'Theme to be updated' },
-    { year: 2026, theme: 'Theme to be updated' },
+    { year: 2026, theme: 'The year of the hand of God - Ezekiel 37:1-10' },
   ];
-  const currentYearTheme = yearlyThemes.find((entry) => entry.year === 2026);
-  const otherYearThemes = yearlyThemes.filter((entry) => entry.year !== 2026);
+  const currentYear = new Date().getFullYear();
+  const currentYearTheme = yearlyThemes.find((entry) => entry.year === currentYear);
+  const otherYearThemes = yearlyThemes.filter((entry) => entry.year !== currentYear);
 
   return (
     <>
@@ -101,9 +102,9 @@ export default function AboutPage() {
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mt-24 md:mt-32">
               <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3">
-                <a href="/" className="hover:text-white">Home</a>
+                <Link href="/" className="hover:text-white">Home</Link>
                 <span className="text-white/50">/</span>
-                <a href="/about" className="hover:text-white">About</a>
+                <Link href="/about" className="hover:text-white">About</Link>
               </div>
               <h1 className="text-4xl md:text-6xl font-semibold mb-4">About Our Church</h1>
             </div>
@@ -210,7 +211,7 @@ export default function AboutPage() {
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 text-primary text-xl leading-none"
                             aria-hidden="true"
                           >
-                            {isOpen ? '–' : '+'}
+                            {isOpen ? '-' : '+'}
                           </span>
                         </button>
                         {isOpen && (
@@ -312,7 +313,7 @@ export default function AboutPage() {
                           className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 text-primary text-xl leading-none"
                           aria-hidden="true"
                         >
-                          {isOpen ? '–' : '+'}
+                            {isOpen ? '-' : '+'}
                         </span>
                       </button>
                       {isOpen && (
@@ -349,20 +350,14 @@ export default function AboutPage() {
             </p>
 
             <div className="mt-12">
-              <div className="relative w-full overflow-hidden rounded-[28px] shadow-2xl bg-black/90">
-                <div className="aspect-[16/9] md:aspect-[21/9] w-full bg-gradient-to-br from-black via-black/70 to-black/40" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <button
-                    type="button"
-                    aria-label="Play documentary"
-                    className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg hover:bg-white"
-                  >
-                    ▶
-                  </button>
-                </div>
-                <div className="absolute inset-0 flex items-end justify-center pb-6">
-                  <span className="text-white/70 text-sm">Video placeholder</span>
-                </div>
+              <div className="relative w-full overflow-hidden rounded-[28px] shadow-2xl bg-black/90 aspect-[16/9] md:aspect-[21/9]">
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src="https://www.youtube.com/embed/IloZ7uo2UYY"
+                  title="PICC 28th Anniversary Documentary"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
             </div>
             <div className="mt-12 flex justify-end">
@@ -562,7 +557,7 @@ export default function AboutPage() {
                 onClick={() => setCurrentSlide((s) => s - 1)}
                 className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary/90 text-primary-foreground shadow-lg hover:bg-primary"
               >
-                ‹
+                {'<'}
               </button>
               <button
                 type="button"
@@ -570,7 +565,7 @@ export default function AboutPage() {
                 onClick={() => setCurrentSlide((s) => s + 1)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary/90 text-primary-foreground shadow-lg hover:bg-primary"
               >
-                ›
+                {'>'}
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -82,6 +82,8 @@ export default function LivestreamPage() {
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const playersRef = useRef<Map<string, any>>(new Map());
 
   const CHANNEL_ID = 'UC5iA3dWaUBlP_PBlGSQvgNQ';
   const FALLBACK_HERO_ID = 'ydTADwZRquA';
@@ -103,7 +105,7 @@ export default function LivestreamPage() {
   useEffect(() => {
     let isMounted = true;
 
-    const toVideo = (item: any): YouTubeVideo | null => {
+    const toVideoFromSearch = (item: any): YouTubeVideo | null => {
       const videoId = item?.id?.videoId;
       if (!videoId) return null;
       const snippet = item.snippet || {};
@@ -118,6 +120,24 @@ export default function LivestreamPage() {
         url: `https://www.youtube.com/watch?v=${videoId}`,
         embedUrl: `https://www.youtube.com/embed/${videoId}`,
         isLive: snippet.liveBroadcastContent === 'live',
+      };
+    };
+
+    const toVideoFromPlaylist = (item: any): YouTubeVideo | null => {
+      const videoId = item?.contentDetails?.videoId;
+      if (!videoId) return null;
+      const snippet = item.snippet || {};
+      return {
+        videoId,
+        title: snippet.title || '',
+        publishedAt: snippet.publishedAt || '',
+        updatedAt: snippet.publishedAt || '',
+        channelTitle: snippet.channelTitle || '',
+        description: snippet.description || '',
+        thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        embedUrl: `https://www.youtube.com/embed/${videoId}`,
+        isLive: false,
       };
     };
 
@@ -138,6 +158,11 @@ export default function LivestreamPage() {
           throw new Error('Missing API key');
         }
 
+        const channelUrl = new URL('https://www.googleapis.com/youtube/v3/channels');
+        channelUrl.searchParams.set('part', 'contentDetails');
+        channelUrl.searchParams.set('id', CHANNEL_ID);
+        channelUrl.searchParams.set('key', YOUTUBE_API_KEY);
+
         const liveUrl = new URL('https://www.googleapis.com/youtube/v3/search');
         liveUrl.searchParams.set('part', 'snippet');
         liveUrl.searchParams.set('channelId', CHANNEL_ID);
@@ -146,23 +171,31 @@ export default function LivestreamPage() {
         liveUrl.searchParams.set('maxResults', '1');
         liveUrl.searchParams.set('key', YOUTUBE_API_KEY);
 
-        const recentUrl = new URL('https://www.googleapis.com/youtube/v3/search');
-        recentUrl.searchParams.set('part', 'snippet');
-        recentUrl.searchParams.set('channelId', CHANNEL_ID);
-        recentUrl.searchParams.set('order', 'date');
-        recentUrl.searchParams.set('type', 'video');
-        recentUrl.searchParams.set('maxResults', '4');
-        recentUrl.searchParams.set('key', YOUTUBE_API_KEY);
+        const channelData = await fetchJson(channelUrl.toString());
+        const uploadsPlaylistId =
+          channelData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
 
-        const [liveData, recentData] = await Promise.all([
+        if (!uploadsPlaylistId) {
+          throw new Error('Missing uploads playlist');
+        }
+
+        const uploadsUrl = new URL('https://www.googleapis.com/youtube/v3/playlistItems');
+        uploadsUrl.searchParams.set('part', 'snippet,contentDetails');
+        uploadsUrl.searchParams.set('playlistId', uploadsPlaylistId);
+        uploadsUrl.searchParams.set('maxResults', '6');
+        uploadsUrl.searchParams.set('key', YOUTUBE_API_KEY);
+
+        const [liveData, uploadsData] = await Promise.all([
           fetchJson(liveUrl.toString()),
-          fetchJson(recentUrl.toString()),
+          fetchJson(uploadsUrl.toString()),
         ]);
 
-        const liveVideo = Array.isArray(liveData?.items) ? toVideo(liveData.items[0]) : null;
-        const recentVideos: YouTubeVideo[] = Array.isArray(recentData?.items)
-          ? recentData.items
-            .map(toVideo)
+        const liveVideo = Array.isArray(liveData?.items)
+          ? toVideoFromSearch(liveData.items[0])
+          : null;
+        const recentVideos: YouTubeVideo[] = Array.isArray(uploadsData?.items)
+          ? uploadsData.items
+            .map(toVideoFromPlaylist)
             .filter((item: YouTubeVideo | null): item is YouTubeVideo => Boolean(item))
           : [];
 
@@ -213,8 +246,23 @@ export default function LivestreamPage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const handleChange = (event: MediaQueryListEvent | MediaQueryList) => {
+      setIsMobileViewport(event.matches);
+    };
+    handleChange(mediaQuery);
+    if ('addEventListener' in mediaQuery) {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, []);
+
+  useEffect(() => {
     if (!ytReady || typeof window === 'undefined' || !window.YT?.Player) return;
-    const players = new Map<string, any>();
+    const players = playersRef.current;
     const iframes = Array.from(document.querySelectorAll<HTMLIFrameElement>('[data-yt-id]'));
 
     iframes.forEach((iframe) => {
@@ -235,7 +283,16 @@ export default function LivestreamPage() {
       });
       players.set(videoId, player);
     });
-  }, [ytReady]);
+  }, [ytReady, activeTool]);
+
+  useEffect(() => {
+    if (!ytReady || !isMobileViewport || !activeTool) return;
+    playersRef.current.forEach((player) => {
+      if (typeof player?.pauseVideo === 'function') {
+        player.pauseVideo();
+      }
+    });
+  }, [activeTool, isMobileViewport, ytReady]);
 
   const handleTestimonyChange = (field: keyof typeof testimonyForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setTestimonyForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -394,6 +451,8 @@ export default function LivestreamPage() {
     }
   };
 
+  const mobilePlayerActive = isMobileViewport && activeTool;
+
   return (
     <>
       <Navigation />
@@ -414,7 +473,13 @@ export default function LivestreamPage() {
         <section className="py-12 md:py-16 bg-black">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5">
-              <div className="aspect-video bg-black">
+              <div
+                className={
+                  mobilePlayerActive
+                    ? 'fixed inset-x-0 top-0 z-50 h-[40vh] bg-black md:static md:h-auto'
+                    : 'relative aspect-video bg-black'
+                }
+              >
                 <iframe
                   className="h-full w-full"
                   data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
@@ -891,18 +956,13 @@ export default function LivestreamPage() {
             </section>
             <section className="md:hidden">
               <div className="fixed inset-0 z-40 bg-black">
-                <div className="h-[40vh] bg-black">
-                  <iframe
-                    className="h-full w-full"
-                    data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
-                    id="yt-mobile"
-                    src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
-                    title={featuredVideo?.title || 'Sunday Livestream'}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
-                <div className="flex h-[60vh] flex-col overflow-hidden border-t border-white/10 bg-[#111111]">
+                <div
+                  className={
+                    mobilePlayerActive
+                      ? 'flex h-[60vh] flex-col overflow-hidden border-t border-white/10 bg-[#111111] pt-[40vh]'
+                      : 'flex h-full flex-col overflow-hidden border-t border-white/10 bg-[#111111]'
+                  }
+                >
                   <div className="border-b border-white/10 px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-white/70">
                       {TOOL_TABS.map((tool) => (
