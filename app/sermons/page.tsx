@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
@@ -51,6 +52,8 @@ const SERMONS = [
 ];
 
 export default function SermonsPage() {
+  const [selectedSermon, setSelectedSermon] = useState<(typeof SERMONS)[number] | null>(null);
+
   return (
     <>
       <Navigation />
@@ -76,11 +79,65 @@ export default function SermonsPage() {
         {/* Grid */}
         <section className="py-16 md:py-20">
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+            {selectedSermon && (
+              <div className="mb-12 rounded-[28px] border border-primary/15 bg-white shadow-xl overflow-hidden">
+                <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
+                  <div className="relative min-h-[240px] sm:min-h-[320px] lg:min-h-[360px]">
+                    <Image
+                      src={selectedSermon.image}
+                      alt={selectedSermon.title}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/35 to-black/10" />
+                    <div className="absolute bottom-6 left-6 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white">
+                      Featured Sermon
+                    </div>
+                  </div>
+                  <div className="p-6 sm:p-8 lg:p-10 bg-gradient-to-br from-primary/5 via-background to-secondary/10">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.25em] text-foreground/60 mb-2">
+                          {selectedSermon.date}
+                        </p>
+                        <h2 className="text-2xl sm:text-3xl font-semibold text-foreground mb-3">
+                          {selectedSermon.title}
+                        </h2>
+                        <p className="text-foreground/70 mb-6">
+                          Listen to this sermon and be encouraged in faith and purpose.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSermon(null)}
+                        className="rounded-full border border-foreground/20 px-3 py-1 text-xs font-semibold text-foreground/70 hover:bg-foreground/5"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        Play Sermon
+                      </button>
+                      <span className="text-sm text-foreground/60">{selectedSermon.views} views</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {SERMONS.map((sermon) => (
                 <article key={sermon.id} className="group">
                   <div className="relative overflow-hidden rounded-[18px] bg-black/5 shadow-sm">
-                    <div className="relative aspect-[16/10]">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSermon(sermon)}
+                      className="relative aspect-[16/10] w-full text-left"
+                      aria-label={`Open sermon ${sermon.title}`}
+                    >
                       <Image
                         src={sermon.image}
                         alt={sermon.title}
@@ -88,10 +145,10 @@ export default function SermonsPage() {
                         className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                       />
                       <div className="absolute inset-0 bg-black/10" />
-                    </div>
+                    </button>
                     <div className="absolute right-4 -bottom-3 flex gap-2">
-                      <span className="h-3 w-3 rounded-full bg-[#2C3BEA]" />
-                      <span className="h-3 w-3 rounded-full bg-[#2C3BEA]/80" />
+                      <span className="h-3 w-3 rounded-full bg-primary" />
+                      <span className="h-3 w-3 rounded-full bg-primary/70" />
                     </div>
                   </div>
 

@@ -252,12 +252,16 @@ export default function LivestreamPage() {
       setIsMobileViewport(event.matches);
     };
     handleChange(mediaQuery);
-    if ('addEventListener' in mediaQuery) {
+    if (typeof mediaQuery.addEventListener === 'function') {
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
+    const legacyMediaQuery = mediaQuery as MediaQueryList & {
+      addListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+      removeListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+    };
+    legacyMediaQuery.addListener?.(handleChange as (event: MediaQueryListEvent) => void);
+    return () => legacyMediaQuery.removeListener?.(handleChange as (event: MediaQueryListEvent) => void);
   }, []);
 
   useEffect(() => {
