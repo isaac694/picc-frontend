@@ -113,7 +113,7 @@ export default function StorePage() {
         {/* Hero Section */}
         <section className="relative overflow-hidden py-24 md:py-36 text-white rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('/hero/hero-store.jpg')] bg-cover bg-center" />
+            <div className="absolute inset-0 bg-[url('/hero/hero-14.jpg')] bg-cover bg-center" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
           </div>
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

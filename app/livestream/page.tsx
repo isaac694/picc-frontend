@@ -761,6 +761,7 @@ export default function LivestreamPage() {
                                   {[
                                     'First Fruit',
                                     'Tithe',
+                                    'Sunday Offering',
                                     'Project Offering',
                                     'Thanks Giving',
                                     "Prophet's Offering",
@@ -1163,6 +1164,7 @@ export default function LivestreamPage() {
                                   {[
                                     'First Fruit',
                                     'Tithe',
+                                    'Sunday Offering',
                                     'Project Offering',
                                     'Thanks Giving',
                                     "Prophet's Offering",

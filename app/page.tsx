@@ -17,10 +17,10 @@ const HOME_HERO_SLOTS = [
   { key: 'home-hero-2', fallback: '/hero/hero-10.JPG', className: 'col-span-2 row-span-2' },
   { key: 'home-hero-3', fallback: '/hero/hero-9.JPG', className: 'col-span-2 row-span-1' },
   { key: 'home-hero-4', fallback: '/hero/hero-8.JPG', className: 'col-span-2 row-span-2 hidden sm:block' },
-  { key: 'home-hero-5', fallback: '/hero/hero-7.JPG', className: 'col-span-2 row-span-1 hidden sm:block' },
+  { key: 'home-hero-5', fallback: '/hero/hero-7.png', className: 'col-span-2 row-span-1 hidden sm:block' },
   { key: 'home-hero-6', fallback: '/hero/hero-2.jpg', className: 'col-span-2 row-span-2 hidden sm:block' },
   { key: 'home-hero-7', fallback: '/hero/hero-1.jpg', className: 'col-span-2 row-span-1 hidden sm:block' },
-  { key: 'home-hero-8', fallback: '/hero/hero-5.jpg', className: 'col-span-2 row-span-1 hidden md:block' },
+  { key: 'home-hero-8', fallback: '/hero/hero-5.png', className: 'col-span-2 row-span-1 hidden md:block' },
   { key: 'home-hero-9', fallback: '/hero/hero-3.JPG', className: 'col-span-2 row-span-1 hidden md:block' },
 ];
 
@@ -271,6 +271,7 @@ export default async function HomePage() {
                     src={item.src}
                     alt={`PICC hero background ${index + 1}`}
                     fill
+                    sizes="(max-width: 768px) 50vw, 33vw"
                     priority={index < 2}
                     className="object-cover"
                   />
@@ -325,6 +326,7 @@ export default async function HomePage() {
                     src="/home/declaration.jpeg"
                     alt="Daily declarations"
                     fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover"
                   />
                 </div>
@@ -377,6 +379,7 @@ export default async function HomePage() {
                         src={card.image}
                         alt={card.title}
                         fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                         className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-105"
                       />
                     </div>
@@ -431,7 +434,8 @@ export default async function HomePage() {
                   src={pastorsImage}
                   alt="Pastor Esau Banda and Pastor Loyce Banda"
                   fill
-                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover object-top"
                 />
               </div>
             </div>
@@ -447,6 +451,7 @@ export default async function HomePage() {
                   src={listenNowImage}
                   alt="Listen now background"
                   fill
+                  sizes="100vw"
                   className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
                 />
               </div>
@@ -534,6 +539,7 @@ export default async function HomePage() {
                     src={item.image}
                     alt={item.title}
                     fill
+                    sizes="(max-width: 640px) 70vw, (max-width: 1024px) 44vw, 340px"
                     className="object-cover"
                   />
                   <div className="absolute inset-0 bg-black/35" />
@@ -555,6 +561,7 @@ export default async function HomePage() {
                   src={livestreamImage}
                   alt="Latest livestream"
                   fill
+                  sizes="(max-width: 1024px) 100vw, 80vw"
                   className="object-cover"
                 />
               </div>
@@ -589,6 +596,7 @@ export default async function HomePage() {
                   src={seeYouImageUrl}
                   alt="See you in church"
                   fill
+                  sizes="100vw"
                   className="object-cover"
                 />
               </div>

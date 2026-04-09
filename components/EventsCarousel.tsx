@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
@@ -173,6 +173,7 @@ export default function EventsCarousel() {
                     src={slide.src}
                     alt={slide.alt}
                     fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover"
                     priority={i === 1}
                   />

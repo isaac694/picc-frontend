@@ -89,6 +89,7 @@ export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionPr
             src={resolvedImage}
             alt={resolvedAuthor}
             fill
+            sizes="(max-width: 768px) 88vw, (max-width: 1024px) 360px, 460px"
             className="object-cover object-top"
             style={{ filter: 'grayscale(25%) contrast(1.05)' }}
           />
