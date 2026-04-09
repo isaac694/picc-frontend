@@ -125,6 +125,7 @@ export default function FormsPage() {
                     src="/images/our-church.JPG"
                     alt="PICC church family"
                     fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     className="object-cover"
                   />
                 </div>
@@ -327,6 +328,7 @@ export default function FormsPage() {
                   src="/images/send-message-2.JPG"
                   alt="Share your testimony"
                   fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover"
                 />
               </div>
@@ -505,6 +507,7 @@ export default function FormsPage() {
                     src="/images/our-church.JPG"
                     alt="Prayer request"
                     fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     className="object-cover"
                   />
                 </div>

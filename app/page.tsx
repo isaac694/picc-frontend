@@ -321,13 +321,13 @@ export default async function HomePage() {
                 <h2 className="text-3xl md:text-5xl font-semibold text-foreground mb-6">
                   My Confession
                 </h2>
-                <div className="relative h-[400px] sm:h-[480px] md:h-[550px] rounded-2xl overflow-hidden">
+                <div className="relative h-[400px] sm:h-[480px] md:h-[550px] overflow-hidden bg-white">
                   <Image
                     src="/home/declaration.jpeg"
                     alt="Daily declarations"
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
+                    className="object-contain"
                   />
                 </div>
               </div>

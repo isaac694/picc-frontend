@@ -46,7 +46,7 @@ const SERMONS = [
     id: 6,
     title: 'Faith-Provoking Praise (Part 4)',
     date: '16 February, 2023',
-    image: '/hero/hero-5.jpg',
+    image: '/hero/hero-5.png',
     views: '690',
   },
 ];

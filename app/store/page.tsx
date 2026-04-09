@@ -31,7 +31,7 @@ const products: Product[] = [
   { id: 'b2', name: 'Wisdom for Marriage', price: 12000, category: 'Books', author: 'Pastor Mrs Loyce Banda', genre: 'Marital', image: '/hero/hero-2.jpg' },
   { id: 'b3', name: 'Youth Arise', price: 10000, category: 'Books', author: 'Pastor Esau Banda', genre: 'Youth', image: '/hero/hero-3.jpg' },
   { id: 'p1', name: '2026 Theme Sticker', price: 2000, category: 'PICC branded items', image: '/hero/hero-4.jpg' },
-  { id: 'p2', name: '2026 Theme Insurance Disk', price: 3000, category: 'PICC branded items', image: '/hero/hero-5.jpg' },
+  { id: 'p2', name: '2026 Theme Insurance Disk', price: 3000, category: 'PICC branded items', image: '/hero/hero-5.png' },
   { id: 'p3', name: '2026 Wall Calendar', price: 5000, category: 'PICC branded items', image: '/hero/hero-6.jpg' },
   { id: 'p4', name: 'Premium PICC Pen', price: 1500, category: 'PICC branded items', image: '/hero/hero-7-mov.jpg' },
   { id: 'n1', name: 'Sermon Notes Journal', price: 6000, category: 'Notebooks', image: '/hero/hero-8-woh.jpg' },
