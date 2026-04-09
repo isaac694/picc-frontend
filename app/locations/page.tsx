@@ -307,7 +307,7 @@ export default function LocationsPage() {
       <main className="min-h-screen bg-white text-black">
         <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('/hero/hero-2.jpg')] bg-cover bg-center" />
+            <div className="absolute inset-0 bg-[url('/images/locations-header.png')] bg-cover bg-center" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
           </div>
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -458,6 +458,7 @@ export default function LocationsPage() {
                             src={src}
                             alt="We are family moment"
                             fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                             className="object-cover"
                           />
                         </div>

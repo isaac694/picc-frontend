@@ -38,7 +38,7 @@ const CAMPUS_NEWS = [
     title: 'Night of Praise Recap',
     description:
       'A beautiful night of worship, prayer, and testimonies that lifted hearts across the campus.',
-    image: '/hero/hero-7.JPG',
+    image: '/hero/hero-7.png',
   },
   {
     badge: 'Outreach',
@@ -46,7 +46,7 @@ const CAMPUS_NEWS = [
     title: 'Campus Volunteer Drive',
     description:
       'Members gathered to serve, share resources, and pray with families in the neighborhood.',
-    image: '/hero/hero-5.jpg',
+    image: '/hero/hero-5.png',
   },
   {
     badge: 'Ministry',
@@ -99,7 +99,7 @@ const EVENT_GALLERY = [
   { title: 'Worship Service', category: 'Worship', image: '/hero/hero-10.JPG' },
   { title: 'Community Outreach', category: 'Outreach', image: '/hero/hero-8.JPG' },
   { title: 'Youth Gathering', category: 'Youth', image: '/hero/hero-9.JPG' },
-  { title: 'Night of Praise', category: 'Music', image: '/hero/hero-5.jpg' },
+  { title: 'Night of Praise', category: 'Music', image: '/hero/hero-5.png' },
   { title: 'Celebration Sunday', category: 'Celebration', image: '/hero/hero-6.jpg' },
   { title: 'Morning Prayer', category: 'Prayer', image: '/hero/hero-4.JPG' },
   { title: 'Midweek Worship', category: 'Worship', image: '/hero/hero-2.jpg' },
@@ -160,6 +160,7 @@ export default function MediaPage() {
                       src={item.image}
                       alt={item.title}
                       fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                       className="object-cover"
                     />
                   </div>
@@ -223,6 +224,7 @@ export default function MediaPage() {
                       src={item.image}
                       alt={item.title}
                       fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     />
                   </div>
@@ -269,6 +271,7 @@ export default function MediaPage() {
                         src={item.cover}
                         alt={item.title}
                         fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                         className="object-cover"
                       />
                     </div>
@@ -330,6 +333,7 @@ export default function MediaPage() {
                       src={item.cover}
                       alt={item.title}
                       fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                       className="object-cover"
                     />
                   </div>

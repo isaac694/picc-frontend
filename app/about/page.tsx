@@ -118,6 +118,7 @@ export default function AboutPage() {
                   src={resolveImage('about-tenets-image', '/about/tenets-1.JPG')}
                   alt="Our church family"
                   fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover"
                 />
               </div>
@@ -328,6 +329,7 @@ export default function AboutPage() {
                   src={resolveImage('about-core-values-image', '/about/core-values.JPG')}
                   alt="PICC core values"
                   fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover"
                 />
               </div>
@@ -373,6 +375,7 @@ export default function AboutPage() {
               src={resolveImage('about-themes-bg', '/about/themes.jpeg')}
               alt="PICC yearly themes"
               fill
+              sizes="100vw"
               className="object-cover object-[center_30%]"
             />
           </div>
@@ -443,6 +446,7 @@ export default function AboutPage() {
                     src={resolveImage('about-worship-image', '/about/worship-with-us.jpg')}
                     alt="Worship with us"
                     fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     className="object-cover"
                   />
                 </div>
@@ -515,6 +519,7 @@ export default function AboutPage() {
                             src={src}
                             alt="We are family moment"
                             fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                             className="object-cover"
                           />
                         </div>

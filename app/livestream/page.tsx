@@ -9,9 +9,13 @@ import LiveChat from '@/components/LiveChat';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
+<<<<<<< main
 import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
 import GiveTool from '@/components/livestream/GiveTool';
+=======
+import { apiUrl } from '@/lib/api';
+>>>>>>> main
 
 declare global {
   interface Window {
@@ -263,6 +267,150 @@ export default function LivestreamPage() {
     });
   }, [ytReady, activeTool]);
 
+<<<<<<< main
+=======
+  const handleTestimonyChange = (field: keyof typeof testimonyForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setTestimonyForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleTestimonySubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const subject = 'Testimony Submission';
+    const body = [
+      `Full Name: ${testimonyForm.fullName}`,
+      `Phone Number: ${testimonyForm.phone || 'N/A'}`,
+      `Area of Testimony: ${testimonyForm.area || 'N/A'}`,
+      '',
+      'How the situation was like:',
+      testimonyForm.situation,
+      '',
+      'What God has done:',
+      testimonyForm.testimony,
+    ].join('\n');
+
+    window.location.href = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const normalizePaychanguPhone = (countryCode: string, rawPhone: string) => {
+    const digits = rawPhone.replace(/\D/g, '');
+    if (countryCode === '+265') {
+      return digits.replace(/^0+/, '');
+    }
+    return `${countryCode}${digits}`;
+  };
+
+  const handleGiveChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = event.target;
+    setGiveForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleGiveSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError(null);
+    setFormSuccess(null);
+
+    if (!giveForm.amount || !giveForm.fullName || !giveForm.phone) {
+      setFormError('Please complete the required fields before submitting.');
+      return;
+    }
+
+    const nameParts = giveForm.fullName.trim().split(/\s+/).filter(Boolean);
+    if (nameParts.length < 2) {
+      setFormError('Please enter your full name (first and last).');
+      return;
+    }
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
+
+    const normalizedPhone = normalizePaychanguPhone(giveForm.phoneCountry, giveForm.phone);
+    if (giveForm.phoneCountry === '+265' && normalizedPhone.length !== 9) {
+      setFormError('Please enter a valid Malawi mobile number with 9 digits.');
+      return;
+    }
+
+    const resolvedReason =
+      giveForm.reason || giveForm.givingType || 'Giving';
+
+    setIsSubmitting(true);
+    try {
+      // First, save the giving record to the database
+      const givingResponse = await fetch(apiUrl('/api/giving'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookletNumber: giveForm.bookletNumber,
+          givingDate: giveForm.givingDate,
+          givingType: giveForm.givingType,
+          specialRecipient: giveForm.specialRecipient,
+          amount: parseFloat(giveForm.amount),
+          currency: giveForm.currency,
+          fullName: giveForm.fullName,
+          email: giveForm.email,
+          phone: normalizedPhone,
+          phoneCountry: giveForm.phoneCountry,
+          paymentMethod: giveForm.paymentMethod,
+          reason: resolvedReason,
+        }),
+      });
+
+      const givingData = await givingResponse.json();
+
+      if (!givingResponse.ok) {
+        throw new Error(givingData.error || 'Failed to save giving record');
+      }
+
+      // Then proceed with PayChangu payment
+      const paymentResponse = await fetch(apiUrl('/api/paychangu/initialize'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: giveForm.amount,
+          firstName,
+          lastName,
+          phone: normalizedPhone,
+          paymentMethod: giveForm.paymentMethod,
+          reason: resolvedReason,
+          givingId: givingData.id,
+        }),
+      });
+
+      const paymentData = await paymentResponse.json();
+      if (!paymentResponse.ok) {
+        const errorMessage =
+          typeof paymentData?.error === 'string'
+            ? paymentData.error
+            : paymentData?.message || JSON.stringify(paymentData?.error) || 'Payment initialization failed.';
+        throw new Error(errorMessage);
+      }
+
+      setFormSuccess(
+        'Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment. You will receive a confirmation email once payment is successful.'
+      );
+      setGiveForm((prev) => ({
+        ...prev,
+        currency: 'MWK',
+        amount: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        phoneCountry: '+265',
+        bookletNumber: '',
+        givingDate: '',
+        givingType: '',
+        specialRecipient: '',
+        reason: '',
+        paymentMethod: 'airtel',
+      }));
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Something went wrong.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+>>>>>>> main
   const mobilePlayerActive = isMobileViewport && activeTool;
 
   return (

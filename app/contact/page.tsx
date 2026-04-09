@@ -195,6 +195,7 @@ export default function ContactPage() {
                 src={resolveImage('contact-locate-image', '/images/our-church.JPG')}
                 alt="PICC Headquarters"
                 fill
+                sizes="(max-width: 1024px) 100vw, 896px"
                 className="object-cover"
               />
             </div>
@@ -265,6 +266,7 @@ export default function ContactPage() {
                   src={resolveImage('contact-send-message-image', '/images/send-message-2.JPG')}
                   alt="Send us a message"
                   fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover"
                 />
               </div>
@@ -382,6 +384,7 @@ export default function ContactPage() {
                             src={src}
                             alt="We are family moment"
                             fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                             className="object-cover"
                           />
                         </div>
