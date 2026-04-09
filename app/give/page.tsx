@@ -7,7 +7,6 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { apiUrl } from '@/lib/api';
-import { sendGivingNotification } from '@/lib/email';
 
 export default function GivePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,8 +94,9 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
       }),
     });
 
+    const givingData = await givingResponse.json();
+
     if (!givingResponse.ok) {
-      const givingData = await givingResponse.json();
       throw new Error(givingData.error || 'Failed to save giving record');
     }
 
@@ -111,6 +111,7 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         phone: normalizedPhone,
         paymentMethod: formData.paymentMethod,
         reason: resolvedReason,
+        givingId: givingData.id,
       }),
     });
 
@@ -124,33 +125,12 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
       throw new Error(errorMessage);
     }
 
-    // 3. Send confirmation email AFTER successful initialization
-    try {
-      await fetch("https://your-backend.onrender.com/api/email/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          fullName: formData.fullName,
-          amount: formData.amount,
-          currency: formData.currency,
-          reason: resolvedReason,
-          givingType: formData.givingType,
-          paymentMethod: formData.paymentMethod,
-        }),
-      });
-    } catch (emailError) {
-      console.error('Confirmation email failed:', emailError);
-    }
-
-    // 4. Success message
+    // 3. Success message
     setFormSuccess(
-      'Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment. A confirmation email has been sent.'
+      'Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment. You will receive a confirmation email once payment is successful.'
     );
 
-    // 5. Reset form
+    // 4. Reset form
     setFormData((prev) => ({
       ...prev,
       currency: 'MWK',
