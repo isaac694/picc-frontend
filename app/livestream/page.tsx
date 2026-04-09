@@ -51,6 +51,8 @@ const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'component
   { key: 'give', label: 'Give', kind: 'form' },
 ];
 
+const NOTEPAD_STORAGE_KEY = 'picc-livestream-notepad';
+
 const QUILL_MODULES = {
   toolbar: [
     ['bold', 'italic', 'underline', 'strike'],
@@ -60,7 +62,6 @@ const QUILL_MODULES = {
     ['clean'],
   ],
 };
-const NOTEPAD_STORAGE_KEY = 'livestream-notepad-content';
 
 export default function LivestreamPage() {
   const [ytReady, setYtReady] = useState(false);
