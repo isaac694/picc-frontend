@@ -80,7 +80,7 @@ export default function AboutPage() {
     { year: 2025, theme: 'Multiple Divine Visitation - 1 Samuel 2: 21: ' },
     { year: 2026, theme: 'The year of the hand of God - Ezekiel 37:1-10' },
   ];
-  const visibleThemes = yearlyThemes;
+  const visibleThemes = [...yearlyThemes].sort((a, b) => b.year - a.year);
 
   return (
     <>
@@ -390,7 +390,7 @@ export default function AboutPage() {
               </p>
             </div>
 
-            <div className="space-y-4 max-w-3xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
               {visibleThemes.map((entry) => {
                 const isOpen = openThemeYear === entry.year;
                 return (
