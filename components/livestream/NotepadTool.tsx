@@ -3,10 +3,8 @@ import { useNotepad } from '@/hooks/useLivestreamTools';
 
 const QUILL_MODULES = {
   toolbar: [
-    ['bold', 'italic', 'underline', 'strike'],
+    ['bold', 'italic', 'underline'],
     [{ list: 'ordered' }, { list: 'bullet' }],
-    ['blockquote', 'code-block'],
-    ['link'],
     ['clean'],
   ],
 };
