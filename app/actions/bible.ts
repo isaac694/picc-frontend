@@ -14,7 +14,25 @@ export async function getVersions() {
   try {
     const client = getBibleClient();
     const versions = await client.getVersions('en'); // english versions
-    return versions.data.map((v: any) => ({ id: v.id, title: v.title }));
+    
+    const PREFERRED_VERSIONS = [1, 97, 68, 107, 8, 116, 2692, 2079, 111, 12];
+    
+    const data = versions.data.map((v: any) => ({
+      id: v.id,
+      title: v.title,
+      abbreviation: v.localized_abbreviation || v.abbreviation
+    }));
+    
+    data.sort((a: any, b: any) => {
+      const idxA = PREFERRED_VERSIONS.indexOf(a.id);
+      const idxB = PREFERRED_VERSIONS.indexOf(b.id);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.title.localeCompare(b.title);
+    });
+    
+    return data;
   } catch (e) {
     console.error("Failed to fetch versions", e);
     return [];
