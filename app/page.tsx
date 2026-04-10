@@ -605,7 +605,7 @@ export default async function HomePage() {
               <div className="relative p-6 sm:p-10 md:p-14 text-white scroll-mt-24">
                 <div className="text-center max-w-3xl mx-auto">
                   <h2 className="text-3xl md:text-5xl font-semibold mb-3">
-                    {seeYouInChurch?.title || 'See You In Church'}
+                    {seeYouInChurch?.title || 'Announcements & Events For The Week.'}
                   </h2>
                   <p className="text-white/80">
                     {seeYouInChurch?.subtitle || 'Grow deeper in your walk with God this week.'}

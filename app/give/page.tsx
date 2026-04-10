@@ -225,6 +225,7 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                         {[
                           'First Fruit',
+                          'Sunday Service',
                           'Tithe',
                           'Project Offering',
                           'Thanks Giving',

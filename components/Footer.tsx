@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Facebook, Instagram, Twitter, Youtube, Music2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { FaTiktok } from "react-icons/fa";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -74,8 +75,12 @@ export default function Footer() {
                 <Link href="http://youtube.com/@piccworldwide" aria-label="YouTube" className="hover:text-white" target="_blank" rel="noreferrer">
                   <Youtube size={20} />
                 </Link>
-                <Link href="#" aria-label="TikTok" className="hover:text-white">
-                  <Music2 size={20} />
+                <Link
+                  href="https://www.tiktok.com/@campofgodcathedral?_r=1&_t=ZS-95CREQwHO3Y"
+                  aria-label="TikTok"
+                  className="hover:text-white"
+                >
+                  <FaTiktok size={20} />
                 </Link>
               </div>
             </div>

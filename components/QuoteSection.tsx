@@ -9,10 +9,9 @@ type QuoteSectionProps = {
 export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionProps) {
   const resolvedQuote =
     quote ||
-    'Every promise of God requires your corresponding faith for it to be accomplished.';
+    'Prayer is what makes time conducive.  Prayer is what brings time to season (John 2:3-5).';
   const resolvedAuthor = author || 'Pastor Esau Banda';
   const resolvedImage = imageUrl || '/pastor/pastor-photo.jpg';
-
   return (
     <section className="relative overflow-visible py-24 md:py-32 min-h-[680px] md:min-h-[760px] flex items-center">
       <style>{`
@@ -69,7 +68,7 @@ export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionPr
           {/* Quote */}
           <div className="text-white">
             <p className="quote-label text-xs font-semibold tracking-[0.35em] uppercase text-white/70 mb-8">
-              Quote of the Month
+              Quotes
             </p>
             <blockquote className="quote-text text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight mb-8 max-w-6xl mx-auto">
               &ldquo;{resolvedQuote}&rdquo;
