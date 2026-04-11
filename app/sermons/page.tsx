@@ -6,6 +6,20 @@ import { useEffect, useRef, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
+// Extract YouTube video ID from a URL (handles ?v=, /embed/, youtu.be, and &t= timestamps)
+function getYouTubeId(url: string): string {
+  const match = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
+  );
+  return match ? match[1] : '';
+}
+
+// Extract start time (seconds) from a YouTube URL's &t= parameter
+function getYouTubeStart(url: string): number {
+  const match = url.match(/[?&]t=(\d+)s?/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
 const SERMONS = [
   {
     id: 1,
@@ -13,6 +27,7 @@ const SERMONS = [
     date: '10 April, 2025',
     image: '/hero/hero-6.jpg',
     views: '1,232',
+    youtubeUrl: 'https://www.youtube.com/watch?v=joxnOHDoQvk',
   },
   {
     id: 2,
@@ -20,6 +35,7 @@ const SERMONS = [
     date: '10 April, 2025',
     image: '/hero/hero-4.jpg',
     views: '1,127',
+    youtubeUrl: 'https://www.youtube.com/watch?v=IloZ7uo2UYY',
   },
   {
     id: 3,
@@ -27,6 +43,7 @@ const SERMONS = [
     date: '10 April, 2025',
     image: '/hero/hero-3.jpg',
     views: '981',
+    youtubeUrl: 'https://www.youtube.com/watch?v=joxnOHDoQvk&t=250s',
   },
   {
     id: 4,
@@ -34,6 +51,7 @@ const SERMONS = [
     date: '16 February, 2023',
     image: '/hero/hero-2.jpg',
     views: '742',
+    youtubeUrl: 'https://www.youtube.com/watch?v=ubcp3QMiMAE&t=280s',
   },
   {
     id: 5,
@@ -41,6 +59,7 @@ const SERMONS = [
     date: '16 February, 2023',
     image: '/hero/hero-1.jpg',
     views: '839',
+    youtubeUrl: 'https://www.youtube.com/watch?v=hMJUnkBimKg',
   },
   {
     id: 6,
@@ -48,23 +67,39 @@ const SERMONS = [
     date: '16 February, 2023',
     image: '/hero/hero-5.png',
     views: '690',
+    youtubeUrl: 'https://www.youtube.com/watch?v=UxOOG7_fhD0',
   },
 ];
 
 export default function SermonsPage() {
   const [selectedSermon, setSelectedSermon] = useState<(typeof SERMONS)[number] | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const selectedSermonRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!selectedSermon) return;
+    setIsPlaying(false); // reset player when a new sermon is selected
     selectedSermonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [selectedSermon]);
+
+  // Build the YouTube embed URL with optional start time
+  function buildEmbedUrl(youtubeUrl: string, autoplay = false): string {
+    const videoId = getYouTubeId(youtubeUrl);
+    const start = getYouTubeStart(youtubeUrl);
+    const params = new URLSearchParams({
+      rel: '0',
+      modestbranding: '1',
+      ...(autoplay && { autoplay: '1' }),
+      ...(start > 0 && { start: String(start) }),
+    });
+    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+  }
 
   return (
     <>
       <Navigation />
       <main className="min-h-screen bg-background">
-        {/* Hero / Selected Sermon */}
+        {/* ── Hero / Selected Sermon ── */}
         {selectedSermon ? (
           <section
             ref={selectedSermonRef}
@@ -74,35 +109,76 @@ export default function SermonsPage() {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]" />
               <div className="absolute inset-0 bg-black/20" />
             </div>
+
             <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col items-center text-center">
                 <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">
-                  Listen to this sermon
+                  Now watching
                 </p>
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold mb-4">
                   {selectedSermon.title}
                 </h1>
                 <p className="text-white/80 mb-6">{selectedSermon.date}</p>
-                <div className="relative w-full max-w-4xl aspect-[16/9] rounded-[24px] overflow-hidden shadow-2xl bg-black/30">
-                  <Image
-                    src={selectedSermon.image}
-                    alt={selectedSermon.title}
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/15" />
+
+                {/* Video player area */}
+                <div className="relative w-full max-w-4xl aspect-[16/9] rounded-[24px] overflow-hidden shadow-2xl bg-black">
+                  {isPlaying ? (
+                    /* Embedded YouTube iframe — plays in-page, no redirect */
+                    <iframe
+                      key={selectedSermon.id}
+                      src={buildEmbedUrl(selectedSermon.youtubeUrl, true)}
+                      title={selectedSermon.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="absolute inset-0 w-full h-full border-0"
+                    />
+                  ) : (
+                    /* Thumbnail with play button overlay */
+                    <>
+                      <Image
+                        src={selectedSermon.image}
+                        alt={selectedSermon.title}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setIsPlaying(true)}
+                          aria-label="Play sermon video"
+                          className="group flex items-center justify-center w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/60 hover:bg-white/30 transition-all duration-200 hover:scale-105"
+                        >
+                          {/* Triangle play icon */}
+                          <svg
+                            className="w-8 h-8 text-white ml-1"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
+
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
-                    Play Sermon
-                  </button>
+                  {!isPlaying && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPlaying(true)}
+                      className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      Play Sermon
+                    </button>
+                  )}
                   <span className="text-sm text-white/80">{selectedSermon.views} views</span>
                   <button
                     type="button"
-                    onClick={() => setSelectedSermon(null)}
+                    onClick={() => {
+                      setSelectedSermon(null);
+                      setIsPlaying(false);
+                    }}
                     className="inline-flex items-center justify-center rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white/90 hover:bg-white/10 transition-colors"
                   >
                     Back to all sermons
@@ -112,6 +188,7 @@ export default function SermonsPage() {
             </div>
           </section>
         ) : (
+          /* ── Default hero banner ── */
           <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
             <div className="absolute inset-0">
               <div className="absolute inset-0 bg-[url('/sermons/header.JPG')] bg-cover bg-center" />
@@ -130,7 +207,7 @@ export default function SermonsPage() {
           </section>
         )}
 
-        {/* Grid */}
+        {/* ── Sermons Grid ── */}
         <section className="py-16 md:py-20">
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -141,7 +218,7 @@ export default function SermonsPage() {
                       type="button"
                       onClick={() => setSelectedSermon(sermon)}
                       className="relative aspect-[16/10] w-full text-left"
-                      aria-label={`Open sermon ${sermon.title}`}
+                      aria-label={`Watch sermon: ${sermon.title}`}
                     >
                       <Image
                         src={sermon.image}
@@ -149,7 +226,14 @@ export default function SermonsPage() {
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                       />
-                      <div className="absolute inset-0 bg-black/10" />
+                      {/* Thumbnail overlay with play icon */}
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <span className="flex items-center justify-center w-14 h-14 rounded-full bg-white/25 backdrop-blur-sm border border-white/50">
+                          <svg className="w-6 h-6 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </span>
+                      </div>
                     </button>
                     <div className="absolute right-4 -bottom-3 flex gap-2">
                       <span className="h-3 w-3 rounded-full bg-primary" />
@@ -190,4 +274,3 @@ export default function SermonsPage() {
     </>
   );
 }
-
