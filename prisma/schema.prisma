@@ -94,11 +94,22 @@ model Sermon {
   media       SermonMedia[]
 }
 
-model SermonMedia {
+model User {
+  id        Int           @id @default(autoincrement())
+  email     String        @unique
+  name      String
+  password  String
+  role      String        @default("user") // "user" or "admin"
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model ChatMessage {
   id        Int      @id @default(autoincrement())
-  sermonId  Int
-  url       String
-  type      String?
+  content   String
+  videoId   String // YouTube videoId to group messages by stream
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  sermon    Sermon   @relation(fields: [sermonId], references: [id], onDelete: Cascade)
 }

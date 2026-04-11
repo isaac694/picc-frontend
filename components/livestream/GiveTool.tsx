@@ -65,7 +65,7 @@ export default function GiveTool({ isMobile }: { isMobile?: boolean }) {
                 {[
                   'First Fruit',
                   'Tithe',
-                  'Sunday Offering',
+                  'Service Offering',
                   'Project Offering',
                   'Thanks Giving',
                   "Prophet's Offering",
@@ -299,7 +299,7 @@ export default function GiveTool({ isMobile }: { isMobile?: boolean }) {
                 {[
                   'First Fruit',
                   'Tithe',
-                  'Sunday Offering',
+                  'Service Offering',
                   'Project Offering',
                   'Thanks Giving',
                   "Prophet's Offering",

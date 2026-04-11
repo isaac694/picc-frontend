@@ -46,6 +46,17 @@ export default function AdminHomePage() {
                 </Button>
               </Link>
             </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-foreground mb-2">
+                Live Chat Archive
+              </h2>
+              <p className="text-foreground/70 mb-6">
+                Review chat messages for every streamed video.
+              </p>
+              <Link href="/admin/livechat">
+                <Button className="rounded-full px-6 py-3">Open Archive</Button>
+              </Link>
+            </div>
           </div>
         </div>
       </main>

@@ -23,7 +23,11 @@ interface User {
   email: string;
 }
 
-export default function LiveChat() {
+interface LiveChatProps {
+  videoId: string;
+}
+
+export default function LiveChat({ videoId }: LiveChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -51,15 +55,15 @@ export default function LiveChat() {
     }
   }, []);
 
-  // Fetch messages when user is authenticated
+  // Fetch messages when user is authenticated or videoId changes
   useEffect(() => {
-    if (user) {
+    if (user && videoId) {
       fetchMessages();
       // Set up polling for new messages
       const interval = setInterval(fetchMessages, 5000);
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, videoId]);
 
   // Auto-scroll within the chat panel when new messages arrive
   useEffect(() => {
@@ -90,9 +94,9 @@ export default function LiveChat() {
   const fetchMessages = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      if (!token) return;
+      if (!token || !videoId) return;
 
-      const response = await fetch(apiUrl('/api/chat/messages'), {
+      const response = await fetch(apiUrl(`/api/chat/messages?videoId=${videoId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -112,7 +116,7 @@ export default function LiveChat() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user) return;
+    if (!newMessage.trim() || !user || !videoId) return;
 
     setIsLoading(true);
     try {
@@ -123,7 +127,10 @@ export default function LiveChat() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ content: newMessage.trim() }),
+        body: JSON.stringify({ 
+          content: newMessage.trim(),
+          videoId: videoId
+        }),
       });
 
       if (response.ok) {

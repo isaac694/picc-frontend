@@ -7,35 +7,23 @@ const LEGACY_NOTEPAD_STORAGE_KEY = 'livestream-notepad-content';
 
 export function useNotepad() {
   const [notepadContent, setNotepadContent] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Load from localStorage on mount
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const saved = window.localStorage.getItem(NOTEPAD_STORAGE_KEY);
-      if (saved) {
-        setNotepadContent(saved);
-        return;
-      }
-
-      const legacySaved = window.localStorage.getItem(LEGACY_NOTEPAD_STORAGE_KEY);
-      if (legacySaved) {
-        setNotepadContent(legacySaved);
-        // Migrate old key so existing users keep their notes.
-        window.localStorage.setItem(NOTEPAD_STORAGE_KEY, legacySaved);
-      }
-    } catch (error) {
-      console.error('Failed to load livestream notepad content:', error);
+    const saved = localStorage.getItem(NOTEPAD_STORAGE_KEY) || localStorage.getItem(LEGACY_NOTEPAD_STORAGE_KEY);
+    if (saved) {
+      setNotepadContent(saved);
     }
+    setIsInitialized(true);
   }, []);
 
+  // Save to localStorage whenever content changes
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(NOTEPAD_STORAGE_KEY, notepadContent);
-    } catch (error) {
-      console.error('Failed to save livestream notepad content:', error);
+    if (isInitialized) {
+      localStorage.setItem(NOTEPAD_STORAGE_KEY, notepadContent);
     }
-  }, [notepadContent]);
+  }, [notepadContent, isInitialized]);
 
   return { notepadContent, setNotepadContent };
 }
