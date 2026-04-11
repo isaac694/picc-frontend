@@ -5,44 +5,44 @@ import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, CalendarDays, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Waves } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- MOCK DATA ---
 const galleryImages = [
-  '/hero/prison-ministry-1.jpg',
-  '/moments/pm-1.jpg',
-  '/moments/pm-2.jpg',
-  '/moments/pm-3.jpg',
-  '/moments/pm-4.jpg',
-  '/moments/pm-5.jpg',
+  '/hero/wailing-women-1.jpg',
+  '/moments/ww-1.jpg',
+  '/moments/ww-2.jpg',
+  '/moments/ww-3.jpg',
+  '/moments/ww-4.jpg',
+  '/moments/ww-5.jpg',
 ];
 
 const pastEvents = [
   {
     id: 1,
-    title: 'Christmas Hope Visit',
-    date: 'December 24, 2025',
-    description: 'A special outreach event providing holiday meals, hygiene kits, and a message of redemption to inmates.',
+    title: 'Midnight Intercession Watch',
+    date: 'January 15, 2026',
+    description: 'A powerful night of strategic prayer and spiritual warfare focused on breaking generational chains and seeking national restoration.',
     image: '/hero/hero-1.jpg',
   },
   {
     id: 2,
-    title: 'Restoration Workshop',
-    date: 'March 15, 2026',
-    description: 'A faith-based vocational training session designed to prepare individuals for successful reintegration into society.',
+    title: 'The Cry of a Mother Seminar',
+    date: 'March 22, 2026',
+    description: 'An intimate gathering focused on the power of a mother’s prayer and spiritual tools for protecting the next generation.',
     image: '/hero/hero-2.jpg',
   },
   {
     id: 3,
-    title: 'Families of the Incarcerated Support',
-    date: 'May 20, 2025',
-    description: 'A community gathering focused on providing emotional and spiritual support to the families of those currently serving time.',
+    title: 'Annual Prayer Retreat',
+    date: 'July 10-12, 2025',
+    description: 'Three days of fasting, silence, and intense seeking of God’s face in the mountains, away from the noise of the city.',
     image: '/hero/hero-3.jpg',
   },
 ];
 
-export default function PrisonMinistryPage() {
+export default function WailingWomenPage() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Auto-rotate carousel every 5 seconds
@@ -61,28 +61,28 @@ export default function PrisonMinistryPage() {
       <Navigation />
       <main className="min-h-screen">
         
-        {/* 1. HERO SECTION (Original Blue Radial Gradient) */}
-        <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
+        {/* 1. HERO SECTION (Purple Radial Gradient) */}
+        <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[radial-gradient(circle_at_top,#9333EA_0%,#6B21A8_45%,#4C1D95_100%)] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
             
             {/* Logo */}
             <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20">
               <Image 
-                src="/logos/prison-ministry-logo.png" 
-                alt="Prison Ministry Logo" 
+                src="/logos/wailing-woman-logo.png" 
+                alt="Wailing Women Logo" 
                 fill 
                 className="object-contain p-2 rounded-full"
-                onError={(e: any) => e.target.src = '/logos/picc-logo.png'} 
+                onError={(e: any) => e.target.src = '/logos/wailing-woman-logo.png'} 
               />
             </div>
 
             <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3 font-semibold">PICC Ministry</p>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">Prison Ministry</h1>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">Wailing Women</h1>
             
             {/* Mission Statement */}
             <div className="inline-block border-y border-white/20 py-3 px-8 mb-6">
               <p className="text-lg sm:text-xl font-medium tracking-wide text-white/90 italic">
-                "Sharing hope and restoration with those behind bars."
+                "Birthing destinies and nations through fervent intercession."
               </p>
             </div>
           </div>
@@ -92,35 +92,35 @@ export default function PrisonMinistryPage() {
         <section className="py-20 md:py-28 bg-white text-black">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">Our Mandate</h2>
-            <div className="w-16 h-1 bg-[#2D5A8C] mx-auto mb-8 rounded-full" />
+            <div className="w-16 h-1 bg-[#6B21A8] mx-auto mb-8 rounded-full" />
             <p className="text-lg text-black/70 leading-relaxed mb-6">
-              The Prison Ministry is driven by the compassion of Christ for the forgotten and the marginalized. We believe that no life is beyond the reach of God's grace and that true restoration is possible for everyone.
+              Wailing Women is a global movement of intercessors called to stand in the gap for their families, the church, and the nations. Inspired by the biblical call for skillful mourners, we believe in the power of targeted, tearful prayer to shift spiritual atmospheres.
             </p>
             <p className="text-lg text-black/70 leading-relaxed">
-              Our volunteers visit correctional facilities to provide spiritual guidance, counseling, and practical support. We are committed to walking with individuals during their incarceration and assisting them as they transition back into their families and communities.
+              We are not just praying; we are birthing the purposes of God through spiritual labor. Our focus is on Travailing Prayer, Prophetic Intercession, and Spiritual Warfare, ensuring that the will of God is established on the earth.
             </p>
           </div>
         </section>
 
-        {/* 3. GALLERY SECTION (Soft Blue/Slate) */}
-        <section className="py-20 md:py-28 bg-slate-50 border-y border-black/5 text-black">
+        {/* 3. GALLERY SECTION (Soft Purple/Lavender) */}
+        <section className="py-20 md:py-28 bg-purple-50 border-y border-black/5 text-black">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Ministry in the Field</h2>
-              <p className="text-black/60 max-w-2xl mx-auto">Moments of impact, service, and connection within the correctional system.</p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">The Altar of Prayer</h2>
+              <p className="text-black/60 max-w-2xl mx-auto">Capturing the intensity and devotion of our intercessory gatherings.</p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {galleryImages.map((src, index) => (
-                <div key={index} className="relative h-48 md:h-72 bg-slate-200 rounded-xl overflow-hidden group">
+                <div key={index} className="relative h-48 md:h-72 bg-purple-100 rounded-xl overflow-hidden group">
                   <Image 
                     src={src} 
-                    alt={`Prison Ministry Gallery Image ${index + 1}`} 
+                    alt={`Wailing Women Gallery Image ${index + 1}`} 
                     fill 
                     className="object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out"
                     onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-[#2D5A8C]/10 transition-colors duration-300" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-[#6B21A8]/10 transition-colors duration-300" />
                 </div>
               ))}
             </div>
@@ -132,15 +132,15 @@ export default function PrisonMinistryPage() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Past Outreaches</h2>
-                <p className="text-black/60 max-w-xl">A look back at our efforts to bring light into dark places.</p>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">Past Alter Encounters</h2>
+                <p className="text-black/60 max-w-xl">Reflecting on the moments where heaven touched earth through our prayers.</p>
               </div>
               
               <div className="hidden md:flex gap-3 mt-6 md:mt-0">
-                <button onClick={prevSlide} className="p-3 rounded-full bg-white shadow-sm border border-black/5 hover:bg-[#2D5A8C] hover:text-white transition-colors">
+                <button onClick={prevSlide} className="p-3 rounded-full bg-white shadow-sm border border-black/5 hover:bg-[#6B21A8] hover:text-white transition-colors">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button onClick={nextSlide} className="p-3 rounded-full bg-white shadow-sm border border-black/5 hover:bg-[#2D5A8C] hover:text-white transition-colors">
+                <button onClick={nextSlide} className="p-3 rounded-full bg-white shadow-sm border border-black/5 hover:bg-[#6B21A8] hover:text-white transition-colors">
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
@@ -158,7 +158,7 @@ export default function PrisonMinistryPage() {
                     className="absolute inset-0"
                   >
                     <Card className="flex flex-col sm:flex-row h-full overflow-hidden border-0 shadow-xl bg-white">
-                      <div className="relative w-full sm:w-1/2 h-48 sm:h-full bg-slate-100 flex-shrink-0">
+                      <div className="relative w-full sm:w-1/2 h-48 sm:h-full bg-purple-50 flex-shrink-0">
                         <Image 
                           src={pastEvents[currentSlide].image} 
                           alt={pastEvents[currentSlide].title} 
@@ -169,8 +169,8 @@ export default function PrisonMinistryPage() {
                       </div>
                       
                       <div className="p-8 sm:p-10 flex flex-col justify-center w-full sm:w-1/2">
-                        <div className="flex items-center gap-2 text-[#2D5A8C] font-semibold text-sm mb-4 bg-slate-50 w-fit px-3 py-1 rounded-full">
-                          <CalendarDays className="w-4 h-4" />
+                        <div className="flex items-center gap-2 text-[#6B21A8] font-semibold text-sm mb-4 bg-purple-50 w-fit px-3 py-1 rounded-full">
+                          <Waves className="w-4 h-4" />
                           <span>{pastEvents[currentSlide].date}</span>
                         </div>
                         <h3 className="text-2xl sm:text-3xl font-bold mb-4 leading-tight">
@@ -186,18 +186,18 @@ export default function PrisonMinistryPage() {
               </div>
 
               <div className="flex md:hidden items-center justify-center gap-6 mt-8">
-                <button onClick={prevSlide} className="p-2 rounded-full bg-white shadow hover:bg-slate-50">
+                <button onClick={prevSlide} className="p-2 rounded-full bg-white shadow hover:bg-purple-50">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <div className="flex gap-2">
                   {pastEvents.map((_, idx) => (
                     <div 
                       key={idx} 
-                      className={`h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? 'w-6 bg-[#2D5A8C]' : 'w-2 bg-black/20'}`}
+                      className={`h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? 'w-6 bg-[#6B21A8]' : 'w-2 bg-black/20'}`}
                     />
                   ))}
                 </div>
-                <button onClick={nextSlide} className="p-2 rounded-full bg-white shadow hover:bg-slate-50">
+                <button onClick={nextSlide} className="p-2 rounded-full bg-white shadow hover:bg-purple-50">
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>

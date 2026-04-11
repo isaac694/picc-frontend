@@ -26,6 +26,7 @@ export default function Navigation() {
     { href: '/ministries/prison-ministry', label: 'Prison Ministry' },
     { href: '/ministries/youth-church-ministry', label: 'Youth Church Ministry' },
     { href: '/ministries/women-of-hope', label: 'Women of Hope' },
+    { href: '/ministries/wailing-woman', label: 'Wailing Woman' },
     { href: '/ministries/hope-and-beauty', label: 'Hope and Beauty' },
     { href: '/ministries/heritage-ministry', label: 'Heritage Ministry' },
   ];
