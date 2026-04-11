@@ -2,112 +2,71 @@
 
 import { useState, useEffect } from 'react';
 import { getVersions, getBooks, getPassage } from '@/app/actions/bible';
-import '@youversion/platform-core/browser/styles/index.css';
+import type { BibleVersion, BibleBook } from '@/app/actions/bible';
 import { Sun, Moon } from 'lucide-react';
-
-const OSIS_BOOK_MAP: Record<string, string> = {
-  GEN: "Genesis", EXO: "Exodus", LEV: "Leviticus", NUM: "Numbers", DEU: "Deuteronomy",
-  JOS: "Joshua", JDG: "Judges", RUT: "Ruth", "1SA": "1 Samuel", "2SA": "2 Samuel",
-  "1KI": "1 Kings", "2KI": "2 Kings", "1CH": "1 Chronicles", "2CH": "2 Chronicles",
-  EZR: "Ezra", NEH: "Nehemiah", EST: "Esther", JOB: "Job", PSA: "Psalms", PRO: "Proverbs",
-  ECC: "Ecclesiastes", SNG: "Song of Solomon", ISA: "Isaiah", JER: "Jeremiah", LAM: "Lamentations",
-  EZK: "Ezekiel", DAN: "Daniel", HOS: "Hosea", JOL: "Joel", AMO: "Amos", OBA: "Obadiah",
-  JON: "Jonah", MIC: "Micah", NAM: "Nahum", HAB: "Habakkuk", ZEP: "Zephaniah", HAG: "Haggai",
-  ZEC: "Zechariah", MAL: "Malachi",
-  MAT: "Matthew", MRK: "Mark", LUK: "Luke", JHN: "John", ACT: "Acts", ROM: "Romans",
-  "1CO": "1 Corinthians", "2CO": "2 Corinthians", GAL: "Galatians", EPH: "Ephesians",
-  PHP: "Philippians", COL: "Colossians", "1TH": "1 Thessalonians", "2TH": "2 Thessalonians",
-  "1TI": "1 Timothy", "2TI": "2 Timothy", TIT: "Titus", PHM: "Philemon", HEB: "Hebrews",
-  JAS: "James", "1PE": "1 Peter", "2PE": "2 Peter", "1JN": "1 John", "2JN": "2 John",
-  "3JN": "3 John", JUD: "Jude", REV: "Revelation",
-};
 
 export default function BibleTool() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [versions, setVersions] = useState<{ id: number; title: string; abbreviation?: string }[]>([]);
-  const [books, setBooks] = useState<{ id: string; name: string; chapters: string[] }[]>([]);
+  const [versions, setVersions] = useState<BibleVersion[]>([]);
+  const [books, setBooks] = useState<BibleBook[]>([]);
   
-  const [selectedVersion, setSelectedVersion] = useState<number>(0);
+  const [selectedVersion, setSelectedVersion] = useState<string>('');
   const [selectedBook, setSelectedBook] = useState<string>('');
-  const [selectedChapter, setSelectedChapter] = useState<string>('');
+  const [selectedChapter, setSelectedChapter] = useState<number>(1);
   
   const [passage, setPassage] = useState<{ title: string; content: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Load static version & book lists on mount
   useEffect(() => {
-    const cacheKey = 'yv_versions';
-    try {
-      const cached = window.localStorage.getItem(cacheKey);
-      if (cached) {
-        const data = JSON.parse(cached);
-        setVersions(data);
-        if (data.length > 0) setSelectedVersion(data[0].id);
-        return;
+    Promise.all([getVersions(), getBooks()]).then(([v, b]) => {
+      setVersions(v);
+      setBooks(b);
+      if (v.length > 0) setSelectedVersion(v[0].id);
+      if (b.length > 0) {
+        setSelectedBook(b[0].id);
+        setSelectedChapter(1);
       }
-    } catch {}
-
-    getVersions().then((data) => {
-       try { window.localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
-       setVersions(data);
-       if (data.length > 0) setSelectedVersion(data[0].id);
     });
   }, []);
 
-  useEffect(() => {
-    if (!selectedVersion) return;
-    const cacheKey = `yv_books_${selectedVersion}`;
-    
-    try {
-      const cached = window.localStorage.getItem(cacheKey);
-      if (cached) {
-        const data = JSON.parse(cached);
-        setBooks(data);
-        if (data.length > 0) {
-          setSelectedBook(data[0].id);
-          setSelectedChapter(data[0].chapters[0] || '1');
-        }
-        return;
-      }
-    } catch {}
-
-    setBooks([]);
-    getBooks(selectedVersion).then((data) => {
-       try { window.localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
-       setBooks(data);
-       if (data.length > 0) {
-         setSelectedBook(data[0].id);
-         setSelectedChapter(data[0].chapters[0] || '1');
-       }
-    });
-  }, [selectedVersion]);
-
+  // Fetch passage when selection changes
   useEffect(() => {
     if (!selectedVersion || !selectedBook || !selectedChapter) return;
     let isMounted = true;
-    const passageId = `${selectedBook}.${selectedChapter}`;
-    const cacheKey = `yv_passage_${selectedVersion}_${passageId}`;
 
-    try {
-      const cached = window.localStorage.getItem(cacheKey);
-      if (cached) {
-        setPassage(JSON.parse(cached));
-        setIsLoading(false);
-        return;
-      }
-    } catch {}
+    const isDev = process.env.NODE_ENV === 'development';
+    const cacheKey = `bible_${selectedVersion}_${selectedBook}_${selectedChapter}`;
+
+    if (!isDev) {
+      try {
+        const cached = window.localStorage.getItem(cacheKey);
+        if (cached) {
+          setPassage(JSON.parse(cached));
+          setIsLoading(false);
+          return;
+        }
+      } catch {}
+    }
 
     setIsLoading(true);
-    getPassage(selectedVersion, passageId).then((data) => {
+    getPassage(selectedVersion, selectedBook, selectedChapter).then((data) => {
       if (isMounted) {
-        try { window.localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
+        if (!isDev) {
+          try { window.localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
+        }
         setPassage(data);
         setIsLoading(false);
       }
     });
+
     return () => { isMounted = false; };
   }, [selectedVersion, selectedBook, selectedChapter]);
 
   const activeBook = books.find(b => b.id === selectedBook);
+  const chapterList = activeBook
+    ? Array.from({ length: activeBook.chapters }, (_, i) => i + 1)
+    : [];
 
   // Dynamic theme classes
   const containerBg = theme === 'dark' ? 'bg-black' : 'bg-white';
@@ -120,18 +79,18 @@ export default function BibleTool() {
   const focusRing = theme === 'dark' ? 'focus:ring-white/60' : 'focus:ring-black/60';
 
   return (
-    <div className={`flex flex-col h-[500px] ${containerBg}`} data-yv-theme={theme}>
+    <div className={`flex flex-col h-[500px] ${containerBg}`}>
       {/* Toolbar */}
       <div className={`flex flex-wrap items-center gap-2 p-4 border-b shrink-0 rounded-t-xl ${toolbarBg}`}>
         <select
           value={selectedVersion}
-          onChange={(e) => setSelectedVersion(Number(e.target.value))}
+          onChange={(e) => setSelectedVersion(e.target.value)}
           className={`rounded-xl border ${inputBorder} ${inputBg} px-3 py-2 text-sm ${inputText} shadow-sm focus:outline-none focus:ring-2 ${focusRing} max-w-[150px] truncate`}
           disabled={versions.length === 0}
         >
           {versions.map((v) => (
             <option key={v.id} value={v.id}>
-              {v.abbreviation ? `${v.abbreviation} - ${v.title}` : v.title}
+              {v.abbreviation} - {v.title}
             </option>
           ))}
         </select>
@@ -140,25 +99,23 @@ export default function BibleTool() {
           value={selectedBook}
           onChange={(e) => {
             setSelectedBook(e.target.value);
-            const b = books.find(book => book.id === e.target.value);
-            setSelectedChapter(b?.chapters[0] || '1');
+            setSelectedChapter(1);
           }}
           className={`rounded-xl border ${inputBorder} ${inputBg} px-3 py-2 text-sm ${inputText} shadow-sm focus:outline-none focus:ring-2 ${focusRing} max-w-[150px]`}
           disabled={books.length === 0}
         >
-          {books.map((b) => {
-            const displayName = OSIS_BOOK_MAP[b.id] || b.name;
-            return <option key={b.id} value={b.id}>{displayName}</option>;
-          })}
+          {books.map((b) => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
         </select>
 
         <select
           value={selectedChapter}
-          onChange={(e) => setSelectedChapter(e.target.value)}
+          onChange={(e) => setSelectedChapter(Number(e.target.value))}
           className={`rounded-xl border ${inputBorder} ${inputBg} px-3 py-2 text-sm ${inputText} shadow-sm focus:outline-none focus:ring-2 ${focusRing}`}
-          disabled={!activeBook || activeBook.chapters.length === 0}
+          disabled={chapterList.length === 0}
         >
-          {activeBook?.chapters.map((ch) => (
+          {chapterList.map((ch) => (
             <option key={ch} value={ch}>Chapter {ch}</option>
           ))}
         </select>
@@ -188,8 +145,7 @@ export default function BibleTool() {
               {passage.title}
             </h2>
             <div 
-              data-slot="yv-bible-renderer"
-              className="mx-auto"
+              className="mx-auto leading-relaxed [&_.verse-num]:text-xs [&_.verse-num]:font-bold [&_.verse-num]:opacity-50 [&_.verse-num]:mr-1 [&_p]:mb-1"
               dangerouslySetInnerHTML={{ __html: passage.content }} 
             />
           </div>
