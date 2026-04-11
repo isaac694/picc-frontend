@@ -26,6 +26,7 @@ export default function QuillEditor({
   const editorRef = useRef<any>(null);
   const onChangeRef = useRef(onChange);
   const [isClient, setIsClient] = useState(false);
+  const lastEmittedValueRef = useRef<string>(value);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -60,10 +61,16 @@ export default function QuillEditor({
       });
 
       editorRef.current.clipboard.dangerouslyPasteHTML(value || '');
-      editorRef.current.on('text-change', () => {
+      lastEmittedValueRef.current = value || '';
+      
+      editorRef.current.on('text-change', (delta: any, oldDelta: any, source: string) => {
         const html = editorRef.current.root.innerHTML;
-        if (onChangeRef.current) {
-          onChangeRef.current(html === '<p><br></p>' ? '' : html);
+        const normalizedHtml = html === '<p><br></p>' ? '' : html;
+        if (source === 'user') {
+          lastEmittedValueRef.current = normalizedHtml;
+          if (onChangeRef.current) {
+            onChangeRef.current(normalizedHtml);
+          }
         }
       });
     });
@@ -82,9 +89,16 @@ export default function QuillEditor({
 
   useEffect(() => {
     if (!editorRef.current) return;
+    if (value === lastEmittedValueRef.current) return;
+    
     const currentHtml = editorRef.current.root.innerHTML;
     if (value !== currentHtml && !(value === '' && currentHtml === '<p><br></p>')) {
+      const selection = editorRef.current.getSelection();
       editorRef.current.clipboard.dangerouslyPasteHTML(value || '');
+      if (selection) {
+        editorRef.current.setSelection(selection);
+      }
+      lastEmittedValueRef.current = value;
     }
   }, [value]);
 
