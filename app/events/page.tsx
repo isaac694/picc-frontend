@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { sendEventRegistrationNotification } from '@/lib/email';
 
 export default function EventsPage() {
   const [filter, setFilter] = useState<'today' | 'week' | 'month' | 'year'>('today');
@@ -31,6 +32,9 @@ export default function EventsPage() {
     phone: '',
     email: '',
   });
+  const [registerSubmitting, setRegisterSubmitting] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
   const pageSize = 3;
 
   const events = [
@@ -254,25 +258,43 @@ export default function EventsPage() {
   const openRegister = (event: typeof events[number]) => {
     setActiveEvent(event);
     setIsRegisterOpen(true);
+    setRegisterError(null);
+    setRegisterSuccess(null);
   };
 
-  const submitRegistration = () => {
+  const submitRegistration = async () => {
     if (!activeEvent) return;
-    const subject = `Event Registration: ${activeEvent.title}`;
-    const body = [
-      `Event: ${activeEvent.title}`,
-      `Date: ${activeEvent.date}`,
-      '',
-      `Full name: ${registerForm.fullName}`,
-      `Area of residence: ${registerForm.residence}`,
-      `Phone number: ${registerForm.phone}`,
-      `Email address: ${registerForm.email}`,
-    ].join('\n');
+    setRegisterError(null);
+    setRegisterSuccess(null);
 
-    const mailto = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(
-      subject,
-    )}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
+    if (!registerForm.fullName || !registerForm.residence || !registerForm.phone || !registerForm.email) {
+      setRegisterError('Please complete the required fields before submitting.');
+      return;
+    }
+
+    setRegisterSubmitting(true);
+    try {
+      await sendEventRegistrationNotification({
+        churchEmail: 'info@piccworldwide.org',
+        eventTitle: activeEvent.title,
+        eventDate: activeEvent.date,
+        fullName: registerForm.fullName,
+        residence: registerForm.residence,
+        phone: registerForm.phone,
+        email: registerForm.email,
+      });
+      setRegisterSuccess('Thank you! Your registration was submitted.');
+      setRegisterForm({
+        fullName: '',
+        residence: '',
+        phone: '',
+        email: '',
+      });
+    } catch (error) {
+      setRegisterError(error instanceof Error ? error.message : 'Failed to submit registration.');
+    } finally {
+      setRegisterSubmitting(false);
+    }
   };
 
   return (
@@ -506,6 +528,8 @@ export default function EventsPage() {
           setIsRegisterOpen(open);
           if (!open) {
             setActiveEvent(null);
+            setRegisterError(null);
+            setRegisterSuccess(null);
           }
         }}
       >
@@ -516,6 +540,16 @@ export default function EventsPage() {
               {activeEvent ? `You're registering for ${activeEvent.title}.` : 'Event registration'}
             </DialogDescription>
           </DialogHeader>
+          {registerError && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600">
+              {registerError}
+            </div>
+          )}
+          {registerSuccess && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+              {registerSuccess}
+            </div>
+          )}
           <div className="grid gap-3 text-sm">
             <label className="grid gap-1">
               <span className="text-foreground/80">Full name</span>
@@ -570,9 +604,9 @@ export default function EventsPage() {
             <Button
               className="rounded-full px-5"
               onClick={submitRegistration}
-              disabled={!activeEvent}
+              disabled={!activeEvent || registerSubmitting}
             >
-              Register
+              {registerSubmitting ? 'Sending...' : 'Register'}
             </Button>
           </DialogFooter>
         </DialogContent>

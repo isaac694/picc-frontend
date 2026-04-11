@@ -7,6 +7,7 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { sendMembershipNotification, sendPrayerNotification, sendTestimonyNotification } from '@/lib/email';
 
 export default function FormsPage() {
   const [memberForm, setMemberForm] = useState({
@@ -17,6 +18,9 @@ export default function FormsPage() {
     city: '',
     country: '',
   });
+  const [memberSubmitting, setMemberSubmitting] = useState(false);
+  const [memberError, setMemberError] = useState<string | null>(null);
+  const [memberSuccess, setMemberSuccess] = useState<string | null>(null);
   const [testimonyForm, setTestimonyForm] = useState({
     fullName: '',
     phone: '',
@@ -24,6 +28,9 @@ export default function FormsPage() {
     situation: '',
     testimony: '',
   });
+  const [testimonySubmitting, setTestimonySubmitting] = useState(false);
+  const [testimonyError, setTestimonyError] = useState<string | null>(null);
+  const [testimonySuccess, setTestimonySuccess] = useState<string | null>(null);
   const [prayerForm, setPrayerForm] = useState({
     fullName: '',
     email: '',
@@ -36,71 +43,137 @@ export default function FormsPage() {
     areaOfNeed: '',
     request: '',
   });
+  const [prayerSubmitting, setPrayerSubmitting] = useState(false);
+  const [prayerError, setPrayerError] = useState<string | null>(null);
+  const [prayerSuccess, setPrayerSuccess] = useState<string | null>(null);
 
   const handleMemberChange = (field: keyof typeof memberForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setMemberForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handleMemberSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleMemberSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const subject = 'Membership Form Submission';
-    const body = [
-      `Full Name: ${memberForm.fullName}`,
-      `Gender: ${memberForm.gender}`,
-      `Email: ${memberForm.email}`,
-      `Phone Number: ${memberForm.phone}`,
-      `City/District: ${memberForm.city}`,
-      `Country: ${memberForm.country}`,
-    ].join('\n');
+    setMemberError(null);
+    setMemberSuccess(null);
 
-    window.location.href = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    if (!memberForm.fullName || !memberForm.gender || !memberForm.email || !memberForm.phone || !memberForm.city || !memberForm.country) {
+      setMemberError('Please complete the required fields before submitting.');
+      return;
+    }
+
+    setMemberSubmitting(true);
+    try {
+      await sendMembershipNotification({
+        churchEmail: 'info@piccworldwide.org',
+        fullName: memberForm.fullName,
+        gender: memberForm.gender,
+        email: memberForm.email,
+        phone: memberForm.phone,
+        city: memberForm.city,
+        country: memberForm.country,
+      });
+      setMemberSuccess('Thank you! Your membership form was submitted.');
+      setMemberForm({
+        fullName: '',
+        gender: '',
+        email: '',
+        phone: '',
+        city: '',
+        country: '',
+      });
+    } catch (error) {
+      setMemberError(error instanceof Error ? error.message : 'Failed to submit membership form.');
+    } finally {
+      setMemberSubmitting(false);
+    }
   };
 
   const handleTestimonyChange = (field: keyof typeof testimonyForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setTestimonyForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handleTestimonySubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleTestimonySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const subject = 'Testimony Submission';
-    const body = [
-      `Full Name: ${testimonyForm.fullName}`,
-      `Phone Number: ${testimonyForm.phone || 'N/A'}`,
-      `Area of Testimony: ${testimonyForm.area || 'N/A'}`,
-      '',
-      'How the situation was like:',
-      testimonyForm.situation,
-      '',
-      'What God has done:',
-      testimonyForm.testimony,
-    ].join('\n');
+    setTestimonyError(null);
+    setTestimonySuccess(null);
 
-    window.location.href = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    if (!testimonyForm.fullName || !testimonyForm.situation || !testimonyForm.testimony) {
+      setTestimonyError('Please complete the required fields before submitting.');
+      return;
+    }
+
+    setTestimonySubmitting(true);
+    try {
+      await sendTestimonyNotification({
+        churchEmail: 'info@piccworldwide.org',
+        fullName: testimonyForm.fullName,
+        phone: testimonyForm.phone || undefined,
+        area: testimonyForm.area || undefined,
+        situation: testimonyForm.situation,
+        testimony: testimonyForm.testimony,
+      });
+      setTestimonySuccess('Thank you! Your testimony has been sent.');
+      setTestimonyForm({
+        fullName: '',
+        phone: '',
+        area: '',
+        situation: '',
+        testimony: '',
+      });
+    } catch (error) {
+      setTestimonyError(error instanceof Error ? error.message : 'Failed to submit testimony.');
+    } finally {
+      setTestimonySubmitting(false);
+    }
   };
 
   const handlePrayerChange = (field: keyof typeof prayerForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setPrayerForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handlePrayerSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handlePrayerSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const subject = 'Prayer Request Submission';
-    const body = [
-      `Full Name: ${prayerForm.fullName}`,
-      `Email: ${prayerForm.email || 'N/A'}`,
-      `Phone: ${prayerForm.phone || 'N/A'}`,
-      `Address: ${prayerForm.address || 'N/A'}`,
-      `City: ${prayerForm.city || 'N/A'}`,
-      `State: ${prayerForm.state || 'N/A'}`,
-      `Country: ${prayerForm.country || 'N/A'}`,
-      `Born Again: ${prayerForm.bornAgain || 'N/A'}`,
-      `Area of Need: ${prayerForm.areaOfNeed || 'N/A'}`,
-      '',
-      'Prayer Request:',
-      prayerForm.request,
-    ].join('\n');
+    setPrayerError(null);
+    setPrayerSuccess(null);
 
-    window.location.href = `mailto:info@piccworldwide.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    if (!prayerForm.fullName || !prayerForm.request) {
+      setPrayerError('Please complete the required fields before submitting.');
+      return;
+    }
+
+    setPrayerSubmitting(true);
+    try {
+      await sendPrayerNotification({
+        churchEmail: 'info@piccworldwide.org',
+        fullName: prayerForm.fullName,
+        email: prayerForm.email || undefined,
+        phone: prayerForm.phone || undefined,
+        address: prayerForm.address || undefined,
+        city: prayerForm.city || undefined,
+        state: prayerForm.state || undefined,
+        country: prayerForm.country || undefined,
+        bornAgain: prayerForm.bornAgain || undefined,
+        areaOfNeed: prayerForm.areaOfNeed || undefined,
+        request: prayerForm.request,
+      });
+      setPrayerSuccess('Thank you! Your prayer request was submitted.');
+      setPrayerForm({
+        fullName: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        state: '',
+        country: '',
+        bornAgain: '',
+        areaOfNeed: '',
+        request: '',
+      });
+    } catch (error) {
+      setPrayerError(error instanceof Error ? error.message : 'Failed to submit prayer request.');
+    } finally {
+      setPrayerSubmitting(false);
+    }
   };
 
   return (
@@ -133,9 +206,19 @@ export default function FormsPage() {
                 <Card className="bg-white/15 backdrop-blur-sm text-white border-white/20 shadow-2xl rounded-3xl h-full">
                   <div className="px-6 py-8 md:px-8 md:py-10 h-full flex flex-col justify-center">
                     <h2 className="text-3xl font-semibold text-white mb-2">Become a member</h2>
-                    <p className="text-white/80 mb-6">
-                      If you made a decision today, we would love to connect with you.
-                    </p>
+                  <p className="text-white/80 mb-6">
+                    If you made a decision today, we would love to connect with you.
+                  </p>
+                  {memberError && (
+                    <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                      {memberError}
+                    </div>
+                  )}
+                  {memberSuccess && (
+                    <div className="mb-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50">
+                      {memberSuccess}
+                    </div>
+                  )}
 
                     <form className="space-y-4" onSubmit={handleMemberSubmit}>
                       <div>
@@ -231,8 +314,8 @@ export default function FormsPage() {
                         </div>
                       </div>
 
-                      <Button className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                        Submit
+                      <Button className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90" disabled={memberSubmitting}>
+                        {memberSubmitting ? 'Sending...' : 'Submit'}
                       </Button>
                     </form>
                   </div>
@@ -251,6 +334,16 @@ export default function FormsPage() {
                   <p className="text-foreground/70 mb-6">
                     Share what God has done in your life and encourage others.
                   </p>
+                  {testimonyError && (
+                    <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
+                      {testimonyError}
+                    </div>
+                  )}
+                  {testimonySuccess && (
+                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+                      {testimonySuccess}
+                    </div>
+                  )}
 
                   <form className="space-y-4" onSubmit={handleTestimonySubmit}>
                     <div>
@@ -316,8 +409,8 @@ export default function FormsPage() {
                         className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
-                    <Button className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                      Submit Testimony
+                    <Button className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90" disabled={testimonySubmitting}>
+                      {testimonySubmitting ? 'Sending...' : 'Submit Testimony'}
                     </Button>
                   </form>
                 </div>
@@ -342,6 +435,16 @@ export default function FormsPage() {
               <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-10 items-stretch">
                 <div className="flex flex-col justify-center">
                   <h2 className="text-3xl md:text-4xl font-semibold mb-4">Prayer Request</h2>
+                  {prayerError && (
+                    <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                      {prayerError}
+                    </div>
+                  )}
+                  {prayerSuccess && (
+                    <div className="mb-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50">
+                      {prayerSuccess}
+                    </div>
+                  )}
                   <form className="space-y-4" onSubmit={handlePrayerSubmit}>
                     <div>
                       <label className="text-xs uppercase tracking-[0.2em] text-white/70">
@@ -496,8 +599,8 @@ export default function FormsPage() {
                         className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
                       />
                     </div>
-                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                      Send My Prayer
+                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={prayerSubmitting}>
+                      {prayerSubmitting ? 'Sending...' : 'Send My Prayer'}
                     </Button>
                   </form>
                 </div>
@@ -520,4 +623,3 @@ export default function FormsPage() {
     </>
   );
 }
-

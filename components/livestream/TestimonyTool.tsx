@@ -2,7 +2,14 @@ import { Button } from '@/components/ui/button';
 import { useTestimonyForm } from '@/hooks/useLivestreamTools';
 
 export default function TestimonyTool() {
-  const { testimonyForm, handleTestimonyChange, handleTestimonySubmit } = useTestimonyForm();
+  const {
+    testimonyForm,
+    handleTestimonyChange,
+    handleTestimonySubmit,
+    isSubmitting,
+    formError,
+    formSuccess,
+  } = useTestimonyForm();
 
   return (
     <div className="text-white">
@@ -10,6 +17,16 @@ export default function TestimonyTool() {
       <p className="text-white/70 mb-5">
         Share what God has done in your life and encourage others.
       </p>
+      {formError && (
+        <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          {formError}
+        </div>
+      )}
+      {formSuccess && (
+        <div className="mb-4 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50">
+          {formSuccess}
+        </div>
+      )}
       <form className="grid gap-4" onSubmit={handleTestimonySubmit}>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-white/70">
@@ -74,8 +91,8 @@ export default function TestimonyTool() {
             className="mt-2 w-full rounded-xl border border-white/15 bg-white/90 px-4 py-3 text-sm text-black shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
           />
         </div>
-        <Button className="w-full bg-white text-black hover:bg-white/90">
-          Submit Testimony
+        <Button className="w-full bg-white text-black hover:bg-white/90" disabled={isSubmitting}>
+          {isSubmitting ? 'Sending...' : 'Submit Testimony'}
         </Button>
       </form>
     </div>
