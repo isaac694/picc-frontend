@@ -8,6 +8,7 @@ import LiveChat from '@/components/LiveChat';
 import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
 import GiveTool from '@/components/livestream/GiveTool';
+import BibleTool from '@/components/livestream/BibleTool';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
@@ -283,6 +284,7 @@ export default function LivestreamPage() {
   }, [ytReady, activeTool]);
 
   const mobilePlayerActive = isMobileViewport && activeTool;
+  const activeEmbedTool = TOOL_TABS.find(t => t.key === activeTool && t.kind === "embed") as { url: string; label: string } | undefined;
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -504,6 +506,11 @@ export default function LivestreamPage() {
                         <LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} />
                       </div>
                     )}
+                    {activeTool === "bible" && (
+                      <div className="mb-4">
+                        <BibleTool />
+                      </div>
+                    )}
                     {activeTool === "notepad" && (
                       <div className="mb-4">
                         <NotepadTool />
@@ -565,6 +572,11 @@ export default function LivestreamPage() {
                       {activeTool === 'chat' && (
                         <div className="h-[300px] w-full bg-black mb-4">
                           <LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} />
+                        </div>
+                      )}
+                      {activeTool === 'bible' && (
+                        <div className="mb-4">
+                          <BibleTool />
                         </div>
                       )}
                       {activeTool === 'notepad' && (
