@@ -375,13 +375,24 @@ export default function FormsPage() {
                       <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
                         Area of Testimony
                       </label>
-                      <input
-                        type="text"
-                        placeholder="Area of Testimony"
+                      <select
                         value={testimonyForm.area}
-                        onChange={handleTestimonyChange('area')}
+                        onChange={handleTestimonyChange('area') as any}
                         className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
+                        required
+                      >
+                        <option value="">Select area of testimony</option>
+                        <option value="Healing & Health">Healing & Health</option>
+                        <option value="Financial Breakthrough">Financial Breakthrough</option>
+                        <option value="Family & Marriage">Family & Marriage</option>
+                        <option value="Career & Business">Career & Business</option>
+                        <option value="Spiritual Growth">Spiritual Growth</option>
+                        <option value="Protection & Safety">Protection & Safety</option>
+                        <option value="Academic Success">Academic Success</option>
+                        <option value="Fruit of the Womb">Fruit of the Womb</option>
+                        <option value="Salvation">Salvation</option>
+                        <option value="Other">Other</option>
+                      </select>
                     </div>
                     <div>
                       <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
