@@ -132,8 +132,8 @@ export default function LiveChatAdminPage() {
     setStatus('');
     setLastError('');
     try {
-      const response = await fetch(
-        apiUrl(`/api/chat/admin/messages?videoId=${encodeURIComponent(videoId)}&take=500`),
+      const response = await apiFetch(
+        `/api/chat/admin/messages?videoId=${encodeURIComponent(videoId)}&take=500`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!response.ok) {
