@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 
 const FALLBACK_SLIDES = [
   { src: '/events/event-1.jpg', alt: 'Event 1' },
@@ -90,7 +90,7 @@ export default function EventsCarousel() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch(apiUrl('/api/events?take=12'));
+        const response = await apiFetch('/api/events?take=12');
         if (!response.ok) return;
         const data = await response.json();
         const resolveImageUrl = (url: string) => {
@@ -249,3 +249,5 @@ export default function EventsCarousel() {
     </section>
   );
 }
+
+

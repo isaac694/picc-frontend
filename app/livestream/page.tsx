@@ -54,6 +54,7 @@ export default function LivestreamPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
   const playersRef = useRef<Map<string, any>>(new Map());
 
   const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
@@ -299,99 +300,120 @@ export default function LivestreamPage() {
     };
   }, [mobilePlayerActive]);
 
+  useEffect(() => {
+    if (!isMobileViewport || !activeTool) return;
+    const videoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
+    const player = playersRef.current.get(videoId);
+    if (!player || typeof player.getCurrentTime !== 'function') {
+      setMobileResumeAt(null);
+      return;
+    }
+    try {
+      const currentTime = player.getCurrentTime();
+      if (Number.isFinite(currentTime)) {
+        setMobileResumeAt(Math.floor(currentTime));
+      } else {
+        setMobileResumeAt(null);
+      }
+    } catch {
+      setMobileResumeAt(null);
+    }
+  }, [activeTool, isMobileViewport, featuredVideo?.videoId]);
+
+  const mobileVideoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
+  const mobileVideoStart = mobileResumeAt && mobileResumeAt > 0 ? `&start=${mobileResumeAt}` : '';
+
   return (
     <>
       <Navigation />
       <main className="min-h-screen bg-black text-white">
-        {/* Hero Section */}
-        <section className={`py-16 sm:py-20 md:py-24 bg-black text-white ${mobilePlayerActive ? 'hidden md:block' : ''}`}>
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-              Watch <span className="text-red-500">Live</span> Services
-            </h1>
-            <p className="text-base md:text-lg text-white/80">
-              Experience the Presence of God Anytime, Anywhere.
-            </p>
-          </div>
-        </section>
-        {/* Sunday Livestream Section */}
-        <section className={`py-12 md:py-16 bg-black ${mobilePlayerActive ? 'hidden md:block' : ''}`}>
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5">
-              <div
-                className={
-                  mobilePlayerActive
-                    ? 'sticky top-16 z-40 h-[40svh] bg-black'
-                    : 'relative aspect-video bg-black'
-                }
-              >
-                <iframe
-                  className="h-full w-full"
-                  data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
-                  id="yt-hero"
-                  src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
-                  title={featuredVideo?.title || "Sunday Livestream"}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
+        {!mobilePlayerActive && (
+          <>
+            {/* Hero Section */}
+            <section className="py-16 sm:py-20 md:py-24 bg-black text-white">
+              <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+                  Watch <span className="text-red-500">Live</span> Services
+                </h1>
+                <p className="text-base md:text-lg text-white/80">
+                  Experience the Presence of God Anytime, Anywhere.
+                </p>
               </div>
-              <div className={`bg-white text-black px-6 py-5 ${mobilePlayerActive ? 'hidden md:block' : ''}`}>
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div>
-                    <h3 className="text-lg font-semibold">
-                      {featuredVideo?.title || "Stream in English"}
-                    </h3>
-                    {featuredVideo?.publishedAt && (
-                      <p className="text-xs text-black/60 mt-1">
-                        {formatDate(featuredVideo.publishedAt)}
-                      </p>
-                    )}
+            </section>
+            {/* Sunday Livestream Section */}
+            <section className="py-12 md:py-16 bg-black">
+              <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5">
+                  <div className="relative aspect-video bg-black">
+                    <iframe
+                      className="h-full w-full"
+                      data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
+                      id="yt-hero"
+                      src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
+                      title={featuredVideo?.title || "Sunday Livestream"}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool("bible")}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#EAF2FF] px-3 py-1 text-xs font-medium text-[#1E4FA3] hover:bg-[#DCEAFF] transition-colors"
-                    >
-                      <BookOpenText size={12} />
-                      Bible
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool("notepad")}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#FFF2DA] px-3 py-1 text-xs font-medium text-[#8A5A00] hover:bg-[#FFE9C2] transition-colors"
-                    >
-                      <StickyNote size={12} />
-                      Notepad
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool("chat")}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#E8FFF3] px-3 py-1 text-xs font-medium text-[#0F7A3E] hover:bg-[#D8F7E7] transition-colors"
-                    >
-                      <MessageSquareText size={12} />
-                      Live Chat
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool("testimony")}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#CFF6DF] px-3 py-1 text-xs font-medium text-[#137A3D] hover:bg-[#BDEFD3] transition-colors"
-                    >
-                      Send Testimony
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool("give")}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#39D98A] px-3 py-1 text-semibold text-black hover:bg-[#2FC77C] transition-colors"
-                    >
-                      Give
-                    </button>
+                  <div className="bg-white text-black px-6 py-5">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          {featuredVideo?.title || "Stream in English"}
+                        </h3>
+                        {featuredVideo?.publishedAt && (
+                          <p className="text-xs text-black/60 mt-1">
+                            {formatDate(featuredVideo.publishedAt)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("bible")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#EAF2FF] px-3 py-1 text-xs font-medium text-[#1E4FA3] hover:bg-[#DCEAFF] transition-colors"
+                        >
+                          <BookOpenText size={12} />
+                          Bible
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("notepad")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#FFF2DA] px-3 py-1 text-xs font-medium text-[#8A5A00] hover:bg-[#FFE9C2] transition-colors"
+                        >
+                          <StickyNote size={12} />
+                          Notepad
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("chat")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#E8FFF3] px-3 py-1 text-xs font-medium text-[#0F7A3E] hover:bg-[#D8F7E7] transition-colors"
+                        >
+                          <MessageSquareText size={12} />
+                          Live Chat
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("testimony")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#CFF6DF] px-3 py-1 text-xs font-medium text-[#137A3D] hover:bg-[#BDEFD3] transition-colors"
+                        >
+                          Send Testimony
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("give")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#39D98A] px-3 py-1 text-semibold text-black hover:bg-[#2FC77C] transition-colors"
+                        >
+                          Give
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
+          </>
+        )}
         {activeTool && (
           <>
             <section className="pb-12 md:pb-16 bg-black hidden md:block">
@@ -457,9 +479,9 @@ export default function LivestreamPage() {
                   <div className="flex-[0_0_40%] bg-black">
                     <iframe
                       className="h-full w-full"
-                      data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
+                      data-yt-id={mobileVideoId}
                       id="yt-hero-mobile"
-                      src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
+                      src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0&autoplay=1&playsinline=1${mobileVideoStart}`}
                       title={featuredVideo?.title || 'Sunday Livestream'}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen

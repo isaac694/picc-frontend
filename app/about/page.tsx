@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 
 export default function AboutPage() {
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
@@ -38,7 +38,7 @@ export default function AboutPage() {
       const entries = await Promise.all(
         imageKeys.map(async (key) => {
           try {
-            const response = await fetch(apiUrl(`/api/site-content/${key}`));
+            const response = await apiFetch(`/api/site-content/${key}`);
             if (!response.ok) return [key, ''] as const;
             const data = await response.json();
             const imageUrl = data.imageUrl
@@ -553,4 +553,6 @@ export default function AboutPage() {
     </>
   );
 }
+
+
 

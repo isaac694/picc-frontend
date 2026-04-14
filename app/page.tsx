@@ -10,7 +10,7 @@ import QuoteSection from '@/components/QuoteSection';
 import MomentsSection from '@/components/MomentsSection';
 import SpotifyFollowDialog from '@/components/SpotifyFollowDialog';
 import DevotionReadMore from '@/components/DevotionReadMore';
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 
 const HOME_HERO_SLOTS = [
   { key: 'home-hero-1', fallback: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
@@ -105,7 +105,7 @@ const DEFAULT_SERVICES = [
 
 async function getDailyDevotion() {
   try {
-    const response = await fetch(apiUrl('/api/devotions/latest'), {
+    const response = await apiFetch('/api/devotions/latest', {
       next: { revalidate: 300 },
     });
 
@@ -121,7 +121,7 @@ async function getDailyDevotion() {
 
 async function getServices() {
   try {
-    const response = await fetch(apiUrl('/api/services'), {
+    const response = await apiFetch('/api/services', {
       next: { revalidate: 300 },
     });
     if (!response.ok) return [];
@@ -133,7 +133,7 @@ async function getServices() {
 
 async function getSeeYouInChurch() {
   try {
-    const response = await fetch(apiUrl('/api/site-content/see-you-in-church'), {
+    const response = await apiFetch('/api/site-content/see-you-in-church', {
       next: { revalidate: 300 },
     });
     if (!response.ok) return null;
@@ -145,7 +145,7 @@ async function getSeeYouInChurch() {
 
 async function getQuoteOfMonth() {
   try {
-    const response = await fetch(apiUrl('/api/quote-of-month'), {
+    const response = await apiFetch('/api/quote-of-month', {
       next: { revalidate: 300 },
     });
     if (!response.ok) return null;
@@ -159,7 +159,7 @@ async function getSiteImages(keys: string[]) {
   const entries = await Promise.all(
     keys.map(async (key) => {
       try {
-        const response = await fetch(apiUrl(`/api/site-content/${key}`), {
+        const response = await apiFetch(`/api/site-content/${key}`, {
           next: { revalidate: 300 },
         });
         if (!response.ok) return [key, null] as const;
@@ -676,3 +676,5 @@ export default async function HomePage() {
     </>
   );
 }
+
+

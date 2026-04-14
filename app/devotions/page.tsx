@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 
 type DevotionsResult = {
   devotions: any[];
@@ -10,7 +10,7 @@ type DevotionsResult = {
 
 async function getDevotions(): Promise<DevotionsResult> {
   try {
-    const response = await fetch(apiUrl('/api/devotions?take=500'), {
+    const response = await apiFetch('/api/devotions?take=500', {
       next: { revalidate: 300 },
     });
 
@@ -25,7 +25,7 @@ async function getDevotions(): Promise<DevotionsResult> {
       return { devotions };
     }
 
-    const latestResponse = await fetch(apiUrl('/api/devotions/latest'), {
+    const latestResponse = await apiFetch('/api/devotions/latest', {
       next: { revalidate: 300 },
     });
     if (!latestResponse.ok) {
@@ -140,4 +140,6 @@ export default async function DevotionsPage() {
     </>
   );
 }
+
+
 
