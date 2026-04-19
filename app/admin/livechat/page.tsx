@@ -8,9 +8,11 @@ import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { toast } from 'sonner';
 
 type ChatThread = {
   videoId: string;
+  videoTitle?: string | null;
   messageCount: number;
   lastMessageAt: string | null;
 };
@@ -61,9 +63,10 @@ export default function LiveChatAdminPage() {
     });
   };
 
-  const displayVideoId = (videoId: string) => {
-    if (videoId === 'legacy') return 'Legacy Chat (pre-video)';
-    return videoId;
+  const displayThreadTitle = (thread: ChatThread) => {
+    if (thread.videoId === 'legacy') return 'Legacy Chat (pre-video)';
+    const normalizedTitle = thread.videoTitle?.trim();
+    return normalizedTitle || thread.videoId;
   };
 
   const selectedThread = useMemo(
@@ -118,7 +121,7 @@ export default function LiveChatAdminPage() {
       }
       const data = await response.json();
       setThreads(data.threads || []);
-    } catch (error) {
+    } catch {
       setStatus('Unable to load chat threads.');
       setThreads([]);
     } finally {
@@ -145,12 +148,56 @@ export default function LiveChatAdminPage() {
       }
       const data = await response.json();
       setMessages(data.messages || []);
-    } catch (error) {
+    } catch {
       setStatus('Unable to load messages for that stream.');
       setMessages([]);
     } finally {
       setIsLoadingMessages(false);
     }
+  };
+
+  const deleteMessage = async (messageId: string, videoId: string) => {
+    if (!token) return;
+    setStatus('');
+    setLastError('');
+    try {
+      const response = await apiFetch(`/api/chat/admin/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const detail = await readResponseDetail(response);
+        setStatus('Unable to delete message.');
+        setLastError(detail || `HTTP ${response.status}`);
+        toast.error('Unable to delete message.');
+        return;
+      }
+
+      setStatus('Message deleted.');
+      toast.success('Message deleted.');
+      setMessages((prev) => prev.filter((message) => message.id !== messageId));
+      await refreshThreads();
+      if (selectedVideoId === videoId) {
+        await loadMessages(videoId);
+      }
+    } catch {
+      setStatus('Unable to delete message.');
+      toast.error('Unable to delete message.');
+    }
+  };
+
+  const requestDeleteMessage = (messageId: string, videoId: string) => {
+    toast('Delete this message?', {
+      description: 'This action cannot be undone.',
+      action: {
+        label: 'Delete',
+        onClick: () => deleteMessage(messageId, videoId),
+      },
+      cancel: {
+        label: 'Cancel',
+      },
+    });
   };
 
   const handleSelectThread = (videoId: string) => {
@@ -224,8 +271,16 @@ export default function LiveChatAdminPage() {
                     }`}
                   >
                     <p className="text-sm font-semibold text-foreground">
-                      {displayVideoId(thread.videoId)}
+                      {displayThreadTitle(thread)}
                     </p>
+                    {thread.videoId !== 'legacy' &&
+                    thread.videoTitle &&
+                    thread.videoTitle.trim() &&
+                    thread.videoTitle.trim() !== thread.videoId ? (
+                      <p className="text-[11px] text-foreground/50 mt-1 break-all">
+                        {thread.videoId}
+                      </p>
+                    ) : null}
                     <p className="text-xs text-foreground/60 mt-1">
                       {thread.messageCount} messages
                     </p>
@@ -246,7 +301,7 @@ export default function LiveChatAdminPage() {
                 </h2>
                 {selectedThread && (
                   <p className="text-sm text-foreground/60">
-                    {displayVideoId(selectedThread.videoId)}
+                    {displayThreadTitle(selectedThread)}
                   </p>
                 )}
               </div>
@@ -277,12 +332,25 @@ export default function LiveChatAdminPage() {
               ) : (
                 <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                   {messages.map((message) => (
-                    <div key={message.id} className="rounded-xl border border-border/60 bg-background p-3">
+                    <div
+                      key={message.id}
+                      className="group rounded-xl border border-border/60 bg-background p-3 relative"
+                    >
                       <div className="flex items-center justify-between text-xs text-foreground/60 mb-2">
-                        <span>{message.username}</span>
+                        <span className="font-medium">{message.username}</span>
                         <span>{formatDateTime(message.createdAt)}</span>
                       </div>
-                      <p className="text-sm text-foreground">{message.content}</p>
+                      <div className="flex items-start justify-between gap-4">
+                        <p className="text-sm text-foreground flex-1">{message.content}</p>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-7 px-3 text-[11px] bg-red-600 hover:bg-red-700 text-white flex-shrink-0 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:group-focus-within:opacity-100 md:group-focus-within:pointer-events-auto"
+                          onClick={() => requestDeleteMessage(message.id, message.videoId)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

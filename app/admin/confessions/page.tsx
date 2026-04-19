@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
@@ -16,7 +16,19 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-export default function DevotionsAdminPage() {
+type ConfessionRecord = {
+  id: string | number;
+  title?: string | null;
+  publishAt?: string | null;
+  imageUrl?: string | null;
+};
+
+const normalizeImageUrl = (value?: string | null) => {
+  if (!value) return '';
+  return value.startsWith('http') ? value : apiUrl(value);
+};
+
+export default function ConfessionsAdminPage() {
   const {
     token,
     email,
@@ -29,6 +41,7 @@ export default function DevotionsAdminPage() {
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
+  const [statusIsError, setStatusIsError] = useState(false);
   const [date, setDate] = useState(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -36,26 +49,67 @@ export default function DevotionsAdminPage() {
   });
   const [publishTime, setPublishTime] = useState('01:00');
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploadName, setUploadName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [allDevotions, setAllDevotions] = useState<any[]>([]);
+  const [allConfessions, setAllConfessions] = useState<ConfessionRecord[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingPublishAt, setPendingPublishAt] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<string | null>(null);
   const [pendingTime, setPendingTime] = useState<string | null>(null);
 
+  const clearStatus = () => {
+    setStatus('');
+    setStatusIsError(false);
+  };
+
+  const setErrorStatus = (message: string) => {
+    setStatus(message);
+    setStatusIsError(true);
+  };
+
+  const setSuccessStatus = (message: string) => {
+    setStatus(message);
+    setStatusIsError(false);
+  };
+
+  const uploadImage = async (file: File) => {
+    if (!token) return null;
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await apiFetch('/api/uploads', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      if (!response.ok) {
+        setErrorStatus('Image upload failed.');
+        return null;
+      }
+      const data = await response.json();
+      return normalizeImageUrl(data.url);
+    } catch {
+      setErrorStatus('Image upload failed.');
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
 
-    const fetchDevotion = async () => {
+    const fetchConfession = async () => {
       setLoading(true);
-      setStatus('');
+      clearStatus();
       try {
-        const response = await apiFetch(`/api/devotions?date=${date}`);
+        const response = await apiFetch(`/api/confessions?date=${date}`);
         if (response.ok) {
           const data = await response.json();
           setTitle(data.title || '');
-          setContent(data.content || '');
+          setImageUrl(normalizeImageUrl(data.imageUrl));
+          setUploadName('');
           if (data.publishAt) {
             const parsed = new Date(data.publishAt);
             if (!Number.isNaN(parsed.getTime())) {
@@ -66,48 +120,49 @@ export default function DevotionsAdminPage() {
           }
         } else if (response.status === 404) {
           setTitle('');
-          setContent('');
+          setImageUrl('');
+          setUploadName('');
         } else {
-          setStatus('Unable to load devotion for that date.');
+          setErrorStatus('Unable to load confession for that date.');
         }
-      } catch (error) {
-        setStatus('Unable to load devotion for that date.');
+      } catch {
+        setErrorStatus('Unable to load confession for that date.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDevotion();
+    fetchConfession();
   }, [token, date]);
 
   useEffect(() => {
     if (!token) return;
 
-    const fetchAllDevotions = async () => {
+    const fetchAllConfessions = async () => {
       try {
-        const response = await apiFetch('/api/devotions/admin?take=500', {
+        const response = await apiFetch('/api/confessions/admin?take=500', {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) return;
         const data = await response.json();
-        setAllDevotions(data.devotions || []);
-      } catch (error) {
-        setAllDevotions([]);
+        setAllConfessions(data.confessions || []);
+      } catch {
+        setAllConfessions([]);
       }
     };
 
-    fetchAllDevotions();
+    fetchAllConfessions();
   }, [token, status]);
 
   const requestPostConfirmation = () => {
-    if (!content.trim()) {
-      setStatus('Please add devotion content before posting.');
+    if (!imageUrl.trim()) {
+      setErrorStatus('Please upload a confession image before posting.');
       return;
     }
 
     const todayStr = new Date().toISOString().slice(0, 10);
     if (date < todayStr) {
-      setStatus('You cannot post devotions for past dates. Please select today or a future date.');
+      setErrorStatus('You cannot post confessions for past dates. Please select today or a future date.');
       return;
     }
 
@@ -121,28 +176,28 @@ export default function DevotionsAdminPage() {
   const handleConfirmPost = async () => {
     if (!pendingPublishAt) return;
 
-    setStatus('');
+    clearStatus();
     setLoading(true);
     setConfirmOpen(false);
 
     try {
-      const response = await apiFetch('/api/devotions', {
+      const response = await apiFetch('/api/confessions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ date, title, content, publishAt: pendingPublishAt }),
+        body: JSON.stringify({ date, title, imageUrl, publishAt: pendingPublishAt }),
       });
 
       if (!response.ok) {
-        setStatus('Unable to post devotion. Please try again.');
+        setErrorStatus('Unable to post confession. Please try again.');
         return;
       }
 
-      setStatus('Devotion posted.');
-    } catch (error) {
-      setStatus('Unable to post devotion. Please try again.');
+      setSuccessStatus('Confession posted.');
+    } catch {
+      setErrorStatus('Unable to post confession. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -169,10 +224,10 @@ export default function DevotionsAdminPage() {
             Admin
           </p>
           <h1 className="text-3xl md:text-5xl font-semibold text-foreground">
-            Daily Devotions
+            Daily Confessions
           </h1>
           <p className="text-foreground/70 mt-3 max-w-2xl">
-            Write and schedule devotionals for the church family.
+            Upload and schedule daily confession declarations.
           </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
@@ -181,10 +236,12 @@ export default function DevotionsAdminPage() {
       </div>
 
       {status && (
-        <p className="text-sm text-foreground/70">{status}</p>
+        <p className={statusIsError ? 'text-sm text-red-600' : 'text-sm text-foreground/70'}>
+          {status}
+        </p>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-6">
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -220,52 +277,84 @@ export default function DevotionsAdminPage() {
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              placeholder="Devotion title"
+              placeholder="Confession title (optional)"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Content
+              Upload Confession Image
             </label>
-            <textarea
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              rows={10}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              placeholder="Write today’s devotion..."
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const url = await uploadImage(file);
+                if (url) {
+                  setImageUrl(url);
+                  setUploadName(file.name);
+                }
+              }}
+              className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
             />
+            {uploadName ? (
+              <p className="mt-2 text-xs text-foreground/60">
+                Selected: {uploadName}
+              </p>
+            ) : null}
+            {imageUrl ? (
+              <p className="mt-2 text-xs text-foreground/60 break-all">
+                Image URL: {imageUrl}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={requestPostConfirmation} disabled={loading}>
-              {loading ? 'Posting...' : 'Post Devotion'}
+              {loading ? 'Posting...' : 'Post Confession'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setImageUrl('');
+                setUploadName('');
+              }}
+              disabled={loading}
+            >
+              Clear Image
             </Button>
           </div>
         </div>
 
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground mb-4">
-            Recent Devotions
+            Recent Confessions
           </h2>
-          {allDevotions.length === 0 ? (
+          {allConfessions.length === 0 ? (
             <p className="text-sm text-foreground/60">
-              No devotions yet.
+              No confessions yet.
             </p>
           ) : (
             <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
-              {allDevotions.map((devotion) => (
+              {allConfessions.map((confession) => (
                 <button
-                  key={devotion.id}
+                  key={String(confession.id)}
                   type="button"
-                  onClick={() => setDate(String(devotion.date).slice(0, 10))}
+                  onClick={() => {
+                    const iso = confession.publishAt
+                      ? String(confession.publishAt).slice(0, 10)
+                      : '';
+                    if (iso) setDate(iso);
+                  }}
                   className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-left hover:border-primary/60 transition"
                 >
                   <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                    {String(devotion.date).slice(0, 10)}
+                    {confession.publishAt ? String(confession.publishAt).slice(0, 10) : 'Undated'}
                   </p>
                   <p className="text-sm font-semibold text-foreground mt-1">
-                    {devotion.title || 'Untitled devotion'}
+                    {confession.title || 'Daily Confession'}
                   </p>
                 </button>
               ))}
@@ -287,9 +376,9 @@ export default function DevotionsAdminPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Devotion Post</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Confession Post</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to post this devotion{pendingDate && pendingTime ? ` for ${pendingDate} at ${pendingTime}` : ''}?
+              Are you sure you want to post this confession{pendingDate && pendingTime ? ` for ${pendingDate} at ${pendingTime}` : ''}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

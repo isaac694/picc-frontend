@@ -119,6 +119,22 @@ async function getDailyDevotion() {
   }
 }
 
+async function getDailyConfession() {
+  try {
+    const response = await apiFetch('/api/confessions/latest', {
+      next: { revalidate: 300 },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return response.json();
+  } catch (error) {
+    return null;
+  }
+}
+
 async function getServices() {
   try {
     const response = await apiFetch('/api/services', {
@@ -179,6 +195,11 @@ function normalizeImageUrl(url?: string | null) {
   return apiUrl(url);
 }
 
+function isLocalUpstreamImage(url?: string | null) {
+  if (!url) return false;
+  return url.includes('://localhost') || url.includes('://127.0.0.1') || url.includes('://[::1]');
+}
+
 export default async function HomePage() {
   const imageKeys = [
     ...HOME_HERO_SLOTS.map((slot) => slot.key),
@@ -190,8 +211,9 @@ export default async function HomePage() {
     'home-livestream-bg',
   ];
 
-  const [devotion, services, seeYouInChurch, quoteOfMonth, siteImages] = await Promise.all([
+  const [devotion, confession, services, seeYouInChurch, quoteOfMonth, siteImages] = await Promise.all([
     getDailyDevotion(),
+    getDailyConfession(),
     getServices(),
     getSeeYouInChurch(),
     getQuoteOfMonth(),
@@ -204,6 +226,17 @@ export default async function HomePage() {
       year: 'numeric',
     }).format(new Date(devotion.publishAt))
     : null;
+
+  const confessionDate = confession?.publishAt
+    ? new Intl.DateTimeFormat('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(confession.publishAt))
+    : null;
+
+  const confessionImageSrc = normalizeImageUrl(confession?.imageUrl) || '/home/declaration.jpeg';
+  const confessionImageUnoptimized = isLocalUpstreamImage(confessionImageSrc);
 
   const seeYouImageUrl = normalizeImageUrl(seeYouInChurch?.imageUrl) || '/home/see-you-in-church.JPG';
   const quoteImageUrl = normalizeImageUrl(quoteOfMonth?.imageUrl);
@@ -274,6 +307,7 @@ export default async function HomePage() {
                     sizes="(max-width: 768px) 50vw, 33vw"
                     priority={index < 2}
                     className="object-cover"
+                    unoptimized={isLocalUpstreamImage(item.src)}
                   />
                 </div>
               ))}
@@ -321,13 +355,26 @@ export default async function HomePage() {
                 <h2 className="text-3xl md:text-5xl font-semibold text-foreground mb-6">
                   My Confession
                 </h2>
+                {confessionDate && (
+                  <p className="mb-4 text-xs uppercase tracking-[0.25em] text-foreground/50">
+                    {confessionDate}
+                  </p>
+                )}
+                <div className="mb-6">
+                  <Link href="/devotions#confessions">
+                    <Button className="rounded-full px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90">
+                      View Confession Archive
+                    </Button>
+                  </Link>
+                </div>
                 <div className="relative h-[400px] sm:h-[480px] md:h-[550px] overflow-hidden bg-white">
                   <Image
-                    src="/home/declaration.jpeg"
+                    src={confessionImageSrc}
                     alt="Daily declarations"
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-contain"
+                    unoptimized={confessionImageUnoptimized}
                   />
                 </div>
               </div>
@@ -381,6 +428,7 @@ export default async function HomePage() {
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                         className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-105"
+                        unoptimized={isLocalUpstreamImage(card.image)}
                       />
                     </div>
 
@@ -436,6 +484,7 @@ export default async function HomePage() {
                   fill
                   sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover object-top"
+                  unoptimized={isLocalUpstreamImage(pastorsImage)}
                 />
               </div>
             </div>
@@ -453,6 +502,7 @@ export default async function HomePage() {
                   fill
                   sizes="100vw"
                   className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                  unoptimized={isLocalUpstreamImage(listenNowImage)}
                 />
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
@@ -598,6 +648,7 @@ export default async function HomePage() {
                   fill
                   sizes="100vw"
                   className="object-cover"
+                  unoptimized={isLocalUpstreamImage(seeYouImageUrl)}
                 />
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/35" />
@@ -676,5 +727,3 @@ export default async function HomePage() {
     </>
   );
 }
-
-

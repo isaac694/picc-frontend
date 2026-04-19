@@ -6,16 +6,30 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   { label: 'Admin Hub', href: '/admin' },
   { label: 'Devotions', href: '/admin/devotions' },
+  { label: 'Confessions', href: '/admin/confessions' },
   { label: 'See You in Church', href: '/admin/see-you-in-church' },
   { label: 'Services', href: '/admin/services' },
   { label: 'Events', href: '/admin/events' },
   { label: 'Quote of the Month', href: '/admin/quote-of-month' },
-  { label: 'Page Images', href: '/admin/page-images' },
+  { label: 'Homepage Images', href: '/admin/page-images' },
   { label: 'Live Chat Archive', href: '/admin/livechat' },
+];
+
+const SITE_PAGE_ITEMS = [
+  { label: 'About Page (Edit)', href: '/admin/about-page' },
+  { label: 'Contact Page', href: '/contact' },
+  { label: 'Media Page', href: '/media' },
+  { label: 'Forms Page', href: '/forms' },
+  { label: 'Church Locations', href: '/locations' },
+  { label: 'Sermons Page', href: '/sermons' },
+  { label: 'Give Page', href: '/give' },
+  { label: 'Events Page', href: '/events' },
+  { label: 'Ministries Page', href: '/ministries' },
 ];
 
 const ARCHIVE_ITEMS = [
   { label: 'Devotions Archive', href: '/devotions' },
+  { label: 'Confessions Archive', href: '/devotions#confessions' },
 ];
 
 export default function AdminSidebar() {
@@ -46,6 +60,22 @@ export default function AdminSidebar() {
           </Link>
         ))}
       </nav>
+      <div className="mt-6 pt-4 border-t border-border/60">
+        <p className="text-[11px] uppercase tracking-[0.3em] text-foreground/50 mb-3">
+          Site Pages
+        </p>
+        <nav className="space-y-2">
+          {SITE_PAGE_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="block rounded-xl px-4 py-2 text-sm font-medium text-foreground/70 hover:text-foreground hover:bg-muted transition"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
       <div className="mt-6 pt-4 border-t border-border/60">
         <p className="text-[11px] uppercase tracking-[0.3em] text-foreground/50 mb-3">
           Archives

@@ -9,7 +9,7 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 const IMAGE_SECTIONS = [
   {
     id: 'home',
-    title: 'Home Page Images',
+    title: 'Homepage Images',
     description: 'Update hero, mission, and ministry visuals used on the home page.',
     items: [
       { key: 'home-hero-1', label: 'Hero Image 1', fallback: '/hero/hero-4.JPG' },
@@ -36,28 +36,6 @@ const IMAGE_SECTIONS = [
       { key: 'home-ministry-card-6', label: 'You Were Made For This 6', fallback: '/hero/hero-4.jpg' },
       { key: 'home-ministry-card-7', label: 'You Were Made For This 7', fallback: '/cards/about-church.jpg' },
       { key: 'home-livestream-bg', label: "Listen to God's Word Background", fallback: '/hero/hero-6.jpg' },
-    ],
-  },
-  {
-    id: 'about',
-    title: 'About Page Images',
-    description: 'Images for About page hero, tenets, values, and yearly themes.',
-    items: [
-      { key: 'about-header-bg', label: 'About Header Background', fallback: '/about/header.JPG' },
-      { key: 'about-tenets-image', label: 'Tenets of Faith Image', fallback: '/about/tenets-1.JPG' },
-      { key: 'about-core-values-image', label: 'Core Values Image', fallback: '/about/core-values.JPG' },
-      { key: 'about-themes-bg', label: 'Yearly Themes Background', fallback: '/about/themes.jpeg' },
-      { key: 'about-worship-image', label: 'Worship With Us Image', fallback: '/about/worship-with-us.jpg' },
-    ],
-  },
-  {
-    id: 'contact',
-    title: 'Contact Page Images',
-    description: 'Hero, location, and contact form images for the Contact page.',
-    items: [
-      { key: 'contact-header-bg', label: 'Contact Header Background', fallback: '/images/our-church.JPG' },
-      { key: 'contact-locate-image', label: 'Locate Us Image', fallback: '/images/our-church.JPG' },
-      { key: 'contact-send-message-image', label: 'Send Us a Message Image', fallback: '/images/send-message-2.JPG' },
     ],
   },
 ];
@@ -198,10 +176,10 @@ export default function PageImagesAdminPage() {
             Admin
           </p>
           <h1 className="text-3xl md:text-5xl font-semibold text-foreground">
-            Page Images
+            Homepage Images
           </h1>
           <p className="text-foreground/70 mt-3 max-w-2xl">
-            Upload and manage page visuals for home, about, and contact.
+            Upload and manage homepage visuals.
           </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
@@ -214,9 +192,9 @@ export default function PageImagesAdminPage() {
       <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-foreground">Page Images</h2>
+            <h2 className="text-xl font-semibold text-foreground">Homepage Images</h2>
             <p className="text-sm text-foreground/60">
-              Upload new images for the Home, About, and Contact pages.
+              Upload new images for the homepage.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-foreground/40">

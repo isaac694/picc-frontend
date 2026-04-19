@@ -1,10 +1,15 @@
-import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { apiFetch, apiUrl } from '@/lib/api';
+import DevotionsArchiveClient from './DevotionsArchiveClient';
 
 type DevotionsResult = {
   devotions: any[];
+  debugMessage?: string;
+};
+
+type ConfessionsResult = {
+  confessions: any[];
   debugMessage?: string;
 };
 
@@ -41,9 +46,49 @@ async function getDevotions(): Promise<DevotionsResult> {
   }
 }
 
+async function getConfessions(): Promise<ConfessionsResult> {
+  try {
+    const response = await apiFetch('/api/confessions?take=500', {
+      next: { revalidate: 300 },
+    });
+
+    if (!response.ok) {
+      return { confessions: [], debugMessage: 'Confessions list endpoint returned a non-OK response.' };
+    }
+
+    const data = await response.json();
+    const confessions = (data.confessions || []).map((confession: any) => ({
+      ...confession,
+      imageUrl: confession.imageUrl
+        ? confession.imageUrl.startsWith('http')
+          ? confession.imageUrl
+          : apiUrl(confession.imageUrl)
+        : '',
+    }));
+
+    return { confessions };
+  } catch (error) {
+    return { confessions: [], debugMessage: 'Unable to reach confessions endpoints.' };
+  }
+}
+
 export default async function DevotionsPage() {
   const { devotions, debugMessage } = await getDevotions();
-  const showDebug = process.env.NODE_ENV !== 'production' && debugMessage;
+  const {
+    confessions: confessionsFromApi,
+    debugMessage: confessionsDebugMessage,
+  } = await getConfessions();
+  const combinedDebug = debugMessage || confessionsDebugMessage;
+  const showDebug = process.env.NODE_ENV !== 'production' && combinedDebug;
+
+  const fallbackConfessions = [
+    {
+      id: 'confession-my-confession',
+      title: 'My Confession',
+      imageUrl: '/home/declaration.jpeg',
+      publishAt: null,
+    },
+  ];
   const fallbackDevotion = {
     id: 'fallback-2026-04-03',
     title: 'Be Prayerful',
@@ -68,74 +113,18 @@ export default async function DevotionsPage() {
     ],
   };
   const visibleDevotions = devotions.length > 0 ? devotions : [fallbackDevotion];
+  const visibleConfessions =
+    confessionsFromApi.length > 0 ? confessionsFromApi : fallbackConfessions;
 
   return (
     <>
       <Navigation />
-      <main className="min-h-screen">
-        <section className="py-16 sm:py-20 md:py-24 bg-[linear-gradient(180deg,#fffaf0_0%,#fff6ec_100%)]">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mb-10">
-              <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-3">
-                Daily Devotions
-              </p>
-              <h1 className="text-3xl md:text-5xl font-semibold text-foreground mb-4">
-                All Devotions
-              </h1>
-              <p className="text-foreground/70 max-w-2xl">
-                A growing archive of daily reflections shared with the PICC family.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {visibleDevotions.length === 0 ? (
-                <div className="rounded-2xl border border-border/60 bg-white p-6">
-                  <p className="text-foreground/70">
-                    No devotions have been published yet. Check back soon.
-                  </p>
-                  {showDebug ? (
-                    <p className="mt-3 text-xs text-foreground/50">
-                      Debug: {debugMessage}
-                    </p>
-                  ) : null}
-                  <div className="mt-4">
-                    <Link href="/">
-                      <span className="text-primary hover:underline">Return home</span>
-                    </Link>
-                  </div>
-                </div>
-              ) : (
-                visibleDevotions.map((devotion: any) => {
-                  const formattedDate = devotion.publishAt
-                    ? new Intl.DateTimeFormat('en-US', {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric',
-                      }).format(new Date(devotion.publishAt))
-                    : '';
-
-                  return (
-                    <article
-                      key={devotion.id}
-                      className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <p className="text-xs uppercase tracking-[0.3em] text-foreground/50 mb-2">
-                        {formattedDate}
-                      </p>
-                      <h2 className="text-xl font-semibold text-foreground mb-3">
-                        {devotion.title || 'Daily Devotion'}
-                      </h2>
-                      <p className="text-foreground/70 leading-relaxed whitespace-pre-line">
-                        {devotion.content}
-                      </p>
-                    </article>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </section>
-      </main>
+      <DevotionsArchiveClient
+        devotions={visibleDevotions}
+        confessions={visibleConfessions}
+        showDebug={showDebug}
+        debugMessage={combinedDebug}
+      />
       <Footer />
     </>
   );

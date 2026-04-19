@@ -1,0 +1,212 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider      = "prisma-client-js"
+    binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+model User {
+    id        String   @id @default(cuid())
+    email     String   @unique
+    name      String
+    password  String
+    role      UserRole @default(USER)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    prayers         PrayerRequest[]
+    donations       Donation[]
+    testimonies     Testimony[]
+    contactMessages ContactMessage[]
+    devotions       Devotion[]
+    confessions     Confession[]
+    chatMessages    ChatMessage[]
+}
+
+enum UserRole {
+    ADMIN
+    USER
+}
+
+model Devotion {
+    id        String   @id @default(cuid())
+    publishAt DateTime @unique @default(now())
+    title     String?
+    content   String
+    authorId  String?
+    author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Confession {
+    id        String   @id @default(cuid())
+    publishAt DateTime @unique @default(now())
+    title     String?
+    imageUrl  String
+    authorId  String?
+    author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model SiteContent {
+    id        String   @id @default(cuid())
+    key       String   @unique
+    title     String?
+    subtitle  String?
+    body      String?
+    imageUrl  String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model QuoteOfMonth {
+    id        String   @id @default(cuid())
+    key       String   @unique
+    quote     String
+    author    String?
+    imageUrl  String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Service {
+    id          String   @id @default(cuid())
+    name        String
+    day         String // e.g., "Sunday", "Wednesday"
+    time        String // e.g., "10:00 AM"
+    location    String
+    description String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+}
+
+model Sermon {
+    id          String   @id @default(cuid())
+    title       String
+    speaker     String
+    date        DateTime
+    description String?
+    videoUrl    String?
+    audioUrl    String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    media SermonMedia[]
+}
+
+model SermonMedia {
+    id        String   @id @default(cuid())
+    sermonId  String
+    sermon    Sermon   @relation(fields: [sermonId], references: [id], onDelete: Cascade)
+    type      String // "video" or "audio"
+    url       String
+    createdAt DateTime @default(now())
+}
+
+model Event {
+    id          String   @id @default(cuid())
+    title       String
+    description String
+    date        DateTime
+    location    String
+    imageUrl    String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+}
+
+model PrayerRequest {
+    id        String   @id @default(cuid())
+    name      String
+    email     String
+    phone     String?
+    message   String
+    userId    String?
+    user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Donation {
+    id        String   @id @default(cuid())
+    amount    Float
+    name      String
+    email     String
+    message   String?
+    userId    String?
+    user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now())
+}
+
+model Giving {
+    id               String    @id @default(cuid())
+    bookletNumber    String?
+    givingDate       DateTime?
+    givingType       String?
+    specialRecipient String?
+    amount           Float
+    currency         String    @default("MWK")
+    fullName         String
+    email            String?
+    phone            String
+    phoneCountry     String    @default("+265")
+    paymentMethod    String    @default("airtel")
+    reason           String?
+    status           String    @default("pending")
+    createdAt        DateTime  @default(now())
+    updatedAt        DateTime  @updatedAt
+}
+
+model Testimony {
+    id          String   @id @default(cuid())
+    title       String
+    content     String
+    authorName  String
+    authorEmail String
+    userId      String?
+    user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+    imageUrl    String?
+    approved    Boolean  @default(false)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+}
+
+model ContactMessage {
+    id        String   @id @default(cuid())
+    name      String
+    email     String
+    subject   String
+    message   String
+    userId    String?
+    user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Announcement {
+    id        String   @id @default(cuid())
+    title     String
+    content   String
+    imageUrl  String?
+    featured  Boolean  @default(false)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model ChatMessage {
+    id        String   @id @default(cuid())
+    content   String
+    videoId   String
+    videoTitle String
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now())
+
+    @@index([videoId, createdAt])
+}

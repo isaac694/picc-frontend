@@ -6,6 +6,11 @@ type QuoteSectionProps = {
   imageUrl?: string | null;
 };
 
+function isLocalUpstreamImage(url?: string | null) {
+  if (!url) return false;
+  return url.includes('://localhost') || url.includes('://127.0.0.1') || url.includes('://[::1]');
+}
+
 export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionProps) {
   const resolvedQuote =
     quote ||
@@ -91,6 +96,7 @@ export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionPr
             sizes="(max-width: 768px) 88vw, (max-width: 1024px) 360px, 460px"
             className="object-cover object-top"
             style={{ filter: 'grayscale(25%) contrast(1.05)' }}
+            unoptimized={isLocalUpstreamImage(resolvedImage)}
           />
           <div className="absolute inset-0 bg-black/20" />
         </div>

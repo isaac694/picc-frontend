@@ -12,7 +12,7 @@ export default function AdminHomePage() {
           Admin Hub
         </h1>
         <p className="text-foreground/70 mt-3 max-w-2xl">
-          Manage daily devotions, content sections, service schedules, events, and the quote of the month.
+          Quick links for daily updates and reviewing archives.
         </p>
       </div>
 
@@ -30,57 +30,13 @@ export default function AdminHomePage() {
         </div>
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-foreground mb-2">
-            See You in Church
+            Confessions
           </h2>
           <p className="text-foreground/70 mb-6">
-            Update the featured title, subtitle, and hero image.
+            Upload daily confession declarations.
           </p>
-          <Link href="/admin/see-you-in-church">
-            <Button className="rounded-full px-6 py-3">Open Section</Button>
-          </Link>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Services
-          </h2>
-          <p className="text-foreground/70 mb-6">
-            Maintain service times and descriptions.
-          </p>
-          <Link href="/admin/services">
-            <Button className="rounded-full px-6 py-3">Open Services</Button>
-          </Link>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Events
-          </h2>
-          <p className="text-foreground/70 mb-6">
-            Manage upcoming events and graphics.
-          </p>
-          <Link href="/admin/events">
-            <Button className="rounded-full px-6 py-3">Open Events</Button>
-          </Link>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Quote of the Month
-          </h2>
-          <p className="text-foreground/70 mb-6">
-            Edit the monthly quote and image.
-          </p>
-          <Link href="/admin/quote-of-month">
-            <Button className="rounded-full px-6 py-3">Open Quote</Button>
-          </Link>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Page Images
-          </h2>
-          <p className="text-foreground/70 mb-6">
-            Update hero, about, and contact page imagery.
-          </p>
-          <Link href="/admin/page-images">
-            <Button className="rounded-full px-6 py-3">Open Images</Button>
+          <Link href="/admin/confessions">
+            <Button className="rounded-full px-6 py-3">Open Confessions</Button>
           </Link>
         </div>
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
