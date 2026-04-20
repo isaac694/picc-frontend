@@ -20,6 +20,8 @@ function getYouTubeStart(url: string): number {
   return match ? parseInt(match[1], 10) : 0;
 }
 
+const SERMON_AUDIO = '/audio/sermon-audio.mp3';
+
 const SERMONS = [
   {
     id: 1,
@@ -28,6 +30,7 @@ const SERMONS = [
     image: '/hero/hero-6.jpg',
     views: '1,232',
     youtubeUrl: 'https://www.youtube.com/watch?v=joxnOHDoQvk',
+    audioSrc: SERMON_AUDIO,
   },
   {
     id: 2,
@@ -36,6 +39,7 @@ const SERMONS = [
     image: '/hero/hero-4.jpg',
     views: '1,127',
     youtubeUrl: 'https://www.youtube.com/watch?v=IloZ7uo2UYY',
+    audioSrc: SERMON_AUDIO,
   },
   {
     id: 3,
@@ -44,6 +48,7 @@ const SERMONS = [
     image: '/hero/hero-3.jpg',
     views: '981',
     youtubeUrl: 'https://www.youtube.com/watch?v=joxnOHDoQvk&t=250s',
+    audioSrc: SERMON_AUDIO,
   },
   {
     id: 4,
@@ -52,6 +57,7 @@ const SERMONS = [
     image: '/hero/hero-2.jpg',
     views: '742',
     youtubeUrl: 'https://www.youtube.com/watch?v=ubcp3QMiMAE&t=280s',
+    audioSrc: SERMON_AUDIO,
   },
   {
     id: 5,
@@ -60,6 +66,7 @@ const SERMONS = [
     image: '/hero/hero-1.jpg',
     views: '839',
     youtubeUrl: 'https://www.youtube.com/watch?v=hMJUnkBimKg',
+    audioSrc: SERMON_AUDIO,
   },
   {
     id: 6,
@@ -68,6 +75,7 @@ const SERMONS = [
     image: '/hero/hero-5.png',
     views: '690',
     youtubeUrl: 'https://www.youtube.com/watch?v=UxOOG7_fhD0',
+    audioSrc: SERMON_AUDIO,
   },
 ];
 
@@ -160,6 +168,21 @@ export default function SermonsPage() {
                       </div>
                     </>
                   )}
+                </div>
+
+                {/* Audio player */}
+                <div className="w-full max-w-4xl mt-6">
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/60 mb-2 text-center">
+                    Listen to Audio
+                  </p>
+                  <audio
+                    key={selectedSermon.id}
+                    controls
+                    className="w-full rounded-full"
+                    src={selectedSermon.audioSrc}
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

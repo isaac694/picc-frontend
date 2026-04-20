@@ -97,6 +97,8 @@ export default function Navigation() {
                 {link.label}
               </Link>
             ))}
+
+            {/* Desktop Ministries Dropdown */}
             <div className="relative group">
               <button
                 type="button"
@@ -132,6 +134,8 @@ export default function Navigation() {
                 </div>
               </div>
             </div>
+
+            {/* Desktop Resources Dropdown */}
             <div className="relative group">
               <button
                 type="button"
@@ -194,6 +198,7 @@ export default function Navigation() {
                 </div>
               </div>
             </div>
+
             <Link
               href="/give"
               className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/90 transition-colors"
@@ -242,6 +247,8 @@ export default function Navigation() {
                   <X size={20} />
                 </button>
               </div>
+
+              {/* Mobile Nav Links */}
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -257,6 +264,44 @@ export default function Navigation() {
                 </Link>
               ))}
 
+              {/* Mobile Ministries Dropdown */}
+              <div>
+                <button
+                  type="button"
+                  className={
+                    isDarkNav
+                      ? 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-white/80 text-xs uppercase tracking-[0.2em]'
+                      : 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'
+                  }
+                  onClick={() => setMobileMinistriesOpen((prev) => !prev)}
+                  aria-expanded={mobileMinistriesOpen}
+                >
+                  <span>Ministries</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${mobileMinistriesOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {mobileMinistriesOpen && (
+                  <div className="space-y-1">
+                    {ministryLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={
+                          isDarkNav
+                            ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                            : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                        }
+                        onClick={closeMenu}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Resources Dropdown */}
               <div>
                 <button
                   type="button"
@@ -322,6 +367,7 @@ export default function Navigation() {
                   </div>
                 )}
               </div>
+
               <Link
                 href="/give"
                 className="block px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/90 transition-colors"

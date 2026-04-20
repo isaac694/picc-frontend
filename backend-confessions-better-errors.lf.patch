@@ -1,0 +1,97 @@
+diff --git a/server.js b/server.js
+index ba2b807..477483a 100644
+--- a/server.js
++++ b/server.js
+@@ -17,6 +17,18 @@ import { sendGivingConfirmationEmail } from './services/emailService.js';
+ dotenv.config();
+ 
+ const app = express();
++const IS_PRODUCTION = process.env.NODE_ENV === 'production';
++
++function internalServerError(res, error) {
++  console.error(error);
++  if (IS_PRODUCTION) {
++    return res.status(500).json({ error: 'Internal server error' });
++  }
++  return res.status(500).json({
++    error: 'Internal server error',
++    detail: error instanceof Error ? error.message : String(error),
++  });
++}
+ 
+ function getSslConfig(connectionString) {
+   // node-postgres doesn't honor libpq-style `sslmode=` automatically.
+@@ -763,6 +775,10 @@ app.get('/api/devotions/admin', authRequired, adminRequired, async (req, res) =>
+ 
+ app.get('/api/confessions/latest', async (req, res) => {
+   try {
++    if (!prisma.confession) {
++      throw new Error('Prisma client missing Confession model. Run `npx prisma generate` and restart the server.');
++    }
++
+     const confession = await prisma.confession.findFirst({
+       where: { publishAt: { lte: new Date() } },
+       orderBy: { publishAt: 'desc' },
+@@ -774,12 +790,16 @@ app.get('/api/confessions/latest', async (req, res) => {
+ 
+     return res.json({ ...confession, confession });
+   } catch (error) {
+-    return res.status(500).json({ error: 'Internal server error' });
++    return internalServerError(res, error);
+   }
+ });
+ 
+ app.get('/api/confessions', async (req, res) => {
+   try {
++    if (!prisma.confession) {
++      throw new Error('Prisma client missing Confession model. Run `npx prisma generate` and restart the server.');
++    }
++
+     const dateParam = typeof req.query.date === 'string' ? req.query.date : null;
+ 
+     if (dateParam) {
+@@ -818,12 +838,16 @@ app.get('/api/confessions', async (req, res) => {
+ 
+     return res.json({ confessions, total, skip, take });
+   } catch (error) {
+-    return res.status(500).json({ error: 'Internal server error' });
++    return internalServerError(res, error);
+   }
+ });
+ 
+ app.get('/api/confessions/admin', authRequired, adminRequired, async (req, res) => {
+   try {
++    if (!prisma.confession) {
++      throw new Error('Prisma client missing Confession model. Run `npx prisma generate` and restart the server.');
++    }
++
+     const skip = parseInt(req.query.skip || '0', 10);
+     const take = parseInt(req.query.take || '200', 10);
+ 
+@@ -837,12 +861,16 @@ app.get('/api/confessions/admin', authRequired, adminRequired, async (req, res)
+ 
+     return res.json({ confessions, total, skip, take });
+   } catch (error) {
+-    return res.status(500).json({ error: 'Internal server error' });
++    return internalServerError(res, error);
+   }
+ });
+ 
+ app.post('/api/confessions', authRequired, adminRequired, async (req, res) => {
+   try {
++    if (!prisma.confession) {
++      throw new Error('Prisma client missing Confession model. Run `npx prisma generate` and restart the server.');
++    }
++
+     const { date, title, imageUrl, publishAt } = req.body;
+ 
+     if ((!date && !publishAt) || !imageUrl) {
+@@ -891,7 +919,7 @@ app.post('/api/confessions', authRequired, adminRequired, async (req, res) => {
+ 
+     return res.status(201).json(confession);
+   } catch (error) {
+-    return res.status(500).json({ error: 'Internal server error' });
++    return internalServerError(res, error);
+   }
+ });
+ 

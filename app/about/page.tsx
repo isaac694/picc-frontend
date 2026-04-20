@@ -5,10 +5,30 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 
 export default function AboutPage() {
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
+  const [storyVideoUrl, setStoryVideoUrl] = useState('https://www.youtube.com/embed/IloZ7uo2UYY');
+  const [yearlyThemes, setYearlyThemes] = useState<{ year: number; theme: string }[]>([
+    { year: 2010, theme: 'Theme to be updated' },
+    { year: 2011, theme: 'The Year Of Unending Enlargement - 1 Chronicles 4:4-9 ' },
+    { year: 2012, theme: 'My Year Of Open Doors - Revelations 3:8 ' },
+    { year: 2013, theme: 'The Year Of Supernatural Harvest - Jeremiah 5:24' },
+    { year: 2014, theme: 'The Year Of A New Thing - Isaiah 43:19 ' },
+    { year: 2015, theme: 'Unlimited Breakthroughs - Genesis 26:22 ' },
+    { year: 2016, theme: 'Breaking New Grounds - Isaiah 60:22 ' },
+    { year: 2017, theme: 'Divine Establishment - 1 Samuel 3:20 ' },
+    { year: 2018, theme: 'All Round Dominion - Genesis 1:26-28' },
+    { year: 2019, theme: 'The Supernatural - Isaih 60:1-22' },
+    { year: 2020, theme: 'Break Forth - Isaiah 54:3' },
+    { year: 2021, theme: 'Recover All - 1 Samuel 30:18-20' },
+    { year: 2022, theme: 'Abundantly Exceeding Grace - 1 Timothy 1:14 ' },
+    { year: 2023, theme: 'Divine Expansion - Isaiah 54:1' },
+    { year: 2024, theme: 'Perfect Jubilee from Glory to Glory - Leviticus 25:1-55 ' },
+    { year: 2025, theme: 'Multiple Divine Visitation - 1 Samuel 2: 21: ' },
+    { year: 2026, theme: 'The year of the hand of God - Ezekiel 37:1-10' },
+  ]);
   const familySlides = [
     ['/moments/1.jpg', '/moments/2.jpg', '/moments/3.jpg'],
     ['/moments/4.jpg', '/moments/5.jpg', '/moments/6.jpg'],
@@ -32,20 +52,32 @@ export default function AboutPage() {
       'about-core-values-image',
       'about-themes-bg',
       'about-worship-image',
+      'about-story-video',
+      'about-yearly-themes',
     ];
 
     const fetchImages = async () => {
       const entries = await Promise.all(
         imageKeys.map(async (key) => {
           try {
-            const response = await fetch(apiUrl(`/api/site-content/${key}`));
+            const response = await apiFetch(`/api/site-content/${key}`);
             if (!response.ok) return [key, ''] as const;
             const data = await response.json();
+
+            if (key === 'about-story-video') {
+              return [key, String(data.body || '')] as const;
+            }
+
+            if (key === 'about-yearly-themes') {
+              return [key, String(data.body || '')] as const;
+            }
+
             const imageUrl = data.imageUrl
               ? data.imageUrl.startsWith('http')
                 ? data.imageUrl
                 : apiUrl(data.imageUrl)
               : '';
+
             return [key, imageUrl] as const;
           } catch (error) {
             return [key, ''] as const;
@@ -53,7 +85,33 @@ export default function AboutPage() {
         })
       );
 
-      setPageImages(Object.fromEntries(entries));
+      const map = Object.fromEntries(entries) as Record<string, string>;
+      setPageImages(map);
+
+      const candidateVideo = (map['about-story-video'] || '').trim();
+      if (candidateVideo) {
+        setStoryVideoUrl(candidateVideo);
+      }
+
+      const themesBody = (map['about-yearly-themes'] || '').trim();
+      if (themesBody) {
+        try {
+          const parsed = JSON.parse(themesBody);
+          if (Array.isArray(parsed)) {
+            const themes = parsed
+              .map((value: any) => ({
+                year: Number(value?.year),
+                theme: String(value?.theme ?? '').trim(),
+              }))
+              .filter((entry) => Number.isFinite(entry.year) && entry.theme);
+            if (themes.length) {
+              setYearlyThemes(themes);
+            }
+          }
+        } catch {
+          // ignore invalid themes body
+        }
+      }
     };
 
     fetchImages();
@@ -61,25 +119,6 @@ export default function AboutPage() {
 
   const resolveImage = (key: string, fallback: string) => pageImages[key] || fallback;
 
-  const yearlyThemes = [
-    { year: 2010, theme: 'Theme to be updated' },
-    { year: 2011, theme: 'The Year Of Unending Enlargement - 1 Chronicles 4:4-9 ' },
-    { year: 2012, theme: 'My Year Of Open Doors - Revelations 3:8 ' },
-    { year: 2013, theme: 'The Year Of Supernatural Harvest - Jeremiah 5:24' },
-    { year: 2014, theme: 'The Year Of A New Thing - Isaiah 43:19 ' },
-    { year: 2015, theme: 'Unlimited Breakthroughs - Genesis 26:22 ' },
-    { year: 2016, theme: 'Breaking New Grounds - Isaiah 60:22 ' },
-    { year: 2017, theme: 'Divine Establishment - 1 Samuel 3:20 ' },
-    { year: 2018, theme: 'All Round Dominion - Genesis 1:26-28' },
-    { year: 2019, theme: 'The Supernatural - Isaih 60:1-22' },
-    { year: 2020, theme: 'Break Forth - Isaiah 54:3' },
-    { year: 2021, theme: 'Recover All - 1 Samuel 30:18-20' },
-    { year: 2022, theme: 'Abundantly Exceeding Grace - 1 Timothy 1:14 ' },
-    { year: 2023, theme: 'Divine Expansion - Isaiah 54:1' },
-    { year: 2024, theme: 'Perfect Jubilee from Glory to Glory - Leviticus 25:1-55 ' },
-    { year: 2025, theme: 'Multiple Divine Visitation - 1 Samuel 2: 21: ' },
-    { year: 2026, theme: 'The year of the hand of God - Ezekiel 37:1-10' },
-  ];
   const visibleThemes = [...yearlyThemes].sort((a, b) => b.year - a.year);
 
   return (
@@ -353,7 +392,7 @@ export default function AboutPage() {
               <div className="relative w-full overflow-hidden rounded-[28px] shadow-2xl bg-black/90 aspect-[16/9] md:aspect-[21/9]">
                 <iframe
                   className="absolute inset-0 w-full h-full"
-                  src="https://www.youtube.com/embed/IloZ7uo2UYY"
+                  src={storyVideoUrl}
                   title="PICC 28th Anniversary Documentary"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -553,4 +592,6 @@ export default function AboutPage() {
     </>
   );
 }
+
+
 

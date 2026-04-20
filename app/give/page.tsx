@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 
 export default function GivePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,7 +75,7 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
 
   try {
     // 1. Save giving record
-    const givingResponse = await fetch(apiUrl('/api/giving'), {
+    const givingResponse = await apiFetch('/api/giving', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -101,7 +101,7 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     }
 
     // 2. Initialize PayChangu payment
-    const paymentResponse = await fetch(apiUrl('/api/paychangu/initialize'), {
+    const paymentResponse = await apiFetch('/api/paychangu/initialize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -414,4 +414,6 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     </>
   );
 }
+
+
 

@@ -8,6 +8,7 @@ import LiveChat from '@/components/LiveChat';
 import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
 import GiveTool from '@/components/livestream/GiveTool';
+import BibleTool from '@/components/livestream/BibleTool';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
@@ -19,7 +20,7 @@ declare global {
   }
 }
 
-type ToolKey = 'bible' | 'notepad' | 'chat' | 'testimony' | 'give' | null;
+type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
 
 type YouTubeVideo = {
   videoId: string;
@@ -34,19 +35,16 @@ type YouTubeVideo = {
   isLive?: boolean;
 };
 
-const TOOL_CONFIG = {
-  bible: {
-    label: 'Bible',
-    url: 'https://app.fetch.bible',
-  },
-} as const;
-
-const TOOL_TABS: Array<{ key: ToolKey; label: string; kind: 'embed' | 'component' | 'form' }> = [
-  { key: 'chat', label: 'Live Chat', kind: 'component' },
-  { key: 'notepad', label: 'Notepad', kind: 'component' },
-  { key: 'bible', label: 'Bible', kind: 'embed' },
-  { key: 'testimony', label: 'Send Testimony', kind: 'form' },
-  { key: 'give', label: 'Give', kind: 'form' },
+const TOOL_TABS: Array<{
+  key: ToolKey;
+  label: string;
+  kind: "embed" | "component" | "form";
+}> = [
+  { key: "chat", label: "Live Chat", kind: "component" },
+  { key: "notepad", label: "Notepad", kind: "component" },
+  { key: "bible", label: "Bible", kind: "component" },
+  { key: "testimony", label: "Send Testimony", kind: "form" },
+  { key: "give", label: "Give", kind: "form" },
 ];
 
 export default function LivestreamPage() {
@@ -56,23 +54,25 @@ export default function LivestreamPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
   const playersRef = useRef<Map<string, any>>(new Map());
 
-  const CHANNEL_ID = 'UC5iA3dWaUBlP_PBlGSQvgNQ';
-  const FALLBACK_HERO_ID = 'ydTADwZRquA';
-  const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
-  const activeEmbedTool = activeTool && activeTool !== 'testimony' && activeTool !== 'give' && activeTool !== 'chat' && activeTool !== 'notepad'
-    ? TOOL_CONFIG[activeTool]
-    : null;
+  const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
+  const FALLBACK_HERO_ID = "ydTADwZRquA";
+  const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 
   const featuredVideo = videos[0] || null;
   const gridVideos = videos.slice(1, 4);
 
   const formatDate = (value: string) => {
-    if (!value) return '';
+    if (!value) return "";
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   useEffect(() => {
@@ -84,15 +84,18 @@ export default function LivestreamPage() {
       const snippet = item.snippet || {};
       return {
         videoId,
-        title: snippet.title || '',
-        publishedAt: snippet.publishedAt || '',
-        updatedAt: snippet.publishedAt || '',
-        channelTitle: snippet.channelTitle || '',
-        description: snippet.description || '',
-        thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+        title: snippet.title || "",
+        publishedAt: snippet.publishedAt || "",
+        updatedAt: snippet.publishedAt || "",
+        channelTitle: snippet.channelTitle || "",
+        description: snippet.description || "",
+        thumbnail:
+          snippet.thumbnails?.high?.url ||
+          snippet.thumbnails?.medium?.url ||
+          "",
         url: `https://www.youtube.com/watch?v=${videoId}`,
         embedUrl: `https://www.youtube.com/embed/${videoId}`,
-        isLive: snippet.liveBroadcastContent === 'live',
+        isLive: snippet.liveBroadcastContent === "live",
       };
     };
 
@@ -102,12 +105,15 @@ export default function LivestreamPage() {
       const snippet = item.snippet || {};
       return {
         videoId,
-        title: snippet.title || '',
-        publishedAt: snippet.publishedAt || '',
-        updatedAt: snippet.publishedAt || '',
-        channelTitle: snippet.channelTitle || '',
-        description: snippet.description || '',
-        thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+        title: snippet.title || "",
+        publishedAt: snippet.publishedAt || "",
+        updatedAt: snippet.publishedAt || "",
+        channelTitle: snippet.channelTitle || "",
+        description: snippet.description || "",
+        thumbnail:
+          snippet.thumbnails?.high?.url ||
+          snippet.thumbnails?.medium?.url ||
+          "",
         url: `https://www.youtube.com/watch?v=${videoId}`,
         embedUrl: `https://www.youtube.com/embed/${videoId}`,
         isLive: false,
@@ -117,7 +123,7 @@ export default function LivestreamPage() {
     const fetchJson = async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error('Failed to load videos');
+        throw new Error("Failed to load videos");
       }
       return response.json();
     };
@@ -128,35 +134,39 @@ export default function LivestreamPage() {
         setLoadError(null);
 
         if (!YOUTUBE_API_KEY) {
-          throw new Error('Missing API key');
+          throw new Error("Missing API key");
         }
 
-        const channelUrl = new URL('https://www.googleapis.com/youtube/v3/channels');
-        channelUrl.searchParams.set('part', 'contentDetails');
-        channelUrl.searchParams.set('id', CHANNEL_ID);
-        channelUrl.searchParams.set('key', YOUTUBE_API_KEY);
+        const channelUrl = new URL(
+          "https://www.googleapis.com/youtube/v3/channels",
+        );
+        channelUrl.searchParams.set("part", "contentDetails");
+        channelUrl.searchParams.set("id", CHANNEL_ID);
+        channelUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
-        const liveUrl = new URL('https://www.googleapis.com/youtube/v3/search');
-        liveUrl.searchParams.set('part', 'snippet');
-        liveUrl.searchParams.set('channelId', CHANNEL_ID);
-        liveUrl.searchParams.set('eventType', 'live');
-        liveUrl.searchParams.set('type', 'video');
-        liveUrl.searchParams.set('maxResults', '1');
-        liveUrl.searchParams.set('key', YOUTUBE_API_KEY);
+        const liveUrl = new URL("https://www.googleapis.com/youtube/v3/search");
+        liveUrl.searchParams.set("part", "snippet");
+        liveUrl.searchParams.set("channelId", CHANNEL_ID);
+        liveUrl.searchParams.set("eventType", "live");
+        liveUrl.searchParams.set("type", "video");
+        liveUrl.searchParams.set("maxResults", "1");
+        liveUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
         const channelData = await fetchJson(channelUrl.toString());
         const uploadsPlaylistId =
           channelData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
 
         if (!uploadsPlaylistId) {
-          throw new Error('Missing uploads playlist');
+          throw new Error("Missing uploads playlist");
         }
 
-        const uploadsUrl = new URL('https://www.googleapis.com/youtube/v3/playlistItems');
-        uploadsUrl.searchParams.set('part', 'snippet,contentDetails');
-        uploadsUrl.searchParams.set('playlistId', uploadsPlaylistId);
-        uploadsUrl.searchParams.set('maxResults', '6');
-        uploadsUrl.searchParams.set('key', YOUTUBE_API_KEY);
+        const uploadsUrl = new URL(
+          "https://www.googleapis.com/youtube/v3/playlistItems",
+        );
+        uploadsUrl.searchParams.set("part", "snippet,contentDetails");
+        uploadsUrl.searchParams.set("playlistId", uploadsPlaylistId);
+        uploadsUrl.searchParams.set("maxResults", "6");
+        uploadsUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
         const [liveData, uploadsData] = await Promise.all([
           fetchJson(liveUrl.toString()),
@@ -168,14 +178,19 @@ export default function LivestreamPage() {
           : null;
         const recentVideos: YouTubeVideo[] = Array.isArray(uploadsData?.items)
           ? uploadsData.items
-            .map(toVideoFromPlaylist)
-            .filter((item: YouTubeVideo | null): item is YouTubeVideo => Boolean(item))
+              .map(toVideoFromPlaylist)
+              .filter((item: YouTubeVideo | null): item is YouTubeVideo =>
+                Boolean(item),
+              )
           : [];
 
         const merged: YouTubeVideo[] = [];
         if (liveVideo) merged.push(liveVideo);
         recentVideos.forEach((video: YouTubeVideo) => {
-          if (!merged.find((existing) => existing.videoId === video?.videoId) && video) {
+          if (
+            !merged.find((existing) => existing.videoId === video?.videoId) &&
+            video
+          ) {
             merged.push(video);
           }
         });
@@ -185,7 +200,7 @@ export default function LivestreamPage() {
         }
       } catch (error) {
         if (isMounted) {
-          setLoadError('Unable to load the latest videos right now.');
+          setLoadError("Unable to load the latest videos right now.");
           setVideos([]);
         }
       } finally {
@@ -200,15 +215,15 @@ export default function LivestreamPage() {
   }, [YOUTUBE_API_KEY]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const existingScript = document.getElementById('youtube-iframe-api');
+    if (typeof window === "undefined") return;
+    const existingScript = document.getElementById("youtube-iframe-api");
 
     const handleReady = () => setYtReady(true);
 
     if (!existingScript) {
-      const script = document.createElement('script');
-      script.id = 'youtube-iframe-api';
-      script.src = 'https://www.youtube.com/iframe_api';
+      const script = document.createElement("script");
+      script.id = "youtube-iframe-api";
+      script.src = "https://www.youtube.com/iframe_api";
       document.body.appendChild(script);
       window.onYouTubeIframeAPIReady = handleReady;
     } else if (window.YT && window.YT.Player) {
@@ -219,28 +234,35 @@ export default function LivestreamPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
     const handleChange = (event: MediaQueryListEvent | MediaQueryList) => {
       setIsMobileViewport(event.matches);
     };
     handleChange(mediaQuery);
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
     }
     const legacyMediaQuery = mediaQuery as MediaQueryList & {
       addListener?: (listener: (event: MediaQueryListEvent) => void) => void;
       removeListener?: (listener: (event: MediaQueryListEvent) => void) => void;
     };
-    legacyMediaQuery.addListener?.(handleChange as (event: MediaQueryListEvent) => void);
-    return () => legacyMediaQuery.removeListener?.(handleChange as (event: MediaQueryListEvent) => void);
+    legacyMediaQuery.addListener?.(
+      handleChange as (event: MediaQueryListEvent) => void,
+    );
+    return () =>
+      legacyMediaQuery.removeListener?.(
+        handleChange as (event: MediaQueryListEvent) => void,
+      );
   }, []);
 
   useEffect(() => {
-    if (!ytReady || typeof window === 'undefined' || !window.YT?.Player) return;
+    if (!ytReady || typeof window === "undefined" || !window.YT?.Player) return;
     const players = playersRef.current;
-    const iframes = Array.from(document.querySelectorAll<HTMLIFrameElement>('[data-yt-id]'));
+    const iframes = Array.from(
+      document.querySelectorAll<HTMLIFrameElement>("[data-yt-id]"),
+    );
 
     iframes.forEach((iframe) => {
       const videoId = iframe.dataset.ytId;
@@ -263,6 +285,7 @@ export default function LivestreamPage() {
   }, [ytReady, activeTool]);
 
   const mobilePlayerActive = isMobileViewport && activeTool;
+  const activeEmbedTool = TOOL_TABS.find(t => t.key === activeTool && t.kind === "embed") as { url: string; label: string } | undefined;
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -277,101 +300,120 @@ export default function LivestreamPage() {
     };
   }, [mobilePlayerActive]);
 
+  useEffect(() => {
+    if (!isMobileViewport || !activeTool) return;
+    const videoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
+    const player = playersRef.current.get(videoId);
+    if (!player || typeof player.getCurrentTime !== 'function') {
+      setMobileResumeAt(null);
+      return;
+    }
+    try {
+      const currentTime = player.getCurrentTime();
+      if (Number.isFinite(currentTime)) {
+        setMobileResumeAt(Math.floor(currentTime));
+      } else {
+        setMobileResumeAt(null);
+      }
+    } catch {
+      setMobileResumeAt(null);
+    }
+  }, [activeTool, isMobileViewport, featuredVideo?.videoId]);
+
+  const mobileVideoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
+  const mobileVideoStart = mobileResumeAt && mobileResumeAt > 0 ? `&start=${mobileResumeAt}` : '';
+
   return (
     <>
       <Navigation />
       <main className="min-h-screen bg-black text-white">
-        {/* Hero Section */}
-        <section className={`py-16 sm:py-20 md:py-24 bg-black text-white ${mobilePlayerActive ? 'hidden md:block' : ''}`}>
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-              Watch <span className="text-red-500">Live</span> Services
-            </h1>
-            <p className="text-base md:text-lg text-white/80">
-              Experience the Presence of God Anytime, Anywhere.
-            </p>
-          </div>
-        </section>
-
-        {/* Sunday Livestream Section */}
-        <section className={`py-12 md:py-16 bg-black ${mobilePlayerActive ? 'hidden md:block' : ''}`}>
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5">
-              <div
-                className={
-                  mobilePlayerActive
-                    ? 'sticky top-16 z-40 h-[40svh] bg-black'
-                    : 'relative aspect-video bg-black'
-                }
-              >
-                <iframe
-                  className="h-full w-full"
-                  data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
-                  id="yt-hero"
-                  src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
-                  title={featuredVideo?.title || 'Sunday Livestream'}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
+        {!mobilePlayerActive && (
+          <>
+            {/* Hero Section */}
+            <section className="py-16 sm:py-20 md:py-24 bg-black text-white">
+              <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+                  Watch <span className="text-red-500">Live</span> Services
+                </h1>
+                <p className="text-base md:text-lg text-white/80">
+                  Experience the Presence of God Anytime, Anywhere.
+                </p>
               </div>
-              <div className={`bg-white text-black px-6 py-5 ${mobilePlayerActive ? 'hidden md:block' : ''}`}>
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div>
-                    <h3 className="text-lg font-semibold">
-                      {featuredVideo?.title || 'Stream in English'}
-                    </h3>
-                    {featuredVideo?.publishedAt && (
-                      <p className="text-xs text-black/60 mt-1">
-                        {formatDate(featuredVideo.publishedAt)}
-                      </p>
-                    )}
+            </section>
+            {/* Sunday Livestream Section */}
+            <section className="py-12 md:py-16 bg-black">
+              <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5">
+                  <div className="relative aspect-video bg-black">
+                    <iframe
+                      className="h-full w-full"
+                      data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
+                      id="yt-hero"
+                      src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
+                      title={featuredVideo?.title || "Sunday Livestream"}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool('bible')}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#EAF2FF] px-3 py-1 text-xs font-medium text-[#1E4FA3] hover:bg-[#DCEAFF] transition-colors"
-                    >
-                      <BookOpenText size={12} />
-                      Bible
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool('notepad')}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#FFF2DA] px-3 py-1 text-xs font-medium text-[#8A5A00] hover:bg-[#FFE9C2] transition-colors"
-                    >
-                      <StickyNote size={12} />
-                      Notepad
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool('chat')}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#E8FFF3] px-3 py-1 text-xs font-medium text-[#0F7A3E] hover:bg-[#D8F7E7] transition-colors"
-                    >
-                      <MessageSquareText size={12} />
-                      Live Chat
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool('testimony')}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#CFF6DF] px-3 py-1 text-xs font-medium text-[#137A3D] hover:bg-[#BDEFD3] transition-colors"
-                    >
-                      Send Testimony
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool('give')}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#39D98A] px-3 py-1 text-xs font-semibold text-black hover:bg-[#2FC77C] transition-colors"
-                    >
-                      Give
-                    </button>
+                  <div className="bg-white text-black px-6 py-5">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          {featuredVideo?.title || "Stream in English"}
+                        </h3>
+                        {featuredVideo?.publishedAt && (
+                          <p className="text-xs text-black/60 mt-1">
+                            {formatDate(featuredVideo.publishedAt)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("bible")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#EAF2FF] px-3 py-1 text-xs font-medium text-[#1E4FA3] hover:bg-[#DCEAFF] transition-colors"
+                        >
+                          <BookOpenText size={12} />
+                          Bible
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("notepad")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#FFF2DA] px-3 py-1 text-xs font-medium text-[#8A5A00] hover:bg-[#FFE9C2] transition-colors"
+                        >
+                          <StickyNote size={12} />
+                          Notepad
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("chat")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#E8FFF3] px-3 py-1 text-xs font-medium text-[#0F7A3E] hover:bg-[#D8F7E7] transition-colors"
+                        >
+                          <MessageSquareText size={12} />
+                          Live Chat
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("testimony")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#CFF6DF] px-3 py-1 text-xs font-medium text-[#137A3D] hover:bg-[#BDEFD3] transition-colors"
+                        >
+                          Send Testimony
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTool("give")}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#39D98A] px-3 py-1 text-semibold text-black hover:bg-[#2FC77C] transition-colors"
+                        >
+                          Give
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
-
+            </section>
+          </>
+        )}
         {activeTool && (
           <>
             <section className="pb-12 md:pb-16 bg-black hidden md:block">
@@ -385,70 +427,48 @@ export default function LivestreamPage() {
                         onClick={() => setActiveTool(tool.key)}
                         className={`rounded-full px-3 py-1 transition-colors ${
                           activeTool === tool.key
-                            ? 'bg-white text-black'
-                            : 'bg-white/10 text-white hover:bg-white/20'
+                            ? "bg-white text-black"
+                            : "bg-white/10 text-white hover:bg-white/20"
                         }`}
                       >
                         {tool.label}
                       </button>
                     ))}
-                    <span className="ml-auto text-[10px] normal-case tracking-normal text-white/50">
-                      Embedded view
-                    </span>
                   </div>
-                  {activeEmbedTool && (
-                    <div className="aspect-[4/3] w-full bg-black">
-                      <iframe
-                        className="h-full w-full"
-                        src={activeEmbedTool.url}
-                        title={activeEmbedTool.label}
-                        allow="clipboard-write; fullscreen"
-                      />
-                    </div>
-                  )}
-                  {activeTool === 'chat' && (
+                  {activeTool === "bible" && <BibleTool />}
+                  {activeTool === "chat" && (
                     <div className="h-[400px] w-full bg-black">
                       <LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} />
                     </div>
                   )}
-                  {activeTool === 'notepad' && (
-                    <NotepadTool />
-                  )}
-                  {activeTool === 'testimony' && (
-                    <div className="px-5 py-6 text-white text-black">
+                  {activeTool === "notepad" && <NotepadTool />}
+                  {activeTool === "testimony" && (
+                    <div className="px-5 py-6 text-white">
                       <TestimonyTool />
                     </div>
                   )}
-                  {activeTool === 'give' && (
+                  {activeTool === "give" && (
                     <div className="px-5 text-white">
                       <GiveTool isMobile={false} />
                     </div>
                   )}
                   <div className="flex items-center justify-between border-t border-white/10 px-4 py-3 text-xs text-white/70">
                     <span>
-                      {activeTool === 'testimony'
-                        ? 'Testimony Form'
-                        : activeTool === 'give'
-                          ? 'Giving Form'
-                          : activeTool === 'chat'
-                            ? 'Live Chat'
-                            : activeEmbedTool?.label}
-                      {activeTool === 'notepad' && (
+                      {activeTool === "testimony"
+                        ? "Testimony Form"
+                        : activeTool === "give"
+                          ? "Giving Form"
+                          : activeTool === "chat"
+                            ? "Live Chat"
+                            : activeTool === "bible"
+                              ? "Bible"
+                              : ""}
+                      {activeTool === "notepad" && (
                         <span className="ml-2 text-white/50">
                           Tip: use the save/download button inside the notepad.
                         </span>
                       )}
                     </span>
-                    {activeEmbedTool && (
-                      <Link
-                        href={activeEmbedTool.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-white/80 hover:text-white hover:underline"
-                      >
-                        Open in new tab
-                      </Link>
-                    )}
                   </div>
                 </div>
               </div>
@@ -459,9 +479,9 @@ export default function LivestreamPage() {
                   <div className="flex-[0_0_40%] bg-black">
                     <iframe
                       className="h-full w-full"
-                      data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
+                      data-yt-id={mobileVideoId}
                       id="yt-hero-mobile"
-                      src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
+                      src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0&autoplay=1&playsinline=1${mobileVideoStart}`}
                       title={featuredVideo?.title || 'Sunday Livestream'}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
@@ -503,22 +523,27 @@ export default function LivestreamPage() {
                         />
                       </div>
                     )}
-                    {activeTool === 'chat' && (
+                    {activeTool === "chat" && (
                       <div className="h-[300px] w-full bg-black mb-4">
                         <LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} />
                       </div>
                     )}
-                    {activeTool === 'notepad' && (
+                    {activeTool === "bible" && (
+                      <div className="mb-4">
+                        <BibleTool />
+                      </div>
+                    )}
+                    {activeTool === "notepad" && (
                       <div className="mb-4">
                         <NotepadTool />
                       </div>
                     )}
-                    {activeTool === 'testimony' && (
+                    {activeTool === "testimony" && (
                       <div className="px-4 py-5 text-white">
                         <TestimonyTool />
                       </div>
                     )}
-                    {activeTool === 'give' && (
+                    {activeTool === "give" && (
                       <div className="px-4 py-5 text-white">
                         <GiveTool isMobile={true} />
                       </div>
@@ -571,6 +596,11 @@ export default function LivestreamPage() {
                           <LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} />
                         </div>
                       )}
+                      {activeTool === 'bible' && (
+                        <div className="mb-4">
+                          <BibleTool />
+                        </div>
+                      )}
                       {activeTool === 'notepad' && (
                         <div className="mb-4">
                           <NotepadTool />
@@ -599,13 +629,14 @@ export default function LivestreamPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           </div>
         </section>
-
         {/* Livestreams Grid */}
         <section className={`py-16 sm:py-20 md:py-24 bg-black ${mobilePlayerActive ? 'hidden md:block' : ''}`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {isLoading ? (
               <div className="text-center py-12">
-                <p className="text-lg text-white/70">Loading latest videos...</p>
+                <p className="text-lg text-white/70">
+                  Loading latest videos...
+                </p>
               </div>
             ) : loadError ? (
               <div className="text-center py-12">
@@ -614,7 +645,10 @@ export default function LivestreamPage() {
             ) : gridVideos.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {gridVideos.map((stream) => (
-                  <Card key={stream.videoId} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white border-black/10 text-black">
+                  <Card
+                    key={stream.videoId}
+                    className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white border-black/10 text-black"
+                  >
                     <div className="aspect-video bg-black">
                       <iframe
                         className="h-full w-full"
@@ -627,15 +661,28 @@ export default function LivestreamPage() {
                       />
                     </div>
                     <div className="p-4 flex flex-col">
-                      <h3 className="font-bold text-lg text-black mb-2 line-clamp-2">{stream.title}</h3>
-                      <p className="text-sm text-black/70 mb-3 line-clamp-2">{stream.description}</p>
+                      <h3 className="font-bold text-lg text-black mb-2 line-clamp-2">
+                        {stream.title}
+                      </h3>
+                      <p className="text-sm text-black/70 mb-3 line-clamp-2">
+                        {stream.description}
+                      </p>
                       <div className="space-y-1 text-sm text-black/60 mb-2">
                         <p>{stream.channelTitle}</p>
-                        {stream.publishedAt && <p>{formatDate(stream.publishedAt)}</p>}
+                        {stream.publishedAt && (
+                          <p>{formatDate(stream.publishedAt)}</p>
+                        )}
                       </div>
                       {stream.url && (
-                        <Button asChild className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                          <Link href={stream.url} target="_blank" rel="noreferrer">
+                        <Button
+                          asChild
+                          className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                        >
+                          <Link
+                            href={stream.url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             Watch on YouTube
                           </Link>
                         </Button>
@@ -646,12 +693,13 @@ export default function LivestreamPage() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-lg text-white/70">No recent videos available yet.</p>
+                <p className="text-lg text-white/70">
+                  No recent videos available yet.
+                </p>
               </div>
             )}
           </div>
         </section>
-
       </main>
       {!mobilePlayerActive && <LivestreamFooter />}
     </>

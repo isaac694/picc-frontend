@@ -1,3 +1,4 @@
+//components/LiveChat.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, EyeOff } from 'lucide-react';
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChatMessage {
@@ -74,7 +75,7 @@ export default function LiveChat({ videoId }: LiveChatProps) {
 
   const fetchUserInfo = async (token: string) => {
     try {
-      const response = await fetch(apiUrl('/api/auth/me'), {
+      const response = await apiFetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -96,7 +97,7 @@ export default function LiveChat({ videoId }: LiveChatProps) {
       const token = localStorage.getItem('authToken');
       if (!token || !videoId) return;
 
-      const response = await fetch(apiUrl(`/api/chat/messages?videoId=${videoId}`), {
+      const response = await apiFetch(`/api/chat/messages?videoId=${videoId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -121,7 +122,7 @@ export default function LiveChat({ videoId }: LiveChatProps) {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(apiUrl('/api/chat/messages'), {
+      const response = await apiFetch('/api/chat/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +162,7 @@ export default function LiveChat({ videoId }: LiveChatProps) {
 
     setIsAuthLoading(true);
     try {
-      const response = await fetch(apiUrl('/api/auth/login'), {
+      const response = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -217,7 +218,7 @@ export default function LiveChat({ videoId }: LiveChatProps) {
 
     setIsAuthLoading(true);
     try {
-      const response = await fetch(apiUrl('/api/auth/register'), {
+      const response = await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -462,3 +463,5 @@ export default function LiveChat({ videoId }: LiveChatProps) {
     </div>
   );
 }
+
+

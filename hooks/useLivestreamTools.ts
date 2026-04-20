@@ -165,21 +165,28 @@ export function useGiveForm() {
         }),
       });
 
+      const givingData = await givingResponse.json();
+
       if (!givingResponse.ok) {
-        const givingData = await givingResponse.json();
-        throw new Error(givingData.error || 'Failed to save giving record');
+        throw new Error(givingData?.error || 'Failed to save giving record');
+      }
+
+      const givingId = givingData?.id;
+      if (!givingId) {
+        throw new Error('Giving record saved but no ID was returned.');
       }
 
       const paymentResponse = await fetch(apiUrl('/api/paychangu/initialize'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: giveForm.amount,
+          amount: parseFloat(giveForm.amount),
           firstName,
           lastName,
           phone: normalizedPhone,
           paymentMethod: giveForm.paymentMethod,
           reason: resolvedReason,
+          givingId,
         }),
       });
 

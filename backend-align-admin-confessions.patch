@@ -1,0 +1,314 @@
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@
+ model User {
+     id        String   @id @default(cuid())
+     email     String   @unique
+     name      String
+     password  String
+     role      UserRole @default(USER)
+     createdAt DateTime @default(now())
+     updatedAt DateTime @updatedAt
+ 
+     prayers         PrayerRequest[]
+     donations       Donation[]
+     testimonies     Testimony[]
+     contactMessages ContactMessage[]
+     devotions       Devotion[]
++    confessions     Confession[]
+     chatMessages    ChatMessage[]
+ }
+@@
+ model Devotion {
+     id        String   @id @default(cuid())
+     publishAt DateTime @unique @default(now())
+     title     String?
+     content   String
+     authorId  String?
+     author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+     createdAt DateTime @default(now())
+     updatedAt DateTime @updatedAt
+ }
++
++model Confession {
++    id        String   @id @default(cuid())
++    publishAt DateTime @unique @default(now())
++    title     String?
++    imageUrl  String
++    authorId  String?
++    author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
++    createdAt DateTime @default(now())
++    updatedAt DateTime @updatedAt
++}
+diff --git a/server.js b/server.js
+--- a/server.js
++++ b/server.js
+@@
+ const upload = multer({
+   storage: multer.diskStorage({
+     destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+     filename: (req, file, cb) => {
+       const ext = path.extname(file.originalname || '');
+       cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+     },
+   }),
+ });
++
++app.post('/api/uploads', authRequired, adminRequired, upload.single('file'), (req, res) => {
++  try {
++    if (!req.file?.filename) {
++      return res.status(400).json({ error: 'Missing file' });
++    }
++
++    return res.json({ url: `/uploads/${req.file.filename}` });
++  } catch (error) {
++    return res.status(500).json({ error: 'Upload failed' });
++  }
++});
+ 
+ function toDateOnlyLocal(dateString) {
++  if (!dateString || typeof dateString !== 'string') {
++    return null;
++  }
+   const [year, month, day] = dateString.split('-').map((part) => parseInt(part, 10));
+   if (!year || !month || !day) {
+     return null;
+   }
+   return new Date(year, month - 1, day, 0, 0, 0, 0);
+ }
+@@
++app.get('/api/devotions/latest', async (req, res) => {
++  try {
++    const devotion = await prisma.devotion.findFirst({
++      where: { publishAt: { lte: new Date() } },
++      orderBy: { publishAt: 'desc' },
++    });
++
++    if (!devotion) {
++      return res.status(404).json({ error: 'No devotion found' });
++    }
++
++    return res.json({ ...devotion, devotion });
++  } catch (error) {
++    return res.status(500).json({ error: 'Internal server error' });
++  }
++});
++
+ app.get('/api/devotions', async (req, res) => {
+   try {
+-    const targetDate = toDateOnlyLocal(req.query.date);
+-    if (!targetDate) {
+-      return res.status(400).json({ error: 'Invalid date format' });
+-    }
+-
+-    const nextDate = new Date(targetDate);
+-    nextDate.setDate(nextDate.getDate() + 1);
+-
+-    const devotion = await prisma.devotion.findFirst({
+-      where: { publishAt: { gte: targetDate, lt: nextDate } },
+-    });
+-
+-    if (!devotion) {
+-      return res.status(404).json({ error: 'No devotion found' });
+-    }
+-
+-    return res.json(devotion);
++    const dateParam = typeof req.query.date === 'string' ? req.query.date : null;
++
++    if (dateParam) {
++      const targetDate = toDateOnlyLocal(dateParam);
++      if (!targetDate) {
++        return res.status(400).json({ error: 'Invalid date format' });
++      }
++
++      const nextDate = new Date(targetDate);
++      nextDate.setDate(nextDate.getDate() + 1);
++
++      const devotion = await prisma.devotion.findFirst({
++        where: { publishAt: { gte: targetDate, lt: nextDate } },
++      });
++
++      if (!devotion) {
++        return res.status(404).json({ error: 'No devotion found' });
++      }
++
++      return res.json(devotion);
++    }
++
++    const skip = parseInt(req.query.skip || '0', 10);
++    const take = parseInt(req.query.take || '200', 10);
++
++    const devotions = await prisma.devotion.findMany({
++      where: { publishAt: { lte: new Date() } },
++      orderBy: { publishAt: 'desc' },
++      skip,
++      take,
++    });
++
++    const total = await prisma.devotion.count({
++      where: { publishAt: { lte: new Date() } },
++    });
++
++    return res.json({ devotions, total, skip, take });
+   } catch (error) {
+     return res.status(500).json({ error: 'Internal server error' });
+   }
+ });
++
++app.get('/api/confessions/latest', async (req, res) => {
++  try {
++    const confession = await prisma.confession.findFirst({
++      where: { publishAt: { lte: new Date() } },
++      orderBy: { publishAt: 'desc' },
++    });
++
++    if (!confession) {
++      return res.status(404).json({ error: 'No confession found' });
++    }
++
++    return res.json({ ...confession, confession });
++  } catch (error) {
++    return res.status(500).json({ error: 'Internal server error' });
++  }
++});
++
++app.get('/api/confessions', async (req, res) => {
++  try {
++    const dateParam = typeof req.query.date === 'string' ? req.query.date : null;
++
++    if (dateParam) {
++      const targetDate = toDateOnlyLocal(dateParam);
++      if (!targetDate) {
++        return res.status(400).json({ error: 'Invalid date format' });
++      }
++
++      const nextDate = new Date(targetDate);
++      nextDate.setDate(nextDate.getDate() + 1);
++
++      const confession = await prisma.confession.findFirst({
++        where: { publishAt: { gte: targetDate, lt: nextDate } },
++      });
++
++      if (!confession) {
++        return res.status(404).json({ error: 'No confession found' });
++      }
++
++      return res.json(confession);
++    }
++
++    const skip = parseInt(req.query.skip || '0', 10);
++    const take = parseInt(req.query.take || '200', 10);
++
++    const confessions = await prisma.confession.findMany({
++      where: { publishAt: { lte: new Date() } },
++      orderBy: { publishAt: 'desc' },
++      skip,
++      take,
++    });
++
++    const total = await prisma.confession.count({
++      where: { publishAt: { lte: new Date() } },
++    });
++
++    return res.json({ confessions, total, skip, take });
++  } catch (error) {
++    return res.status(500).json({ error: 'Internal server error' });
++  }
++});
++
++app.get('/api/confessions/admin', authRequired, adminRequired, async (req, res) => {
++  try {
++    const skip = parseInt(req.query.skip || '0', 10);
++    const take = parseInt(req.query.take || '200', 10);
++
++    const confessions = await prisma.confession.findMany({
++      orderBy: { publishAt: 'desc' },
++      skip,
++      take,
++    });
++
++    const total = await prisma.confession.count();
++
++    return res.json({ confessions, total, skip, take });
++  } catch (error) {
++    return res.status(500).json({ error: 'Internal server error' });
++  }
++});
++
++app.post('/api/confessions', authRequired, adminRequired, async (req, res) => {
++  try {
++    const { date, title, imageUrl, publishAt } = req.body;
++
++    if ((!date && !publishAt) || !imageUrl) {
++      return res.status(400).json({ error: 'date or publishAt and imageUrl are required' });
++    }
++
++    let publishDate = null;
++
++    if (publishAt) {
++      const parsed = new Date(publishAt);
++      if (Number.isNaN(parsed.getTime())) {
++        return res.status(400).json({ error: 'Invalid publishAt format' });
++      }
++      publishDate = parsed;
++    } else {
++      const targetDate = toDateOnlyLocal(date);
++      if (!targetDate) {
++        return res.status(400).json({ error: 'Invalid date format' });
++      }
++      // Schedule by default at 1:00 AM local time
++      publishDate = new Date(
++        targetDate.getFullYear(),
++        targetDate.getMonth(),
++        targetDate.getDate(),
++        1,
++        0,
++        0,
++        0
++      );
++    }
++
++    const confession = await prisma.confession.upsert({
++      where: { publishAt: publishDate },
++      update: {
++        title: title || null,
++        imageUrl,
++        authorId: req.user.sub,
++      },
++      create: {
++        publishAt: publishDate,
++        title: title || null,
++        imageUrl,
++        authorId: req.user.sub,
++      },
++    });
++
++    return res.status(201).json(confession);
++  } catch (error) {
++    return res.status(500).json({ error: 'Internal server error' });
++  }
++});
+diff --git a/prisma/migrations/20260417190000_add_confessions/migration.sql b/prisma/migrations/20260417190000_add_confessions/migration.sql
+new file mode 100644
+--- /dev/null
++++ b/prisma/migrations/20260417190000_add_confessions/migration.sql
+@@
++-- CreateTable
++CREATE TABLE "Confession" (
++    "id" TEXT NOT NULL,
++    "publishAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++    "title" TEXT,
++    "imageUrl" TEXT NOT NULL,
++    "authorId" TEXT,
++    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++    "updatedAt" TIMESTAMP(3) NOT NULL,
++
++    CONSTRAINT "Confession_pkey" PRIMARY KEY ("id")
++);
++
++-- CreateIndex
++CREATE UNIQUE INDEX "Confession_publishAt_key" ON "Confession"("publishAt");
++
++-- AddForeignKey
++ALTER TABLE "Confession" ADD CONSTRAINT "Confession_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

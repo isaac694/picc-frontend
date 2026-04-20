@@ -6,7 +6,7 @@ import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { Heart } from 'lucide-react';
 
 export default function PrayerPage() {
@@ -31,7 +31,7 @@ export default function PrayerPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch(apiUrl('/api/prayer-requests'), {
+      const response = await apiFetch('/api/prayer-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -200,5 +200,7 @@ export default function PrayerPage() {
     </>
   );
 }
+
+
 
 

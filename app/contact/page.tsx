@@ -7,7 +7,7 @@ import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 import Link from 'next/link';
 
 export default function ContactPage() {
@@ -44,7 +44,7 @@ export default function ContactPage() {
       const entries = await Promise.all(
         imageKeys.map(async (key) => {
           try {
-            const response = await fetch(apiUrl(`/api/site-content/${key}`));
+            const response = await apiFetch(`/api/site-content/${key}`);
             if (!response.ok) return [key, ''] as const;
             const data = await response.json();
             const imageUrl = data.imageUrl
@@ -77,7 +77,7 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch(apiUrl('/api/contact'), {
+      const response = await apiFetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -419,3 +419,5 @@ export default function ContactPage() {
     </>
   );
 }
+
+

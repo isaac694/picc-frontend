@@ -18,10 +18,8 @@ import {
 
 const QUILL_MODULES = {
   toolbar: [
-    ['bold', 'italic', 'underline', 'strike'],
+    ['bold', 'italic', 'underline'],
     [{ list: 'ordered' }, { list: 'bullet' }],
-    ['blockquote', 'code-block'],
-    ['link'],
     ['clean'],
   ],
 };
@@ -58,7 +56,6 @@ export default function NotepadTool() {
       tempContainer.style.left = '-9999px';
       tempContainer.style.top = '0';
       tempContainer.style.zIndex = '-1';
-      // Do not use opacity: 0 or visibility: hidden as it can break html2canvas
       
       // Add a header
       const header = document.createElement('div');
@@ -103,7 +100,7 @@ export default function NotepadTool() {
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
-        width: 800, // Explicitly set width to match container
+        width: 800,
       });
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
@@ -153,6 +150,8 @@ export default function NotepadTool() {
     }
   };
 
+  const hasContent = notepadContent && notepadContent !== '<p><br></p>';
+
   return (
     <div className="bg-black text-white p-6">
       <div className="space-y-4">
@@ -167,7 +166,7 @@ export default function NotepadTool() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
-                  disabled={isGenerating || !notepadContent || notepadContent === '<p><br></p>'}
+                  disabled={isGenerating || !hasContent}
                   variant="outline"
                   className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 w-full sm:w-auto"
                 >
@@ -193,7 +192,7 @@ export default function NotepadTool() {
 
             <Button 
               onClick={downloadAsPDF}
-              disabled={isGenerating || !notepadContent || notepadContent === '<p><br></p>'}
+              disabled={isGenerating || !hasContent}
               variant="outline"
               className="bg-white/10 hover:bg-white/20 text-white border-white/20 w-full sm:w-auto"
             >
