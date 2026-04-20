@@ -13,6 +13,13 @@ const nextConfig: NextConfig = {
         port: apiUrl.port || undefined,
         pathname: "/**",
       },
+      // Explicitly allow your Render backend
+      {
+        protocol: "https",
+        hostname: "picc-backend.onrender.com",
+        port: "", // Leave port empty for standard https
+        pathname: "/**",
+      },
       {
         protocol: "http",
         hostname: "localhost",
