@@ -17,14 +17,23 @@ const NAV_ITEMS = [
 
 const SITE_PAGE_ITEMS = [
   { label: 'About Page (Edit)', href: '/admin/about-page' },
-  { label: 'Contact Page', href: '/contact' },
-  { label: 'Media Page', href: '/media' },
-  { label: 'Forms Page', href: '/forms' },
-  { label: 'Church Locations', href: '/locations' },
-  { label: 'Sermons Page', href: '/sermons' },
-  { label: 'Give Page', href: '/give' },
-  { label: 'Events Page', href: '/events' },
-  { label: 'Ministries Page', href: '/ministries' },
+  { label: 'Contact Page (Edit)', href: '/admin/contact' },
+  { label: 'Media Page (Edit)', href: '/admin/media' },
+  { label: 'Forms Page (Edit)', href: '/admin/forms' },
+  { label: 'Sermons Page (Edit)', href: '/admin/sermons' },
+  { label: 'Give Page (Edit)', href: '/admin/give' },
+  { label: 'Church Locations (Edit)', href: '/admin/locations' },
+];
+
+const MINISTRIES_ITEMS = [
+  { label: 'ICD', href: '/admin/ministries/icd' },
+  { label: 'Men of Valour', href: '/admin/ministries/men-of-valour' },
+  { label: 'Prison Ministry', href: '/admin/ministries/prison-ministry' },
+  { label: 'Youth Church', href: '/admin/ministries/youth-church' },
+  { label: 'Women of Hope', href: '/admin/ministries/women-of-hope' },
+  { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman' },
+  { label: 'Hope and Beauty', href: '/admin/ministries/hope-and-beauty' },
+  { label: 'Heritage', href: '/admin/ministries/heritage' },
 ];
 
 const ARCHIVE_ITEMS = [
@@ -66,6 +75,22 @@ export default function AdminSidebar() {
         </p>
         <nav className="space-y-2">
           {SITE_PAGE_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="block rounded-xl px-4 py-2 text-sm font-medium text-foreground/70 hover:text-foreground hover:bg-muted transition"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      <div className="mt-6 pt-4 border-t border-border/60">
+        <p className="text-[11px] uppercase tracking-[0.3em] text-foreground/50 mb-3">
+          Ministries
+        </p>
+        <nav className="space-y-2">
+          {MINISTRIES_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}

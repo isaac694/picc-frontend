@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { sendMembershipNotification, sendPrayerNotification, sendTestimonyNotification } from '@/lib/email';
 
 export default function FormsPage() {
@@ -46,6 +47,45 @@ export default function FormsPage() {
   const [prayerSubmitting, setPrayerSubmitting] = useState(false);
   const [prayerError, setPrayerError] = useState<string | null>(null);
   const [prayerSuccess, setPrayerSuccess] = useState<string | null>(null);
+  const [formImages, setFormImages] = useState<Record<string, string>>({
+    membershipForm: '/images/our-church.JPG',
+    testimonyForm: '/images/send-message-2.JPG',
+    prayerForm: '/images/our-church.JPG',
+  });
+
+  const normalizeImageUrl = (url?: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    return apiUrl(url);
+  };
+
+  useEffect(() => {
+    const fetchImages = async () => {
+      const imageKeys = [
+        { stateKey: 'membershipForm', key: 'membership-form-image', fallback: '/images/our-church.JPG' },
+        { stateKey: 'testimonyForm', key: 'testimony-form-image', fallback: '/images/send-message-2.JPG' },
+        { stateKey: 'prayerForm', key: 'prayer-form-image', fallback: '/images/our-church.JPG' },
+      ];
+
+      const entries = await Promise.all(
+        imageKeys.map(async (item) => {
+          try {
+            const response = await apiFetch(`/api/site-content/${item.key}`);
+            if (!response.ok) {
+              return [item.stateKey, item.fallback] as const;
+            }
+            const data = await response.json();
+            return [item.stateKey, data.imageUrl ? normalizeImageUrl(data.imageUrl) : item.fallback] as const;
+          } catch (error) {
+            return [item.stateKey, item.fallback] as const;
+          }
+        })
+      );
+      setFormImages(Object.fromEntries(entries));
+    };
+
+    fetchImages();
+  }, []);
 
   const handleMemberChange = (field: keyof typeof memberForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setMemberForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -195,7 +235,7 @@ export default function FormsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-10 items-stretch">
                 <div className="relative min-h-[20rem] sm:min-h-[26rem] md:min-h-[34rem] lg:min-h-[38rem] rounded-3xl overflow-hidden shadow-2xl bg-white/10">
                   <Image
-                    src="/images/our-church.JPG"
+                    src={formImages.membershipForm}
                     alt="PICC church family"
                     fill
                     sizes="(max-width: 1024px) 100vw, 50vw"
@@ -429,7 +469,7 @@ export default function FormsPage() {
 
               <div className="relative min-h-[20rem] sm:min-h-[26rem] md:min-h-[34rem] lg:min-h-[38rem] rounded-3xl overflow-hidden shadow-2xl bg-white/5">
                 <Image
-                  src="/images/send-message-2.JPG"
+                  src={formImages.testimonyForm}
                   alt="Share your testimony"
                   fill
                   sizes="(max-width: 1024px) 100vw, 50vw"
@@ -618,7 +658,7 @@ export default function FormsPage() {
 
                 <div className="relative min-h-[20rem] sm:min-h-[24rem] md:min-h-[30rem] lg:min-h-[34rem] rounded-3xl overflow-hidden bg-white/10 shadow-2xl">
                   <Image
-                    src="/images/our-church.JPG"
+                    src={formImages.prayerForm}
                     alt="Prayer request"
                     fill
                     sizes="(max-width: 1024px) 100vw, 50vw"

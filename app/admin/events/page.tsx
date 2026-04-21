@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch, apiUrl } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
@@ -23,9 +23,10 @@ export default function EventsAdminPage() {
   const [eventDraft, setEventDraft] = useState({
     title: '',
     date: new Date().toISOString().slice(0, 10),
+    time: '',
     location: '',
     description: '',
-    imageUrl: '',
+    image: '',
   });
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
 
@@ -50,7 +51,7 @@ export default function EventsAdminPage() {
         return null;
       }
       const data = await response.json();
-      return apiUrl(data.url);
+      return data.url;
     } catch (error) {
       setStatus('Image upload failed.');
       return null;
@@ -59,17 +60,14 @@ export default function EventsAdminPage() {
 
   const refreshEvents = async () => {
     try {
-      const response = await apiFetch('/api/events?take=200');
+      const response = await apiFetch('/api/events');
       if (!response.ok) return;
       const data = await response.json();
-      const normalized = (data.events || []).map((event: any) => ({
+      const normalized = (Array.isArray(data) ? data : data.events || []).map((event: any) => ({
         ...event,
         date: event.date ? String(event.date).slice(0, 10) : '',
-        imageUrl: event.imageUrl
-          ? event.imageUrl.startsWith('http')
-            ? event.imageUrl
-            : apiUrl(event.imageUrl)
-          : '',
+        time: event.time || '',
+        image: event.image || '',
       }));
       setEvents(normalized);
     } catch (error) {
@@ -83,8 +81,8 @@ export default function EventsAdminPage() {
   }, [token]);
 
   const handleAddEvent = async () => {
-    if (!eventDraft.title || !eventDraft.date) {
-      setStatus('Please fill event title and date.');
+    if (!eventDraft.title || !eventDraft.date || !eventDraft.time) {
+      setStatus('Please fill in title, date, and time.');
       return;
     }
     setStatus('');
@@ -98,9 +96,10 @@ export default function EventsAdminPage() {
         body: JSON.stringify({
           title: eventDraft.title,
           date: eventDraft.date,
+          time: eventDraft.time,
           location: eventDraft.location,
           description: eventDraft.description,
-          imageUrl: eventDraft.imageUrl,
+          image: eventDraft.image,
         }),
       });
       if (!response.ok) {
@@ -110,9 +109,10 @@ export default function EventsAdminPage() {
       setEventDraft({
         title: '',
         date: new Date().toISOString().slice(0, 10),
+        time: '',
         location: '',
         description: '',
-        imageUrl: '',
+        image: '',
       });
       updateUploadName('event-draft', '');
       await refreshEvents();
@@ -134,9 +134,10 @@ export default function EventsAdminPage() {
         body: JSON.stringify({
           title: event.title,
           date: event.date,
+          time: event.time,
           location: event.location,
           description: event.description,
-          imageUrl: event.imageUrl,
+          image: event.image,
         }),
       });
       if (!response.ok) {
@@ -224,13 +225,22 @@ export default function EventsAdminPage() {
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
             />
           </div>
-          <input
-            type="text"
-            placeholder="Location"
-            value={eventDraft.location}
-            onChange={(event) => setEventDraft((prev) => ({ ...prev, location: event.target.value }))}
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              type="text"
+              placeholder="Time (e.g., 8:00 AM - 4:00 PM)"
+              value={eventDraft.time}
+              onChange={(event) => setEventDraft((prev) => ({ ...prev, time: event.target.value }))}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            />
+            <input
+              type="text"
+              placeholder="Location"
+              value={eventDraft.location}
+              onChange={(event) => setEventDraft((prev) => ({ ...prev, location: event.target.value }))}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               Upload Event Image
@@ -243,7 +253,7 @@ export default function EventsAdminPage() {
                 if (!file) return;
                 const url = await uploadImage(file);
                 if (url) {
-                  setEventDraft((prev) => ({ ...prev, imageUrl: url }));
+                  setEventDraft((prev) => ({ ...prev, image: url }));
                   updateUploadName('event-draft', file.name);
                 }
               }}
@@ -254,18 +264,18 @@ export default function EventsAdminPage() {
             <Button
               variant="outline"
               onClick={() => {
-                setEventDraft((prev) => ({ ...prev, imageUrl: '' }));
+                setEventDraft((prev) => ({ ...prev, image: '' }));
                 updateUploadName('event-draft', '');
               }}
             >
               Remove Event Image
             </Button>
           </div>
-          {eventDraft.imageUrl && (
+          {eventDraft.image && (
             <div className="rounded-xl border border-border/60 bg-background p-3">
               <div
                 className="h-32 rounded-lg bg-cover bg-center"
-                style={{ backgroundImage: `url(${eventDraft.imageUrl})` }}
+                style={{ backgroundImage: `url(${eventDraft.image})` }}
               />
               <p className="mt-2 text-xs text-foreground/60">
                 {uploadNames['event-draft'] ? `Selected: ${uploadNames['event-draft']}` : 'Current image'}
@@ -314,16 +324,30 @@ export default function EventsAdminPage() {
                       className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
                     />
                   </div>
-                  <input
-                    type="text"
-                    value={event.location || ''}
-                    onChange={(e) =>
-                      setEvents((prev) =>
-                        prev.map((item) => (item.id === event.id ? { ...item, location: e.target.value } : item))
-                      )
-                    }
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Time (e.g., 8:00 AM - 4:00 PM)"
+                      value={event.time || ''}
+                      onChange={(e) =>
+                        setEvents((prev) =>
+                          prev.map((item) => (item.id === event.id ? { ...item, time: e.target.value } : item))
+                        )
+                      }
+                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Location"
+                      value={event.location || ''}
+                      onChange={(e) =>
+                        setEvents((prev) =>
+                          prev.map((item) => (item.id === event.id ? { ...item, location: e.target.value } : item))
+                        )
+                      }
+                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                    />
+                  </div>
                   <div>
                     <label className="block text-xs uppercase tracking-[0.25em] text-foreground/50 mb-2">
                       Upload Image
@@ -337,7 +361,7 @@ export default function EventsAdminPage() {
                         const url = await uploadImage(file);
                         if (!url) return;
                         setEvents((prev) =>
-                          prev.map((item) => (item.id === event.id ? { ...item, imageUrl: url } : item))
+                          prev.map((item) => (item.id === event.id ? { ...item, image: url } : item))
                         );
                         updateUploadName(`event-${event.id}`, file.name);
                       }}
@@ -349,7 +373,7 @@ export default function EventsAdminPage() {
                       variant="outline"
                       onClick={() => {
                         setEvents((prev) =>
-                          prev.map((item) => (item.id === event.id ? { ...item, imageUrl: '' } : item))
+                          prev.map((item) => (item.id === event.id ? { ...item, image: '' } : item))
                         );
                         updateUploadName(`event-${event.id}`, '');
                       }}
@@ -357,11 +381,11 @@ export default function EventsAdminPage() {
                       Remove Event Image
                     </Button>
                   </div>
-                  {event.imageUrl && (
+                  {event.image && (
                     <div className="rounded-xl border border-border/60 bg-background p-3">
                       <div
                         className="h-28 rounded-lg bg-cover bg-center"
-                        style={{ backgroundImage: `url(${event.imageUrl})` }}
+                        style={{ backgroundImage: `url(${event.image})` }}
                       />
                       <p className="mt-2 text-xs text-foreground/60">
                         {uploadNames[`event-${event.id}`]

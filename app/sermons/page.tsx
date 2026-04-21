@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { apiFetch, apiUrl } from '@/lib/api';
 
 // Extract YouTube video ID from a URL (handles ?v=, /embed/, youtu.be, and &t= timestamps)
 function getYouTubeId(url: string): string {
@@ -18,6 +19,16 @@ function getYouTubeId(url: string): string {
 function getYouTubeStart(url: string): number {
   const match = url.match(/[?&]t=(\d+)s?/);
   return match ? parseInt(match[1], 10) : 0;
+}
+
+interface Sermon {
+  id: number;
+  title: string;
+  date: string;
+  image: string;
+  views: string;
+  youtubeUrl: string;
+  audioSrc: string;
 }
 
 const SERMON_AUDIO = '/audio/sermon-audio.mp3';
@@ -80,9 +91,56 @@ const SERMONS = [
 ];
 
 export default function SermonsPage() {
-  const [selectedSermon, setSelectedSermon] = useState<(typeof SERMONS)[number] | null>(null);
+  const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const selectedSermonRef = useRef<HTMLElement | null>(null);
+  const [sermons, setSermons] = useState<Sermon[]>([]);
+  const [headerImage, setHeaderImage] = useState('/sermons/header.JPG');
+  const [loading, setLoading] = useState(true);
+
+  const normalizeImageUrl = (url?: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    return apiUrl(url);
+  };
+
+  useEffect(() => {
+    const fetchSermonsData = async () => {
+      try {
+        // Fetch sermons list
+        const sermonsResponse = await apiFetch('/api/sermons');
+        if (sermonsResponse.ok) {
+          const sermonsData = await sermonsResponse.json();
+          setSermons(sermonsData);
+        } else {
+          // Fallback to static data if API fails
+          setSermons(SERMONS);
+        }
+
+        // Fetch header image
+        const headerResponse = await apiFetch('/api/site-content/sermons-header-image');
+        if (headerResponse.ok) {
+          const headerData = await headerResponse.json();
+          if (headerData.imageUrl) {
+            setHeaderImage(normalizeImageUrl(headerData.imageUrl));
+          }
+        }
+      } catch (error) {
+        // Fallback to static data if API fails
+        setSermons(SERMONS);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSermonsData();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSermon) return;
+    setIsPlaying(false); // reset player when a new sermon is selected
+    selectedSermonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [selectedSermon]);
 
   useEffect(() => {
     if (!selectedSermon) return;
@@ -144,7 +202,7 @@ export default function SermonsPage() {
                     /* Thumbnail with play button overlay */
                     <>
                       <Image
-                        src={selectedSermon.image}
+                        src={normalizeImageUrl(selectedSermon.image)}
                         alt={selectedSermon.title}
                         fill
                         className="object-cover"
@@ -179,7 +237,7 @@ export default function SermonsPage() {
                     key={selectedSermon.id}
                     controls
                     className="w-full rounded-full"
-                    src={selectedSermon.audioSrc}
+                    src={normalizeImageUrl(selectedSermon.audioSrc)}
                   >
                     Your browser does not support the audio element.
                   </audio>
@@ -214,7 +272,10 @@ export default function SermonsPage() {
           /* ── Default hero banner ── */
           <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
             <div className="absolute inset-0">
-              <div className="absolute inset-0 bg-[url('/sermons/header.JPG')] bg-cover bg-center" />
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${headerImage})` }}
+              />
               <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
             </div>
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -234,7 +295,7 @@ export default function SermonsPage() {
         <section className="py-16 md:py-20">
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {SERMONS.map((sermon) => (
+              {(sermons || []).map((sermon) => (
                 <article key={sermon.id} className="group">
                   <div className="relative overflow-hidden rounded-[18px] bg-black/5 shadow-sm">
                     <button
@@ -244,7 +305,7 @@ export default function SermonsPage() {
                       aria-label={`Watch sermon: ${sermon.title}`}
                     >
                       <Image
-                        src={sermon.image}
+                        src={normalizeImageUrl(sermon.image)}
                         alt={sermon.title}
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"

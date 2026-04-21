@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -17,6 +17,30 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { sendEventRegistrationNotification } from '@/lib/email';
+import { apiFetch } from '@/lib/api';
+
+interface Event {
+  id: number;
+  title: string;
+  date: string;
+  time: string;
+  image: string;
+  location: string;
+  description: string;
+}
+
+const DEFAULT_EVENTS: Event[] = [
+  {
+    id: 1,
+    title: '2026 Chatroom',
+    date: '2026-04-11',
+    time: '8:00 AM - 4:00 PM',
+    image: '/events/upcoming.JPG',
+    location: 'African Bible College',
+    description:
+      'PICC Teens Ministry presents 2026 Chatroom. Registration fee MK18,000 (includes snacks and lunch). Age group 12–19 years. With Pastor Loyce Banda.',
+  },
+];
 
 export default function EventsPage() {
   const [filter, setFilter] = useState<'today' | 'week' | 'month' | 'year'>('today');
@@ -25,7 +49,9 @@ export default function EventsPage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [activeEvent, setActiveEvent] = useState<typeof events[number] | null>(null);
+  const [activeEvent, setActiveEvent] = useState<Event | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
   const [registerForm, setRegisterForm] = useState({
     fullName: '',
     residence: '',
@@ -37,18 +63,26 @@ export default function EventsPage() {
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
   const pageSize = 3;
 
-  const events = [
-    {
-      id: 1,
-      title: '2026 Chatroom',
-      date: '2026-04-11',
-      time: '8:00 AM - 4:00 PM',
-      image: '/events/upcoming.JPG',
-      location: 'African Bible College',
-      description:
-        'PICC Teens Ministry presents 2026 Chatroom. Registration fee MK18,000 (includes snacks and lunch). Age group 12–19 years. With Pastor Loyce Banda.',
-    },
-  ];
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await apiFetch('/api/events');
+        if (response.ok) {
+          const data = await response.json();
+          const eventsList = Array.isArray(data) ? data : data.events || [];
+          setEvents(eventsList.length > 0 ? eventsList : DEFAULT_EVENTS);
+        } else {
+          setEvents(DEFAULT_EVENTS);
+        }
+      } catch (error) {
+        setEvents(DEFAULT_EVENTS);
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   const parseTime = (timeValue: string) => {
     const [time, period] = timeValue.trim().split(' ');
@@ -68,7 +102,8 @@ export default function EventsPage() {
   };
 
   const getEventDateRange = (event: typeof events[number]) => {
-    const [startLabel, endLabel] = event.time.split(' - ');
+    const time = event.time || '12:00 PM - 1:00 PM';
+    const [startLabel, endLabel] = time.split(' - ');
     const [year, month, day] = event.date.split('-').map(Number);
     const startTime = parseTime(startLabel);
     const endTime = parseTime(endLabel ?? startLabel);

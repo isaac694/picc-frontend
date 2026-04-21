@@ -10,8 +10,20 @@ import { Input } from '@/components/ui/input';
 import { apiFetch, apiUrl } from '@/lib/api';
 import Link from 'next/link';
 
+type ServiceRecord = {
+  id?: string | null;
+  title?: string | null;
+  dayOfWeek?: string | null;
+  time?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  location?: string | null;
+  description?: string | null;
+};
+
 export default function ContactPage() {
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
+  const [services, setServices] = useState<ServiceRecord[]>([]);
   const familySlides = [
     ['/moments/1.jpg', '/moments/2.jpg', '/moments/3.jpg'],
     ['/moments/4.jpg', '/moments/5.jpg', '/moments/6.jpg'],
@@ -53,7 +65,7 @@ export default function ContactPage() {
                 : apiUrl(data.imageUrl)
               : '';
             return [key, imageUrl] as const;
-          } catch (error) {
+          } catch {
             return [key, ''] as const;
           }
         })
@@ -65,7 +77,58 @@ export default function ContactPage() {
     fetchImages();
   }, []);
 
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        const response = await apiFetch('/api/services');
+        if (!response.ok) return;
+        const data = await response.json();
+        const normalized = (data || []).map((service: ServiceRecord) => ({
+          ...service,
+          time: service.startTime
+            ? service.endTime
+              ? `${service.startTime} - ${service.endTime}`
+              : service.startTime
+            : service.time || '',
+        }));
+        setServices(normalized);
+      } catch {
+        setServices([]);
+      }
+    };
+
+    loadServices();
+  }, []);
+
   const resolveImage = (key: string, fallback: string) => pageImages[key] || fallback;
+
+  const DEFAULT_SERVICE_LINES = [
+    'Prophetic Sunday Service - 6:00 AM - 7:15 AM',
+    'Prophetic Sunday Service (Second) - 7:30 AM - 9:30 AM',
+    'Prophetic Sunday Service (Third) - 10:00 AM - 12:30 PM',
+    'Sunday Youth Church - 1:30 PM - 3:30 PM',
+    'Last Sunday of the Month - Miracle and Celebration Service - 7:00 AM - 12:00 PM',
+    'Every Quarter of the Year - Mega Sunday Service - 7:00 AM - 12:00 PM',
+    'Everyday - Morning Glory - 5:00 AM - 6:00 AM',
+    'Every Tuesday - Home Church - 5:30 PM - 7:00 PM',
+    'Every Thursday - Special Word Encounter - 6:00 PM - 8:00 PM',
+  ];
+
+  const serviceLines = services.length
+    ? services
+      .map((service) => {
+        const title = String(service.title || '').trim();
+        const day = String(service.dayOfWeek || '').trim();
+        const time = String(service.time || '').trim();
+        const lineTitle = day ? `${day} - ${title || 'Service'}` : title || 'Service';
+        return time ? `${lineTitle} - ${time}` : lineTitle;
+      })
+      .filter(Boolean)
+    : DEFAULT_SERVICE_LINES;
+
+  const splitIndex = Math.ceil(serviceLines.length / 2);
+  const leftServiceLines = serviceLines.slice(0, splitIndex);
+  const rightServiceLines = serviceLines.slice(splitIndex);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -111,9 +174,9 @@ export default function ContactPage() {
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
               <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3">
-                <a href="/" className="hover:text-white">Home</a>
+                <Link href="/" className="hover:text-white">Home</Link>
                 <span className="text-white/50">/</span>
-                <a href="/contact" className="hover:text-white">Contact</a>
+                <Link href="/contact" className="hover:text-white">Contact</Link>
               </div>
               <h1 className="text-4xl md:text-6xl font-semibold mb-4">Get in Touch</h1>
               <p className="text-lg text-white/80">
@@ -232,17 +295,14 @@ export default function ContactPage() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-foreground/80">
                     <div className="space-y-2">
-                      <p>Prophetic Sunday Service - 6:00 AM - 7:15 AM</p>
-                      <p>Prophetic Sunday Service (Second) - 7:30 AM - 9:30 AM</p>
-                      <p>Prophetic Sunday Service (Third) - 10:00 AM - 12:30 PM</p>
-                      <p>Sunday Youth Church - 1:30 PM - 3:30 PM</p>
-                      <p>Last Sunday of the Month - Miracle and Celebration Service - 7:00 AM - 12:00 PM</p>
+                      {leftServiceLines.map((line) => (
+                        <p key={line}>{line}</p>
+                      ))}
                     </div>
                     <div className="space-y-2">
-                      <p>Every Quarter of the Year - Mega Sunday Service - 7:00 AM - 12:00 PM</p>
-                      <p>Everyday - Morning Glory - 5:00 AM - 6:00 AM</p>
-                      <p>Every Tuesday - Home Church - 5:30 PM - 7:00 PM</p>
-                      <p>Every Thursday - Special Word Encounter - 6:00 PM - 8:00 PM</p>
+                      {rightServiceLines.map((line) => (
+                        <p key={line}>{line}</p>
+                      ))}
                     </div>
                   </div>
                   <div className="mt-4">

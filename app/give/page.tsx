@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
@@ -8,10 +8,20 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { apiFetch, apiUrl } from '@/lib/api';
 
+const DEFAULT_GIVING_TYPES = [
+  'First Fruit',
+  'Sunday Service',
+  'Tithe',
+  'Project Offering',
+  'Thanks Giving',
+  "Prophet's Offering",
+];
+
 export default function GivePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [givingTypes, setGivingTypes] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     currency: 'MWK',
     amount: '',
@@ -26,6 +36,24 @@ export default function GivePage() {
     reason: '',
     paymentMethod: 'airtel',
   });
+
+  useEffect(() => {
+    const fetchGivingTypes = async () => {
+      try {
+        const response = await apiFetch('/api/giving-types');
+        if (response.ok) {
+          const data = await response.json();
+          const types = Array.isArray(data) ? data : data.types || [];
+          setGivingTypes(types.length > 0 ? types : DEFAULT_GIVING_TYPES);
+        } else {
+          setGivingTypes(DEFAULT_GIVING_TYPES);
+        }
+      } catch (error) {
+        setGivingTypes(DEFAULT_GIVING_TYPES);
+      }
+    };
+    fetchGivingTypes();
+  }, []);
 
   const normalizePaychanguPhone = (countryCode: string, rawPhone: string) => {
     const digits = rawPhone.replace(/\D/g, '');
@@ -223,14 +251,7 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
                     <div>
                       <p className="text-sm font-semibold text-foreground/70 mb-3">Tick where appropriate</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        {[
-                          'First Fruit',
-                          'Sunday Service',
-                          'Tithe',
-                          'Project Offering',
-                          'Thanks Giving',
-                          "Prophet's Offering",
-                        ].map((label) => (
+                        {givingTypes.map((label) => (
                           <label key={label} className="flex items-center gap-3">
                             <input
                               type="radio"
