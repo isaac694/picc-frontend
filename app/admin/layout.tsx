@@ -1,7 +1,11 @@
 import Navigation from '@/components/Navigation';
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import { SessionWarningModal } from '@/components/admin/SessionWarningModal';
+import { useSessionManagement } from '@/hooks/use-session-management';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
+  const { showWarning, timeLeft, formatTime, extendSession, logout } = useSessionManagement();
+
   return (
     <>
       <Navigation />
@@ -13,6 +17,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
       </main>
+      <SessionWarningModal
+        isOpen={showWarning}
+        timeLeft={timeLeft}
+        formatTime={formatTime}
+        onExtend={extendSession}
+        onLogout={logout}
+      />
     </>
   );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <AdminLayoutContent>{children}</AdminLayoutContent>;
 }

@@ -121,7 +121,7 @@ export default function LocationsAdminPage() {
     try {
       const response = await apiFetch('/api/uploads', {
         method: 'POST',
-        headers: { Authorization: Bearer  },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       if (!response.ok) return null;
