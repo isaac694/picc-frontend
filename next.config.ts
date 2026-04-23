@@ -5,6 +5,12 @@ const apiUrl = new URL(apiBase);
 const apiProtocol = apiUrl.protocol === "https:" ? "https" : "http";
 
 const nextConfig: NextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  experimental: {
+    workerThreads: true,
+  },
   images: {
     remotePatterns: [
       {

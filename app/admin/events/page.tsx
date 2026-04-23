@@ -36,6 +36,13 @@ export default function EventsAdminPage() {
 
   const uploadImage = async (file: File) => {
     if (!token) return null;
+
+    // Check file size (1MB = 1024 * 1024 bytes)
+    if (file.size > 1024 * 1024) {
+      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      return null;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     try {
@@ -243,7 +250,7 @@ export default function EventsAdminPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Upload Event Image
+              Upload Event Image <span className="text-[11px] font-normal text-foreground/50">(Max 1MB allowed)</span>
             </label>
             <input
               type="file"
@@ -350,7 +357,7 @@ export default function EventsAdminPage() {
                   </div>
                   <div>
                     <label className="block text-xs uppercase tracking-[0.25em] text-foreground/50 mb-2">
-                      Upload Image
+                      Upload Image <span className="text-[10px] font-normal lowercase tracking-normal">(Max 1MB allowed)</span>
                     </label>
                     <input
                       type="file"

@@ -115,6 +115,12 @@ export default function LocationsAdminPage() {
 
   const uploadImage = async (file: File) => {
     if (!token) return null;
+
+    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
+      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      return null;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 

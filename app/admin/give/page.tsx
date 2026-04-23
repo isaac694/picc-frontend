@@ -101,7 +101,16 @@ export default function AdminGivePage() {
   }, [token]);
 
   if (!token) {
-    return <AdminLoginCard {...{ email, password, loginError, setEmail, setPassword, handleLogin }} />;
+    return (
+      <AdminLoginCard
+        email={email}
+        password={password}
+        loginError={loginError}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onSubmit={handleLogin}
+      />
+    );
   }
 
   return (

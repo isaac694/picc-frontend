@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 
@@ -47,6 +48,7 @@ export default function AdminSermonsPage() {
   const [draftSermon, setDraftSermon] = useState(DEFAULT_SERMON);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
+  const [notifySubscribers, setNotifySubscribers] = useState(false);
 
   const normalizeRemoteUrl = (value: string) => {
     if (!value) return '';
@@ -59,6 +61,12 @@ export default function AdminSermonsPage() {
 
   const uploadFile = async (file: File) => {
     if (!token) return null;
+
+    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
+      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      return null;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 
@@ -163,6 +171,35 @@ export default function AdminSermonsPage() {
         setStatus('Sermon added successfully.');
         setDraftSermon(DEFAULT_SERMON);
         fetchSermons();
+
+        // Send notification to subscribers if requested
+        if (notifySubscribers && draftSermon.title) {
+          try {
+            const sermonUrl = draftSermon.youtubeUrl || `/sermons/${Date.now()}`; // Fallback URL
+            const notifyResponse = await fetch('/api/admin/notify-subscribers', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                sermonTitle: draftSermon.title,
+                sermonUrl: sermonUrl,
+              }),
+            });
+
+            if (notifyResponse.ok) {
+              setStatus('Sermon added successfully and subscribers notified.');
+            } else {
+              setStatus('Sermon added successfully, but failed to notify subscribers.');
+            }
+          } catch (notifyError) {
+            console.error('Failed to notify subscribers:', notifyError);
+            setStatus('Sermon added successfully, but failed to notify subscribers.');
+          }
+        }
+
+        setNotifySubscribers(false); // Reset checkbox
       } else {
         setStatus('Failed to add sermon.');
       }
@@ -234,6 +271,7 @@ export default function AdminSermonsPage() {
   const cancelEditing = () => {
     setDraftSermon(DEFAULT_SERMON);
     setEditingId(null);
+    setNotifySubscribers(false);
   };
 
   useEffect(() => {
@@ -244,7 +282,16 @@ export default function AdminSermonsPage() {
   }, [token]);
 
   if (!token) {
-    return <AdminLoginCard {...{ email, password, loginError, setEmail, setPassword, handleLogin }} />;
+    return (
+      <AdminLoginCard
+        email={email}
+        password={password}
+        loginError={loginError}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onSubmit={handleLogin}
+      />
+    );
   }
 
   return (
@@ -270,7 +317,7 @@ export default function AdminSermonsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="header-upload">Upload Header Image</Label>
+              <Label htmlFor="header-upload">Upload Header Image <span className="text-[11px] font-normal text-muted-foreground">(Max 1MB allowed)</span></Label>
               <Input
                 id="header-upload"
                 type="file"
@@ -345,7 +392,7 @@ export default function AdminSermonsPage() {
             </div>
 
             <div>
-              <Label htmlFor="image-upload">Upload Sermon Image</Label>
+              <Label htmlFor="image-upload">Upload Sermon Image <span className="text-[11px] font-normal text-muted-foreground">(Max 1MB allowed)</span></Label>
               <Input
                 id="image-upload"
                 type="file"
@@ -388,6 +435,17 @@ export default function AdminSermonsPage() {
               {uploadNames.audio && (
                 <p className="text-sm text-muted-foreground mt-1">Uploading: {uploadNames.audio}</p>
               )}
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="notify-subscribers"
+                checked={notifySubscribers}
+                onCheckedChange={(checked) => setNotifySubscribers(checked as boolean)}
+              />
+              <Label htmlFor="notify-subscribers" className="text-sm">
+                Notify subscribers about this new sermon
+              </Label>
             </div>
 
             <div className="flex gap-2">

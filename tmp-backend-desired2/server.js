@@ -964,6 +964,25 @@ app.post('/api/site-content/:key', authRequired, adminRequired, async (req, res)
   }
 });
 
+app.get('/api/quotes', async (req, res) => {
+  try {
+    const skip = parseInt(req.query.skip || '0', 10);
+    const take = parseInt(req.query.take || '100', 10);
+
+    const quotes = await prisma.quoteOfMonth.findMany({
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+    });
+
+    const total = await prisma.quoteOfMonth.count();
+
+    return res.json({ quotes, total, skip, take });
+  } catch (error) {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/api/quote-of-month', async (req, res) => {
   try {
     const quote = await prisma.quoteOfMonth.findUnique({
@@ -985,14 +1004,21 @@ app.post('/api/quote-of-month', authRequired, adminRequired, async (req, res) =>
       return res.status(400).json({ error: 'Quote is required' });
     }
 
-    const saved = await prisma.quoteOfMonth.upsert({
+    // Archive the existing current quote if it exists
+    const existing = await prisma.quoteOfMonth.findUnique({
       where: { key: 'current' },
-      update: {
-        quote,
-        author: author ?? null,
-        imageUrl: imageUrl ?? null,
-      },
-      create: {
+    });
+
+    if (existing) {
+      await prisma.quoteOfMonth.update({
+        where: { id: existing.id },
+        data: { key: `archived_${existing.id}_${Date.now()}` },
+      });
+    }
+
+    // Create the new current quote
+    const saved = await prisma.quoteOfMonth.create({
+      data: {
         key: 'current',
         quote,
         author: author ?? null,

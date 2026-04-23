@@ -9,6 +9,7 @@ import { ChevronDown, Menu, X } from 'lucide-react';
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [mobileMinistriesOpen, setMobileMinistriesOpen] = useState(false);
+  const [mobileSchoolsOpen, setMobileSchoolsOpen] = useState(false);
   const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
   const pathname = usePathname();
   const isDarkNav = pathname?.startsWith('/livestream');
@@ -30,12 +31,18 @@ export default function Navigation() {
     { href: '/ministries/hope-and-beauty', label: 'Hope and Beauty' },
     { href: '/ministries/heritage-ministry', label: 'Heritage Ministry' },
   ];
+  const schoolLinks = [
+    { href: '/schools/picc-secondary', label: 'PICC Secondary School' },
+    { href: '/schools/hope-school', label: 'Hope School Ministry' },
+    { href: '/schools/discipleship', label: 'School of Discipleship' },
+  ];
 
   const handleToggleMenu = () => {
     setIsOpen((prev) => {
       const next = !prev;
       if (!next) {
         setMobileMinistriesOpen(false);
+        setMobileSchoolsOpen(false);
         setMobileResourcesOpen(false);
       }
       return next;
@@ -44,6 +51,7 @@ export default function Navigation() {
   const closeMenu = () => {
     setIsOpen(false);
     setMobileMinistriesOpen(false);
+    setMobileSchoolsOpen(false);
     setMobileResourcesOpen(false);
   };
 
@@ -119,6 +127,43 @@ export default function Navigation() {
               >
                 <div className="py-2">
                   {ministryLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={
+                        isDarkNav
+                          ? 'block px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10'
+                          : 'block px-4 py-2 text-sm text-foreground hover:text-primary hover:bg-muted'
+                      }
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Schools Dropdown */}
+            <div className="relative group">
+              <button
+                type="button"
+                className={
+                  isDarkNav
+                    ? 'text-white/80 hover:text-white transition-colors text-sm font-medium'
+                    : 'text-foreground hover:text-primary transition-colors text-sm font-medium'
+                }
+              >
+                Schools
+              </button>
+              <div
+                className={
+                  isDarkNav
+                    ? 'absolute left-0 top-full mt-3 w-64 rounded-lg border border-white/10 bg-black/95 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all'
+                    : 'absolute left-0 top-full mt-3 w-64 rounded-lg border border-border bg-white shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all'
+                }
+              >
+                <div className="py-2">
+                  {schoolLinks.map((link) => (
                     <Link
                       key={link.href}
                       href={link.href}
@@ -284,6 +329,43 @@ export default function Navigation() {
                 {mobileMinistriesOpen && (
                   <div className="space-y-1">
                     {ministryLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={
+                          isDarkNav
+                            ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                            : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                        }
+                        onClick={closeMenu}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Schools Dropdown */}
+              <div>
+                <button
+                  type="button"
+                  className={
+                    isDarkNav
+                      ? 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-white/80 text-xs uppercase tracking-[0.2em]'
+                      : 'w-full flex items-center justify-between px-4 pt-3 pb-2 text-foreground/60 text-xs uppercase tracking-[0.2em]'
+                  }
+                  onClick={() => setMobileSchoolsOpen((prev) => !prev)}
+                  aria-expanded={mobileSchoolsOpen}
+                >
+                  <span>Schools</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${mobileSchoolsOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {mobileSchoolsOpen && (
+                  <div className="space-y-1">
+                    {schoolLinks.map((link) => (
                       <Link
                         key={link.href}
                         href={link.href}
