@@ -438,7 +438,10 @@ export default function LivestreamPage() {
                   {activeTool === "bible" && <BibleTool />}
                   {activeTool === "chat" && (
                     <div className="h-[400px] w-full bg-black">
-                      <LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} />
+                      <LiveChat
+                        videoId={featuredVideo?.videoId || FALLBACK_HERO_ID}
+                        videoTitle={featuredVideo?.title || 'Sunday Livestream'}
+                      />
                     </div>
                   )}
                   {activeTool === "notepad" && <NotepadTool />}
@@ -525,7 +528,10 @@ export default function LivestreamPage() {
                     )}
                     {activeTool === "chat" && (
                       <div className="h-[300px] w-full bg-black mb-4">
-                        <LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} />
+                        <LiveChat
+                          videoId={featuredVideo?.videoId || FALLBACK_HERO_ID}
+                          videoTitle={featuredVideo?.title || 'Sunday Livestream'}
+                        />
                       </div>
                     )}
                     {activeTool === "bible" && (
@@ -593,7 +599,10 @@ export default function LivestreamPage() {
                       )}
                       {activeTool === 'chat' && (
                         <div className="h-[300px] w-full bg-black mb-4">
-                          <LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} />
+                          <LiveChat
+                            videoId={featuredVideo?.videoId || FALLBACK_HERO_ID}
+                            videoTitle={featuredVideo?.title || 'Sunday Livestream'}
+                          />
                         </div>
                       )}
                       {activeTool === 'bible' && (

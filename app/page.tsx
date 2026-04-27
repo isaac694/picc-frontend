@@ -36,7 +36,7 @@ const GROW_CARD_SLOTS = [
     key: 'home-grow-card-2',
     label: 'ATTEND',
     title: 'Join a Service',
-    href: '/#see-you-in-church-home',
+    href: '/#see-you-in-church',
     fallback: '/cards/service-times.jpg',
   },
   {
@@ -103,6 +103,17 @@ const DEFAULT_SERVICES = [
   },
 ];
 
+type ServiceLike = {
+  day?: string | null;
+  dayOfWeek?: string | null;
+  title?: string | null;
+  time?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  location?: string | null;
+  description?: string | null;
+};
+
 async function getDailyDevotion() {
   try {
     const response = await apiFetch('/api/devotions/latest', {
@@ -114,7 +125,7 @@ async function getDailyDevotion() {
     }
 
     return response.json();
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -130,7 +141,7 @@ async function getDailyConfession() {
     }
 
     return response.json();
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -142,7 +153,7 @@ async function getServices() {
     });
     if (!response.ok) return [];
     return response.json();
-  } catch (error) {
+  } catch {
     return [];
   }
 }
@@ -154,7 +165,7 @@ async function getSeeYouInChurch() {
     });
     if (!response.ok) return null;
     return response.json();
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -166,7 +177,7 @@ async function getQuoteOfMonth() {
     });
     if (!response.ok) return null;
     return response.json();
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -181,12 +192,43 @@ async function getSiteImages(keys: string[]) {
         if (!response.ok) return [key, null] as const;
         const data = await response.json();
         return [key, data.imageUrl ?? null] as const;
-      } catch (error) {
+      } catch {
         return [key, null] as const;
       }
     })
   );
   return Object.fromEntries(entries);
+}
+
+async function getHomeVerse() {
+  try {
+    const response = await apiFetch('/api/site-content/home-verse', {
+      next: { revalidate: 300 },
+    });
+    if (!response.ok) return null;
+    const data = (await response.json().catch(() => null)) as unknown;
+    const isRecord = (value: unknown): value is Record<string, unknown> =>
+      typeof value === 'object' && value !== null;
+
+    const body = isRecord(data) && typeof data.body === 'string' ? data.body : '';
+    if (!body) return null;
+
+    try {
+      const parsed = JSON.parse(body) as unknown;
+      if (isRecord(parsed)) {
+        return {
+          text: typeof parsed.text === 'string' ? parsed.text : null,
+          reference: typeof parsed.reference === 'string' ? parsed.reference : null,
+        };
+      }
+    } catch {
+      // ignore JSON parsing
+    }
+
+    return { text: body, reference: null };
+  } catch {
+    return null;
+  }
 }
 
 function normalizeImageUrl(url?: string | null) {
@@ -211,13 +253,14 @@ export default async function HomePage() {
     'home-livestream-bg',
   ];
 
-  const [devotion, confession, services, seeYouInChurch, quoteOfMonth, siteImages] = await Promise.all([
+  const [devotion, confession, services, seeYouInChurch, quoteOfMonth, siteImages, homeVerse] = await Promise.all([
     getDailyDevotion(),
     getDailyConfession(),
     getServices(),
     getSeeYouInChurch(),
     getQuoteOfMonth(),
     getSiteImages(imageKeys),
+    getHomeVerse(),
   ]);
   const devotionDate = devotion?.publishAt
     ? new Intl.DateTimeFormat('en-US', {
@@ -238,7 +281,6 @@ export default async function HomePage() {
   const confessionImageSrc = normalizeImageUrl(confession?.imageUrl) || '/home/declaration.jpeg';
   const confessionImageUnoptimized = isLocalUpstreamImage(confessionImageSrc);
 
-const seeYouImageUrl = "/see-you-in-church.jpg";
   const quoteImageUrl = normalizeImageUrl(quoteOfMonth?.imageUrl);
   const heroImages = HOME_HERO_SLOTS.map((slot) => ({
     ...slot,
@@ -340,7 +382,7 @@ const seeYouImageUrl = "/see-you-in-church.jpg";
           </div>
         </section>
 
-        <VerseSection />
+        <VerseSection text={homeVerse?.text} reference={homeVerse?.reference} />
 
         <MissionSection imageUrl={missionImage} />
 
@@ -414,7 +456,7 @@ const seeYouImageUrl = "/see-you-in-church.jpg";
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
               <h2 className="text-4xl md:text-5xl font-bold text-primary mb-2">Grow in Every Season</h2>
-              <p className="text-foreground/70">Whether you're new or have been with us for years — there's always more.</p>
+              <p className="text-foreground/70">Whether you&apos;re new or have been with us for years &mdash; there&apos;s always more.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8">
@@ -492,7 +534,7 @@ const seeYouImageUrl = "/see-you-in-church.jpg";
         </section>
 
         {/* Listen Now Section */}
-        <section id="see-you-in-church" className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background scroll-mt-24">
+        <section id="listen-now" className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background scroll-mt-24">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[28px] group">
               <div className="absolute inset-0">
@@ -546,7 +588,7 @@ const seeYouImageUrl = "/see-you-in-church.jpg";
         </section>
 
         {/* Ministries Section */}
-        <section id="see-you-in-church-home" className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background scroll-mt-24">
+        <section id="ministries" className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background scroll-mt-24">
           <style>{`
             @keyframes marqueeScroll {
               0% { transform: translateX(0); }
@@ -638,7 +680,7 @@ const seeYouImageUrl = "/see-you-in-church.jpg";
         <MomentsSection />
 
         {/* Service Times Section */}
-        <section className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background">
+        <section id="see-you-in-church" className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background scroll-mt-24">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[28px] shadow-2xl">
               <div className="absolute inset-0">
@@ -671,7 +713,7 @@ const seeYouImageUrl = "/see-you-in-church.jpg";
                 </div>
 
                 <div className="mt-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 text-left">
-                  {(services?.length ? services : DEFAULT_SERVICES).map((program: any) => {
+                  {(services?.length ? services : DEFAULT_SERVICES).map((program: ServiceLike) => {
                     const time = program.startTime
                       ? program.endTime
                         ? `${program.startTime} - ${program.endTime}`

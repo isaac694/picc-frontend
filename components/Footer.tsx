@@ -20,36 +20,36 @@ export default function Footer() {
     message: string;
   }>({ type: null, message: '' });
   const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>([]);
+  const fallbackFaqs = [
+    {
+      question: 'What time are services?',
+      answer: 'Service times are listed on the Service Times page and updated weekly.',
+    },
+    {
+      question: 'How can I join a ministry?',
+      answer: 'Contact us or visit any of our church locations to connect with a ministry leader.',
+    },
+    {
+      question: 'Where can I watch online?',
+      answer: 'Use the Livestream page for live services and recent broadcasts.',
+    },
+  ];
 
   useEffect(() => {
     const fetchFaqs = async () => {
       try {
         const response = await apiFetch('/api/faqs');
-        if (response.ok) {
-          const data = await response.json();
-          const activeFaqs = (data || []).filter((f: any) => f.isActive);
-          if (activeFaqs.length > 0) {
-            setFaqs(activeFaqs);
-          } else {
-            // Fallback if no active FAQs in DB
-            setFaqs([
-              {
-                question: 'What time are services?',
-                answer: 'Service times are listed on the Service Times page and updated weekly.',
-              },
-              {
-                question: 'How can I join a ministry?',
-                answer: 'Contact us or visit any of our church locations to connect with a ministry leader.',
-              },
-              {
-                question: 'Where can I watch online?',
-                answer: 'Use the Livestream page for live services and recent broadcasts.',
-              },
-            ]);
-          }
+        if (!response.ok) {
+          setFaqs(fallbackFaqs);
+          return;
         }
+
+        const data = await response.json();
+        const activeFaqs = (data || []).filter((f: any) => f.isActive);
+        setFaqs(activeFaqs.length > 0 ? activeFaqs : fallbackFaqs);
       } catch (error) {
         console.error('Error fetching FAQs:', error);
+        setFaqs(fallbackFaqs);
       }
     };
     fetchFaqs();

@@ -15,6 +15,7 @@ export const ADMIN_PAGE = {
   GIVE_PAGE: 'GIVE_PAGE',
   LOCATIONS_PAGE: 'LOCATIONS_PAGE',
   FAQS: 'FAQS',
+  SCHOOLS_ENROLLMENT: 'SCHOOLS_ENROLLMENT',
 } as const;
 
 export type AdminPageKey = (typeof ADMIN_PAGE)[keyof typeof ADMIN_PAGE];
@@ -46,6 +47,7 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.GIVE_PAGE, label: 'Give Page' },
   { key: ADMIN_PAGE.LOCATIONS_PAGE, label: 'Church Locations' },
   { key: ADMIN_PAGE.FAQS, label: 'FAQ (Footer)' },
+  { key: ADMIN_PAGE.SCHOOLS_ENROLLMENT, label: 'Schools Enrollment' },
 ];
 
 export function canAccessAdminPage(user: AdminUser | null, page: AdminPageKey): boolean {

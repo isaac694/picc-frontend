@@ -44,6 +44,7 @@ export default function LiveChatAdminPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoadingThreads, setIsLoadingThreads] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const youTubeApiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
 
   useEffect(() => {
     if (!token) return;
@@ -120,13 +121,61 @@ export default function LiveChatAdminPage() {
         return;
       }
       const data = await response.json();
-      setThreads(data.threads || []);
+      const list = data.threads || [];
+      setThreads(list);
+      void enrichThreadTitles(list);
     } catch {
       setStatus('Unable to load chat threads.');
       setThreads([]);
     } finally {
       setIsLoadingThreads(false);
     }
+  };
+
+  const enrichThreadTitles = async (list: ChatThread[]) => {
+    if (!youTubeApiKey) return;
+    const missing = list
+      .filter((thread) => thread.videoId !== 'legacy')
+      .filter((thread) => {
+        const title = thread.videoTitle?.trim() || '';
+        return !title || title === thread.videoId;
+      })
+      .map((thread) => thread.videoId);
+
+    if (missing.length === 0) return;
+
+    const resolved = new Map<string, string>();
+    for (let i = 0; i < missing.length; i += 50) {
+      const batch = missing.slice(i, i + 50);
+      try {
+        const url = new URL('https://www.googleapis.com/youtube/v3/videos');
+        url.searchParams.set('part', 'snippet');
+        url.searchParams.set('id', batch.join(','));
+        url.searchParams.set('key', youTubeApiKey);
+        const res = await fetch(url.toString());
+        if (!res.ok) continue;
+        const data = await res.json().catch(() => null);
+        const items = Array.isArray(data?.items) ? data.items : [];
+        for (const item of items) {
+          const id = typeof item?.id === 'string' ? item.id : null;
+          const title = typeof item?.snippet?.title === 'string' ? item.snippet.title : null;
+          if (id && title) {
+            resolved.set(id, title);
+          }
+        }
+      } catch {
+        // ignore and keep existing titles
+      }
+    }
+
+    if (resolved.size === 0) return;
+
+    setThreads((prev) =>
+      prev.map((thread) => {
+        const title = resolved.get(thread.videoId);
+        return title ? { ...thread, videoTitle: title } : thread;
+      }),
+    );
   };
 
   const loadMessages = async (videoId: string) => {

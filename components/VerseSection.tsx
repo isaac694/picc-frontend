@@ -4,9 +4,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-export default function VerseSection() {
+export default function VerseSection({
+  text,
+  reference,
+}: {
+  text?: string | null;
+  reference?: string | null;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
+
+  const resolvedText =
+    text ||
+    'Now a river went out of Eden to water the garden, and from there it parted and became four riverheads.';
+  const resolvedReference = reference || 'Genesis 2:10';
 
   useEffect(() => {
     const el = ref.current;
@@ -68,7 +79,7 @@ export default function VerseSection() {
                 font-serif
               "
             >
-              "Now a river went out of Eden to water the garden, and from there it parted and became four riverheads." — Genesis 2:10
+              &ldquo;{resolvedText}&rdquo; &mdash; {resolvedReference}
             </p>
 
           </blockquote>

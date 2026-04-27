@@ -2,6 +2,7 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import EventsCarousel from '@/components/EventsCarousel';
 import HopeSchoolNewsSection from '@/components/schools/HopeSchoolNewsSection';
+import HopeSchoolRegistrationForm from '@/components/schools/HopeSchoolRegistrationForm';
 import Image from 'next/image';
 import { BookOpen, Building2, Compass, Crown, GraduationCap, Lightbulb, Target, Users } from 'lucide-react';
 
@@ -166,6 +167,7 @@ export default function HopeSchoolPage() {
     ['Cohort 1 Ends', 'July 27, 2025'],
     ['Cohort 2 Registration', 'August 17, 2025'],
   ];
+
 
   const inputClass =
     'w-full px-4 py-2.5 border border-slate-200 bg-stone-50 text-sm text-[#0d1f3c] outline-none focus:border-[#c9a84c] focus:bg-white focus:ring-2 focus:ring-[#c9a84c]/10 transition-all placeholder:text-slate-300';
@@ -432,136 +434,7 @@ export default function HopeSchoolPage() {
           </div>
 
           {/* Form column */}
-          <div className="border border-slate-200 shadow-sm bg-white">
-            <div className="bg-[#0d1f3c] border-b-4 border-[#c9a84c] px-8 py-6">
-              <h3 className="text-white text-xl font-semibold font-serif">Registration Form</h3>
-              <p className="text-white/55 text-sm mt-1">Required fields are marked with an asterisk (*)</p>
-            </div>
-
-            <div className="px-8 py-8">
-              {/* Personal Information */}
-              <p className="text-[#c9a84c] text-[0.65rem] font-semibold tracking-[0.2em] uppercase border-b border-slate-100 pb-2 mb-4">Personal Details</p>
-              <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">First Name *</label>
-                  <input type="text" placeholder="First Name" className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Last Name *</label>
-                  <input type="text" placeholder="Last Name" className={inputClass} />
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Gender *</label>
-                  <select className={`${inputClass} appearance-none cursor-pointer`}>
-                    <option>Select</option>
-                    <option>Male</option>
-                    <option>Female</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Age *</label>
-                  <input type="number" placeholder="Age" className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Marital Status *</label>
-                  <select className={`${inputClass} appearance-none cursor-pointer`}>
-                    <option>Select</option>
-                    <option>Single</option>
-                    <option>Married</option>
-                    <option>Separated</option>
-                    <option>Divorced</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Phone/Mobile *</label>
-                  <input type="tel" placeholder="+265 700 000 000" className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Email *</label>
-                  <input type="email" placeholder="email@address.com" className={inputClass} />
-                </div>
-              </div>
-
-              {/* Address Details */}
-              <p className="text-[#c9a84c] text-[0.65rem] font-semibold tracking-[0.2em] uppercase border-b border-slate-100 pb-2 mb-4 mt-6">Address Information</p>
-              <div className="mb-4">
-                <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Residential Address *</label>
-                <input type="text" placeholder="Current neighborhood/area" className={inputClass} />
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Permanent Home Address *</label>
-                <input type="text" placeholder="Home village address" className={inputClass} />
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Village *</label>
-                  <input type="text" placeholder="Village name" className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">T/A *</label>
-                  <input type="text" placeholder="Traditional Authority" className={inputClass} />
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">District *</label>
-                  <input type="text" placeholder="District" className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Country *</label>
-                  <input type="text" placeholder="Malawi" className={inputClass} defaultValue="Malawi" />
-                </div>
-              </div>
-
-              {/* Church and Learning details */}
-              <p className="text-[#c9a84c] text-[0.65rem] font-semibold tracking-[0.2em] uppercase border-b border-slate-100 pb-2 mb-4 mt-6">Church & Learning</p>
-              <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">PICC Status *</label>
-                  <select className={`${inputClass} appearance-none cursor-pointer`}>
-                    <option>Select Status</option>
-                    <option>MEMBER</option>
-                    <option>REGULAR ATTENDEE</option>
-                    <option>NEW FOLLOWER</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">PICC Service Group</label>
-                  <input type="text" placeholder="e.g. Ushering, Choir" className={inputClass} />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Church Denomination *</label>
-                <input type="text" placeholder="Your church denomination" className={inputClass} />
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Preferred Mode of Learning *</label>
-                <select className={`${inputClass} appearance-none cursor-pointer`}>
-                  <option>Select Mode of Learning</option>
-                  <option>Face to Face</option>
-                  <option>Online</option>
-                </select>
-              </div>
-
-              <button className="w-full mt-8 bg-[#0d1f3c] hover:bg-[#1a3360] text-white text-xs font-bold tracking-[0.2em] uppercase py-4 transition-colors duration-200 border-b-2 border-[#c9a84c]">
-                Submit Registration
-              </button>
-              <p className="text-center text-slate-400 text-xs mt-4 leading-relaxed">
-                We will contact you shortly to confirm your registration and provide further details.
-              </p>
-            </div>
-          </div>
+          <HopeSchoolRegistrationForm inputClass={inputClass} schoolKey="hope-school" />
         </div>
       </section>
 

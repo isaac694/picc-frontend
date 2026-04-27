@@ -8,6 +8,7 @@ import { BookOpen, ShieldCheck, Sun, Anchor, Zap, Flame, Gift, Crown } from 'luc
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRef } from 'react';
+import SchoolIntakeGate from '@/components/schools/SchoolIntakeGate';
 
 export default function SchoolOfDiscipleshipPage() {
   const enrollmentRef = useRef<HTMLElement>(null);
@@ -114,6 +115,8 @@ export default function SchoolOfDiscipleshipPage() {
     ['Leadership Level Starts', 'March 3, 2025'],
     ['Enrollment Deadline', '1 week before start'],
   ];
+
+
 
   const inputClass =
     'w-full px-4 py-2.5 border border-slate-200 bg-stone-50 text-sm text-[#0d1f3c] outline-none focus:border-[#c9a84c] focus:bg-white focus:ring-2 focus:ring-[#c9a84c]/10 transition-all placeholder:text-slate-300';
@@ -432,17 +435,17 @@ export default function SchoolOfDiscipleshipPage() {
               </div>
               <div className="mb-6">
                 <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Preferred Start Date *</label>
-                <select className={`${inputClass} appearance-none cursor-pointer`}>
-                  <option>Select start date</option>
-                  <option>January 20, 2025</option>
-                  <option>February 10, 2025</option>
-                  <option>March 3, 2025</option>
+                <select className={`${inputClass} appearance-none cursor-pointer`} disabled>
+                  <option>Select an intake below</option>
                 </select>
               </div>
 
-              <button className="w-full mt-8 bg-[#0d1f3c] hover:bg-[#1a3360] text-white text-xs font-bold tracking-[0.2em] uppercase py-4 transition-colors duration-200 border-b-2 border-[#c9a84c]">
-                Register for Course
-              </button>
+              <SchoolIntakeGate
+                schoolKey="discipleship"
+                inputClass={inputClass}
+                selectLabel="Choose intake"
+                submitLabel="Register for Course"
+              />
               <p className="text-center text-slate-400 text-xs mt-4 leading-relaxed">
                 After registration, we will send you course details, meeting times, and materials list.
               </p>

@@ -23,6 +23,7 @@ export default function QuoteOfMonthAdminPage() {
   const [quoteAuthor, setQuoteAuthor] = useState('');
   const [quoteImageUrl, setQuoteImageUrl] = useState('');
   const [uploadName, setUploadName] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -40,7 +41,7 @@ export default function QuoteOfMonthAdminPage() {
             : apiUrl(data.imageUrl)
           : '';
         setQuoteImageUrl(imageUrl);
-      } catch (error) {
+      } catch {
         // ignore
       }
     };
@@ -72,7 +73,7 @@ export default function QuoteOfMonthAdminPage() {
       }
       const data = await response.json();
       return apiUrl(data.url);
-    } catch (error) {
+    } catch {
       setStatus('Image upload failed.');
       return null;
     }
@@ -102,8 +103,39 @@ export default function QuoteOfMonthAdminPage() {
         return;
       }
       setStatus('Quote of the month updated.');
-    } catch (error) {
+    } catch {
       setStatus('Unable to save quote of the month.');
+    }
+  };
+
+  const handleDeleteQuote = async () => {
+    if (!token) return;
+    if (!confirm('Delete the current Quote of the Month?')) return;
+
+    setIsDeleting(true);
+    setStatus('');
+    try {
+      const response = await apiFetch('/api/quote-of-month', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok && response.status !== 204) {
+        setStatus('Unable to delete quote of the month.');
+        return;
+      }
+
+      setQuoteText('');
+      setQuoteAuthor('');
+      setQuoteImageUrl('');
+      setUploadName('');
+      setStatus('Quote of the month deleted.');
+    } catch {
+      setStatus('Unable to delete quote of the month.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -198,8 +230,15 @@ export default function QuoteOfMonthAdminPage() {
           {uploadName && (
             <p className="text-xs text-foreground/60">Selected: {uploadName}</p>
           )}
-          <div>
+          <div className="flex flex-wrap gap-3">
             <Button onClick={handleSaveQuote}>Save Quote</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteQuote}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Quote'}
+            </Button>
           </div>
         </div>
 

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Trash2, Save, GripVertical } from 'lucide-react';
 
 export type FAQRecord = {
-  id: string;
+  id: number;
   question: string;
   answer: string;
   order: number;
@@ -27,18 +27,38 @@ export default function FAQManager({
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [faqs, setFaqs] = useState<FAQRecord[]>([]);
+  const savedSnapshotRef = useRef<Record<number, string>>({});
+  const [savingFaqId, setSavingFaqId] = useState<number | null>(null);
   const [faqDraft, setFaqDraft] = useState<FAQDraft>({
     question: '',
     answer: '',
     order: 0,
   });
 
+  const snapshot = useMemo(
+    () => (faq: FAQRecord) =>
+      JSON.stringify({
+        question: faq.question,
+        answer: faq.answer,
+        order: faq.order,
+        isActive: faq.isActive,
+      }),
+    [],
+  );
+
+  const isDirty = useMemo(
+    () => (faq: FAQRecord) => savedSnapshotRef.current[faq.id] !== snapshot(faq),
+    [snapshot],
+  );
+
   const refreshFaqs = async () => {
     try {
       const response = await apiFetch('/api/faqs');
       if (!response.ok) return;
       const data = await response.json();
-      setFaqs(data || []);
+      const list: FAQRecord[] = Array.isArray(data) ? data : [];
+      setFaqs(list);
+      savedSnapshotRef.current = Object.fromEntries(list.map((item) => [item.id, snapshot(item)]));
     } catch {
       setFaqs([]);
     } finally {
@@ -86,6 +106,7 @@ export default function FAQManager({
 
   const handleUpdateFaq = async (faq: FAQRecord) => {
     setStatus('');
+    setSavingFaqId(faq.id);
     try {
       const response = await apiFetch(`/api/faqs/${faq.id}`, {
         method: 'PUT',
@@ -103,10 +124,12 @@ export default function FAQManager({
       setStatus('FAQ updated.');
     } catch {
       setStatus('Unable to update FAQ.');
+    } finally {
+      setSavingFaqId(null);
     }
   };
 
-  const handleDeleteFaq = async (faqId: string) => {
+  const handleDeleteFaq = async (faqId: number) => {
     if (!confirm('Are you sure you want to delete this FAQ?')) return;
     
     setStatus('');
@@ -267,14 +290,25 @@ export default function FAQManager({
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2 pt-2">
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleUpdateFaq(faq)}
-                          className="h-8 gap-1"
-                        >
-                          <Save className="h-3 w-3" />
-                          Save
-                        </Button>
+                        {isDirty(faq) ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleUpdateFaq(faq)}
+                            className="h-8 gap-1"
+                            disabled={savingFaqId === faq.id}
+                          >
+                            {savingFaqId === faq.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Save className="h-3 w-3" />
+                            )}
+                            Save
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" className="h-8 gap-1" disabled>
+                            Saved
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"

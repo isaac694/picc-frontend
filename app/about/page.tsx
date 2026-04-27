@@ -497,7 +497,7 @@ export default function AboutPage() {
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Link
-                      href="/#see-you-in-church-home"
+                      href="/#see-you-in-church"
                       className="px-6 py-3 rounded-full border border-primary-foreground/70 text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
                     >
                       View This Week&apos;s Schedule
