@@ -31,7 +31,8 @@ export default function GiveTool({ isMobile }: { isMobile?: boolean }) {
             <p className="text-[10px] uppercase tracking-[0.35em] text-black/50">
               Pentecost International Christian Centre
             </p>
-            <h3 className="text-lg font-semibold text-black">Give Now</h3>
+            <h3 className="text-lg font-semibold text-black">Kingdom Investments Records</h3>
+            <p className="text-[11px] italic text-black/60">Honour the Lord with your Substance</p>
           </div>
 
           <form onSubmit={handleGiveSubmit} className="mt-5 space-y-6">
@@ -264,7 +265,8 @@ export default function GiveTool({ isMobile }: { isMobile?: boolean }) {
           <p className="text-[10px] uppercase tracking-[0.35em] text-black/50">
             Pentecost International Christian Centre
           </p>
-          <h3 className="text-xl font-semibold text-black">Give Now</h3>
+          <h3 className="text-xl font-semibold text-black">Kingdom Investments Records</h3>
+          <p className="text-sm italic text-black/60">Honour the Lord with your Substance</p>
         </div>
 
         <form onSubmit={handleGiveSubmit} className="mt-6 space-y-8">

@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 type QuoteSectionProps = {
   quote?: string | null;
@@ -81,6 +82,14 @@ export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionPr
             <p className="quote-author text-sm text-white/70 tracking-[0.18em] uppercase">
               -- {resolvedAuthor}
             </p>
+            <div className="mt-8 quote-author">
+              <Link
+                href="/quotes"
+                className="text-xs text-white/40 hover:text-white/70 transition-colors uppercase tracking-[0.2em] border-b border-white/10 pb-1"
+              >
+                View Archive
+              </Link>
+            </div>
           </div>
 
         </div>

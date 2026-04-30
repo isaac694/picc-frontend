@@ -1,10 +1,33 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+
+type EventScope = 'general' | 'discipleship' | 'hope-school';
+
+type AdminEvent = {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  description: string;
+  image: string;
+  scope: EventScope;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const normalizeScope = (value: unknown): EventScope => {
+  const normalized = String(value ?? 'general').toLowerCase().replace(/_/g, '-');
+  if (normalized === 'discipleship') return 'discipleship';
+  if (normalized === 'hope-school' || normalized === 'hopeschool') return 'hope-school';
+  return 'general';
+};
 
 export default function EventsAdminPage() {
   const {
@@ -19,7 +42,7 @@ export default function EventsAdminPage() {
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<AdminEvent[]>([]);
   const [eventDraft, setEventDraft] = useState({
     title: '',
     date: new Date().toISOString().slice(0, 10),
@@ -27,6 +50,7 @@ export default function EventsAdminPage() {
     location: '',
     description: '',
     image: '',
+    scope: 'general' as EventScope,
   });
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
 
@@ -36,6 +60,13 @@ export default function EventsAdminPage() {
 
   const uploadImage = async (file: File) => {
     if (!token) return null;
+
+    // Check file size (1MB = 1024 * 1024 bytes)
+    if (file.size > 1024 * 1024) {
+      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      return null;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     try {
@@ -52,33 +83,55 @@ export default function EventsAdminPage() {
       }
       const data = await response.json();
       return data.url;
-    } catch (error) {
+    } catch {
       setStatus('Image upload failed.');
       return null;
     }
   };
 
-  const refreshEvents = async () => {
+  const refreshEvents = useCallback(async () => {
     try {
       const response = await apiFetch('/api/events');
       if (!response.ok) return;
-      const data = await response.json();
-      const normalized = (Array.isArray(data) ? data : data.events || []).map((event: any) => ({
-        ...event,
-        date: event.date ? String(event.date).slice(0, 10) : '',
-        time: event.time || '',
-        image: event.image || '',
-      }));
+      const data = (await response.json().catch(() => null)) as unknown;
+      const list: unknown[] = Array.isArray(data)
+        ? data
+        : isRecord(data) && Array.isArray(data.events)
+          ? (data.events as unknown[])
+          : [];
+
+      const normalized: AdminEvent[] = list
+        .filter(isRecord)
+        .map((event) => ({
+          id: typeof event.id === 'string' ? event.id : String(event.id ?? ''),
+          title: typeof event.title === 'string' ? event.title : '',
+          date: event.date ? String(event.date).slice(0, 10) : '',
+          time: typeof event.time === 'string' ? event.time : '',
+          location: typeof event.location === 'string' ? event.location : '',
+          description: typeof event.description === 'string' ? event.description : '',
+          image:
+            typeof event.image === 'string'
+              ? event.image
+              : typeof event.imageUrl === 'string'
+                ? event.imageUrl
+                : '',
+          scope: normalizeScope(event.scope),
+        }))
+        .filter((event) => Boolean(event.id));
+
       setEvents(normalized);
-    } catch (error) {
+    } catch {
       setEvents([]);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!token) return;
-    refreshEvents();
-  }, [token]);
+    const id = setTimeout(() => {
+      void refreshEvents();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [token, refreshEvents]);
 
   const handleAddEvent = async () => {
     if (!eventDraft.title || !eventDraft.date || !eventDraft.time) {
@@ -99,7 +152,8 @@ export default function EventsAdminPage() {
           time: eventDraft.time,
           location: eventDraft.location,
           description: eventDraft.description,
-          image: eventDraft.image,
+          imageUrl: eventDraft.image,
+          scope: eventDraft.scope,
         }),
       });
       if (!response.ok) {
@@ -113,16 +167,17 @@ export default function EventsAdminPage() {
         location: '',
         description: '',
         image: '',
+        scope: 'general',
       });
       updateUploadName('event-draft', '');
       await refreshEvents();
       setStatus('Event added.');
-    } catch (error) {
+    } catch {
       setStatus('Unable to add event.');
     }
   };
 
-  const handleUpdateEvent = async (event: any) => {
+  const handleUpdateEvent = async (event: AdminEvent) => {
     setStatus('');
     try {
       const response = await apiFetch(`/api/events/${event.id}`, {
@@ -137,7 +192,8 @@ export default function EventsAdminPage() {
           time: event.time,
           location: event.location,
           description: event.description,
-          image: event.image,
+          imageUrl: event.image,
+          scope: event.scope,
         }),
       });
       if (!response.ok) {
@@ -146,7 +202,7 @@ export default function EventsAdminPage() {
       }
       await refreshEvents();
       setStatus('Event updated.');
-    } catch (error) {
+    } catch {
       setStatus('Unable to update event.');
     }
   };
@@ -166,7 +222,7 @@ export default function EventsAdminPage() {
       }
       await refreshEvents();
       setStatus('Event deleted.');
-    } catch (error) {
+    } catch {
       setStatus('Unable to delete event.');
     }
   };
@@ -233,6 +289,16 @@ export default function EventsAdminPage() {
               onChange={(event) => setEventDraft((prev) => ({ ...prev, time: event.target.value }))}
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
             />
+            <select
+              value={eventDraft.scope}
+              onChange={(event) => setEventDraft((prev) => ({ ...prev, scope: event.target.value }))}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              aria-label="Event scope"
+            >
+              <option value="general">General</option>
+              <option value="discipleship">Discipleship</option>
+              <option value="hope-school">Hope School</option>
+            </select>
             <input
               type="text"
               placeholder="Location"
@@ -243,7 +309,7 @@ export default function EventsAdminPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Upload Event Image
+              Upload Event Image <span className="text-[11px] font-normal text-foreground/50">(Max 1MB allowed)</span>
             </label>
             <input
               type="file"
@@ -336,6 +402,22 @@ export default function EventsAdminPage() {
                       }
                       className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
                     />
+                    <select
+                      value={event.scope || 'general'}
+                      onChange={(e) =>
+                        setEvents((prev) =>
+                          prev.map((item) =>
+                            item.id === event.id ? { ...item, scope: e.target.value } : item
+                          )
+                        )
+                      }
+                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                      aria-label="Event scope"
+                    >
+                      <option value="general">General</option>
+                      <option value="discipleship">Discipleship</option>
+                      <option value="hope-school">Hope School</option>
+                    </select>
                     <input
                       type="text"
                       placeholder="Location"
@@ -350,7 +432,7 @@ export default function EventsAdminPage() {
                   </div>
                   <div>
                     <label className="block text-xs uppercase tracking-[0.25em] text-foreground/50 mb-2">
-                      Upload Image
+                      Upload Image <span className="text-[10px] font-normal lowercase tracking-normal">(Max 1MB allowed)</span>
                     </label>
                     <input
                       type="file"

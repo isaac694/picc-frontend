@@ -1,16 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Facebook, Instagram, Twitter, Youtube, Music2 } from 'lucide-react';
+import { Facebook, Instagram, Twitter, Youtube, Music2, Mail, CheckCircle, AlertCircle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { FaTiktok } from "react-icons/fa";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { apiFetch } from '@/lib/api';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const [showFaqs, setShowFaqs] = useState(false);
-  const faqs = [
+  const [email, setEmail] = useState('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' });
+  const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>([]);
+  const fallbackFaqs = [
     {
       question: 'What time are services?',
       answer: 'Service times are listed on the Service Times page and updated weekly.',
@@ -24,6 +34,85 @@ export default function Footer() {
       answer: 'Use the Livestream page for live services and recent broadcasts.',
     },
   ];
+
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        const response = await apiFetch('/api/faqs');
+        if (!response.ok) {
+          setFaqs(fallbackFaqs);
+          return;
+        }
+
+        const data = await response.json();
+        const activeFaqs = (data || []).filter((f: any) => f.isActive);
+        setFaqs(activeFaqs.length > 0 ? activeFaqs : fallbackFaqs);
+      } catch (error) {
+        console.error('Error fetching FAQs:', error);
+        setFaqs(fallbackFaqs);
+      }
+    };
+    fetchFaqs();
+  }, []);
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email.trim()) {
+      setSubscriptionStatus({
+        type: 'error',
+        message: 'Please enter your email address.'
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setSubscriptionStatus({
+        type: 'error',
+        message: 'Please enter a valid email address.'
+      });
+      return;
+    }
+
+    setIsSubscribing(true);
+    setSubscriptionStatus({ type: null, message: '' });
+
+    try {
+      const response = await apiFetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const emailSent = typeof data?.emailSent === 'boolean' ? data.emailSent : null;
+
+        setSubscriptionStatus({
+          type: 'success',
+          message:
+            emailSent === false
+              ? 'Thank you for subscribing! Your subscription was saved, but we could not send a confirmation email right now.'
+              : 'Thank you for subscribing! You\'ll receive updates when new sermons are available.',
+        });
+        setEmail('');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setSubscriptionStatus({
+          type: 'error',
+          message: errorData.error || errorData.message || 'Failed to subscribe. Please try again.',
+        });
+      }
+    } catch (error) {
+      setSubscriptionStatus({
+        type: 'error',
+        message: 'Unable to connect. Please check your internet connection and try again.'
+      });
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
 
   return (
     <footer className="bg-[#0b0b0b] text-white rounded-t-[36px] overflow-hidden">
@@ -60,7 +149,12 @@ export default function Footer() {
             <div>
               <h3 className="text-lg font-semibold mb-4">Address</h3>
               <p className="text-sm text-white/80 leading-relaxed">
-                Malawi, Lilongwe, Area 49 Bahghdad
+                Pentecost International Christian Centre (PICC)
+Along Kaunda Road, Near Best Oil Filling Station, Area 49
+Post Office Box 31841
+Lilongwe 3
+Malawi
+
               </p>
               <div className="mt-6 flex items-center gap-4 text-white/80">
                 <Link href="https://www.facebook.com/PICCWorldwide/" aria-label="Facebook" className="hover:text-white" target="_blank" rel="noreferrer">
@@ -83,6 +177,62 @@ export default function Footer() {
                   <FaTiktok size={20} />
                 </Link>
               </div>
+            </div>
+          </div>
+
+          {/* Subscription Section */}
+          <div className="mt-16 grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8 rounded-2xl border border-white/10 bg-white/5 px-6 py-8">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-white/60 mb-2">Stay Connected</p>
+              <h3 className="text-2xl font-semibold">Subscribe to Sermon Updates</h3>
+              <p className="text-sm text-white/70 mt-3">
+                Get notified whenever we upload new sermons and teachings to our website.
+              </p>
+            </div>
+            <div className="flex flex-col justify-center">
+              <form onSubmit={handleSubscribe} className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Input
+                      type="email"
+                      placeholder="Enter your email address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/40"
+                      disabled={isSubscribing}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={isSubscribing}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
+                  >
+                    {isSubscribing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                        Subscribing...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4 mr-2" />
+                        Subscribe
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {subscriptionStatus.type && (
+                  <div className={`flex items-center gap-2 text-sm ${
+                    subscriptionStatus.type === 'success' ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {subscriptionStatus.type === 'success' ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4" />
+                    )}
+                    {subscriptionStatus.message}
+                  </div>
+                )}
+              </form>
             </div>
           </div>
 
@@ -119,7 +269,7 @@ export default function Footer() {
           </div>
 
           <div className="mt-16 pt-10 border-t border-white/15 text-center text-sm text-white/60">
-            &copy; {currentYear} Pentecost International Christian Center. All rights reserved.
+            &copy; {currentYear} Pentecost International Christian Centre. All rights reserved.
           </div>
         </div>
       </div>

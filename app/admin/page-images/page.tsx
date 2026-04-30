@@ -40,6 +40,11 @@ const IMAGE_SECTIONS = [
   },
 ];
 
+const HOME_VERSE_KEY = 'home-verse';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 export default function PageImagesAdminPage() {
   const {
     token,
@@ -56,6 +61,9 @@ export default function PageImagesAdminPage() {
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [savingImages, setSavingImages] = useState(false);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
+  const [verseText, setVerseText] = useState('');
+  const [verseReference, setVerseReference] = useState('');
+  const [savingVerse, setSavingVerse] = useState(false);
 
   const updatePageImage = (key: string, value: string) => {
     setPageImages((prev) => ({ ...prev, [key]: value }));
@@ -67,6 +75,12 @@ export default function PageImagesAdminPage() {
 
   const uploadImage = async (file: File) => {
     if (!token) return null;
+
+    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
+      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      return null;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     try {
@@ -83,9 +97,73 @@ export default function PageImagesAdminPage() {
       }
       const data = await response.json();
       return apiUrl(data.url);
-    } catch (error) {
+    } catch {
       setStatus('Image upload failed.');
       return null;
+    }
+  };
+
+  const loadHomeVerse = async () => {
+    try {
+      const response = await apiFetch(`/api/site-content/${HOME_VERSE_KEY}`);
+      if (!response.ok) {
+        setVerseText('');
+        setVerseReference('');
+        return;
+      }
+      const data = (await response.json().catch(() => null)) as unknown;
+      const body = isRecord(data) && typeof data.body === 'string' ? data.body : '';
+      if (!body) {
+        setVerseText('');
+        setVerseReference('');
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(body) as unknown;
+        if (isRecord(parsed)) {
+          setVerseText(typeof parsed.text === 'string' ? parsed.text : '');
+          setVerseReference(typeof parsed.reference === 'string' ? parsed.reference : '');
+          return;
+        }
+      } catch {
+        // ignore JSON parsing
+      }
+
+      setVerseText(body);
+      setVerseReference('');
+    } catch {
+      setVerseText('');
+      setVerseReference('');
+    }
+  };
+
+  const saveHomeVerse = async (nextText: string, nextReference: string) => {
+    if (!token) return;
+    setSavingVerse(true);
+    setStatus('');
+
+    try {
+      const payload = JSON.stringify({ text: nextText, reference: nextReference });
+      const response = await apiFetch(`/api/site-content/${HOME_VERSE_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ body: payload }),
+      });
+
+      if (!response.ok) {
+        setStatus('Unable to save the home verse.');
+        return;
+      }
+
+      setStatus('Home verse saved.');
+    } catch {
+      setStatus('Unable to save the home verse.');
+    } finally {
+      setSavingVerse(false);
     }
   };
 
@@ -115,7 +193,7 @@ export default function PageImagesAdminPage() {
         return;
       }
       setStatus(`${section.title} updated.`);
-    } catch (error) {
+    } catch {
       setStatus(`Unable to save ${section.title.toLowerCase()}.`);
     } finally {
       setSavingImages(false);
@@ -143,7 +221,7 @@ export default function PageImagesAdminPage() {
                 : apiUrl(data.imageUrl)
               : '';
             return [key, imageUrl] as const;
-          } catch (error) {
+          } catch {
             return [key, ''] as const;
           }
         })
@@ -153,6 +231,7 @@ export default function PageImagesAdminPage() {
     };
 
     fetchImages();
+    void loadHomeVerse();
   }, [token]);
 
   if (!token) {
@@ -188,6 +267,59 @@ export default function PageImagesAdminPage() {
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
+
+      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
+              Homepage Verse
+            </p>
+            <p className="text-sm text-foreground/60">
+              Update the scripture verse shown near the top of the home page.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-foreground/40">
+            {savingVerse ? 'Saving...' : 'Verse'}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input
+            type="text"
+            value={verseReference}
+            onChange={(event) => setVerseReference(event.target.value)}
+            placeholder="Reference (e.g. Genesis 2:10)"
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+          />
+          <textarea
+            value={verseText}
+            onChange={(event) => setVerseText(event.target.value)}
+            placeholder="Verse text"
+            rows={3}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Button
+            onClick={() => saveHomeVerse(verseText, verseReference)}
+            disabled={savingVerse}
+          >
+            Save Verse
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setVerseText('');
+              setVerseReference('');
+              void saveHomeVerse('', '');
+            }}
+            disabled={savingVerse}
+          >
+            Clear Verse
+          </Button>
+        </div>
+      </div>
 
       <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">

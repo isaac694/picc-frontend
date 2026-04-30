@@ -50,6 +50,12 @@ export default function SeeYouInChurchAdminPage() {
 
   const uploadImage = async (file: File) => {
     if (!token) return null;
+
+    if (file.size > 1024 * 1024) {
+      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      return null;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     try {
@@ -157,7 +163,7 @@ export default function SeeYouInChurchAdminPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Upload Image
+              Upload Image <span className="text-[11px] font-normal text-foreground/50">(Max 1MB allowed)</span>
             </label>
             <input
               type="file"

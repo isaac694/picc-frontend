@@ -1,49 +1,96 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch, apiUrl } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 
-const SECTION_PATHS: Record<string, string> = {
-  news: '/api/media/news',
-  gallery: '/api/media/gallery',
-  books: '/api/media/books',
-  magazines: '/api/media/magazines',
+const SECTION_KEYS = {
+  news: 'media-news',
+  gallery: 'media-gallery',
+  books: 'media-books',
+  magazines: 'media-magazines',
+} as const;
+
+type NewsItem = {
+  id: string;
+  badge: string;
+  date: string;
+  title: string;
+  description: string;
+  imageUrl: string;
 };
 
-const DEFAULT_NEWS_ITEM = { title: '', summary: '', imageUrl: '' };
-const DEFAULT_GALLERY_ITEM = { caption: '', imageUrl: '' };
-const DEFAULT_BOOK_ITEM = { title: '', author: '', description: '', imageUrl: '' };
-const DEFAULT_MAGAZINE_ITEM = { title: '', issue: '', fileUrl: '', imageUrl: '' };
+type GalleryItem = {
+  id: string;
+  title: string;
+  category: string;
+  imageUrl: string;
+};
 
-const sectionDefinitions = [
-  {
-    id: 'news',
-    title: 'Church News',
-    description: 'Publish or remove news items shown on the media page.',
-    labels: { title: 'Headline', subtitle: 'Summary' },
-  },
-  {
-    id: 'gallery',
-    title: 'Events Gallery',
-    description: 'Manage the gallery images shown on the media page.',
-    labels: { title: 'Caption', subtitle: 'Image' },
-  },
-  {
-    id: 'books',
-    title: 'Fire on the Altar Books',
-    description: 'Update books shown in the Fire on the Altar section.',
-    labels: { title: 'Book Title', subtitle: 'Author' },
-  },
-  {
-    id: 'magazines',
-    title: 'Church Magazines',
-    description: 'Upload and remove church magazine issues.',
-    labels: { title: 'Magazine Title', subtitle: 'Issue' },
-  },
-];
+type BookItem = {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  imageUrl: string;
+  fileUrl: string;
+};
+
+type MagazineItem = {
+  id: string;
+  title: string;
+  issue: string;
+  fileUrl: string;
+  imageUrl: string;
+};
+
+type SectionId = keyof typeof SECTION_KEYS;
+
+type SectionItems = {
+  news: NewsItem;
+  gallery: GalleryItem;
+  books: BookItem;
+  magazines: MagazineItem;
+};
+
+type SectionDrafts = {
+  news: Omit<NewsItem, 'id'>;
+  gallery: Omit<GalleryItem, 'id'>;
+  books: Omit<BookItem, 'id'>;
+  magazines: Omit<MagazineItem, 'id'>;
+};
+
+const DEFAULT_NEWS_ITEM: Omit<NewsItem, 'id'> = {
+  badge: 'Updates',
+  date: '',
+  title: '',
+  description: '',
+  imageUrl: '',
+};
+const DEFAULT_GALLERY_ITEM: Omit<GalleryItem, 'id'> = { title: '', category: '', imageUrl: '' };
+const DEFAULT_BOOK_ITEM: Omit<BookItem, 'id'> = { title: '', author: '', description: '', imageUrl: '', fileUrl: '' };
+const DEFAULT_MAGAZINE_ITEM: Omit<MagazineItem, 'id'> = { title: '', issue: '', fileUrl: '', imageUrl: '' };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const newId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const parseJson = (value: unknown) => {
+  if (typeof value !== 'string') return null;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
+};
 
 export default function AdminMediaPage() {
   const {
@@ -58,20 +105,15 @@ export default function AdminMediaPage() {
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
-  const [newsItems, setNewsItems] = useState<any[]>([]);
-  const [galleryItems, setGalleryItems] = useState<any[]>([]);
-  const [bookItems, setBookItems] = useState<any[]>([]);
-  const [magazineItems, setMagazineItems] = useState<any[]>([]);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [bookItems, setBookItems] = useState<BookItem[]>([]);
+  const [magazineItems, setMagazineItems] = useState<MagazineItem[]>([]);
   const [draftNews, setDraftNews] = useState(DEFAULT_NEWS_ITEM);
   const [draftGallery, setDraftGallery] = useState(DEFAULT_GALLERY_ITEM);
   const [draftBook, setDraftBook] = useState(DEFAULT_BOOK_ITEM);
   const [draftMagazine, setDraftMagazine] = useState(DEFAULT_MAGAZINE_ITEM);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
-
-  const normalizeRemoteUrl = (value: string) => {
-    if (!value) return '';
-    return value.startsWith('http') ? value : apiUrl(value);
-  };
 
   const updateUploadName = (key: string, name: string) => {
     setUploadNames((prev) => ({ ...prev, [key]: name }));
@@ -79,6 +121,12 @@ export default function AdminMediaPage() {
 
   const uploadImage = async (file: File) => {
     if (!token) return null;
+
+    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
+      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      return null;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 
@@ -97,142 +145,150 @@ export default function AdminMediaPage() {
       }
 
       const data = await response.json();
-      return apiUrl(data.url);
-    } catch (error) {
+      return data.url as string;
+    } catch {
       setStatus('Image upload failed.');
       return null;
     }
   };
 
-  const fetchSection = async (path: string, setState: (value: any) => void) => {
+  const fetchSection = async <T,>(key: string, setState: (value: T[]) => void) => {
     try {
-      const response = await apiFetch(path);
-      if (!response.ok) {
+      const response = await apiFetch(`/api/site-content/${key}`);
+      if (!response.ok && response.status !== 404) {
         setState([]);
         return;
       }
-      const data = await response.json();
-      const items = Array.isArray(data) ? data : data.items || [];
-      setState(
-        items.map((item: any) => ({
+
+      if (response.status === 404) {
+        setState([]);
+        return;
+      }
+
+      const record = (await response.json().catch(() => null)) as unknown;
+      const body = isRecord(record) ? record.body : null;
+      const parsed = parseJson(body);
+      const items =
+        Array.isArray(parsed)
+          ? parsed
+          : isRecord(parsed) && Array.isArray(parsed.items)
+            ? parsed.items
+            : [];
+
+      const normalized = items
+        .filter(isRecord)
+        .map((item) => ({
           ...item,
-          imageUrl: item.imageUrl ? normalizeRemoteUrl(item.imageUrl) : '',
-          fileUrl: item.fileUrl ? normalizeRemoteUrl(item.fileUrl) : '',
-        }))
-      );
-    } catch (error) {
+          imageUrl: item.imageUrl ? String(item.imageUrl) : '',
+          fileUrl: item.fileUrl ? String(item.fileUrl) : '',
+        })) as T[];
+
+      setState(normalized);
+    } catch {
       setState([]);
     }
+  };
+
+  const saveSection = async (key: string, items: unknown[]) => {
+    if (!token) return false;
+
+    const response = await apiFetch(`/api/site-content/${key}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ body: JSON.stringify({ items }) }),
+    });
+
+    return response.ok;
   };
 
   useEffect(() => {
     if (!token) return;
 
-    fetchSection(SECTION_PATHS.news, setNewsItems);
-    fetchSection(SECTION_PATHS.gallery, setGalleryItems);
-    fetchSection(SECTION_PATHS.books, setBookItems);
-    fetchSection(SECTION_PATHS.magazines, setMagazineItems);
+    fetchSection<NewsItem>(SECTION_KEYS.news, setNewsItems);
+    fetchSection<GalleryItem>(SECTION_KEYS.gallery, setGalleryItems);
+    fetchSection<BookItem>(SECTION_KEYS.books, setBookItems);
+    fetchSection<MagazineItem>(SECTION_KEYS.magazines, setMagazineItems);
   }, [token]);
 
-  const handleAddItem = async (
-    section: 'news' | 'gallery' | 'books' | 'magazines',
-    draft: Record<string, any>,
+  const handleAddItem = async <S extends SectionId>(
+    section: S,
+    draft: SectionDrafts[S],
     resetDraft: () => void,
-    items: any[],
-    setItems: (items: any[]) => void
+    items: SectionItems[S][],
+    setItems: (items: SectionItems[S][]) => void
   ) => {
     if (!token) return;
-    const url = SECTION_PATHS[section];
 
-    if (!draft.title && !draft.caption) {
-      setStatus('Please add a title or caption before saving.');
+    if (!draft.title) {
+      setStatus('Please add a title before saving.');
       return;
     }
 
     setStatus('');
 
     try {
-      const response = await apiFetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(draft),
-      });
-
-      if (!response.ok) {
+      const nextItems = [...items, { ...draft, id: newId() }] as SectionItems[S][];
+      const ok = await saveSection(SECTION_KEYS[section], nextItems);
+      if (!ok) {
         setStatus('Unable to add item to the media section.');
         return;
       }
 
-      const data = await response.json();
-      setItems([...items, { ...data, ...draft }]);
+      setItems(nextItems);
       resetDraft();
       setStatus('Item added.');
-    } catch (error) {
+    } catch {
       setStatus('Unable to add item to the media section.');
     }
   };
 
-  const handleUpdateItem = async (
-    section: 'news' | 'gallery' | 'books' | 'magazines',
-    item: any,
-    setItems: (items: any[]) => void,
-    items: any[]
+  const handleUpdateItem = async <S extends SectionId>(
+    section: S,
+    item: SectionItems[S],
+    setItems: (items: SectionItems[S][]) => void,
+    items: SectionItems[S][]
   ) => {
     if (!token) return;
-    const url = `${SECTION_PATHS[section]}/${item.id}`;
     setStatus('');
 
     try {
-      const response = await apiFetch(url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(item),
-      });
-
-      if (!response.ok) {
+      const nextItems = items.map((existing) => (existing.id === item.id ? item : existing));
+      const ok = await saveSection(SECTION_KEYS[section], nextItems);
+      if (!ok) {
         setStatus('Unable to update item.');
         return;
       }
 
-      setItems(items.map((existing) => (existing.id === item.id ? item : existing)));
+      setItems(nextItems);
       setStatus('Item updated.');
-    } catch (error) {
+    } catch {
       setStatus('Unable to update item.');
     }
   };
 
-  const handleDeleteItem = async (
-    section: 'news' | 'gallery' | 'books' | 'magazines',
+  const handleDeleteItem = async <S extends SectionId>(
+    section: S,
     itemId: string,
-    setItems: (items: any[]) => void,
-    items: any[]
+    setItems: (items: SectionItems[S][]) => void,
+    items: SectionItems[S][]
   ) => {
     if (!token) return;
-    const url = `${SECTION_PATHS[section]}/${itemId}`;
     setStatus('');
 
     try {
-      const response = await apiFetch(url, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
+      const nextItems = items.filter((item) => item.id !== itemId);
+      const ok = await saveSection(SECTION_KEYS[section], nextItems);
+      if (!ok) {
         setStatus('Unable to delete item.');
         return;
       }
 
-      setItems(items.filter((item) => item.id !== itemId));
+      setItems(nextItems);
       setStatus('Item deleted.');
-    } catch (error) {
+    } catch {
       setStatus('Unable to delete item.');
     }
   };
@@ -283,20 +339,37 @@ export default function AdminMediaPage() {
           </div>
 
           <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <input
+                type="text"
+                placeholder="Badge (e.g. Updates)"
+                value={draftNews.badge}
+                onChange={(event) => setDraftNews((prev) => ({ ...prev, badge: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+              <input
+                type="text"
+                placeholder="Date (e.g. March 2026)"
+                value={draftNews.date}
+                onChange={(event) => setDraftNews((prev) => ({ ...prev, date: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
               <input
                 type="text"
                 placeholder="Headline"
                 value={draftNews.title}
                 onChange={(event) => setDraftNews((prev) => ({ ...prev, title: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
               />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <input
                 type="text"
-                placeholder="Summary"
-                value={draftNews.summary}
-                onChange={(event) => setDraftNews((prev) => ({ ...prev, summary: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                placeholder="Description"
+                value={draftNews.description}
+                onChange={(event) => setDraftNews((prev) => ({ ...prev, description: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
               />
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Upload Image</label>
@@ -341,7 +414,33 @@ export default function AdminMediaPage() {
                     key={item.id}
                     className="rounded-2xl border border-border/60 bg-background p-4 space-y-3"
                   >
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-4">
+                      <input
+                        type="text"
+                        value={item.badge || ''}
+                        onChange={(event) =>
+                          setNewsItems((prev) =>
+                            prev.map((current) =>
+                              current.id === item.id ? { ...current, badge: event.target.value } : current
+                            )
+                          )
+                        }
+                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                        placeholder="Badge"
+                      />
+                      <input
+                        type="text"
+                        value={item.date || ''}
+                        onChange={(event) =>
+                          setNewsItems((prev) =>
+                            prev.map((current) =>
+                              current.id === item.id ? { ...current, date: event.target.value } : current
+                            )
+                          )
+                        }
+                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                        placeholder="Date"
+                      />
                       <input
                         type="text"
                         value={item.title || ''}
@@ -352,19 +451,24 @@ export default function AdminMediaPage() {
                             )
                           )
                         }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
+                        placeholder="Headline"
                       />
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-3 mt-3">
                       <input
                         type="text"
-                        value={item.summary || ''}
+                        value={item.description || ''}
                         onChange={(event) =>
                           setNewsItems((prev) =>
                             prev.map((current) =>
-                              current.id === item.id ? { ...current, summary: event.target.value } : current
+                              current.id === item.id ? { ...current, description: event.target.value } : current
                             )
                           )
                         }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
+                        placeholder="Description"
                       />
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">Upload Image</label>
@@ -421,12 +525,19 @@ export default function AdminMediaPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <input
                 type="text"
-                placeholder="Caption"
-                value={draftGallery.caption}
-                onChange={(event) => setDraftGallery((prev) => ({ ...prev, caption: event.target.value }))}
+                placeholder="Title (e.g. Worship Service)"
+                value={draftGallery.title}
+                onChange={(event) => setDraftGallery((prev) => ({ ...prev, title: event.target.value }))}
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
               />
-              <div className="md:col-span-2">
+              <input
+                type="text"
+                placeholder="Category (e.g. Worship)"
+                value={draftGallery.category}
+                onChange={(event) => setDraftGallery((prev) => ({ ...prev, category: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+              <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Upload Image</label>
                 <input
                   type="file"
@@ -469,17 +580,31 @@ export default function AdminMediaPage() {
                     <div className="grid gap-3 md:grid-cols-3">
                       <input
                         type="text"
-                        value={item.caption || ''}
+                        value={item.title || ''}
                         onChange={(event) =>
                           setGalleryItems((prev) =>
                             prev.map((current) =>
-                              current.id === item.id ? { ...current, caption: event.target.value } : current
+                              current.id === item.id ? { ...current, title: event.target.value } : current
                             )
                           )
                         }
                         className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                        placeholder="Title"
                       />
-                      <div className="md:col-span-2">
+                      <input
+                        type="text"
+                        value={item.category || ''}
+                        onChange={(event) =>
+                          setGalleryItems((prev) =>
+                            prev.map((current) =>
+                              current.id === item.id ? { ...current, category: event.target.value } : current
+                            )
+                          )
+                        }
+                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                        placeholder="Category"
+                      />
+                      <div>
                         <label className="block text-sm font-medium text-foreground mb-2">Upload Image</label>
                         <input
                           type="file"
@@ -531,7 +656,7 @@ export default function AdminMediaPage() {
           </div>
 
           <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <input
                 type="text"
                 placeholder="Book title"
@@ -551,6 +676,13 @@ export default function AdminMediaPage() {
                 placeholder="Description"
                 value={draftBook.description}
                 onChange={(event) => setDraftBook((prev) => ({ ...prev, description: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+              <input
+                type="text"
+                placeholder="PDF link URL (optional)"
+                value={draftBook.fileUrl}
+                onChange={(event) => setDraftBook((prev) => ({ ...prev, fileUrl: event.target.value }))}
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
               />
               <div>
@@ -593,7 +725,7 @@ export default function AdminMediaPage() {
               ) : (
                 bookItems.map((item) => (
                   <div key={item.id} className="rounded-2xl border border-border/60 bg-background p-4 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-4">
+                    <div className="grid gap-3 md:grid-cols-5">
                       <input
                         type="text"
                         value={item.title || ''}
@@ -629,6 +761,19 @@ export default function AdminMediaPage() {
                           )
                         }
                         className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                      />
+                      <input
+                        type="text"
+                        value={item.fileUrl || ''}
+                        onChange={(event) =>
+                          setBookItems((prev) =>
+                            prev.map((current) =>
+                              current.id === item.id ? { ...current, fileUrl: event.target.value } : current
+                            )
+                          )
+                        }
+                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                        placeholder="PDF link URL"
                       />
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">Cover Image</label>

@@ -265,7 +265,7 @@ export default function ContactPage() {
 
             <div className="max-w-4xl mx-auto mt-10">
               <h3 className="text-xl md:text-2xl font-semibold text-foreground mb-4">
-                Pentecost International Christian Center Headquarters
+                Pentecost International Christian Centre Headquarters
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm">
                 <div>

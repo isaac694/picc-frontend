@@ -384,7 +384,7 @@ export default function AboutPage() {
             </p>
             <h2 className="text-3xl md:text-5xl font-semibold mt-4">Watch Our Story</h2>
             <p className="text-primary-foreground/80 max-w-2xl mx-auto mt-4">
-              The story of Pentecost International Christian Center is a testament to
+              The story of Pentecost International Christian Centre is a testament to
               God&apos;s grace and help through the years.
             </p>
 
@@ -497,7 +497,7 @@ export default function AboutPage() {
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Link
-                      href="/#see-you-in-church-home"
+                      href="/#see-you-in-church"
                       className="px-6 py-3 rounded-full border border-primary-foreground/70 text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
                     >
                       View This Week&apos;s Schedule

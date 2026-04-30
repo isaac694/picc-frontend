@@ -16,15 +16,38 @@ const FALLBACK_SLIDES = [
 
 const AUTO_PLAY_MS = 4000;
 
-export default function EventsCarousel() {
+export default function EventsCarousel({
+  eventsHref = '/events',
+  eventsLabel = 'Events',
+  apiPath = '/api/events?take=12',
+  title = 'Upcoming Events',
+  subtitle = "Don't miss out on what's happening at our church",
+  connectLabel = 'CONNECT WITH US',
+  connectTitle = 'You belong here from Sunday services to midweek programs',
+  connectSubtitle = 'Every service is a new beginning. Your seat is waiting.',
+  showLivestream = true,
+}: {
+  eventsHref?: string;
+  eventsLabel?: string;
+  apiPath?: string;
+  title?: string;
+  subtitle?: string;
+  connectLabel?: string;
+  connectTitle?: string;
+  connectSubtitle?: string;
+  showLivestream?: boolean;
+}) {
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null;
+
   const [slides, setSlides] = useState(FALLBACK_SLIDES);
   // Start at index 1 (the real first slide, after the cloned last)
   const [index, setIndex] = useState(slides.length > 1 ? 1 : 0);
   const [paused, setPaused] = useState(false);
   const [transition, setTransition] = useState(true);
   const [visible, setVisible] = useState(false);
+  const [jumping, setJumping] = useState(false);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const isJumping = useRef(false);
 
   const extended = useMemo(() => {
     if (slides.length <= 1) return slides;
@@ -47,35 +70,39 @@ export default function EventsCarousel() {
   }, [slides.length]);
 
   const next = useCallback(() => {
-    if (isJumping.current || slides.length <= 1) return;
+    if (jumping || slides.length <= 1) return;
     setTransition(true);
     setIndex((i) => i + 1);
-  }, [slides.length]);
+  }, [jumping, slides.length]);
 
   const prev = useCallback(() => {
-    if (isJumping.current || slides.length <= 1) return;
+    if (jumping || slides.length <= 1) return;
     setTransition(true);
     setIndex((i) => i - 1);
-  }, [slides.length]);
+  }, [jumping, slides.length]);
 
   // When we land on a clone, silently jump to the real slide
   const handleTransitionEnd = useCallback(() => {
     if (slides.length <= 1) return;
     if (index === 0) {
       // Landed on cloned-last -> jump to real last
-      isJumping.current = true;
+      setJumping(true);
       setTransition(false);
       setIndex(slides.length);
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => { isJumping.current = false; });
+        requestAnimationFrame(() => {
+          setJumping(false);
+        });
       });
     } else if (index === extended.length - 1) {
       // Landed on cloned-first -> jump to real first
-      isJumping.current = true;
+      setJumping(true);
       setTransition(false);
       setIndex(1);
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => { isJumping.current = false; });
+        requestAnimationFrame(() => {
+          setJumping(false);
+        });
       });
     }
   }, [index, slides.length, extended.length]);
@@ -90,36 +117,42 @@ export default function EventsCarousel() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await apiFetch('/api/events?take=12');
+        const response = await apiFetch(apiPath);
         if (!response.ok) return;
-        const data = await response.json();
+        const raw = (await response.json().catch(() => null)) as unknown;
+        const events = (() => {
+          if (!isRecord(raw)) return [];
+          const value = raw.events;
+          return Array.isArray(value) ? value : [];
+        })();
         const resolveImageUrl = (url: string) => {
           if (url.startsWith('http')) return url;
           if (url.startsWith('/uploads')) return apiUrl(url);
           return url;
         };
 
-        const incoming = (data.events || [])
-          .filter((event: any) => event.imageUrl && !String(event.imageUrl).includes('placeholder-event'))
-          .map((event: any, idx: number) => ({
-            src: resolveImageUrl(event.imageUrl),
-            alt: event.title || `Event ${idx + 1}`,
-          }))
-          .filter((event: any) => Boolean(event.src));
+        const incoming = events
+          .filter(isRecord)
+          .map((event, idx) => {
+            const imageUrl = typeof event.imageUrl === 'string' ? event.imageUrl : '';
+            const title = typeof event.title === 'string' ? event.title : '';
+            return {
+              src: imageUrl && !imageUrl.includes('placeholder-event') ? resolveImageUrl(imageUrl) : '',
+              alt: title || `Event ${idx + 1}`,
+            };
+          })
+          .filter((event) => Boolean(event.src));
         if (incoming.length > 0) {
           setSlides(incoming);
+          setIndex(incoming.length > 1 ? 1 : 0);
         }
-      } catch (error) {
+      } catch {
         // keep fallback slides
       }
     };
 
     fetchEvents();
-  }, []);
-
-  useEffect(() => {
-    setIndex(slides.length > 1 ? 1 : 0);
-  }, [slides.length]);
+  }, [apiPath]);
 
   // Scroll-triggered content animation
   useEffect(() => {
@@ -147,8 +180,8 @@ export default function EventsCarousel() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-primary mb-2">Upcoming Events</h2>
-          <p className="text-foreground/70">Don&apos;t miss out on what&apos;s happening at our church</p>
+          <h2 className="text-3xl font-bold text-primary mb-2">{title}</h2>
+          <p className="text-foreground/70">{subtitle}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -222,24 +255,26 @@ export default function EventsCarousel() {
             className={`px-2 md:px-6 ${visible ? 'content-visible' : ''}`}
           >
             <p className="anim-item text-sm font-semibold tracking-wide text-foreground/60 mb-4">
-              CONNECT WITH US
+              {connectLabel}
             </p>
             <h3 className="anim-item text-4xl md:text-5xl font-bold leading-tight mb-4">
-              You belong here from Sunday services to midweek programs
+              {connectTitle}
             </h3>
             <p className="anim-item text-foreground/70 mb-8">
-              Every service is a new beginning. Your seat is waiting.
+              {connectSubtitle}
             </p>
 
             <div className="anim-item flex gap-4 flex-wrap">
-              <Link href="/livestream">
-                <Button className="bg-red-600 text-white px-6 py-3 shadow-md hover:bg-red-700 transition-colors">
-                  Livestream
-                </Button>
-              </Link>
-              <Link href="/events">
+              {showLivestream && (
+                <Link href="/livestream">
+                  <Button className="bg-red-600 text-white px-6 py-3 shadow-md hover:bg-red-700 transition-colors">
+                    Livestream
+                  </Button>
+                </Link>
+              )}
+              <Link href={eventsHref}>
                 <Button variant="outline" className="px-6 py-3">
-                  Events
+                  {eventsLabel}
                 </Button>
               </Link>
             </div>

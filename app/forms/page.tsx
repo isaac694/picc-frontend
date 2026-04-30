@@ -145,7 +145,7 @@ export default function FormsPage() {
     setTestimonySubmitting(true);
     try {
       await sendTestimonyNotification({
-        churchEmail: 'info@piccworldwide.org',
+        churchEmail: 'testimony@piccworldwide.org',
         fullName: testimonyForm.fullName,
         phone: testimonyForm.phone || undefined,
         area: testimonyForm.area || undefined,

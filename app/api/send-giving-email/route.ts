@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     const textBody = lines.join('\n');
     const htmlBody = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-        <h2>New Giving Submission</h2>
+        <h2>New Giving Submission Through PayChangu</h2>
         <p>${lines.map((line) => line.replace(/\n/g, '<br/>')).join('<br/>')}</p>
       </div>
     `;
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
           '',
           'Please follow the payment prompt to complete your giving.',
           '',
-          'PICC',
+          'Pentecost International Christian Centre (PICC)',
         ].join('\n'),
       });
     }

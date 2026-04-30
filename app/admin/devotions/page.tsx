@@ -16,6 +16,28 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+type DevotionRecord = {
+  id: string;
+  publishAt: string;
+  title: string | null;
+  content: string;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const normalizeDevotion = (value: unknown): DevotionRecord | null => {
+  if (!isRecord(value)) return null;
+
+  const id = typeof value.id === 'string' ? value.id : String(value.id ?? '');
+  const publishAt = value.publishAt ? String(value.publishAt) : '';
+  const title = typeof value.title === 'string' ? value.title : null;
+  const content = typeof value.content === 'string' ? value.content : '';
+
+  if (!id || !publishAt) return null;
+  return { id, publishAt, title, content };
+};
+
 export default function DevotionsAdminPage() {
   const {
     token,
@@ -28,6 +50,7 @@ export default function DevotionsAdminPage() {
     handleLogout,
   } = useAdminAuth();
 
+  const [devotionSearch, setDevotionSearch] = useState('');
   const [status, setStatus] = useState('');
   const [date, setDate] = useState(() => {
     const tomorrow = new Date();
@@ -38,11 +61,17 @@ export default function DevotionsAdminPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
-  const [allDevotions, setAllDevotions] = useState<any[]>([]);
+  const [devotionId, setDevotionId] = useState<string | null>(null);
+  const [allDevotions, setAllDevotions] = useState<DevotionRecord[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingPublishAt, setPendingPublishAt] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<string | null>(null);
   const [pendingTime, setPendingTime] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null);
+
+  const hasExistingDevotion = Boolean(devotionId);
 
   useEffect(() => {
     if (!token) return;
@@ -53,11 +82,22 @@ export default function DevotionsAdminPage() {
       try {
         const response = await apiFetch(`/api/devotions?date=${date}`);
         if (response.ok) {
-          const data = await response.json();
-          setTitle(data.title || '');
-          setContent(data.content || '');
-          if (data.publishAt) {
-            const parsed = new Date(data.publishAt);
+          const data = (await response.json().catch(() => null)) as unknown;
+          const devotion = normalizeDevotion(data);
+          if (!devotion) {
+            setStatus('Unable to load devotion for that date.');
+            setDevotionId(null);
+            setTitle('');
+            setContent('');
+            return;
+          }
+
+          setDevotionId(devotion.id);
+          setTitle(devotion.title || '');
+          setContent(devotion.content || '');
+
+          if (devotion.publishAt) {
+            const parsed = new Date(devotion.publishAt);
             if (!Number.isNaN(parsed.getTime())) {
               const hours = String(parsed.getHours()).padStart(2, '0');
               const minutes = String(parsed.getMinutes()).padStart(2, '0');
@@ -65,12 +105,13 @@ export default function DevotionsAdminPage() {
             }
           }
         } else if (response.status === 404) {
+          setDevotionId(null);
           setTitle('');
           setContent('');
         } else {
           setStatus('Unable to load devotion for that date.');
         }
-      } catch (error) {
+      } catch {
         setStatus('Unable to load devotion for that date.');
       } finally {
         setLoading(false);
@@ -89,9 +130,13 @@ export default function DevotionsAdminPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) return;
-        const data = await response.json();
-        setAllDevotions(data.devotions || []);
-      } catch (error) {
+        const data = (await response.json().catch(() => null)) as unknown;
+        const list = isRecord(data) && Array.isArray(data.devotions) ? data.devotions : [];
+        const normalized = list
+          .map(normalizeDevotion)
+          .filter((item): item is DevotionRecord => Boolean(item));
+        setAllDevotions(normalized);
+      } catch {
         setAllDevotions([]);
       }
     };
@@ -136,13 +181,61 @@ export default function DevotionsAdminPage() {
       });
 
       if (!response.ok) {
-        setStatus('Unable to post devotion. Please try again.');
+        setStatus('Unable to save devotion. Please try again.');
         return;
       }
 
-      setStatus('Devotion posted.');
-    } catch (error) {
-      setStatus('Unable to post devotion. Please try again.');
+      const payload = (await response.json().catch(() => null)) as unknown;
+      const saved = normalizeDevotion(payload);
+      if (saved) {
+        setDevotionId(saved.id);
+      }
+
+      setStatus('Devotion saved.');
+    } catch {
+      setStatus('Unable to save devotion. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const requestDeleteConfirmation = () => {
+    if (!devotionId) return;
+    setPendingDeleteId(devotionId);
+    setPendingDeleteDate(date);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteId) return;
+
+    setStatus('');
+    setLoading(true);
+    setDeleteConfirmOpen(false);
+
+    try {
+      const response = await apiFetch(`/api/devotions/${pendingDeleteId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 404 || response.status === 405) {
+          setStatus('Delete is not supported by the backend yet.');
+          return;
+        }
+        setStatus('Unable to delete devotion. Please try again.');
+        return;
+      }
+
+      setDevotionId(null);
+      setTitle('');
+      setContent('');
+      setStatus('Devotion deleted.');
+    } catch {
+      setStatus('Unable to delete devotion. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -239,7 +332,14 @@ export default function DevotionsAdminPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={requestPostConfirmation} disabled={loading}>
-              {loading ? 'Posting...' : 'Post Devotion'}
+              {loading ? 'Saving...' : hasExistingDevotion ? 'Save Devotion' : 'Post Devotion'}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={requestDeleteConfirmation}
+              disabled={loading || !hasExistingDevotion}
+            >
+              Delete
             </Button>
           </div>
         </div>
@@ -248,29 +348,51 @@ export default function DevotionsAdminPage() {
           <h2 className="text-lg font-semibold text-foreground mb-4">
             Recent Devotions
           </h2>
+
+          <div className="mb-4">
+            <input
+              type="search"
+              value={devotionSearch}
+              onChange={(e) => setDevotionSearch(e.target.value)}
+              placeholder="Search by title or date..."
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-foreground/40"
+            />
+          </div>
+
           {allDevotions.length === 0 ? (
-            <p className="text-sm text-foreground/60">
-              No devotions yet.
-            </p>
-          ) : (
-            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
-              {allDevotions.map((devotion) => (
-                <button
-                  key={devotion.id}
-                  type="button"
-                  onClick={() => setDate(String(devotion.date).slice(0, 10))}
-                  className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-left hover:border-primary/60 transition"
-                >
-                  <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                    {String(devotion.date).slice(0, 10)}
-                  </p>
-                  <p className="text-sm font-semibold text-foreground mt-1">
-                    {devotion.title || 'Untitled devotion'}
-                  </p>
-                </button>
-              ))}
-            </div>
-          )}
+            <p className="text-sm text-foreground/60">No devotions yet.</p>
+          ) : (() => {
+            const query = devotionSearch.trim().toLowerCase();
+            const filtered = query
+              ? allDevotions.filter(
+                  (d) =>
+                    d.publishAt.slice(0, 10).includes(query) ||
+                    (d.title || '').toLowerCase().includes(query)
+                )
+              : allDevotions;
+
+            return filtered.length === 0 ? (
+              <p className="text-sm text-foreground/60">No devotions match your search.</p>
+            ) : (
+              <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
+                {filtered.map((devotion) => (
+                  <button
+                    key={devotion.id}
+                    type="button"
+                    onClick={() => setDate(devotion.publishAt.slice(0, 10))}
+                    className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-left hover:border-primary/60 transition"
+                  >
+                    <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                      {devotion.publishAt.slice(0, 10)}
+                    </p>
+                    <p className="text-sm font-semibold text-foreground mt-1">
+                      {devotion.title || 'Untitled devotion'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -287,15 +409,41 @@ export default function DevotionsAdminPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Devotion Post</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Devotion Save</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to post this devotion{pendingDate && pendingTime ? ` for ${pendingDate} at ${pendingTime}` : ''}?
+              Are you sure you want to save this devotion{pendingDate && pendingTime ? ` for ${pendingDate} at ${pendingTime}` : ''}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmPost} disabled={loading}>
-              {loading ? 'Posting...' : 'Post'}
+              {loading ? 'Saving...' : 'Save'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          setDeleteConfirmOpen(open);
+          if (!open) {
+            setPendingDeleteId(null);
+            setPendingDeleteDate(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Devotion Delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this devotion{pendingDeleteDate ? ` for ${pendingDeleteDate}` : ''}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={loading}>
+              {loading ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

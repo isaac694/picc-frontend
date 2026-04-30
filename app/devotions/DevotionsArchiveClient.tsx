@@ -62,41 +62,36 @@ export default function DevotionsArchiveClient({
   showDebug,
   debugMessage,
 }: Props) {
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
   const [includeUndated, setIncludeUndated] = useState(false);
 
-  const isFiltering = Boolean(fromDate || toDate);
+  const isFiltering = Boolean(selectedDate);
 
   const filteredDevotions = useMemo(() => {
     if (!isFiltering) return devotions;
-    const start = fromDate ? toDateStart(fromDate) : null;
-    const end = toDate ? toDateEnd(toDate) : null;
+    const target = toDateStart(selectedDate);
+    const targetEnd = toDateEnd(selectedDate);
 
     return devotions.filter((devotion) => {
       if (!devotion.publishAt) return includeUndated;
       const date = new Date(devotion.publishAt);
       if (Number.isNaN(date.getTime())) return includeUndated;
-      if (start && date < start) return false;
-      if (end && date > end) return false;
-      return true;
+      return date >= target && date <= targetEnd;
     });
-  }, [devotions, fromDate, includeUndated, isFiltering, toDate]);
+  }, [devotions, includeUndated, isFiltering, selectedDate]);
 
   const filteredConfessions = useMemo(() => {
     if (!isFiltering) return confessions;
-    const start = fromDate ? toDateStart(fromDate) : null;
-    const end = toDate ? toDateEnd(toDate) : null;
+    const target = toDateStart(selectedDate);
+    const targetEnd = toDateEnd(selectedDate);
 
     return confessions.filter((confession) => {
       if (!confession.publishAt) return includeUndated;
       const date = new Date(confession.publishAt);
       if (Number.isNaN(date.getTime())) return includeUndated;
-      if (start && date < start) return false;
-      if (end && date > end) return false;
-      return true;
+      return date >= target && date <= targetEnd;
     });
-  }, [confessions, fromDate, includeUndated, isFiltering, toDate]);
+  }, [confessions, includeUndated, isFiltering, selectedDate]);
 
   const devotionMissingDates = useMemo(
     () => devotions.filter((d) => !d.publishAt).length,
@@ -119,72 +114,53 @@ export default function DevotionsArchiveClient({
               Devotions & Confessions
             </h1>
             <p className="text-foreground/70 max-w-2xl">
-              Search the archives by date to quickly find what you missed.
+              Select a date to view the devotion and confession for that day.
             </p>
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm">
-            <div className="flex flex-col lg:flex-row lg:items-end gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    From
-                  </label>
-                  <input
-                    type="date"
-                    value={fromDate}
-                    onChange={(event) => setFromDate(event.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    To
-                  </label>
-                  <input
-                    type="date"
-                    value={toDate}
-                    onChange={(event) => setToDate(event.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                  />
-                </div>
+            <div className="flex flex-col md:flex-row md:items-end gap-6">
+              <div className="w-full md:w-64">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Select Date
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(event) => setSelectedDate(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition"
+                />
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
-                    setFromDate('');
-                    setToDate('');
+                    setSelectedDate('');
                     setIncludeUndated(false);
                   }}
-                  className="rounded-full px-5 py-3 border border-border/60 text-foreground hover:border-primary/60 transition"
+                  className={`rounded-full px-6 py-3 border transition ${
+                    !selectedDate 
+                      ? 'bg-primary text-white border-primary shadow-md' 
+                      : 'border-border/60 text-foreground hover:border-primary/60'
+                  }`}
                 >
-                  Clear
+                  Show All Dates
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    const { from, to } = getMonthRange('this');
-                    setFromDate(from);
-                    setToDate(to);
+                    const today = new Date().toISOString().slice(0, 10);
+                    setSelectedDate(today);
                     setIncludeUndated(false);
                   }}
-                  className="rounded-full px-5 py-3 border border-border/60 text-foreground hover:border-primary/60 transition"
+                  className={`rounded-full px-6 py-3 border transition ${
+                    selectedDate === new Date().toISOString().slice(0, 10)
+                      ? 'bg-primary text-white border-primary shadow-md'
+                      : 'border-border/60 text-foreground hover:border-primary/60'
+                  }`}
                 >
-                  This month
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const { from, to } = getMonthRange('last');
-                    setFromDate(from);
-                    setToDate(to);
-                    setIncludeUndated(false);
-                  }}
-                  className="rounded-full px-5 py-3 border border-border/60 text-foreground hover:border-primary/60 transition"
-                >
-                  Last month
+                  Today
                 </button>
               </div>
             </div>
@@ -255,7 +231,7 @@ export default function DevotionsArchiveClient({
                       <div className="relative w-full aspect-[4/3] overflow-hidden rounded-xl border border-border/60 bg-white">
                         <Image
                           src={confession.imageUrl}
-                          alt={confession.title}
+                          alt={confession.title || 'Confession Image'}
                           fill
                           sizes="(max-width: 768px) 100vw, 50vw"
                           className="object-contain"

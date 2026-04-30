@@ -1,11 +1,12 @@
 'use client';
 
-import Link from 'next/link';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import ChurchNewsSection from '@/components/ChurchNewsSection';
+import { apiFetch, apiUrl } from '@/lib/api';
 
 const CAMPUS_NEWS = [
   {
@@ -58,6 +59,73 @@ const CAMPUS_NEWS = [
   },
 ];
 
+type MediaNewsItem = {
+  id: string;
+  badge: string;
+  date: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+};
+
+type MediaGalleryItem = {
+  id: string;
+  title: string;
+  category: string;
+  imageUrl: string;
+};
+
+type MediaBookItem = {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  imageUrl: string;
+  fileUrl: string;
+};
+
+type MediaMagazineItem = {
+  id: string;
+  title: string;
+  issue: string;
+  fileUrl: string;
+  imageUrl: string;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const normalizeAssetUrl = (value?: string | null) => {
+  if (!value) return '';
+  return value.startsWith('http') ? value : apiUrl(value);
+};
+
+const parseListBody = (body: unknown): unknown[] => {
+  if (typeof body !== 'string' || !body) return [];
+  try {
+    const parsed = JSON.parse(body) as unknown;
+    if (Array.isArray(parsed)) return parsed;
+    if (isRecord(parsed) && Array.isArray(parsed.items)) return parsed.items as unknown[];
+    return [];
+  } catch {
+    return [];
+  }
+};
+
+async function fetchSiteList<T>(key: string): Promise<T[] | null> {
+  try {
+    const response = await apiFetch(`/api/site-content/${key}`);
+    if (response.status === 404) return [];
+    if (!response.ok) return null;
+    const record = (await response.json().catch(() => null)) as unknown;
+    const body = isRecord(record) ? record.body : null;
+    const items = parseListBody(body);
+    return items.filter(isRecord) as T[];
+  } catch {
+    return null;
+  }
+}
+
 const BOOKS = [
   {
     title: 'Fire on the Altar Volume 3',
@@ -108,11 +176,85 @@ const EVENT_GALLERY = [
 
 export default function MediaPage() {
   const [galleryFilter, setGalleryFilter] = useState('All');
+  const [news, setNews] = useState(CAMPUS_NEWS);
+  const [gallery, setGallery] = useState(EVENT_GALLERY);
+  const [books, setBooks] = useState(BOOKS);
+  const [magazines, setMagazines] = useState(MAGAZINES);
+
+  useEffect(() => {
+    let alive = true;
+
+    const load = async () => {
+      const [newsItems, galleryItems, bookItems, magazineItems] = await Promise.all([
+        fetchSiteList<MediaNewsItem>('media-news'),
+        fetchSiteList<MediaGalleryItem>('media-gallery'),
+        fetchSiteList<MediaBookItem>('media-books'),
+        fetchSiteList<MediaMagazineItem>('media-magazines'),
+      ]);
+
+      if (!alive) return;
+
+      if (Array.isArray(newsItems) && newsItems.length > 0) {
+        setNews(
+          newsItems.map((item) => ({
+            badge: item.badge || 'Updates',
+            date: item.date || '',
+            title: item.title || '',
+            description: item.description || '',
+            image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
+          }))
+        );
+      }
+
+      if (Array.isArray(galleryItems) && galleryItems.length > 0) {
+        setGallery(
+          galleryItems.map((item) => ({
+            title: item.title || 'Gallery Item',
+            category: item.category || 'Gallery',
+            image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
+          }))
+        );
+      }
+
+      if (Array.isArray(bookItems) && bookItems.length > 0) {
+        setBooks(
+          bookItems.map((item) => ({
+            title: item.title || '',
+            author: item.author || '',
+            description: item.description || '',
+            cover: item.imageUrl ? normalizeAssetUrl(item.imageUrl) : undefined,
+            file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
+          }))
+        );
+      }
+
+      if (Array.isArray(magazineItems) && magazineItems.length > 0) {
+        setMagazines(
+          magazineItems.map((item) => ({
+            title: item.title || '',
+            issue: item.issue || '',
+            cover: item.imageUrl ? normalizeAssetUrl(item.imageUrl) : '/magazine/magazine-1.jpeg',
+            file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
+          }))
+        );
+      }
+    };
+
+    void load();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const galleryItems = useMemo(() => {
-    if (galleryFilter === 'All') return EVENT_GALLERY;
-    return EVENT_GALLERY.filter((item) => item.category === galleryFilter);
-  }, [galleryFilter]);
+    if (galleryFilter === 'All') return gallery;
+    return gallery.filter((item) => item.category === galleryFilter);
+  }, [galleryFilter, gallery]);
+
+  const galleryFilters = useMemo(() => {
+    const categories = Array.from(new Set(gallery.map((item) => item.category).filter(Boolean)));
+    return ['All', ...categories];
+  }, [gallery]);
 
   return (
     <>
@@ -134,55 +276,7 @@ export default function MediaPage() {
           </div>
         </section>
 
-        <section className="py-16 sm:py-20 md:py-24 bg-[#eef4fb]">
-          <div className="w-full px-0">
-            <div className="text-center mb-12">
-              <p className="text-xs uppercase tracking-[0.45em] text-primary/70 mb-3">
-                What&apos;s happening
-              </p>
-              <h2 className="text-3xl md:text-5xl font-semibold text-foreground">
-                Church News
-              </h2>
-              <div className="mx-auto mt-4 h-[3px] w-14 rounded-full bg-primary" />
-              <p className="mt-4 text-foreground/70 max-w-2xl mx-auto">
-                Quick updates and highlights from what&apos;s happening on campus.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10 px-4 sm:px-6 lg:px-10">
-              {CAMPUS_NEWS.slice(0, 6).map((item, index) => (
-                <div
-                  key={item.title}
-                  className="rounded-3xl border border-primary/10 bg-white/90 shadow-sm overflow-hidden"
-                >
-                  <div className="relative h-56 sm:h-64 lg:h-72">
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-foreground/60">
-                      <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-                        {item.badge}
-                      </span>
-                      <span className="uppercase tracking-[0.2em]">{item.date}</span>
-                    </div>
-                    <h3 className="mt-3 text-lg md:text-xl font-semibold text-foreground">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-sm text-foreground/70">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <ChurchNewsSection items={news} />
 
         <section className="py-16 sm:py-20 md:py-24 bg-background">
           <div className="w-full px-0">
@@ -197,7 +291,7 @@ export default function MediaPage() {
             </div>
 
             <div className="flex flex-wrap justify-center gap-3 mb-10 px-4 sm:px-6 lg:px-10">
-              {['All', 'Worship', 'Outreach', 'Youth', 'Music', 'Celebration', 'Prayer'].map((label) => (
+              {galleryFilters.map((label) => (
                 <button
                   key={label}
                   type="button"
@@ -263,7 +357,7 @@ export default function MediaPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {BOOKS.map((item) => (
+              {books.map((item) => (
                 <div key={item.title} className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm">
                   {item.cover && (
                     <div className="relative mb-4 h-56 overflow-hidden rounded-xl">
@@ -326,7 +420,7 @@ export default function MediaPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {MAGAZINES.map((item) => (
+              {magazines.map((item) => (
                 <div key={item.title} className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm">
                   <div className="relative mb-4 h-56 overflow-hidden rounded-xl">
                     <Image
@@ -343,9 +437,24 @@ export default function MediaPage() {
                   <h3 className="text-xl font-semibold text-foreground mb-2">
                     {item.title}
                   </h3>
-                  <Button variant="outline" className="rounded-full px-5" disabled>
-                    Coming Soon
-                  </Button>
+                  {item.file ? (
+                    <div className="flex flex-wrap gap-3">
+                      <a href={item.file} target="_blank" rel="noreferrer">
+                        <Button variant="outline" className="rounded-full px-5">
+                          View
+                        </Button>
+                      </a>
+                      <a href={item.file} download>
+                        <Button variant="outline" className="rounded-full px-5">
+                          Download
+                        </Button>
+                      </a>
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="rounded-full px-5" disabled>
+                      Coming Soon
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

@@ -26,9 +26,10 @@ interface User {
 
 interface LiveChatProps {
   videoId: string;
+  videoTitle?: string;
 }
 
-export default function LiveChat({ videoId }: LiveChatProps) {
+export default function LiveChat({ videoId, videoTitle }: LiveChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -130,7 +131,8 @@ export default function LiveChat({ videoId }: LiveChatProps) {
         },
         body: JSON.stringify({ 
           content: newMessage.trim(),
-          videoId: videoId
+          videoId,
+          videoTitle,
         }),
       });
 
