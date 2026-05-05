@@ -34,13 +34,14 @@ export default function SchoolNewsManager({
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [news, setNews] = useState<NewsItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingItem, setEditingItem] = useState<NewsItem | null>(null);
   const [draft, setDraft] = useState<Draft>({
     title: '',
     content: '',
     imageUrl: '',
     isPublished: true,
   });
-  const [showForm, setShowForm] = useState(false);
 
   const baseUrl = useMemo(() => `/api/admin/schools/${encodeURIComponent(schoolKey)}/news`, [schoolKey]);
 
@@ -71,7 +72,27 @@ export default function SchoolNewsManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl, token]);
 
-  const add = async () => {
+  const handleEdit = (item: NewsItem) => {
+    setEditingItem(item);
+    setDraft({
+      title: item.title,
+      content: item.content,
+      imageUrl: item.imageUrl || '',
+      isPublished: item.isPublished,
+    });
+  };
+
+  const handleAddNew = () => {
+    setEditingItem(null);
+    setDraft({
+      title: '',
+      content: '',
+      imageUrl: '',
+      isPublished: true,
+    });
+  };
+
+  const save = async () => {
     if (!draft.title.trim()) {
       setStatus('Please enter a title.');
       return;
@@ -80,10 +101,16 @@ export default function SchoolNewsManager({
       setStatus('Please enter content.');
       return;
     }
+    
+    setSavingId(editingItem ? editingItem.id : 'new');
     setStatus('');
+    
     try {
-      const response = await apiFetch(baseUrl, {
-        method: 'POST',
+      const url = editingItem ? `${baseUrl}/${encodeURIComponent(editingItem.id)}` : baseUrl;
+      const method = editingItem ? 'PUT' : 'POST';
+      
+      const response = await apiFetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -95,44 +122,20 @@ export default function SchoolNewsManager({
           isPublished: draft.isPublished,
         }),
       });
-      if (!response.ok) {
-        setStatus('Unable to add news.');
-        return;
-      }
-      setDraft({ title: '', content: '', imageUrl: '', isPublished: true });
-      setShowForm(false);
-      await refresh();
-      setStatus('News added.');
-    } catch {
-      setStatus('Unable to add news.');
-    }
-  };
 
-  const save = async (item: NewsItem) => {
-    setSavingId(item.id);
-    setStatus('');
-    try {
-      const response = await apiFetch(`${baseUrl}/${encodeURIComponent(item.id)}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: item.title,
-          content: item.content,
-          imageUrl: item.imageUrl,
-          isPublished: item.isPublished,
-        }),
-      });
       if (!response.ok) {
-        setStatus('Unable to save news.');
+        setStatus(`Unable to ${editingItem ? 'update' : 'add'} news.`);
         return;
       }
+
+      if (!editingItem) {
+        setDraft({ title: '', content: '', imageUrl: '', isPublished: true });
+      }
+      
       await refresh();
-      setStatus('News saved.');
+      setStatus(`News ${editingItem ? 'updated' : 'added'}.`);
     } catch {
-      setStatus('Unable to save news.');
+      setStatus(`Unable to ${editingItem ? 'update' : 'add'} news.`);
     } finally {
       setSavingId(null);
     }
@@ -150,6 +153,11 @@ export default function SchoolNewsManager({
         setStatus('Unable to delete news.');
         return;
       }
+      
+      if (editingItem?.id === id) {
+        handleAddNew();
+      }
+      
       await refresh();
       setStatus('News deleted.');
     } catch {
@@ -157,7 +165,16 @@ export default function SchoolNewsManager({
     }
   };
 
-  if (isLoading) {
+  const filteredNews = useMemo(() => {
+    if (!searchTerm.trim()) return news;
+    const lower = searchTerm.toLowerCase();
+    return news.filter(n => 
+      n.title.toLowerCase().includes(lower) || 
+      n.content.toLowerCase().includes(lower)
+    );
+  }, [news, searchTerm]);
+
+  if (isLoading && news.length === 0) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -177,22 +194,26 @@ export default function SchoolNewsManager({
         </div>
       )}
 
-      <div className="flex justify-between items-start gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Manage {schoolName} News</h2>
-          <p className="text-sm text-foreground/70 mt-1">Create, edit, and manage news articles for your school.</p>
-        </div>
-        {!showForm && (
-          <Button onClick={() => setShowForm(true)} className="flex items-center gap-2 whitespace-nowrap">
-            <Plus className="h-4 w-4" />
-            Add News
-          </Button>
-        )}
-      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+        {/* Left Side: Form */}
+        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">
+                {editingItem ? 'Update News' : 'Add New News'}
+              </h2>
+              <p className="text-sm text-foreground/70 mt-1">
+                {editingItem ? 'Update the details for this news item.' : 'Create a new news entry for your school.'}
+              </p>
+            </div>
+            {editingItem && (
+              <Button variant="outline" onClick={handleAddNew}>
+                <Plus className="h-4 w-4 mr-2" />
+                New News
+              </Button>
+            )}
+          </div>
 
-      {showForm && (
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
-          <h3 className="text-base font-semibold text-foreground">Add New News Item</h3>
           <div className="space-y-4">
             <div>
               <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
@@ -215,7 +236,7 @@ export default function SchoolNewsManager({
                 value={draft.content}
                 onChange={(e) => setDraft((prev) => ({ ...prev, content: e.target.value }))}
                 placeholder="News content..."
-                rows={6}
+                rows={8}
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
               />
             </div>
@@ -233,7 +254,7 @@ export default function SchoolNewsManager({
               />
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-background/50">
               <input
                 type="checkbox"
                 id="isPublished"
@@ -241,106 +262,81 @@ export default function SchoolNewsManager({
                 onChange={(e) => setDraft((prev) => ({ ...prev, isPublished: e.target.checked }))}
                 className="rounded border-border"
               />
-              <label htmlFor="isPublished" className="text-sm font-medium text-foreground">
-                Publish immediately
+              <label htmlFor="isPublished" className="text-sm font-medium text-foreground cursor-pointer">
+                Published (Visible on site)
               </label>
             </div>
 
-            <div className="flex gap-3 pt-4 border-t border-border/60">
-              <Button onClick={add} className="flex items-center gap-2">
-                <Save className="h-4 w-4" />
-                Add News
+            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/60">
+              <Button onClick={save} disabled={savingId !== null} className="gap-2">
+                {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {editingItem ? 'Update News' : 'Add News'}
               </Button>
-              <Button variant="outline" onClick={() => setShowForm(false)}>
-                Cancel
-              </Button>
+              {editingItem && (
+                <Button variant="destructive" onClick={() => remove(editingItem.id)} className="gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              )}
+              {(editingItem || draft.title || draft.content) && (
+                <Button variant="outline" onClick={handleAddNew}>
+                  Cancel
+                </Button>
+              )}
             </div>
           </div>
         </div>
-      )}
 
-      {news.length === 0 ? (
-        <div className="rounded-2xl border border-border/60 bg-card p-8 text-center">
-          <p className="text-foreground/70">No news items yet. Create your first one!</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {news.map((item) => (
-            <div key={item.id} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-base font-semibold text-foreground">{item.title}</h3>
+        {/* Right Side: List */}
+        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm flex flex-col h-fit max-h-[800px]">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Current News Items</h2>
+          
+          <div className="relative mb-4">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search news..."
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 transition outline-none"
+            />
+          </div>
+
+          <div className="overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+            {filteredNews.length === 0 ? (
+              <div className="text-center py-12 border border-dashed rounded-xl border-border/60">
+                <p className="text-sm text-foreground/60">
+                  {searchTerm ? 'No news match your search.' : 'No news items yet.'}
+                </p>
+              </div>
+            ) : (
+              filteredNews.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleEdit(item)}
+                  className={`w-full text-left rounded-xl border p-4 transition-all ${
+                    editingItem?.id === item.id
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border/60 bg-background hover:border-primary/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
                     {!item.isPublished && (
-                      <span className="inline-block px-2 py-1 rounded-md bg-destructive/10 text-destructive text-xs font-medium">
+                      <span className="text-[10px] uppercase font-bold text-destructive px-1.5 py-0.5 rounded bg-destructive/10">
                         Draft
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-foreground/70 mb-3">{item.content.substring(0, 150)}...</p>
-                  <p className="text-xs text-foreground/50">Added {new Date(item.createdAt).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-border/60">
-                <input
-                  type="checkbox"
-                  checked={item.isPublished}
-                  onChange={(e) => {
-                    const updated = { ...item, isPublished: e.target.checked };
-                    setNews(news.map((n) => (n.id === item.id ? updated : n)));
-                  }}
-                  className="hidden"
-                  id={`publish-${item.id}`}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const updated = { ...item, isPublished: !item.isPublished };
-                    setNews(news.map((n) => (n.id === item.id ? updated : n)));
-                    void save(updated);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  {item.isPublished ? (
-                    <>
-                      <EyeOff className="h-4 w-4" />
-                      Unpublish
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-4 w-4" />
-                      Publish
-                    </>
-                  )}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void save(item)}
-                  disabled={savingId === item.id}
-                  className="flex items-center gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  {savingId === item.id ? 'Saving...' : 'Save'}
-                </Button>
-
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => void remove(item.id)}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
+                  <p className="text-xs text-foreground/60 line-clamp-2">{item.content}</p>
+                  <p className="text-[10px] text-foreground/40 mt-2 font-medium">
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

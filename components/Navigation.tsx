@@ -116,7 +116,7 @@ export default function Navigation() {
                     : 'text-foreground hover:text-primary transition-colors text-sm font-medium'
                 }
               >
-                Ministries
+                Ministry & Outreach
               </button>
               <div
                 className={

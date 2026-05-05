@@ -13,7 +13,125 @@ type KeyDateRecord = {
   sortOrder: number;
 };
 
-type Draft = Omit<KeyDateRecord, 'id'>;
+type Draft = Omit<KeyDateRecord, 'id' | 'dateText'> & {
+  startDate: string;
+  endDate: string;
+};
+
+const EMPTY_DRAFT: Draft = {
+  label: '',
+  startDate: '',
+  endDate: '',
+  isActive: true,
+  sortOrder: 0,
+};
+
+const toIsoDate = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateText = (startDate: string, endDate: string) => {
+  if (!startDate) return '';
+
+  const start = new Date(`${startDate}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return '';
+
+  if (!endDate || endDate === startDate) {
+    return start.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
+  const end = new Date(`${endDate}T00:00:00`);
+  if (Number.isNaN(end.getTime())) {
+    return start.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const sameMonth = sameYear && start.getMonth() === end.getMonth();
+
+  if (sameMonth) {
+    return `${start.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+    })}-${end.toLocaleDateString('en-US', {
+      day: 'numeric',
+      year: 'numeric',
+    })}`;
+  }
+
+  if (sameYear) {
+    return `${start.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+    })} - ${end.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })}`;
+  }
+
+  return `${start.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })} - ${end.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })}`;
+};
+
+const parseDateText = (dateText: string) => {
+  const trimmed = dateText.trim();
+  if (!trimmed) {
+    return { startDate: '', endDate: '' };
+  }
+
+  const singleDate = new Date(trimmed);
+  if (!Number.isNaN(singleDate.getTime())) {
+    return {
+      startDate: toIsoDate(singleDate),
+      endDate: '',
+    };
+  }
+
+  const sameMonthRange = trimmed.match(/^([A-Za-z]+)\s+(\d{1,2})-(\d{1,2}),\s*(\d{4})$/);
+  if (sameMonthRange) {
+    const [, month, startDay, endDay, year] = sameMonthRange;
+    const start = new Date(`${month} ${startDay}, ${year}`);
+    const end = new Date(`${month} ${endDay}, ${year}`);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+      return {
+        startDate: toIsoDate(start),
+        endDate: toIsoDate(end),
+      };
+    }
+  }
+
+  const longRange = trimmed.split(' - ');
+  if (longRange.length === 2) {
+    const start = new Date(longRange[0]);
+    const end = new Date(longRange[1]);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+      return {
+        startDate: toIsoDate(start),
+        endDate: toIsoDate(end),
+      };
+    }
+  }
+
+  return { startDate: '', endDate: '' };
+};
 
 export default function SchoolKeyDatesManager({
   token,
@@ -26,12 +144,9 @@ export default function SchoolKeyDatesManager({
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [keyDates, setKeyDates] = useState<KeyDateRecord[]>([]);
-  const [draft, setDraft] = useState<Draft>({
-    label: '',
-    dateText: '',
-    isActive: true,
-    sortOrder: 0,
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingItem, setEditingItem] = useState<KeyDateRecord | null>(null);
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
 
   const baseUrl = useMemo(() => `/api/admin/schools/${encodeURIComponent(schoolKey)}/key-dates`, [schoolKey]);
 
@@ -62,53 +177,69 @@ export default function SchoolKeyDatesManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl, token]);
 
-  const add = async () => {
-    if (!draft.label.trim() || !draft.dateText.trim()) {
-      setStatus('Please enter a label and date text.');
-      return;
-    }
-    setStatus('');
-    try {
-      const response = await apiFetch(baseUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(draft),
-      });
-      if (!response.ok) {
-        setStatus('Unable to add key date.');
-        return;
-      }
-      setDraft((prev) => ({ ...prev, label: '', dateText: '', sortOrder: prev.sortOrder + 1 }));
-      await refresh();
-      setStatus('Key date added.');
-    } catch {
-      setStatus('Unable to add key date.');
-    }
+  const handleEdit = (item: KeyDateRecord) => {
+    const parsed = parseDateText(item.dateText);
+    setEditingItem(item);
+    setDraft({
+      label: item.label,
+      startDate: parsed.startDate,
+      endDate: parsed.endDate,
+      isActive: item.isActive,
+      sortOrder: item.sortOrder,
+    });
   };
 
-  const save = async (record: KeyDateRecord) => {
-    setSavingId(record.id);
+  const handleAddNew = () => {
+    setEditingItem(null);
+    setDraft({
+      ...EMPTY_DRAFT,
+      sortOrder: keyDates.length > 0 ? Math.max(...keyDates.map((d) => d.sortOrder)) + 1 : 0,
+    });
+  };
+
+  const save = async () => {
+    if (!draft.label.trim() || !draft.startDate) {
+      setStatus('Please enter a label and start date.');
+      return;
+    }
+
+    const dateText = formatDateText(draft.startDate, draft.endDate);
+    if (!dateText) {
+      setStatus('Please choose a valid start and end date.');
+      return;
+    }
+
+    setSavingId(editingItem ? editingItem.id : 'new');
     setStatus('');
+
     try {
-      const response = await apiFetch(`${baseUrl}/${encodeURIComponent(record.id)}`, {
-        method: 'PUT',
+      const url = editingItem ? `${baseUrl}/${encodeURIComponent(editingItem.id)}` : baseUrl;
+      const method = editingItem ? 'PUT' : 'POST';
+
+      const response = await apiFetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(record),
+        body: JSON.stringify({
+          label: draft.label,
+          dateText,
+          isActive: draft.isActive,
+          sortOrder: draft.sortOrder,
+        }),
       });
+
       if (!response.ok) {
-        setStatus('Unable to save key date.');
+        setStatus(`Unable to ${editingItem ? 'update' : 'add'} key date.`);
         return;
       }
+
       await refresh();
-      setStatus('Key date saved.');
+      handleAddNew();
+      setStatus(`Key date ${editingItem ? 'updated' : 'added'}.`);
     } catch {
-      setStatus('Unable to save key date.');
+      setStatus(`Unable to ${editingItem ? 'update' : 'add'} key date.`);
     } finally {
       setSavingId(null);
     }
@@ -126,6 +257,11 @@ export default function SchoolKeyDatesManager({
         setStatus('Unable to delete key date.');
         return;
       }
+
+      if (editingItem?.id === id) {
+        handleAddNew();
+      }
+
       await refresh();
       setStatus('Key date deleted.');
     } catch {
@@ -133,7 +269,17 @@ export default function SchoolKeyDatesManager({
     }
   };
 
-  if (isLoading) {
+  const filteredDates = useMemo(() => {
+    if (!searchTerm.trim()) return keyDates;
+    const lower = searchTerm.toLowerCase();
+    return keyDates.filter(
+      (item) =>
+        item.label.toLowerCase().includes(lower) ||
+        item.dateText.toLowerCase().includes(lower),
+    );
+  }, [keyDates, searchTerm]);
+
+  if (isLoading && keyDates.length === 0) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -145,7 +291,7 @@ export default function SchoolKeyDatesManager({
     <div className="space-y-6">
       {status && (
         <div
-          className={`p-4 rounded-xl text-sm ${
+          className={`rounded-xl p-4 text-sm ${
             status.includes('Unable') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
           }`}
         >
@@ -153,15 +299,28 @@ export default function SchoolKeyDatesManager({
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1fr] gap-6">
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Add Key Date
-          </h2>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <div className="space-y-6 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">
+                {editingItem ? 'Update Key Date' : 'Add New Key Date'}
+              </h2>
+              <p className="mt-1 text-sm text-foreground/70">
+                {editingItem ? 'Update the details for this key date.' : 'Create a new key date entry for your school.'}
+              </p>
+            </div>
+            {editingItem && (
+              <Button variant="outline" onClick={handleAddNew}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Key Date
+              </Button>
+            )}
+          </div>
+
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
                 Label *
               </label>
               <input
@@ -169,157 +328,125 @@ export default function SchoolKeyDatesManager({
                 value={draft.label}
                 onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
                 placeholder="e.g., Entrance Exams"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                Date Text *
-              </label>
-              <input
-                type="text"
-                value={draft.dateText}
-                onChange={(e) => setDraft((prev) => ({ ...prev, dateText: e.target.value }))}
-                placeholder="e.g., April 12–13, 2025"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                  Sort Order
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+                  Start Date *
                 </label>
                 <input
-                  type="number"
-                  value={draft.sortOrder}
-                  onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, sortOrder: Number.parseInt(e.target.value || '0', 10) || 0 }))
-                  }
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                  type="date"
+                  value={draft.startDate}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, startDate: e.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
                 />
               </div>
-              <div className="flex items-end gap-2">
-                <input
-                  id="draft-active"
-                  type="checkbox"
-                  checked={draft.isActive}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
-                  className="rounded border-border"
-                />
-                <label htmlFor="draft-active" className="text-sm text-foreground/70">
-                  Active
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+                  End Date
                 </label>
+                <input
+                  type="date"
+                  value={draft.endDate}
+                  min={draft.startDate || undefined}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, endDate: e.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+                />
               </div>
             </div>
 
-            <Button onClick={add} className="w-full md:w-auto">
-              Add Key Date
-            </Button>
+            {draft.startDate && (
+              <p className="text-xs text-foreground/60">
+                Preview: {formatDateText(draft.startDate, draft.endDate)}
+              </p>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="self-end rounded-xl border border-border/60 bg-background/50 p-3 md:col-span-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={draft.isActive}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
+                    className="rounded border-border"
+                  />
+                  <label htmlFor="isActive" className="cursor-pointer text-sm font-medium text-foreground">
+                    Active (Visible on site)
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 border-t border-border/60 pt-4">
+              <Button onClick={save} disabled={savingId !== null} className="gap-2">
+                {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {editingItem ? 'Update Key Date' : 'Add Key Date'}
+              </Button>
+              {editingItem && (
+                <Button variant="destructive" onClick={() => remove(editingItem.id)} className="gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              )}
+              {(editingItem || draft.label || draft.startDate || draft.endDate) && (
+                <Button variant="outline" onClick={handleAddNew}>
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Current Key Dates</h2>
-          {keyDates.length === 0 ? (
-            <div className="text-center py-12 border border-dashed rounded-xl border-border/60">
-              <p className="text-sm text-foreground/60">No key dates added yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {keyDates.map((record) => (
-                <div key={record.id} className="rounded-xl border border-border/60 bg-background p-4 space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <input
-                        type="text"
-                        value={record.label}
-                        onChange={(e) =>
-                          setKeyDates((prev) =>
-                            prev.map((d) => (d.id === record.id ? { ...d, label: e.target.value } : d)),
-                          )
-                        }
-                        className="w-full font-medium bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition px-1 py-1"
-                      />
-                      <input
-                        type="text"
-                        value={record.dateText}
-                        onChange={(e) =>
-                          setKeyDates((prev) =>
-                            prev.map((d) => (d.id === record.id ? { ...d, dateText: e.target.value } : d)),
-                          )
-                        }
-                        className="w-full text-sm bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition px-1 py-1"
-                      />
-                    </div>
+        <div className="flex h-fit max-h-[800px] flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Current Key Dates</h2>
 
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove(record.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+          <div className="relative mb-4">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search key dates..."
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          <div className="custom-scrollbar space-y-3 overflow-y-auto pr-2">
+            {filteredDates.length === 0 ? (
+              <div className="rounded-xl border border-border/60 border-dashed py-12 text-center">
+                <p className="text-sm text-foreground/60">
+                  {searchTerm ? 'No key dates match your search.' : 'No key dates yet.'}
+                </p>
+              </div>
+            ) : (
+              filteredDates.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleEdit(item)}
+                  className={`w-full rounded-xl border p-4 text-left transition-all ${
+                    editingItem?.id === item.id
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border/60 bg-background hover:border-primary/60'
+                  }`}
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <h3 className="truncate text-sm font-semibold text-foreground">{item.label}</h3>
+                    {!item.isActive && (
+                      <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-destructive">
+                        Inactive
+                      </span>
+                    )}
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] uppercase font-bold text-foreground/40 block mb-1">
-                        Sort Order
-                      </label>
-                      <input
-                        type="number"
-                        value={record.sortOrder}
-                        onChange={(e) =>
-                          setKeyDates((prev) =>
-                            prev.map((d) =>
-                              d.id === record.id
-                                ? { ...d, sortOrder: Number.parseInt(e.target.value || '0', 10) || 0 }
-                                : d,
-                            ),
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                      />
-                    </div>
-
-                    <div className="flex items-end gap-2">
-                      <input
-                        id={`active-${record.id}`}
-                        type="checkbox"
-                        checked={record.isActive}
-                        onChange={(e) =>
-                          setKeyDates((prev) =>
-                            prev.map((d) => (d.id === record.id ? { ...d, isActive: e.target.checked } : d)),
-                          )
-                        }
-                        className="rounded border-border"
-                      />
-                      <label htmlFor={`active-${record.id}`} className="text-sm text-foreground/70">
-                        Active
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => save(record)}
-                      disabled={savingId === record.id}
-                      className="flex items-center gap-2"
-                    >
-                      <Save className="h-4 w-4" />
-                      {savingId === record.id ? 'Saving...' : 'Save'}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">{item.dateText}</p>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
