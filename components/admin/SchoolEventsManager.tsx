@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Save, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import Image from 'next/image';
 
 type EventItem = {
   id: string;
@@ -40,6 +41,7 @@ export default function SchoolEventsManager({
   const [events, setEvents] = useState<EventItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingItem, setEditingItem] = useState<EventItem | null>(null);
+  const [uploadName, setUploadName] = useState('');
   const [draft, setDraft] = useState<Draft>({
     title: '',
     description: '',
@@ -80,6 +82,7 @@ export default function SchoolEventsManager({
 
   const handleEdit = (item: EventItem) => {
     setEditingItem(item);
+    setUploadName('');
     // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
     const date = new Date(item.date);
     const formattedDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -98,6 +101,7 @@ export default function SchoolEventsManager({
 
   const handleAddNew = () => {
     setEditingItem(null);
+    setUploadName('');
     setDraft({
       title: '',
       description: '',
@@ -106,6 +110,52 @@ export default function SchoolEventsManager({
       imageUrl: '',
       isPublished: true,
     });
+  };
+
+  const uploadImage = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setStatus('Please upload an image file.');
+      return null;
+    }
+
+    if (file.size > 1_000_000) {
+      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      return null;
+    }
+
+    setStatus('');
+    setUploadName(file.name);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await apiFetch('/api/uploads', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        setStatus('Image upload failed.');
+        return null;
+      }
+
+      const data = await response.json().catch(() => null);
+      const rawUrl = typeof data?.url === 'string' ? data.url : typeof data?.imageUrl === 'string' ? data.imageUrl : '';
+
+      if (!rawUrl) {
+        setStatus('Image upload failed.');
+        return null;
+      }
+
+      return rawUrl.startsWith('http') ? rawUrl : apiUrl(rawUrl);
+    } catch {
+      setStatus('Image upload failed.');
+      return null;
+    }
   };
 
   const save = async () => {
@@ -150,9 +200,9 @@ export default function SchoolEventsManager({
         return;
       }
 
-      if (!editingItem) {
-        setDraft({ title: '', description: '', date: '', location: '', imageUrl: '', isPublished: true });
-      }
+      setDraft({ title: '', description: '', date: '', location: '', imageUrl: '', isPublished: true });
+      setUploadName('');
+      setEditingItem(null);
       
       await refresh();
       setStatus(`Event ${editingItem ? 'updated' : 'added'}.`);
@@ -293,15 +343,40 @@ export default function SchoolEventsManager({
 
             <div>
               <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                Image URL
+                Event Image <span className="text-[11px] font-normal text-foreground/50">(Max 1MB allowed)</span>
               </label>
               <input
-                type="url"
-                value={draft.imageUrl}
-                onChange={(e) => setDraft((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder="https://example.com/image.jpg"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
+                type="file"
+                accept="image/*"
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary"
+                onChange={async (e) => {
+                  const input = e.currentTarget;
+                  const file = input.files?.[0];
+                  if (!file) return;
+                  const url = await uploadImage(file);
+                  if (url) {
+                    setDraft((prev) => ({ ...prev, imageUrl: url }));
+                  }
+                  input.value = '';
+                }}
               />
+              {uploadName && (
+                <p className="mt-2 text-xs text-foreground/60">Selected: {uploadName}</p>
+              )}
+              {draft.imageUrl && (
+                <div className="mt-3 overflow-hidden rounded-xl border border-border/60 bg-background">
+                  <div className="relative h-40">
+                    <Image
+                      src={draft.imageUrl}
+                      alt={draft.title || 'Event preview'}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                  <p className="break-all px-3 py-2 text-xs text-foreground/50">Current image: {draft.imageUrl}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-background/50">

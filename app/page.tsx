@@ -460,7 +460,7 @@ export default async function HomePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
               <h2 className="text-4xl md:text-5xl font-bold text-primary mb-2">Grow in Every Season</h2>
-              <p className="text-foreground/70">Whether you&apos;re new or have been with us for years &mdash; there&apos;s always more.</p>
+              <p className="text-foreground/70">Whether you&apos;re new or have been with us for years, there&apos;s always more.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8">
@@ -616,7 +616,7 @@ export default async function HomePage() {
                   You Were Made For This.
                 </h2>
                 <p className="text-foreground/70 mt-4 max-w-xl">
-                  Find your family, your calling, and your community — right here.
+                  Find your family, your calling, and your community right here.
                 </p>
               </div>
             </div>

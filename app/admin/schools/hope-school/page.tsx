@@ -9,8 +9,28 @@ import SchoolInfoManager from '@/components/admin/SchoolInfoManager';
 import SchoolNewsManager from '@/components/admin/SchoolNewsManager';
 import SchoolEventsManager from '@/components/admin/SchoolEventsManager';
 import SchoolKeyDatesManager from '@/components/admin/SchoolKeyDatesManager';
+import { HOPE_SCHOOL_NEWS } from '@/components/schools/schoolNewsFallbacks';
 
 type Tab = 'enrollment' | 'key-dates' | 'info' | 'news' | 'events';
+
+const hopeSchoolFallbackInfo = {
+  header: 'Hope School of Ministry',
+  motto: 'Raising a New Generation of Leaders with Global Influence',
+  about: `Hope School exists to equip believers with leadership training, practical ministry skills, and a heart for mission.
+
+To provide general leadership training in preparing future leaders for life, citizenship, and active Christian service.
+To provide training and practical experience for believers who desire to be equipped for effective service to Christ and in their local churches.
+To provide relevant instruction to believers in their fields of ministry that will enable them to gain skills and abilities necessary for effective ministry.
+To foster missionary interests and concern.`,
+  mission:
+    'To provide leadership training and practical ministry equipping for believers who desire to serve Christ effectively in their local churches and communities.',
+  vision:
+    'To raise future leaders prepared for life, citizenship, and active Christian service, carrying vision, character, and missionary concern.',
+  phone: '+265 999 045 869 / +265 992 603 608',
+  email: 'info@piccworldwide.org / hopeschool@piccworldwide.org',
+  address:
+    'Pentecost International Christian Centre- PICC Along Kaunda Road, Near Best Oil Filling Station Area 49, Post Office Box 31841 Lilongwe 3 Malawi',
+};
 
 export default function HopeSchoolEnrollmentAdminPage() {
   const {
@@ -83,8 +103,28 @@ export default function HopeSchoolEnrollmentAdminPage() {
       <div>
         {activeTab === 'enrollment' && <SchoolIntakesManager token={token} schoolKey="hope-school" />}
         {activeTab === 'key-dates' && <SchoolKeyDatesManager token={token} schoolKey="hope-school" />}
-        {activeTab === 'info' && <SchoolInfoManager token={token} schoolKey="hope-school" schoolName="Hope School" />}
-        {activeTab === 'news' && <SchoolNewsManager token={token} schoolKey="hope-school" schoolName="Hope School" />}
+        {activeTab === 'info' && (
+          <SchoolInfoManager
+            token={token}
+            schoolKey="hope-school"
+            schoolName="Hope School"
+            fallbackInfo={hopeSchoolFallbackInfo}
+          />
+        )}
+        {activeTab === 'news' && (
+          <SchoolNewsManager
+            token={token}
+            schoolKey="hope-school"
+            schoolName="Hope School"
+            fallbackNews={HOPE_SCHOOL_NEWS.map((item) => ({
+              badge: item.badge,
+              date: item.date,
+              title: item.title,
+              content: item.description,
+              imageUrl: item.image,
+            }))}
+          />
+        )}
         {activeTab === 'events' && <SchoolEventsManager token={token} schoolKey="hope-school" schoolName="Hope School" />}
       </div>
     </div>

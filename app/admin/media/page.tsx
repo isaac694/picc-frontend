@@ -710,7 +710,7 @@ export default function AdminMediaPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">
-                    {editingIds.books ? 'Edit Book' : 'Create Book'}
+                    {editingIds.books ? 'Edit Book' : 'Create a new Fire on the Altar Book'}
                   </h2>
                   <p className="text-sm text-foreground/60">
                     Pick a saved book on the right when you need to update it.
@@ -782,7 +782,7 @@ export default function AdminMediaPage() {
             </div>
 
             <div className={sectionCardClassName}>
-              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing Books</h3>
+              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing Fire on the Altar</h3>
               {bookItems.length === 0 ? (
                 <p className="text-sm text-foreground/60">No books yet.</p>
               ) : (

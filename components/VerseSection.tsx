@@ -79,7 +79,7 @@ export default function VerseSection({
                 font-serif
               "
             >
-              &ldquo;{resolvedText}&rdquo; &mdash; {resolvedReference}
+              &ldquo;{resolvedText}&rdquo; _ {resolvedReference}
             </p>
 
           </blockquote>

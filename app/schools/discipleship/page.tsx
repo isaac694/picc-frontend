@@ -1,97 +1,107 @@
-'use client';
-
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import EventsCarousel from '@/components/EventsCarousel';
 import DiscipleshipNewsSection from '@/components/schools/DiscipleshipNewsSection';
 import { BookOpen, ShieldCheck, Sun, Anchor, Zap, Flame, Gift, Crown } from 'lucide-react';
 import Image from 'next/image';
-import { useRef } from 'react';
 import SchoolIntakeGate from '@/components/schools/SchoolIntakeGate';
 import SchoolKeyDatesList from '@/components/schools/SchoolKeyDatesList';
+import { apiUrl } from '@/lib/api';
 
-export default function SchoolOfDiscipleshipPage() {
-  const enrollmentRef = useRef<HTMLElement>(null);
+type SchoolInfo = {
+  header: string | null;
+  motto: string | null;
+  about: string | null;
+  mission: string | null;
+  vision: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  lessons: Array<{
+    num?: string | null;
+    title: string;
+    description: string;
+  }> | null;
+  coreValues: Array<{
+    name: string;
+    description: string;
+  }> | null;
+};
 
-  const scrollToEnrollment = () => {
-    enrollmentRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-  const courses = [
+const discipleshipFallbackInfo: SchoolInfo = {
+  header: 'School of Discipleship',
+  motto: 'Rooted in Christ, Growing in Truth, Impacting the World',
+  about: null,
+  mission:
+    'To equip and nurture believers through sound biblical teaching, spiritual formation, and practical dscipleship, empowering them to become mature followers of Jesus Christ who live out the mandate of bringing hope to the hopeless and life to the dying.',
+  vision:
+    'To raise a generation of deeply rooted, spiritually grounded, and kingdom-minded disciples who reflect the character of Christ and effectively impact their communities and the world.',
+  phone: '+265 999 045 869 / +265 992 603 608',
+  email: 'discipleship@piccworldwide.org',
+  address:
+    'Pentecost International Christian Centre- PICC Along Kaunda Road, Near Best Oil Filling Station Area 49, Post Office Box 31841 Lilongwe 3 Malawi',
+  lessons: [
     {
-      icon: Sun,
+      num: '01',
       title: 'The Nature and Character of God',
       description: 'Exploring the attributes, holiness, and love of our Creator',
-      num: '01',
     },
     {
-      icon: BookOpen,
+      num: '02',
       title: 'The Word of God',
       description: 'The authority, power, and practical application of the Holy Scriptures',
-      num: '02',
     },
     {
-      icon: ShieldCheck,
-      title: 'Understanding Faith',
-      description: 'Building a firm foundation of belief and trust in God\'s promises',
       num: '03',
+      title: 'Understanding Faith',
+      description: "Building a firm foundation of belief and trust in God's promises",
     },
     {
-      icon: Flame,
+      num: '04',
       title: 'Understanding Prayer and Fasting',
       description: 'Deepening your spiritual intimacy and power through disciplined seeking',
-      num: '04',
     },
     {
-      icon: Gift,
+      num: '05',
       title: 'Understanding Kingdom Giving',
       description: 'Principles of stewardship, generosity, and financial blessing',
-      num: '05',
     },
     {
-      icon: Crown,
-      title: 'Understanding Kingdom',
-      description: 'Living as citizens of God\'s realm and under His sovereign rule',
       num: '06',
+      title: 'Understanding Kingdom',
+      description: "Living as citizens of God's realm and under His sovereign rule",
     },
     {
-      icon: Anchor,
+      num: '07',
       title: 'Dedication and Devotion to God',
       description: 'Consecrating your life and heart to the service of the Almighty',
-      num: '07',
     },
     {
-      icon: Zap,
-      title: 'The Holy Spirit and His Ministry in the Believer\'s Life',
-      description: 'The role and empowerment of the Spirit in the believer\'s life',
       num: '08',
+      title: "The Holy Spirit and His Ministry in the Believer's Life",
+      description: "The role and empowerment of the Spirit in the believer's life",
     },
-  ];
-
-  const coreValues = [
+  ],
+  coreValues: [
     {
       name: 'Christ-Centered Living',
       description: 'We uphold Jesus Christ as the foundation of our faith and the model for all discipleship.',
-      
     },
     {
       name: 'Biblical Truth',
       description: 'We are committed to teaching and applying the Word of God as the ultimate authority for life and doctrine.',
-      
     },
     {
       name: 'Spiritual Growth',
       description: 'We prioritize continuous growth in faith, character, and intimacy with God.',
-      
     },
     {
       name: 'Prayer and Devotion',
       description: 'We cultivate a lifestyle of prayer, fasting, and total dependence on God.',
-      
     },
     {
       name: 'Faith and Obedience',
-      description: 'We encourage believers to walk by faith and live in obedience to God\'s word.',
-      
+      description: "We encourage believers to walk by faith and live in obedience to God's word.",
     },
     {
       name: 'Kingdom Stewardship',
@@ -99,15 +109,90 @@ export default function SchoolOfDiscipleshipPage() {
     },
     {
       name: 'Empowerment by the Holy Spirit',
-      description: 'We emphasize the role of the Holy Spirit in guiding, empowering, and transforming the believer\'s life.',
-      
+      description: "We emphasize the role of the Holy Spirit in guiding, empowering, and transforming the believer's life.",
     },
     {
       name: 'Commitment to Discipleship',
       description: 'We are devoted to raising true disciples who disciple others.',
-      
     },
-  ];
+  ],
+};
+
+const normalizeLessons = (value: unknown) => {
+  if (!Array.isArray(value)) return null;
+  const lessons = value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const lesson = item as Record<string, unknown>;
+      if (typeof lesson.title !== 'string' || typeof lesson.description !== 'string') return null;
+
+      return {
+        num: typeof lesson.num === 'string' ? lesson.num : null,
+        title: lesson.title,
+        description: lesson.description,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  return lessons.length ? lessons : null;
+};
+
+const normalizeCoreValues = (value: unknown) => {
+  if (!Array.isArray(value)) return null;
+  const coreValues = value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const coreValue = item as Record<string, unknown>;
+      if (typeof coreValue.name !== 'string' || typeof coreValue.description !== 'string') return null;
+
+      return {
+        name: coreValue.name,
+        description: coreValue.description,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  return coreValues.length ? coreValues : null;
+};
+
+async function getDiscipleshipInfo(): Promise<SchoolInfo> {
+  try {
+    const response = await fetch(apiUrl('/api/schools/discipleship/info'), {
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      return discipleshipFallbackInfo;
+    }
+
+    const data = (await response.json().catch(() => null)) as Partial<SchoolInfo> | null;
+
+    return {
+      header: data?.header ?? discipleshipFallbackInfo.header,
+      motto: data?.motto ?? discipleshipFallbackInfo.motto,
+      about: data?.about ?? discipleshipFallbackInfo.about,
+      mission: data?.mission ?? discipleshipFallbackInfo.mission,
+      vision: data?.vision ?? discipleshipFallbackInfo.vision,
+      phone: data?.phone ?? discipleshipFallbackInfo.phone,
+      email: data?.email ?? discipleshipFallbackInfo.email,
+      address: data?.address ?? discipleshipFallbackInfo.address,
+      lessons: normalizeLessons(data?.lessons) ?? discipleshipFallbackInfo.lessons,
+      coreValues: normalizeCoreValues(data?.coreValues) ?? discipleshipFallbackInfo.coreValues,
+    };
+  } catch {
+    return discipleshipFallbackInfo;
+  }
+}
+
+export default async function SchoolOfDiscipleshipPage() {
+  const schoolInfo = await getDiscipleshipInfo();
+  const lessonIcons = [Sun, BookOpen, ShieldCheck, Flame, Gift, Crown, Anchor, Zap];
+  const courses = (schoolInfo.lessons ?? discipleshipFallbackInfo.lessons).map((course, index) => ({
+    ...course,
+    icon: lessonIcons[index % lessonIcons.length] || BookOpen,
+    num: course.num || String(index + 1).padStart(2, '0'),
+  }));
+  const coreValues = schoolInfo.coreValues ?? discipleshipFallbackInfo.coreValues;
 
   const keyDatesFallback: Array<[string, string]> = [
     ['Registration Starts', 'January 20, 2025'],
@@ -170,7 +255,7 @@ export default function SchoolOfDiscipleshipPage() {
         </p>
 
         <h1 className="relative text-white text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 font-serif drop-shadow-lg">
-          School of Discipleship
+          {schoolInfo.header || discipleshipFallbackInfo.header}
         </h1>
 
         <div className="flex items-center justify-center gap-3 mb-6 relative">
@@ -180,16 +265,16 @@ export default function SchoolOfDiscipleshipPage() {
         </div>
 
         <p className="relative text-white text-lg sm:text-xl italic font-serif max-w-lg mx-auto leading-relaxed mb-10 drop-shadow-md">
-          &quot;Rooted in Christ, Growing in Truth, Impacting the World&quot;
+          &quot;{schoolInfo.motto || discipleshipFallbackInfo.motto}&quot;
         </p>
 
         <div className="relative flex flex-wrap gap-3 justify-center">
-          <button 
-            onClick={scrollToEnrollment}
+          <a
+            href="#enrollment"
             className="border border-white/60 text-white text-xs font-bold tracking-[0.15em] uppercase px-8 py-3.5 hover:border-[#c9a84c] hover:text-[#c9a84c] transition-colors duration-200 bg-[#0d1f3c]/40 backdrop-blur-md"
           >
             Register Now
-          </button>
+          </a>
         </div>
       </section>
 
@@ -200,7 +285,7 @@ export default function SchoolOfDiscipleshipPage() {
             <div className="inline-flex items-center justify-center w-12 h-12 border border-[#c9a84c] text-[#c9a84c] text-xl mb-5">✦</div>
             <h2 className="text-[#0d1f3c] text-lg font-semibold font-serif mb-4 tracking-wide uppercase">Mission Statement</h2>
             <p className="text-slate-600 text-base leading-relaxed font-serif italic">
-              To equip and nurture believers through sound biblical teaching, spiritual formation, and practical dscipleship, empowering them to become mature followers of Jesus Christ who live out the mandate of bringing hope to the hopeless and life to the dying.
+              {schoolInfo.mission || discipleshipFallbackInfo.mission}
             </p>
           </div>
 
@@ -210,7 +295,7 @@ export default function SchoolOfDiscipleshipPage() {
             <div className="inline-flex items-center justify-center w-12 h-12 border border-[#c9a84c] text-[#c9a84c] text-xl mb-5">◈</div>
             <h2 className="text-[#0d1f3c] text-lg font-semibold font-serif mb-4 tracking-wide uppercase">Vision Statement</h2>
             <p className="text-slate-600 text-base leading-relaxed font-serif italic">
-              To raise a generation of deeply rooted, spiritually grounded, and kingdom-minded disciples who reflect the character of Christ and effectively impact their communities and the world.
+              {schoolInfo.vision || discipleshipFallbackInfo.vision}
             </p>
           </div>
         </div>
@@ -294,9 +379,9 @@ export default function SchoolOfDiscipleshipPage() {
 
           <div className="max-w-3xl mx-auto grid sm:grid-cols-3 gap-px bg-slate-200 shadow-2xl border border-[#c9a84c]/20">
             {[
-              { icon: '📞', label: 'Phone', lines: ['+265 999 045 869', '+265 992 603 608'] },
-              { icon: '✉', label: 'Email', lines: ['discipleship@piccworldwide.org'] },
-              { icon: '⊕', label: 'Location', lines: ['Pentecost International Christian Centre- PICC Along Kaunda Road, Near Best Oil Filling Station Area 49, Post Office Box 31841 Lilongwe 3 Malawi'] },
+              { icon: '📞', label: 'Phone', lines: [schoolInfo.phone || discipleshipFallbackInfo.phone].filter(Boolean) },
+              { icon: '✉', label: 'Email', lines: [schoolInfo.email || discipleshipFallbackInfo.email].filter(Boolean) },
+              { icon: '⊕', label: 'Location', lines: [schoolInfo.address || discipleshipFallbackInfo.address].filter(Boolean) },
             ].map(({ icon, label, lines }) => (
               <div key={label} className="bg-white/95 p-8 text-center hover:bg-white transition-colors duration-300">
                 <div className="inline-flex items-center justify-center w-14 h-14 border border-[#c9a84c] text-2xl mx-auto mb-4">
@@ -335,7 +420,7 @@ export default function SchoolOfDiscipleshipPage() {
       </section>
 
       {/* ── ENROLLMENT ── */}
-      <section ref={enrollmentRef} className="bg-white py-20 px-4">
+      <section id="enrollment" className="bg-white py-20 px-4">
         <div className="text-center mb-14">
           <span className={sectionLabelClass}>Enrollment 2025</span>
           <h2 className={`${sectionTitleClass} text-[#0d1f3c] font-serif`}>Course Registration</h2>
@@ -446,7 +531,7 @@ export default function SchoolOfDiscipleshipPage() {
       </section>
 
       <EventsCarousel
-        apiPath="/api/events?take=12&scope=discipleship"
+        apiPath="/api/schools/discipleship/events"
         eventsHref="/schools/discipleship/events"
         eventsLabel="View all class events"
         title="Growth & Equipping Events"
@@ -461,3 +546,4 @@ export default function SchoolOfDiscipleshipPage() {
     </div>
   );
 }
+
