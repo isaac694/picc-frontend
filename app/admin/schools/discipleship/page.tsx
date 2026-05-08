@@ -21,6 +21,10 @@ const discipleshipFallbackInfo = {
     'To equip and nurture believers through sound biblical teaching, spiritual formation, and practical dscipleship, empowering them to become mature followers of Jesus Christ who live out the mandate of bringing hope to the hopeless and life to the dying.',
   vision:
     'To raise a generation of deeply rooted, spiritually grounded, and kingdom-minded disciples who reflect the character of Christ and effectively impact their communities and the world.',
+  heroImageUrl: '/schools/discipleship/discipleship.jpeg',
+  logoImageUrl: '/schools/discipleship/logo.png',
+  missionImageUrl: '/schools/discipleship/lessons.jpeg',
+  coreValuesImageUrl: '/schools/discipleship/contact.jpeg',
   phone: '+265 999 045 869 / +265 992 603 608',
   email: 'discipleship@piccworldwide.org',
   address:
@@ -187,9 +191,13 @@ export default function DiscipleshipEnrollmentAdminPage() {
                 motto: 'Motto',
                 mission: 'Mission Statement',
                 vision: 'Vision Statement',
+                heroImageUrl: 'Hero Background Image',
+                logoImageUrl: 'School Logo Image',
+                missionImageUrl: 'Lessons Background Image',
+                coreValuesImageUrl: 'Contact Background Image',
               },
               editorDescription:
-                'Update the Discipleship page title, tagline, mission statement, vision statement, curriculum, core values, and contact details.',
+                'Update the Discipleship page title, tagline, mission statement, vision statement, curriculum, contact details, and the images used on the public page.',
               collectionEditors: {
                 lessons: {
                   label: 'Lessons',

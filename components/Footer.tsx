@@ -14,6 +14,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
   const prayerlineNumbers = ['+265 996 80 08 00', '+265 886 80 08 00'];
   const piccEmail = 'info@piccworldwide.org';
+  const piccPhone = '+265 992 433 333';
   const gmailHref = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(piccEmail)}`;
   const [showFaqs, setShowFaqs] = useState(false);
   const [email, setEmail] = useState('');
@@ -183,6 +184,15 @@ Malawi
                     rel="noreferrer"
                   >
                     {piccEmail}
+                  </a>
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Phone:</span>{' '}
+                  <a
+                    href={`tel:${piccPhone.replace(/\s/g, '')}`}
+                    className="hover:text-white underline underline-offset-4"
+                  >
+                    {piccPhone}
                   </a>
                 </p>
               </div>

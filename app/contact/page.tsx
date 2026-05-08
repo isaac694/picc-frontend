@@ -243,15 +243,15 @@ export default function ContactPage() {
                 </div>
                 <div className="mt-8 text-sm text-foreground/80">
                   <p>
-                    <span className="font-semibold text-foreground">PHONE:</span>{' '}
-                    <a href="tel:+265992433333" className="underline underline-offset-4">
-                      +265 992 433 333
-                    </a>
-                  </p>
-                  <p>
                     <span className="font-semibold text-foreground">EMAIL:</span>{' '}
                     <a href="mailto:info@piccworldwide.org" className="underline underline-offset-4">
                       info@piccworldwide.org
+                    </a>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-foreground">PHONE:</span>{' '}
+                    <a href="tel:+265992433333" className="underline underline-offset-4">
+                      +265 992 433 333
                     </a>
                   </p>
                 </div>

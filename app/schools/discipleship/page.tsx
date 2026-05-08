@@ -14,6 +14,10 @@ type SchoolInfo = {
   about: string | null;
   mission: string | null;
   vision: string | null;
+  heroImageUrl: string | null;
+  logoImageUrl: string | null;
+  missionImageUrl: string | null;
+  coreValuesImageUrl: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
@@ -36,6 +40,10 @@ const discipleshipFallbackInfo: SchoolInfo = {
     'To equip and nurture believers through sound biblical teaching, spiritual formation, and practical dscipleship, empowering them to become mature followers of Jesus Christ who live out the mandate of bringing hope to the hopeless and life to the dying.',
   vision:
     'To raise a generation of deeply rooted, spiritually grounded, and kingdom-minded disciples who reflect the character of Christ and effectively impact their communities and the world.',
+  heroImageUrl: '/schools/discipleship/discipleship.jpeg',
+  logoImageUrl: '/schools/discipleship/logo.png',
+  missionImageUrl: '/schools/discipleship/lessons.jpeg',
+  coreValuesImageUrl: '/schools/discipleship/contact.jpeg',
   phone: '+265 999 045 869 / +265 992 603 608',
   email: 'discipleship@piccworldwide.org',
   address:
@@ -173,6 +181,10 @@ async function getDiscipleshipInfo(): Promise<SchoolInfo> {
       about: data?.about ?? discipleshipFallbackInfo.about,
       mission: data?.mission ?? discipleshipFallbackInfo.mission,
       vision: data?.vision ?? discipleshipFallbackInfo.vision,
+      heroImageUrl: data?.heroImageUrl ?? discipleshipFallbackInfo.heroImageUrl,
+      logoImageUrl: data?.logoImageUrl ?? discipleshipFallbackInfo.logoImageUrl,
+      missionImageUrl: data?.missionImageUrl ?? discipleshipFallbackInfo.missionImageUrl,
+      coreValuesImageUrl: data?.coreValuesImageUrl ?? discipleshipFallbackInfo.coreValuesImageUrl,
       phone: data?.phone ?? discipleshipFallbackInfo.phone,
       email: data?.email ?? discipleshipFallbackInfo.email,
       address: data?.address ?? discipleshipFallbackInfo.address,
@@ -183,6 +195,14 @@ async function getDiscipleshipInfo(): Promise<SchoolInfo> {
     return discipleshipFallbackInfo;
   }
 }
+
+const resolveImageSrc = (value: string | null | undefined, fallback: string) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return fallback;
+  if (trimmed.startsWith('http')) return trimmed;
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  return trimmed;
+};
 
 export default async function SchoolOfDiscipleshipPage() {
   const schoolInfo = await getDiscipleshipInfo();
@@ -229,7 +249,7 @@ export default async function SchoolOfDiscipleshipPage() {
         {/* Background Image - Increased visibility */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60"
-          style={{ backgroundImage: 'url("/schools/discipleship/discipleship.jpeg")' }}
+          style={{ backgroundImage: `url("${resolveImageSrc(schoolInfo.heroImageUrl, discipleshipFallbackInfo.heroImageUrl || '/schools/discipleship/discipleship.jpeg')}")` }}
         />
       
         {/* Lighter Gradient Overlay */}
@@ -242,7 +262,7 @@ export default async function SchoolOfDiscipleshipPage() {
           <div className="absolute inset-1.5 rounded-full border border-[#c9a84c]/30" />
           <div className="relative w-full h-full rounded-full overflow-hidden flex items-center justify-center">
             <Image 
-              src="/schools/discipleship/logo.png" 
+              src={resolveImageSrc(schoolInfo.logoImageUrl, discipleshipFallbackInfo.logoImageUrl || '/schools/discipleship/logo.png')} 
               alt="School of Discipleship Logo" 
               fill
               className="object-contain p-2"
@@ -306,7 +326,7 @@ export default async function SchoolOfDiscipleshipPage() {
         {/* Background Image with significantly increased visibility */}
         <div 
           className="absolute inset-0 bg-cover bg-fixed bg-center bg-no-repeat opacity-40 grayscale-[20%]"
-          style={{ backgroundImage: 'url("/schools/discipleship/lessons.jpeg")' }}
+          style={{ backgroundImage: `url("${resolveImageSrc(schoolInfo.missionImageUrl, discipleshipFallbackInfo.missionImageUrl || '/schools/discipleship/lessons.jpeg')}")` }}
         />
         <div className="absolute inset-0 bg-white/40 pointer-events-none" />
 
@@ -366,7 +386,7 @@ export default async function SchoolOfDiscipleshipPage() {
         {/* Background Image with significantly increased visibility */}
         <div 
           className="absolute inset-0 bg-cover bg-fixed bg-center bg-no-repeat opacity-40 grayscale-[10%]"
-          style={{ backgroundImage: 'url("/schools/discipleship/contact.jpeg")' }}
+          style={{ backgroundImage: `url("${resolveImageSrc(schoolInfo.coreValuesImageUrl, discipleshipFallbackInfo.coreValuesImageUrl || '/schools/discipleship/contact.jpeg')}")` }}
         />
         <div className="absolute inset-0 bg-white/50 pointer-events-none" />
 

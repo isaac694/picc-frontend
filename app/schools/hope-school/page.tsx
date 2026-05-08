@@ -19,6 +19,9 @@ type SchoolInfo = {
   about: string | null;
   mission: string | null;
   vision: string | null;
+  heroImageUrl: string | null;
+  logoImageUrl: string | null;
+  missionImageUrl: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
@@ -37,6 +40,9 @@ To foster missionary interests and concern.`,
     'To provide leadership training and practical ministry equipping for believers who desire to serve Christ effectively in their local churches and communities.',
   vision:
     'To raise future leaders prepared for life, citizenship, and active Christian service, carrying vision, character, and missionary concern.',
+  heroImageUrl: '/schools/hope-school/hosom.jpeg',
+  logoImageUrl: '/schools/hope-school/logo.png',
+  missionImageUrl: '/schools/hope-school/modules.jpeg',
   phone: '+265 999 045 869 / +265 992 603 608',
   email: 'info@piccworldwide.org / hopeschool@piccworldwide.org',
   address:
@@ -61,6 +67,9 @@ async function getHopeSchoolInfo(): Promise<SchoolInfo> {
       about: data?.about ?? hopeSchoolFallbackInfo.about,
       mission: data?.mission ?? hopeSchoolFallbackInfo.mission,
       vision: data?.vision ?? hopeSchoolFallbackInfo.vision,
+      heroImageUrl: data?.heroImageUrl ?? hopeSchoolFallbackInfo.heroImageUrl,
+      logoImageUrl: data?.logoImageUrl ?? hopeSchoolFallbackInfo.logoImageUrl,
+      missionImageUrl: data?.missionImageUrl ?? hopeSchoolFallbackInfo.missionImageUrl,
       phone: data?.phone ?? hopeSchoolFallbackInfo.phone,
       email: data?.email ?? hopeSchoolFallbackInfo.email,
       address: data?.address ?? hopeSchoolFallbackInfo.address,
@@ -81,6 +90,14 @@ const splitContactValue = (value: string | null) =>
     .split(/\r?\n|\/+/)
     .map((line) => line.trim())
     .filter(Boolean);
+
+const resolveImageSrc = (value: string | null | undefined, fallback: string) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return fallback;
+  if (trimmed.startsWith('http')) return trimmed;
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  return trimmed;
+};
 
 export default async function HopeSchoolPage() {
   const schoolInfo = await getHopeSchoolInfo();
@@ -247,7 +264,7 @@ export default async function HopeSchoolPage() {
       <section className="relative bg-[#0d1f3c] overflow-hidden py-48 px-4 text-center">
         <div className="absolute inset-0 z-0">
           <Image
-            src="/schools/hope-school/hosom.jpeg"
+            src={resolveImageSrc(schoolInfo.heroImageUrl, hopeSchoolFallbackInfo.heroImageUrl || '/schools/hope-school/hosom.jpeg')}
             alt="Hope School Background"
             fill
             className="object-cover opacity-50"
@@ -262,7 +279,7 @@ export default async function HopeSchoolPage() {
         <div className="relative z-10 inline-flex items-center justify-center w-24 h-24 rounded-full border border-[#c9a84c] mb-6 bg-white/10 backdrop-blur-sm p-4">
           <div className="absolute inset-1.5 rounded-full border border-[#c9a84c]/30" />
           <Image
-            src="/schools/hope-school/logo.png"
+            src={resolveImageSrc(schoolInfo.logoImageUrl, hopeSchoolFallbackInfo.logoImageUrl || '/schools/hope-school/logo.png')}
             alt="Hope School Logo"
             width={64}
             height={64}
@@ -347,7 +364,7 @@ export default async function HopeSchoolPage() {
 
       <section className="relative py-12 px-4 overflow-hidden">
         <Image
-          src="/schools/hope-school/modules.jpeg"
+          src={resolveImageSrc(schoolInfo.missionImageUrl, hopeSchoolFallbackInfo.missionImageUrl || '/schools/hope-school/modules.jpeg')}
           alt="Modules Background"
           fill
           className="object-cover"

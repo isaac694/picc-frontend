@@ -26,6 +26,9 @@ To foster missionary interests and concern.`,
     'To provide leadership training and practical ministry equipping for believers who desire to serve Christ effectively in their local churches and communities.',
   vision:
     'To raise future leaders prepared for life, citizenship, and active Christian service, carrying vision, character, and missionary concern.',
+  heroImageUrl: '/schools/hope-school/hosom.jpeg',
+  logoImageUrl: '/schools/hope-school/logo.png',
+  missionImageUrl: '/schools/hope-school/modules.jpeg',
   phone: '+265 999 045 869 / +265 992 603 608',
   email: 'info@piccworldwide.org / hopeschool@piccworldwide.org',
   address:
@@ -109,6 +112,16 @@ export default function HopeSchoolEnrollmentAdminPage() {
             schoolKey="hope-school"
             schoolName="Hope School"
             fallbackInfo={hopeSchoolFallbackInfo}
+            config={{
+              hiddenFields: ['coreValuesImageUrl'],
+              labels: {
+                heroImageUrl: 'Hero Background Image',
+                logoImageUrl: 'School Logo Image',
+                missionImageUrl: 'Modules Background Image',
+              },
+              editorDescription:
+                'Update the Hope School page content and the images used on the public page.',
+            }}
           />
         )}
         {activeTab === 'news' && (

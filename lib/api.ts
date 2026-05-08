@@ -13,6 +13,10 @@ const resolveApiBaseUrl = () => {
     return normalize(process.env.NEXT_PUBLIC_API_BASE_URL);
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    return LOCAL_API_BASE_URL;
+  }
+
   return PROD_API_BASE_URL;
 };
 
