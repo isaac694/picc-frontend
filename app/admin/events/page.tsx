@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { Search } from 'lucide-react';
+import Image from 'next/image';
 
 type EventScope = 'general' | 'discipleship' | 'hope-school';
 
@@ -167,34 +168,38 @@ export default function EventsAdminPage() {
 
       const normalized: AdminEvent[] = list
         .filter(isRecord)
-        .map((event) => ({
-          id: typeof event.id === 'string' ? event.id : String(event.id ?? ''),
-          title: typeof event.title === 'string' ? event.title : '',
-          startDate:
-            event.startDate
-              ? String(event.startDate).slice(0, 10)
-              : event.date
-                ? String(event.date).slice(0, 10)
-                : '',
-          endDate:
-            event.endDate
-              ? String(event.endDate).slice(0, 10)
-              : event.date
-                ? String(event.date).slice(0, 10)
-                : '',
-          time: typeof event.time === 'string' ? event.time : '',
-          location: typeof event.location === 'string' ? event.location : '',
-          description: typeof event.description === 'string' ? event.description : '',
-          image:
+        .map((event) => {
+          const rawImage =
             typeof event.image === 'string'
               ? event.image
               : typeof event.imageUrl === 'string'
                 ? event.imageUrl
-                : '',
-          requiresRegistration: Boolean(event.requiresRegistration),
-          registrationEmail: typeof event.registrationEmail === 'string' ? event.registrationEmail : '',
-          scope: normalizeScope(event.scope),
-        }))
+                : '';
+
+          return {
+            id: typeof event.id === 'string' ? event.id : String(event.id ?? ''),
+            title: typeof event.title === 'string' ? event.title : '',
+            startDate:
+              event.startDate
+                ? String(event.startDate).slice(0, 10)
+                : event.date
+                  ? String(event.date).slice(0, 10)
+                  : '',
+            endDate:
+              event.endDate
+                ? String(event.endDate).slice(0, 10)
+                : event.date
+                  ? String(event.date).slice(0, 10)
+                  : '',
+            time: typeof event.time === 'string' ? event.time : '',
+            location: typeof event.location === 'string' ? event.location : '',
+            description: typeof event.description === 'string' ? event.description : '',
+            image: normalizeEventImageUrl(rawImage),
+            requiresRegistration: Boolean(event.requiresRegistration),
+            registrationEmail: typeof event.registrationEmail === 'string' ? event.registrationEmail : '',
+            scope: normalizeScope(event.scope),
+          };
+        })
         .filter((event) => Boolean(event.id));
 
       setEvents(normalized);
@@ -454,10 +459,16 @@ export default function EventsAdminPage() {
           ) : null}
           {eventDraft.image && (
             <div className="rounded-xl border border-border/60 bg-background p-3">
-              <div
-                className="h-32 rounded-lg bg-cover bg-center"
-                style={{ backgroundImage: `url(${eventDraft.image})` }}
-              />
+              <div className="relative h-32 overflow-hidden rounded-lg">
+                <Image
+                  src={eventDraft.image}
+                  alt={eventDraft.title ? `${eventDraft.title} event image` : 'Current event image'}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 520px"
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
               <p className="mt-2 text-xs text-foreground/60">
                 {uploadNames['event-draft'] ? `Selected: ${uploadNames['event-draft']}` : 'Current image'}
               </p>

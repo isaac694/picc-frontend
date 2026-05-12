@@ -347,7 +347,7 @@ export default function SchoolEventsManager({
               </label>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif,.avif"
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary"
                 onChange={async (e) => {
                   const input = e.currentTarget;

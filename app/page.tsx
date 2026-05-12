@@ -65,7 +65,7 @@ const MINISTRY_CARDS = [
   { title: 'Heritage Ministry', key: 'home-ministry-card-7', fallback: '/hero/hero-12-heritage.jpg', href: '/ministries/heritage-ministry' },
 ];
 
-const DEFAULT_SERVICES = [
+const DEFAULT_SEE_YOU_SERVICES = [
   {
     day: 'Tuesday',
     time: '5:30 PM - 7:30 PM',
@@ -115,6 +115,49 @@ type ServiceLike = {
   description?: string | null;
 };
 
+type SeeYouContent = {
+  title?: string | null;
+  subtitle?: string | null;
+  body?: string | null;
+  imageUrl?: string | null;
+};
+
+function parseSeeYouServices(body?: string | null): ServiceLike[] {
+  if (!body) return DEFAULT_SEE_YOU_SERVICES;
+
+  try {
+    const parsed = JSON.parse(body);
+    const services = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.services)
+        ? parsed.services
+        : [];
+
+    const normalized = services
+      .map((service: unknown, index: number) => {
+        if (!service || typeof service !== 'object') return null;
+        const item = service as Record<string, unknown>;
+        const day = typeof item.day === 'string' ? item.day : typeof item.dayOfWeek === 'string' ? item.dayOfWeek : '';
+        const title = typeof item.title === 'string' ? item.title : '';
+        const time = typeof item.time === 'string' ? item.time : '';
+
+        if (!day && !title && !time) return null;
+
+        return {
+          id: typeof item.id === 'string' || typeof item.id === 'number' ? item.id : `see-you-service-${index}`,
+          day,
+          title,
+          time,
+        };
+      })
+      .filter((service): service is ServiceLike => Boolean(service));
+
+    return normalized.length ? normalized : DEFAULT_SEE_YOU_SERVICES;
+  } catch {
+    return DEFAULT_SEE_YOU_SERVICES;
+  }
+}
+
 async function getDailyDevotion() {
   try {
     const response = await apiFetch('/api/devotions/latest', {
@@ -147,22 +190,10 @@ async function getDailyConfession() {
   }
 }
 
-async function getServices() {
-  try {
-    const response = await apiFetch('/api/services', {
-      next: { revalidate: 300 },
-    });
-    if (!response.ok) return [];
-    return response.json();
-  } catch {
-    return [];
-  }
-}
-
-async function getSeeYouInChurch() {
+async function getSeeYouInChurch(): Promise<SeeYouContent | null> {
   try {
     const response = await apiFetch('/api/site-content/see-you-in-church', {
-      next: { revalidate: 300 },
+      cache: 'no-store',
     });
     if (!response.ok) return null;
     return response.json();
@@ -233,9 +264,12 @@ async function getHomeVerse() {
 }
 
 function normalizeImageUrl(url?: string | null) {
-  if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return apiUrl(url);
+  const trimmed = url?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('http')) return trimmed;
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  if (trimmed === '/home/see-you-in-church.jpg') return '/home/see-you-in-church.JPG';
+  return trimmed;
 }
 
 function isLocalUpstreamImage(url?: string | null) {
@@ -254,10 +288,9 @@ export default async function HomePage() {
     'home-livestream-bg',
   ];
 
-  const [devotion, confession, services, seeYouInChurch, quoteOfMonth, siteImages, homeVerse] = await Promise.all([
+  const [devotion, confession, seeYouInChurch, quoteOfMonth, siteImages, homeVerse] = await Promise.all([
     getDailyDevotion(),
     getDailyConfession(),
-    getServices(),
     getSeeYouInChurch(),
     getQuoteOfMonth(),
     getSiteImages(imageKeys),
@@ -265,7 +298,8 @@ export default async function HomePage() {
   ]);
 
   const seeYouBg =
-    normalizeImageUrl(seeYouInChurch?.imageUrl) ?? '/home/see-you-in-church.jpg';
+    normalizeImageUrl(seeYouInChurch?.imageUrl) ?? '/home/see-you-in-church.JPG';
+  const seeYouServices = parseSeeYouServices(seeYouInChurch?.body);
   const devotionDate = devotion?.publishAt
     ? new Intl.DateTimeFormat('en-US', {
       month: 'long',
@@ -717,7 +751,7 @@ export default async function HomePage() {
                 </div>
 
                 <div className="mt-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 text-left">
-                  {(services?.length ? services : DEFAULT_SERVICES).map((program: ServiceLike) => {
+                  {seeYouServices.map((program: ServiceLike) => {
                     const time = program.startTime
                       ? program.endTime
                         ? `${program.startTime} - ${program.endTime}`
