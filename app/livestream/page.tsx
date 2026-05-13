@@ -92,9 +92,10 @@ type YouTubeIframeApi = {
 };
 
 const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
+const YOUTH_CHURCH_CHANNEL_ID = "UC_aXxxQF62jKWRK3xjzOZPg";
 const RELATED_CHANNEL_IDS = [
   "UC8JUC-G4wKhrrPr7xjxYWJw",
-  "UC_aXxxQF62jKWRK3xjzOZPg",
+  YOUTH_CHURCH_CHANNEL_ID,
   "UC6auo8Q1xb5cgyY_pGJbfdw",
 ];
 const FALLBACK_HERO_ID = "ydTADwZRquA";
