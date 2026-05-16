@@ -5,7 +5,6 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
-import ServiceTimesManager from '@/components/admin/ServiceTimesManager';
 
 type SiteContentRecord = {
   key: string;
@@ -151,7 +150,7 @@ export default function ContactPageAdmin() {
             Contact Page
           </h1>
           <p className="text-foreground/70 mt-3 max-w-2xl">
-            Update the images and service times shown on the public contact page.
+            Update the images shown on the public contact page.
           </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
@@ -198,7 +197,7 @@ export default function ContactPageAdmin() {
                 <div className="mt-4 space-y-3">
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.heic,.heif,.avif"
                     onChange={async (event) => {
                       const file = event.target.files?.[0];
                       if (!file) return;
@@ -232,16 +231,6 @@ export default function ContactPageAdmin() {
           })}
         </div>
       </div>
-
-      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-2">
-        <h2 className="text-xl font-semibold text-foreground">Service Times</h2>
-        <p className="text-sm text-foreground/60">
-          These entries also power the service times section on the homepage.
-        </p>
-      </div>
-
-      <ServiceTimesManager token={token} compact />
     </div>
   );
 }
-

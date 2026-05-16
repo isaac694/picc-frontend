@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { Search } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
@@ -42,6 +43,8 @@ export default function LiveChatAdminPage() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoadingThreads, setIsLoadingThreads] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const youTubeApiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
@@ -74,6 +77,21 @@ export default function LiveChatAdminPage() {
     () => threads.find((thread) => thread.videoId === selectedVideoId) || null,
     [threads, selectedVideoId]
   );
+
+  const filteredThreads = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return threads;
+
+    return threads.filter((thread) => {
+      const title = displayThreadTitle(thread).toLowerCase();
+      const date = formatDateTime(thread.lastMessageAt).toLowerCase();
+      return title.includes(query) || date.includes(query);
+    });
+  }, [threads, searchQuery]);
+
+  const handleSearch = () => {
+    setSearchQuery(searchInput);
+  };
 
   const readResponseDetail = async (response: Response) => {
     try {
@@ -303,19 +321,52 @@ export default function LiveChatAdminPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
           <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">
-                Streams
-              </h2>
-              <Button variant="outline" size="sm" onClick={refreshThreads} disabled={isLoadingThreads}>
-                {isLoadingThreads ? 'Refreshing...' : 'Refresh'}
-              </Button>
+            <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Streams
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={refreshThreads} disabled={isLoadingThreads}>
+                  {isLoadingThreads ? 'Refreshing...' : 'Refresh'}
+                </Button>
+              </div>
+            </div>
+            <div className="mb-4 space-y-2">
+              <label htmlFor="livechat-search" className="sr-only">
+                Search streams by title or date
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/50" />
+                  <input
+                    id="livechat-search"
+                    type="search"
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        handleSearch();
+                      }
+                    }}
+                    placeholder="title or date"
+                    className="w-full rounded-xl border border-border/60 bg-background py-3 pl-11 pr-4 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <Button variant="secondary" size="sm" onClick={handleSearch}>
+                  Search
+                </Button>
+              </div>
             </div>
             {threads.length === 0 ? (
               <p className="text-sm text-foreground/60">No chat threads yet.</p>
+            ) : filteredThreads.length === 0 ? (
+              <p className="text-sm text-foreground/60">No chat threads match your search.</p>
             ) : (
               <div className="space-y-3">
-                {threads.map((thread) => (
+                {filteredThreads.map((thread) => (
                   <button
                     key={thread.videoId}
                     type="button"

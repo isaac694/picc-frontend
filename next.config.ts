@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     workerThreads: true,
   },
   images: {
+    // Next blocks proxying to private IPs by default; allow it for local dev when your API base is localhost.
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       {
         protocol: apiProtocol,
@@ -36,6 +38,11 @@ const nextConfig: NextConfig = {
         protocol: "http",
         hostname: "127.0.0.1",
         port: "5000",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "i.ytimg.com",
         pathname: "/**",
       },
     ],

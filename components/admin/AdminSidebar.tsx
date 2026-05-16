@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
 import { Moon, Sun, Users } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { ADMIN_PAGE, canAccessAdminPage } from '@/lib/admin-pages';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useAdminTheme } from '@/hooks/use-admin-theme';
+import type { AdminPageKey } from '@/lib/admin-pages';
 
 type NavItem = {
   label: string;
   href: string;
-  pageKey?: string;
+  pageKey?: AdminPageKey;
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -21,7 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'See You in Church', href: '/admin/see-you-in-church', pageKey: ADMIN_PAGE.SEE_YOU_IN_CHURCH },
   { label: 'Services', href: '/admin/services', pageKey: ADMIN_PAGE.SERVICES },
   { label: 'Events', href: '/admin/events', pageKey: ADMIN_PAGE.EVENTS },
-  { label: 'Quote of the Month', href: '/admin/quote-of-month', pageKey: ADMIN_PAGE.QUOTE_OF_MONTH },
+  { label: 'Qoutes', href: '/admin/quote-of-month', pageKey: ADMIN_PAGE.QUOTE_OF_MONTH },
   { label: 'Homepage Images', href: '/admin/page-images', pageKey: ADMIN_PAGE.PAGE_IMAGES },
   { label: 'FAQ (Footer)', href: '/admin/faqs', pageKey: ADMIN_PAGE.FAQS },
   { label: 'Hope School', href: '/admin/schools/hope-school', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT },
@@ -47,6 +48,7 @@ const MINISTRIES_ITEMS: NavItem[] = [
   { label: 'Youth Church', href: '/admin/ministries/youth-church' },
   { label: 'Women of Hope', href: '/admin/ministries/women-of-hope' },
   { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman' },
+  { label: 'Rivers of Hope', href: '/admin/ministries/rivers-of-hope' },
   { label: 'Hope and Beauty', href: '/admin/ministries/hope-and-beauty' },
   { label: 'Heritage', href: '/admin/ministries/heritage' },
 ];
@@ -59,18 +61,13 @@ const ARCHIVE_ITEMS: NavItem[] = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const { mounted, isDark, setTheme } = useAdminTheme();
   const { user } = useAdminAuth();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const isActive = (href: string) =>
     href === '/admin' ? pathname === href : pathname?.startsWith(href);
 
-  const isDark = mounted && resolvedTheme === 'dark';
+  const showThemeToggle = mounted;
 
   const filtered = useMemo(() => {
     const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -88,7 +85,7 @@ export default function AdminSidebar() {
 
     const canSee = (item: NavItem) => {
       if (!item.pageKey) return true;
-      return canAccessAdminPage(user, item.pageKey as any);
+      return canAccessAdminPage(user, item.pageKey);
     };
 
     const nav = NAV_ITEMS.filter(canSee);
@@ -115,6 +112,7 @@ export default function AdminSidebar() {
           onClick={() => setTheme(isDark ? 'light' : 'dark')}
           className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-foreground/70 hover:text-foreground hover:bg-muted transition"
           aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+          disabled={!showThemeToggle}
         >
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           <span className="hidden sm:inline">{isDark ? 'Light' : 'Dark'}</span>

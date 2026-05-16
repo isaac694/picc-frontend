@@ -9,6 +9,7 @@ import { apiFetch, apiUrl } from '@/lib/api';
 
 // Extract YouTube video ID from a URL (handles ?v=, /embed/, youtu.be, and &t= timestamps)
 function getYouTubeId(url: string): string {
+  if (!url) return '';
   const match = url.match(
     /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
   );
@@ -17,6 +18,7 @@ function getYouTubeId(url: string): string {
 
 // Extract start time (seconds) from a YouTube URL's &t= parameter
 function getYouTubeStart(url: string): number {
+  if (!url) return 0;
   const match = url.match(/[?&]t=(\d+)s?/);
   return match ? parseInt(match[1], 10) : 0;
 }
@@ -32,6 +34,7 @@ interface Sermon {
 }
 
 const SERMON_AUDIO = '/audio/sermon-audio.mp3';
+const FALLBACK_SERMON_IMAGE = '/sermons/header.JPG';
 
 const SERMONS = [
   {
@@ -98,10 +101,38 @@ export default function SermonsPage() {
   const [headerImage, setHeaderImage] = useState('/sermons/header.JPG');
   const [loading, setLoading] = useState(true);
 
-  const normalizeImageUrl = (url?: string | null) => {
-    if (!url) return '';
-    if (url.startsWith('http')) return url;
-    return apiUrl(url);
+  const normalizeAssetUrl = (url?: string | null): string | undefined => {
+    const trimmed = typeof url === 'string' ? url.trim() : '';
+    if (!trimmed) return undefined;
+    if (trimmed.startsWith('http')) return trimmed;
+    // Treat absolute paths as local `public/` assets.
+    if (trimmed.startsWith('/')) return trimmed;
+    // Otherwise treat as backend-hosted path.
+    return apiUrl(`/${trimmed}`);
+  };
+
+  const normalizeSermon = (value: unknown): Sermon | null => {
+    if (!value || typeof value !== 'object') return null;
+    const record = value as Record<string, unknown>;
+
+    const idRaw = record.id;
+    const id = typeof idRaw === 'number' ? idRaw : Number(idRaw);
+    if (!Number.isFinite(id)) return null;
+
+    const title = typeof record.title === 'string' && record.title.trim() ? record.title.trim() : 'Untitled sermon';
+    const date = typeof record.date === 'string' && record.date.trim() ? record.date.trim() : '';
+    const views = typeof record.views === 'string' && record.views.trim() ? record.views.trim() : '0';
+
+    const youtubeUrl =
+      typeof record.youtubeUrl === 'string' && record.youtubeUrl.trim() ? record.youtubeUrl.trim() : '';
+
+    const image =
+      typeof record.image === 'string' && record.image.trim() ? record.image.trim() : FALLBACK_SERMON_IMAGE;
+
+    const audioSrc =
+      typeof record.audioSrc === 'string' && record.audioSrc.trim() ? record.audioSrc.trim() : SERMON_AUDIO;
+
+    return { id, title, date, image, views, youtubeUrl, audioSrc };
   };
 
   useEffect(() => {
@@ -111,7 +142,16 @@ export default function SermonsPage() {
         const sermonsResponse = await apiFetch('/api/sermons');
         if (sermonsResponse.ok) {
           const sermonsData = await sermonsResponse.json();
-          setSermons(sermonsData);
+          // The API returns { sermons: [...], total, skip, take } or just [...]
+          if (Array.isArray(sermonsData)) {
+            const normalized = sermonsData.map(normalizeSermon).filter(Boolean) as Sermon[];
+            setSermons(normalized.length ? normalized : SERMONS);
+          } else if (sermonsData && Array.isArray(sermonsData.sermons)) {
+            const normalized = sermonsData.sermons.map(normalizeSermon).filter(Boolean) as Sermon[];
+            setSermons(normalized.length ? normalized : SERMONS);
+          } else {
+            setSermons(SERMONS);
+          }
         } else {
           // Fallback to static data if API fails
           setSermons(SERMONS);
@@ -121,9 +161,8 @@ export default function SermonsPage() {
         const headerResponse = await apiFetch('/api/site-content/sermons-header-image');
         if (headerResponse.ok) {
           const headerData = await headerResponse.json();
-          if (headerData.imageUrl) {
-            setHeaderImage(normalizeImageUrl(headerData.imageUrl));
-          }
+          const resolvedHeader = normalizeAssetUrl(headerData.imageUrl);
+          if (resolvedHeader) setHeaderImage(resolvedHeader);
         }
       } catch (error) {
         // Fallback to static data if API fails
@@ -135,12 +174,6 @@ export default function SermonsPage() {
 
     fetchSermonsData();
   }, []);
-
-  useEffect(() => {
-    if (!selectedSermon) return;
-    setIsPlaying(false); // reset player when a new sermon is selected
-    selectedSermonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [selectedSermon]);
 
   useEffect(() => {
     if (!selectedSermon) return;
@@ -202,7 +235,7 @@ export default function SermonsPage() {
                     /* Thumbnail with play button overlay */
                     <>
                       <Image
-                        src={normalizeImageUrl(selectedSermon.image)}
+                        src={normalizeAssetUrl(selectedSermon.image) ?? FALLBACK_SERMON_IMAGE}
                         alt={selectedSermon.title}
                         fill
                         className="object-cover"
@@ -237,7 +270,7 @@ export default function SermonsPage() {
                     key={selectedSermon.id}
                     controls
                     className="w-full rounded-full"
-                    src={normalizeImageUrl(selectedSermon.audioSrc)}
+                    src={normalizeAssetUrl(selectedSermon.audioSrc)}
                   >
                     Your browser does not support the audio element.
                   </audio>
@@ -253,7 +286,6 @@ export default function SermonsPage() {
                       Play Sermon
                     </button>
                   )}
-                  <span className="text-sm text-white/80">{selectedSermon.views} views</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -281,9 +313,9 @@ export default function SermonsPage() {
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="max-w-3xl mt-24 md:mt-32">
                 <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3">
-                  <a href="/" className="hover:text-white">Home</a>
+                  <Link href="/" className="hover:text-white">Home</Link>
                   <span className="text-white/50">/</span>
-                  <a href="/sermons" className="hover:text-white">Sermons</a>
+                  <Link href="/sermons" className="hover:text-white">Sermons</Link>
                 </div>
                 <h1 className="text-4xl md:text-6xl font-semibold mb-4">Latest Sermons</h1>
               </div>
@@ -304,12 +336,19 @@ export default function SermonsPage() {
                       className="relative aspect-[16/10] w-full text-left"
                       aria-label={`Watch sermon: ${sermon.title}`}
                     >
-                      <Image
-                        src={normalizeImageUrl(sermon.image)}
-                        alt={sermon.title}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                      />
+                      {(() => {
+                        const src = normalizeAssetUrl(sermon.image) ?? FALLBACK_SERMON_IMAGE;
+                        return src ? (
+                          <Image
+                            src={src}
+                            alt={sermon.title}
+                            fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-muted" aria-hidden="true" />
+                        );
+                      })()}
                       {/* Thumbnail overlay with play icon */}
                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <span className="flex items-center justify-center w-14 h-14 rounded-full bg-white/25 backdrop-blur-sm border border-white/50">
@@ -336,7 +375,6 @@ export default function SermonsPage() {
                       <span className="inline-flex items-center justify-center rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-semibold">
                         PLAY
                       </span>
-                      <span>{sermon.views}</span>
                     </div>
                   </div>
                 </article>

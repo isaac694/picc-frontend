@@ -3,21 +3,112 @@ import Footer from '@/components/Footer';
 import EventsCarousel from '@/components/EventsCarousel';
 import HopeSchoolNewsSection from '@/components/schools/HopeSchoolNewsSection';
 import HopeSchoolRegistrationForm from '@/components/schools/HopeSchoolRegistrationForm';
+import SchoolKeyDatesList from '@/components/schools/SchoolKeyDatesList';
+import { apiUrl } from '@/lib/api';
 import Image from 'next/image';
-import { BookOpen, Building2, Compass, Crown, GraduationCap, Lightbulb, Target, Users } from 'lucide-react';
+import Link from 'next/link';
+import { BookOpen, Building2, Compass, Crown, GraduationCap, Lightbulb, LogIn, Mail, MapPin, Phone, Sparkles, Target, UserPlus, Users } from 'lucide-react';
 
 export const metadata = {
   title: 'Hope School - Leadership Training & Ministry Equipping',
   description: 'Leadership training and practical equipping for effective Christian service',
 };
 
-export default function HopeSchoolPage() {
-  const aims = [
-    'To provide general leadership training in preparing future leaders for life, citizenship, and active Christian service.',
-    'To provide training and practical experience for believers who desire to be equipped for effective service to Christ and in their local churches.',
-    'To provide relevant instruction to believers in their fields of ministry that will enable them to gain skills and abilities necessary for effective ministry.',
-    'To foster missionary interests and concern.',
-  ];
+type SchoolInfo = {
+  header: string | null;
+  motto: string | null;
+  about: string | null;
+  mission: string | null;
+  vision: string | null;
+  heroImageUrl: string | null;
+  logoImageUrl: string | null;
+  missionImageUrl: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+};
+
+const hopeSchoolFallbackInfo: SchoolInfo = {
+  header: 'Hope School of Ministry',
+  motto: 'Raising a New Generation of Leaders with Global Influence',
+  about: `Hope School exists to equip believers with leadership training, practical ministry skills, and a heart for mission.
+
+To provide general leadership training in preparing future leaders for life, citizenship, and active Christian service.
+To provide training and practical experience for believers who desire to be equipped for effective service to Christ and in their local churches.
+To provide relevant instruction to believers in their fields of ministry that will enable them to gain skills and abilities necessary for effective ministry.
+To foster missionary interests and concern.`,
+  mission:
+    'To provide leadership training and practical ministry equipping for believers who desire to serve Christ effectively in their local churches and communities.',
+  vision:
+    'To raise future leaders prepared for life, citizenship, and active Christian service, carrying vision, character, and missionary concern.',
+  heroImageUrl: '/schools/hope-school/hosom.jpeg',
+  logoImageUrl: '/schools/hope-school/logo.png',
+  missionImageUrl: '/schools/hope-school/modules.jpeg',
+  phone: '+265 999 045 869 / +265 992 603 608',
+  email: 'info@piccworldwide.org / hopeschool@piccworldwide.org',
+  address:
+    'Pentecost International Christian Centre- PICC Along Kaunda Road, Near Best Oil Filling Station Area 49, Post Office Box 31841 Lilongwe 3 Malawi',
+};
+
+async function getHopeSchoolInfo(): Promise<SchoolInfo> {
+  try {
+    const response = await fetch(apiUrl('/api/schools/hope-school/info'), {
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      return hopeSchoolFallbackInfo;
+    }
+
+    const data = (await response.json().catch(() => null)) as Partial<SchoolInfo> | null;
+
+    return {
+      header: data?.header ?? hopeSchoolFallbackInfo.header,
+      motto: data?.motto ?? hopeSchoolFallbackInfo.motto,
+      about: data?.about ?? hopeSchoolFallbackInfo.about,
+      mission: data?.mission ?? hopeSchoolFallbackInfo.mission,
+      vision: data?.vision ?? hopeSchoolFallbackInfo.vision,
+      heroImageUrl: data?.heroImageUrl ?? hopeSchoolFallbackInfo.heroImageUrl,
+      logoImageUrl: data?.logoImageUrl ?? hopeSchoolFallbackInfo.logoImageUrl,
+      missionImageUrl: data?.missionImageUrl ?? hopeSchoolFallbackInfo.missionImageUrl,
+      phone: data?.phone ?? hopeSchoolFallbackInfo.phone,
+      email: data?.email ?? hopeSchoolFallbackInfo.email,
+      address: data?.address ?? hopeSchoolFallbackInfo.address,
+    };
+  } catch {
+    return hopeSchoolFallbackInfo;
+  }
+}
+
+const splitLines = (value: string | null) =>
+  (value || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+const splitContactValue = (value: string | null) =>
+  (value || '')
+    .split(/\r?\n|\/+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+const resolveImageSrc = (value: string | null | undefined, fallback: string) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return fallback;
+  if (trimmed.startsWith('http')) return trimmed;
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  return trimmed;
+};
+
+export default async function HopeSchoolPage() {
+  const schoolInfo = await getHopeSchoolInfo();
+  const aboutLines = splitLines(schoolInfo.about);
+  const fallbackAboutLines = splitLines(hopeSchoolFallbackInfo.about);
+  const introText = aboutLines[0] || fallbackAboutLines[0] || '';
+  const aims = aboutLines.length > 1 ? aboutLines.slice(1) : fallbackAboutLines.slice(1);
+  const phoneLines = splitContactValue(schoolInfo.phone);
+  const emailLines = splitContactValue(schoolInfo.email);
+  const addressLines = splitContactValue(schoolInfo.address);
 
   const modules = [
     {
@@ -35,7 +126,7 @@ export default function HopeSchoolPage() {
     {
       icon: Target,
       title: 'The character of a leader',
-      description: 'Integrity, humility, and consistency—the inner life that sustains ministry.',
+      description: 'Integrity, humility, and consistency-the inner life that sustains ministry.',
       num: '03',
     },
     {
@@ -77,7 +168,7 @@ export default function HopeSchoolPage() {
     {
       icon: Users,
       title: 'Loyalty in Ministry',
-      description: 'Faithfulness, honor, and unity—serving with a loyal spirit.',
+      description: 'Faithfulness, honor, and unity-serving with a loyal spirit.',
       num: '10',
     },
     {
@@ -89,7 +180,7 @@ export default function HopeSchoolPage() {
     {
       icon: BookOpen,
       title: 'The Holy Spirit',
-      description: 'Understanding the Spirit’s work, empowerment, and guidance in ministry.',
+      description: 'Understanding the Spirit\'s work, empowerment, and guidance in ministry.',
       num: '12',
     },
     {
@@ -142,32 +233,13 @@ export default function HopeSchoolPage() {
     },
   ];
 
-  const tracks = [
-    {
-      name: 'Leadership Development',
-      description: 'Character, vision, discipline, and excellence for responsible leadership.',
-      level: 'Leadership',
-    },
-    {
-      name: 'Ministry & Administration',
-      description: 'Practical skills for ministry service, management, and church operations.',
-      level: 'Ministry',
-    },
-    {
-      name: 'Mission & Evangelism',
-      description: 'Evangelism practice and missionary concern for reaching people effectively.',
-      level: 'Mission',
-    },
-  ];
-
-  const importantDates = [
+  const keyDatesFallback: Array<[string, string]> = [
     ['Registration Opens', 'March 15, 2025'],
     ['Registration Deadline', 'April 30, 2025'],
     ['Cohort 1 Starts', 'May 4, 2025'],
     ['Cohort 1 Ends', 'July 27, 2025'],
     ['Cohort 2 Registration', 'August 17, 2025'],
   ];
-
 
   const inputClass =
     'w-full px-4 py-2.5 border border-slate-200 bg-stone-50 text-sm text-[#0d1f3c] outline-none focus:border-[#c9a84c] focus:bg-white focus:ring-2 focus:ring-[#c9a84c]/10 transition-all placeholder:text-slate-300';
@@ -190,12 +262,10 @@ export default function HopeSchoolPage() {
     <div className="flex flex-col min-h-screen bg-stone-50">
       <Navigation />
 
-      {/* ── HERO ── */}
       <section className="relative bg-[#0d1f3c] overflow-hidden py-48 px-4 text-center">
-        {/* Background Image */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/schools/hope-school/hosom.jpeg"
+            src={resolveImageSrc(schoolInfo.heroImageUrl, hopeSchoolFallbackInfo.heroImageUrl || '/schools/hope-school/hosom.jpeg')}
             alt="Hope School Background"
             fill
             className="object-cover opacity-50"
@@ -203,17 +273,17 @@ export default function HopeSchoolPage() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f3c]/60 via-[#0d1f3c]/40 to-[#0d1f3c]/70" />
         </div>
-        
+
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(201,168,76,0.18),transparent)] pointer-events-none" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-16 bg-gradient-to-b from-transparent to-[#c9a84c] z-10" />
 
         <div className="relative z-10 inline-flex items-center justify-center w-24 h-24 rounded-full border border-[#c9a84c] mb-6 bg-white/10 backdrop-blur-sm p-4">
           <div className="absolute inset-1.5 rounded-full border border-[#c9a84c]/30" />
-          <Image 
-            src="/schools/hope-school/logo.png" 
-            alt="Hope School Logo" 
-            width={64} 
-            height={64} 
+          <Image
+            src={resolveImageSrc(schoolInfo.logoImageUrl, hopeSchoolFallbackInfo.logoImageUrl || '/schools/hope-school/logo.png')}
+            alt="Hope School Logo"
+            width={64}
+            height={64}
             className="object-contain"
           />
         </div>
@@ -223,7 +293,7 @@ export default function HopeSchoolPage() {
         </p>
 
         <h1 className="relative z-10 text-white text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 font-serif">
-          Hope School Ministry
+          {schoolInfo.header || hopeSchoolFallbackInfo.header}
         </h1>
 
         <div className="flex items-center justify-center gap-3 mb-6 relative z-10">
@@ -233,7 +303,7 @@ export default function HopeSchoolPage() {
         </div>
 
         <p className="relative z-10 text-white/70 text-lg sm:text-xl italic font-serif max-w-lg mx-auto leading-relaxed mb-10">
-          &quot;Raising a New Generation of Leaders with Global Influence&quot;
+          &quot;{schoolInfo.motto || hopeSchoolFallbackInfo.motto}&quot;
         </p>
 
         <div className="relative z-10 flex flex-wrap gap-3 justify-center">
@@ -245,14 +315,13 @@ export default function HopeSchoolPage() {
         </div>
       </section>
 
-      {/* ── AIMS ── */}
       <section className="bg-stone-50 py-20 px-4">
         <div className="text-center mb-14">
           <span className={sectionLabelClass}>Purpose</span>
           <h2 className={`${sectionTitleClass} text-[#0d1f3c] font-serif`}>Aims</h2>
           {dividerEl}
           <p className="mt-5 text-slate-600 text-base leading-relaxed font-serif max-w-3xl mx-auto">
-            Hope School exists to equip believers with leadership training, practical ministry skills, and a heart for mission.
+            {introText}
           </p>
         </div>
 
@@ -268,33 +337,35 @@ export default function HopeSchoolPage() {
         </div>
       </section>
 
-      {/* ── MISSION & VISION ── */}
       <section className="bg-[#0d1f3c] py-24 px-4">
         <div className="max-w-4xl mx-auto grid md:grid-cols-[1fr_1px_1fr]">
           <div className="text-center px-8 py-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 border border-[#c9a84c] text-[#c9a84c] text-xl mb-5">✦</div>
+            <div className="inline-flex items-center justify-center w-12 h-12 border border-[#c9a84c] text-[#c9a84c] text-xl mb-5">
+              <Sparkles size={18} />
+            </div>
             <h2 className="text-white text-lg font-semibold font-serif mb-4 tracking-wide uppercase">Our Mission</h2>
             <p className="text-white/70 text-base leading-relaxed font-serif italic">
-              To provide leadership training and practical ministry equipping for believers who desire to serve Christ effectively in their local churches and communities.
+              {schoolInfo.mission || hopeSchoolFallbackInfo.mission}
             </p>
           </div>
 
           <div className="hidden md:block bg-[#c9a84c]/20 my-4" />
 
           <div className="text-center px-8 py-6 border-t border-[#c9a84c]/10 md:border-t-0">
-            <div className="inline-flex items-center justify-center w-12 h-12 border border-[#c9a84c] text-[#c9a84c] text-xl mb-5">◈</div>
+            <div className="inline-flex items-center justify-center w-12 h-12 border border-[#c9a84c] text-[#c9a84c] text-xl mb-5">
+              <Compass size={18} />
+            </div>
             <h2 className="text-white text-lg font-semibold font-serif mb-4 tracking-wide uppercase">Our Vision</h2>
             <p className="text-white/70 text-base leading-relaxed font-serif italic">
-              To raise future leaders prepared for life, citizenship, and active Christian service—carrying vision, character, and missionary concern.
+              {schoolInfo.vision || hopeSchoolFallbackInfo.vision}
             </p>
           </div>
         </div>
       </section>
 
-      {/* ── MODULES ── */}
       <section className="relative py-12 px-4 overflow-hidden">
         <Image
-          src="/schools/hope-school/modules.jpeg"
+          src={resolveImageSrc(schoolInfo.missionImageUrl, hopeSchoolFallbackInfo.missionImageUrl || '/schools/hope-school/modules.jpeg')}
           alt="Modules Background"
           fill
           className="object-cover"
@@ -331,41 +402,91 @@ export default function HopeSchoolPage() {
         </div>
       </section>
 
-      {/* ── CONTACT ── */}
+      <section className="bg-stone-50 py-20 px-4">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-10 items-center">
+          <div>
+            <span className={sectionLabelClass}>Online Learning</span>
+            <h2 className={`${sectionTitleClass} text-[#0d1f3c] font-serif`}>Join Hope School Online Classes</h2>
+            <div className="flex items-center gap-3 mt-4 mb-6">
+              <span className="block w-10 h-px bg-[#c9a84c] opacity-50" />
+              <span className="block w-1.5 h-1.5 bg-[#c9a84c] rotate-45" />
+              <span className="block w-10 h-px bg-[#c9a84c] opacity-50" />
+            </div>
+            <p className="text-slate-600 text-base leading-relaxed font-serif max-w-xl">
+              Access online classes, register as a new learner, or log in to continue with your Hope School coursework.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Link
+              href="/schools/hope-school/online-classes?mode=register"
+              className="group border border-[#c9a84c]/40 bg-white p-7 shadow-sm transition-all hover:-translate-y-1 hover:border-[#c9a84c] hover:shadow-md"
+            >
+              <div className="mb-5 inline-flex h-12 w-12 items-center justify-center border border-[#c9a84c] text-[#c9a84c] transition-colors group-hover:bg-[#c9a84c] group-hover:text-[#0d1f3c]">
+                <UserPlus size={20} />
+              </div>
+              <h3 className="font-serif text-xl font-bold text-[#0d1f3c]">Register</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Create your online class access and begin the enrollment flow.
+              </p>
+              <span className="mt-6 inline-flex text-xs font-bold uppercase tracking-[0.15em] text-[#0d1f3c]">
+                Start registration
+              </span>
+            </Link>
+
+            <Link
+              href="/schools/hope-school/online-classes?mode=login"
+              className="group border border-[#0d1f3c]/15 bg-[#0d1f3c] p-7 shadow-sm transition-all hover:-translate-y-1 hover:bg-[#17345f] hover:shadow-md"
+            >
+              <div className="mb-5 inline-flex h-12 w-12 items-center justify-center border border-[#c9a84c] text-[#c9a84c] transition-colors group-hover:bg-[#c9a84c] group-hover:text-[#0d1f3c]">
+                <LogIn size={20} />
+              </div>
+              <h3 className="font-serif text-xl font-bold text-white">Login</h3>
+              <p className="mt-2 text-sm leading-6 text-white/70">
+                Return to your online class dashboard and learning materials.
+              </p>
+              <span className="mt-6 inline-flex text-xs font-bold uppercase tracking-[0.15em] text-[#c9a84c]">
+                Continue learning
+              </span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="bg-white py-20 px-4">
         <div className="text-center mb-14">
           <span className={sectionLabelClass}>Get in Touch</span>
-          <h2 className={`${sectionTitleClass} text-[#0d1f3c] font-serif`}>Contact Hope School</h2>
+          <h2 className={`${sectionTitleClass} text-[#0d1f3c] font-serif`}>Contact Hope School of Ministry</h2>
           {dividerEl}
         </div>
 
         <div className="max-w-3xl mx-auto grid sm:grid-cols-3 gap-px bg-slate-100">
           {[
-            { icon: '📞', label: 'Phone', lines: ['+265 999 045 869', '+265 992 603 608'] },
-            { icon: '✉', label: 'Email', lines: ['info@piccworldwide.org', 'hopeschool@piccworldwide.org'] },
-            { icon: '⊕', label: 'Location', lines: ['Pentecost International Christian Centre- PICC Along Kaunda Road, Near Best Oil Filling Station Area 49, Post Office Box 31841 Lilongwe 3 Malawi'] },
-          ].map(({ icon, label, lines }) => (
+            { icon: Phone, label: 'Phone', lines: phoneLines.length > 0 ? phoneLines : splitContactValue(hopeSchoolFallbackInfo.phone) },
+            { icon: Mail, label: 'Email', lines: emailLines.length > 0 ? emailLines : splitContactValue(hopeSchoolFallbackInfo.email) },
+            { icon: MapPin, label: 'Location', lines: addressLines.length > 0 ? addressLines : splitContactValue(hopeSchoolFallbackInfo.address) },
+          ].map(({ icon: Icon, label, lines }) => (
             <div key={label} className="bg-stone-50 p-8 text-center">
               <div className="inline-flex items-center justify-center w-14 h-14 border border-[#c9a84c] text-2xl mx-auto mb-4">
-                {icon}
+                <Icon size={22} />
               </div>
               <h3 className="text-[#0d1f3c] font-semibold font-serif text-base mb-3">{label}</h3>
               {lines.map((line) => (
                 <p key={line} className="text-slate-500 text-sm leading-7">
                   {label === 'Email' ? (
-                    <a 
-                      href={`https://mail.google.com/mail/?view=cm&fs=1&to=${line}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
+                    <a
+                      href={`https://mail.google.com/mail/?view=cm&fs=1&to=${line}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="hover:text-[#c9a84c] transition-colors"
                     >
                       {line}
                     </a>
                   ) : label === 'Phone' ? (
-                    <a 
-                      href={`https://wa.me/${line.replace(/[^0-9]/g, '')}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
+                    <a
+                      href={`https://wa.me/${line.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="hover:text-[#25D366] transition-colors"
                     >
                       {line}
@@ -380,7 +501,6 @@ export default function HopeSchoolPage() {
         </div>
       </section>
 
-      {/* ── ENROLLMENT ── */}
       <section id="enrollment" className="bg-[#eef4fb] py-24 px-4">
         <div className="text-center mb-14">
           <span className={sectionLabelClass}>Registration 2025</span>
@@ -389,22 +509,12 @@ export default function HopeSchoolPage() {
         </div>
 
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-start">
-          {/* Enrollment Details column */}
           <div className="space-y-12">
             <div>
               <p className="text-[#c9a84c] text-[0.65rem] font-semibold tracking-[0.2em] uppercase mb-6">
                 Important Dates
               </p>
-              <div className="border-t border-slate-200">
-                {importantDates.map(([label, date]) => (
-                  <div key={label} className="flex justify-between items-center py-4 px-2 border-b border-slate-200 gap-4">
-                    <span className="text-[#0d1f3c] font-medium text-sm">{label}</span>
-                    <span className="text-[0.7rem] font-semibold tracking-wide text-[#0d1f3c] bg-[#f5e9c8] border border-[#c9a84c] px-3 py-1 whitespace-nowrap">
-                      {date}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <SchoolKeyDatesList schoolKey="hope-school" fallback={keyDatesFallback} />
             </div>
 
             <div className="bg-white p-8 border-l-4 border-[#c9a84c] shadow-sm">
@@ -414,39 +524,38 @@ export default function HopeSchoolPage() {
               </p>
               <ul className="text-slate-600 text-sm space-y-3">
                 <li className="flex items-start gap-3">
-                  <span className="text-[#c9a84c] mt-0.5">✓</span>
+                  <span className="text-[#c9a84c] mt-0.5">+</span>
                   <span>Complete the online registration form on the right</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-[#c9a84c] mt-0.5">✓</span>
+                  <span className="text-[#c9a84c] mt-0.5">+</span>
                   <span>Receive a confirmation email with your registration ID</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-[#c9a84c] mt-0.5">✓</span>
+                  <span className="text-[#c9a84c] mt-0.5">+</span>
                   <span>Attend the orientation session on the start date</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-[#c9a84c] mt-0.5">✓</span>
+                  <span className="text-[#c9a84c] mt-0.5">+</span>
                   <span>Join our vibrant community of learners and believers</span>
                 </li>
               </ul>
             </div>
           </div>
 
-          {/* Form column */}
           <HopeSchoolRegistrationForm inputClass={inputClass} schoolKey="hope-school" />
         </div>
       </section>
 
       <EventsCarousel
-        apiPath="/api/events?take=12&scope=hope-school"
+        apiPath="/api/schools/hope-school/events"
         eventsHref="/schools/hope-school/events"
         eventsLabel="View all school events"
         title="Hope School Events"
         subtitle="Stay updated with our latest school activities and academic calendar"
         connectLabel="HOPE SCHOOL"
         connectTitle="Building a brighter future for every student"
-        connectSubtitle="Join us in our journey of excellence and faith-based education."
+        connectSubtitle="Join us in our journey of excellence and faith based education."
         showLivestream={false}
       />
       <HopeSchoolNewsSection />

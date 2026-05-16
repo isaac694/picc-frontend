@@ -18,7 +18,8 @@ export default function HopeSchoolRegistrationForm({
   intakes: intakesOverride,
   schoolKey = 'hope-school',
 }: Props) {
-  const { intakes: fetchedIntakes } = useSchoolIntakes(schoolKey);
+  const hasOverride = Array.isArray(intakesOverride) && intakesOverride.length > 0;
+  const { intakes: fetchedIntakes, isLoading, error } = useSchoolIntakes(schoolKey);
   const intakes = useMemo(
     () => (Array.isArray(intakesOverride) && intakesOverride.length > 0 ? intakesOverride : fetchedIntakes),
     [intakesOverride, fetchedIntakes],
@@ -30,11 +31,23 @@ export default function HopeSchoolRegistrationForm({
 
   const openIntakes = useMemo(() => intakes.filter((intake) => isIntakeOpen(intake)), [intakes]);
   const nextIntakes = useMemo(() => upcomingIntakes(intakes), [intakes]);
-  const intakeIsRequired = intakes.length > 0;
   const hasOpenIntakes = openIntakes.length > 0;
+  const canAcceptApplications = hasOverride ? hasOpenIntakes : !isLoading && !error && hasOpenIntakes;
+  const showClosedState = !canAcceptApplications;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!canAcceptApplications) {
+      setStatus({
+        type: 'error',
+        message:
+          !hasOverride && error
+            ? 'Unable to load enrollment dates. Please try again later.'
+            : 'Applications are currently closed.',
+      });
+      return;
+    }
 
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -65,17 +78,15 @@ export default function HopeSchoolRegistrationForm({
       return;
     }
 
-    if (intakeIsRequired) {
-      const intakeId = String(payload.intakeId || '').trim();
-      const intake = intakes.find((item) => item.id === intakeId) || null;
-      if (!intake) {
-        setStatus({ type: 'error', message: 'Please select an intake/cohort before submitting.' });
-        return;
-      }
-      if (!isIntakeOpen(intake)) {
-        setStatus({ type: 'error', message: 'Applications for the selected intake are closed.' });
-        return;
-      }
+    const intakeId = String(payload.intakeId || '').trim();
+    const intake = intakes.find((item) => item.id === intakeId) || null;
+    if (!intake) {
+      setStatus({ type: 'error', message: 'Please select an intake/cohort before submitting.' });
+      return;
+    }
+    if (!isIntakeOpen(intake)) {
+      setStatus({ type: 'error', message: 'Applications for the selected intake are closed.' });
+      return;
     }
 
     setIsSubmitting(true);
@@ -137,61 +148,58 @@ export default function HopeSchoolRegistrationForm({
           </div>
         )}
 
-        {intakes.length > 0 && (
-          <div className="mb-6">
-            <p className="text-[#c9a84c] text-[0.65rem] font-semibold tracking-[0.2em] uppercase border-b border-slate-100 pb-2 mb-4">
-              Intake / Cohort
-            </p>
+        <div className="mb-6">
+          <p className="text-[#c9a84c] text-[0.65rem] font-semibold tracking-[0.2em] uppercase border-b border-slate-100 pb-2 mb-4">
+            Intake / Cohort
+          </p>
 
-            {!hasOpenIntakes ? (
-              <div className="rounded-xl border border-slate-200 bg-stone-50 px-4 py-4 text-sm text-slate-700">
-                <p className="font-semibold text-red-600">Applications are currently closed.</p>
-                {nextIntakes.length > 0 ? (
-                  <div className="mt-2">
-                    <p className="text-slate-600 text-xs uppercase tracking-[0.12em] font-semibold">
-                      Upcoming openings
-                    </p>
-                    <ul className="mt-2 space-y-1 text-sm">
-                      {nextIntakes.slice(0, 4).map((item) => (
-                        <li key={item.id} className="text-[#0d1f3c]">
-                          {item.label}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-red-600">
-                    Please check back later for the next intake.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <>
-                <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">
-                  Select intake *
-                </label>
-                <select
-                  name="intakeId"
-                  required
-                  value={selectedIntakeId}
-                  onChange={(e) => setSelectedIntakeId(e.target.value)}
-                  className={`${inputClass} appearance-none cursor-pointer`}
-                >
-                  {openIntakes.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="hidden"
-                  name="intakeLabel"
-                  value={openIntakes.find((i) => i.id === selectedIntakeId)?.label || ''}
-                />
-              </>
-            )}
-          </div>
-        )}
+          {showClosedState ? (
+            <div className="rounded-xl border border-slate-200 bg-stone-50 px-4 py-4 text-sm text-slate-700">
+              <p className="font-semibold text-red-600">
+                {isLoading ? 'Checking application windows...' : error ? 'Unable to load enrollment dates.' : 'Applications are currently closed.'}
+              </p>
+              {nextIntakes.length > 0 ? (
+                <div className="mt-2">
+                  <p className="text-slate-600 text-xs uppercase tracking-[0.12em] font-semibold">Upcoming openings</p>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {nextIntakes.slice(0, 4).map((item) => (
+                      <li key={item.id} className="text-[#0d1f3c]">
+                        {item.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="mt-2 text-red-600">Please check back later for the next intake.</p>
+              )}
+            </div>
+          ) : (
+            <>
+              <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Select intake *</label>
+              <select
+                name="intakeId"
+                required
+                value={selectedIntakeId}
+                onChange={(e) => setSelectedIntakeId(e.target.value)}
+                className={`${inputClass} appearance-none cursor-pointer`}
+              >
+                <option value="">Select</option>
+                {openIntakes.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="hidden"
+                name="intakeLabel"
+                value={openIntakes.find((i) => i.id === selectedIntakeId)?.label || ''}
+              />
+            </>
+          )}
+        </div>
+
+        <fieldset disabled={isSubmitting || !canAcceptApplications} aria-disabled={isSubmitting || !canAcceptApplications}>
 
         {/* Personal Information */}
         <p className="text-[#c9a84c] text-[0.65rem] font-semibold tracking-[0.2em] uppercase border-b border-slate-100 pb-2 mb-4">
@@ -373,14 +381,15 @@ export default function HopeSchoolRegistrationForm({
 
         <button
           type="submit"
-          disabled={isSubmitting || (intakes.length > 0 && !hasOpenIntakes)}
+          disabled={isSubmitting || !canAcceptApplications}
           className="w-full mt-8 bg-[#0d1f3c] hover:bg-[#1a3360] disabled:opacity-60 disabled:hover:bg-[#0d1f3c] text-white text-xs font-bold tracking-[0.2em] uppercase py-4 transition-colors duration-200 border-b-2 border-[#c9a84c]"
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Registration'}
+          {isSubmitting ? 'Submitting...' : canAcceptApplications ? 'Submit Registration' : 'Applications Closed'}
         </button>
         <p className="text-center text-slate-400 text-xs mt-4 leading-relaxed">
           We will contact you shortly to confirm your registration and provide further details.
         </p>
+        </fieldset>
       </form>
     </div>
   );

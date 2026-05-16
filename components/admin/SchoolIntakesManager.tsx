@@ -27,6 +27,8 @@ export default function SchoolIntakesManager({
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [intakes, setIntakes] = useState<IntakeRecord[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingItem, setEditingItem] = useState<IntakeRecord | null>(null);
   const [draft, setDraft] = useState<Draft>({
     label: '',
     opensOn: null,
@@ -36,6 +38,10 @@ export default function SchoolIntakesManager({
   });
 
   const baseUrl = useMemo(() => `/api/admin/schools/${encodeURIComponent(schoolKey)}/intakes`, [schoolKey]);
+  const isCohort = schoolKey === 'hope-school' || schoolKey === 'discipleship';
+  const intakeLabel = isCohort ? 'Cohort' : 'Intake';
+  const intakeLabelPlural = isCohort ? 'Cohorts' : 'Intakes';
+  const sampleLabel = isCohort ? 'e.g., Cohort 1 2026' : 'e.g., Term 1 2026';
 
   const refresh = async () => {
     setIsLoading(true);
@@ -46,14 +52,14 @@ export default function SchoolIntakesManager({
       });
       if (!response.ok) {
         setIntakes([]);
-        setStatus('Unable to load intakes.');
+        setStatus(`Unable to load ${intakeLabelPlural.toLowerCase()}.`);
         return;
       }
       const data = await response.json().catch(() => ({}));
       setIntakes(Array.isArray(data?.intakes) ? data.intakes : []);
     } catch {
       setIntakes([]);
-      setStatus('Unable to load intakes.');
+      setStatus(`Unable to load ${intakeLabelPlural.toLowerCase()}.`);
     } finally {
       setIsLoading(false);
     }
@@ -64,60 +70,70 @@ export default function SchoolIntakesManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl, token]);
 
-  const add = async () => {
+  const handleEdit = (item: IntakeRecord) => {
+    setEditingItem(item);
+    setDraft({
+      label: item.label,
+      opensOn: item.opensOn,
+      closesOn: item.closesOn,
+      isActive: item.isActive,
+      sortOrder: item.sortOrder,
+    });
+  };
+
+  const handleAddNew = () => {
+    setEditingItem(null);
+    setDraft({
+      label: '',
+      opensOn: null,
+      closesOn: null,
+      isActive: true,
+      sortOrder: intakes.length > 0 ? Math.max(...intakes.map(i => i.sortOrder)) + 1 : 0,
+    });
+  };
+
+  const save = async () => {
     if (!draft.label.trim()) {
       setStatus('Please enter a label.');
       return;
     }
+    
+    setSavingId(editingItem ? editingItem.id : 'new');
     setStatus('');
+    
     try {
-      const response = await apiFetch(baseUrl, {
-        method: 'POST',
+      const url = editingItem ? `${baseUrl}/${encodeURIComponent(editingItem.id)}` : baseUrl;
+      const method = editingItem ? 'PUT' : 'POST';
+
+      const response = await apiFetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(draft),
       });
-      if (!response.ok) {
-        setStatus('Unable to add intake.');
-        return;
-      }
-      setDraft((prev) => ({ ...prev, label: '', sortOrder: prev.sortOrder + 1 }));
-      await refresh();
-      setStatus('Intake added.');
-    } catch {
-      setStatus('Unable to add intake.');
-    }
-  };
 
-  const save = async (intake: IntakeRecord) => {
-    setSavingId(intake.id);
-    setStatus('');
-    try {
-      const response = await apiFetch(`${baseUrl}/${encodeURIComponent(intake.id)}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(intake),
-      });
       if (!response.ok) {
-        setStatus('Unable to save intake.');
+        setStatus(`Unable to ${editingItem ? 'update' : 'add'} ${intakeLabel.toLowerCase()}.`);
         return;
       }
+
+      if (!editingItem) {
+        handleAddNew();
+      }
+      
       await refresh();
-      setStatus('Intake saved.');
+      setStatus(`${intakeLabel} ${editingItem ? 'updated' : 'added'}.`);
     } catch {
-      setStatus('Unable to save intake.');
+      setStatus(`Unable to ${editingItem ? 'update' : 'add'} ${intakeLabel.toLowerCase()}.`);
     } finally {
       setSavingId(null);
     }
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this intake?')) return;
+    if (!confirm(`Delete this ${intakeLabel.toLowerCase()}?`)) return;
     setStatus('');
     try {
       const response = await apiFetch(`${baseUrl}/${encodeURIComponent(id)}`, {
@@ -125,17 +141,28 @@ export default function SchoolIntakesManager({
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok && response.status !== 204) {
-        setStatus('Unable to delete intake.');
+        setStatus(`Unable to delete ${intakeLabel.toLowerCase()}.`);
         return;
       }
+      
+      if (editingItem?.id === id) {
+        handleAddNew();
+      }
+      
       await refresh();
-      setStatus('Intake deleted.');
+      setStatus(`${intakeLabel} deleted.`);
     } catch {
-      setStatus('Unable to delete intake.');
+      setStatus(`Unable to delete ${intakeLabel.toLowerCase()}.`);
     }
   };
 
-  if (isLoading) {
+  const filteredIntakes = useMemo(() => {
+    if (!searchTerm.trim()) return intakes;
+    const lower = searchTerm.toLowerCase();
+    return intakes.filter(i => i.label.toLowerCase().includes(lower));
+  }, [intakes, searchTerm]);
+
+  if (isLoading && intakes.length === 0) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -155,12 +182,26 @@ export default function SchoolIntakesManager({
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1fr] gap-6">
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Add Intake
-          </h2>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+        {/* Left Side: Form */}
+        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">
+                {editingItem ? `Update ${intakeLabel}` : `Add New ${intakeLabel}`}
+              </h2>
+              <p className="text-sm text-foreground/70 mt-1">
+                {editingItem ? `Update the details for this ${intakeLabel.toLowerCase()}.` : `Create a new ${intakeLabel.toLowerCase()} for your school.`}
+              </p>
+            </div>
+            {editingItem && (
+              <Button variant="outline" onClick={handleAddNew}>
+                <Plus className="h-4 w-4 mr-2" />
+                New {intakeLabel}
+              </Button>
+            )}
+          </div>
+
           <div className="space-y-4">
             <div>
               <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
@@ -170,10 +211,11 @@ export default function SchoolIntakesManager({
                 type="text"
                 value={draft.label}
                 onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
-                placeholder="e.g., Term 1 2026"
+                placeholder={sampleLabel}
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
               />
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
@@ -183,7 +225,7 @@ export default function SchoolIntakesManager({
                   type="date"
                   value={draft.opensOn || ''}
                   onChange={(e) => setDraft((prev) => ({ ...prev, opensOn: e.target.value || null }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
                 />
               </div>
               <div>
@@ -194,156 +236,98 @@ export default function SchoolIntakesManager({
                   type="date"
                   value={draft.closesOn || ''}
                   onChange={(e) => setDraft((prev) => ({ ...prev, closesOn: e.target.value || null }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
                 />
               </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                  Sort Order
-                </label>
+              <div className="md:col-span-2 flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-background/50 self-end">
                 <input
-                  type="number"
-                  value={draft.sortOrder}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, sortOrder: Number.parseInt(e.target.value || '0', 10) || 0 }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-              </div>
-              <div className="flex items-end gap-2">
-                <input
-                  id="draft-active"
                   type="checkbox"
+                  id="isActive"
                   checked={draft.isActive}
                   onChange={(e) => setDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
                   className="rounded border-border"
                 />
-                <label htmlFor="draft-active" className="text-sm text-foreground/70">
-                  Active
+                <label htmlFor="isActive" className="text-sm font-medium text-foreground cursor-pointer">
+                  Active (Visible on site)
                 </label>
               </div>
             </div>
-            <Button onClick={add} className="w-full md:w-auto">
-              Add Intake
-            </Button>
+
+            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/60">
+              <Button onClick={save} disabled={savingId !== null} className="gap-2">
+                {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {editingItem ? `Update ${intakeLabel}` : `Add ${intakeLabel}`}
+              </Button>
+              {editingItem && (
+                <Button variant="destructive" onClick={() => remove(editingItem.id)} className="gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              )}
+              {(editingItem || draft.label) && (
+                <Button variant="outline" onClick={handleAddNew}>
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Current Intakes</h2>
-          {intakes.length === 0 ? (
-            <div className="text-center py-12 border border-dashed rounded-xl border-border/60">
-              <p className="text-sm text-foreground/60">No intakes added yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {intakes.map((intake) => (
-                <div key={intake.id} className="rounded-xl border border-border/60 bg-background p-4 space-y-4">
-                  <input
-                    type="text"
-                    value={intake.label}
-                    onChange={(e) =>
-                      setIntakes((prev) => prev.map((i) => (i.id === intake.id ? { ...i, label: e.target.value } : i)))
-                    }
-                    className="w-full font-medium bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition px-1 py-1"
-                  />
+        {/* Right Side: List */}
+        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm flex flex-col h-fit max-h-[800px]">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Current {intakeLabelPlural}</h2>
+          
+          <div className="relative mb-4">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={`Search ${intakeLabelPlural.toLowerCase()}...`}
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 transition outline-none"
+            />
+          </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] uppercase font-bold text-foreground/40 block mb-1">Opens</label>
-                      <input
-                        type="date"
-                        value={intake.opensOn || ''}
-                        onChange={(e) =>
-                          setIntakes((prev) =>
-                            prev.map((i) => (i.id === intake.id ? { ...i, opensOn: e.target.value || null } : i)),
-                          )
-                        }
-                        className="w-full text-xs bg-muted/30 rounded-lg px-3 py-2 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] uppercase font-bold text-foreground/40 block mb-1">Closes</label>
-                      <input
-                        type="date"
-                        value={intake.closesOn || ''}
-                        onChange={(e) =>
-                          setIntakes((prev) =>
-                            prev.map((i) => (i.id === intake.id ? { ...i, closesOn: e.target.value || null } : i)),
-                          )
-                        }
-                        className="w-full text-xs bg-muted/30 rounded-lg px-3 py-2 focus:outline-none"
-                      />
-                    </div>
+          <div className="overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+            {filteredIntakes.length === 0 ? (
+              <div className="text-center py-12 border border-dashed rounded-xl border-border/60">
+                <p className="text-sm text-foreground/60">
+                  {searchTerm ? `No ${intakeLabelPlural.toLowerCase()} match your search.` : `No ${intakeLabelPlural.toLowerCase()} yet.`}
+                </p>
+              </div>
+            ) : (
+              filteredIntakes.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleEdit(item)}
+                  className={`w-full text-left rounded-xl border p-4 transition-all ${
+                    editingItem?.id === item.id
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border/60 bg-background hover:border-primary/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <h3 className="text-sm font-semibold text-foreground truncate">{item.label}</h3>
+                    {!item.isActive && (
+                      <span className="text-[10px] uppercase font-bold text-destructive px-1.5 py-0.5 rounded bg-destructive/10">
+                        Inactive
+                      </span>
+                    )}
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase font-bold text-foreground/40">Order:</span>
-                      <input
-                        type="number"
-                        value={intake.sortOrder}
-                        onChange={(e) =>
-                          setIntakes((prev) =>
-                            prev.map((i) =>
-                              i.id === intake.id
-                                ? { ...i, sortOrder: Number.parseInt(e.target.value || '0', 10) || 0 }
-                                : i,
-                            ),
-                          )
-                        }
-                        className="w-16 text-xs bg-muted/50 rounded-lg px-2 py-1 focus:outline-none"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        id={`active-${intake.id}`}
-                        type="checkbox"
-                        checked={intake.isActive}
-                        onChange={(e) =>
-                          setIntakes((prev) =>
-                            prev.map((i) => (i.id === intake.id ? { ...i, isActive: e.target.checked } : i)),
-                          )
-                        }
-                        className="rounded border-border"
-                      />
-                      <label htmlFor={`active-${intake.id}`} className="text-[10px] uppercase font-bold text-foreground/40">
-                        Active
-                      </label>
-                    </div>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[10px] text-foreground/50">
+                      Opens: {item.opensOn ? new Date(item.opensOn).toLocaleDateString() : 'N/A'} | 
+                      Closes: {item.closesOn ? new Date(item.closesOn).toLocaleDateString() : 'N/A'}
+                    </p>
                   </div>
-
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Button
-                      size="sm"
-                      onClick={() => save(intake)}
-                      className="h-8 gap-1"
-                      disabled={savingId === intake.id}
-                    >
-                      {savingId === intake.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Save className="h-3 w-3" />
-                      )}
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => remove(intake.id)}
-                      className="h-8 gap-1 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

@@ -55,7 +55,10 @@ export default function DevotionsAdminPage() {
   const [date, setDate] = useState(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().slice(0, 10);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
   const [publishTime, setPublishTime] = useState('01:00');
   const [title, setTitle] = useState('');
@@ -99,6 +102,10 @@ export default function DevotionsAdminPage() {
           if (devotion.publishAt) {
             const parsed = new Date(devotion.publishAt);
             if (!Number.isNaN(parsed.getTime())) {
+              const year = parsed.getFullYear();
+              const month = String(parsed.getMonth() + 1).padStart(2, '0');
+              const day = String(parsed.getDate()).padStart(2, '0');
+              setDate(`${year}-${month}-${day}`);
               const hours = String(parsed.getHours()).padStart(2, '0');
               const minutes = String(parsed.getMinutes()).padStart(2, '0');
               setPublishTime(`${hours}:${minutes}`);
@@ -156,7 +163,7 @@ export default function DevotionsAdminPage() {
       return;
     }
 
-    const publishAt = `${date}T${publishTime}:00`;
+    const publishAt = new Date(`${date}T${publishTime}:00`).toISOString();
     setPendingPublishAt(publishAt);
     setPendingDate(date);
     setPendingTime(publishTime);

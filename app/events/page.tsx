@@ -7,7 +7,7 @@ export default function EventsPage() {
     <>
       <Navigation />
       <main className="min-h-screen">
-        <EventsListSection apiPath="/api/events?scope=general" />
+        <EventsListSection apiPath="/api/events?scope=general" layout="classic" />
       </main>
       <Footer />
     </>

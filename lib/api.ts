@@ -13,6 +13,10 @@ const resolveApiBaseUrl = () => {
     return normalize(process.env.NEXT_PUBLIC_API_BASE_URL);
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    return LOCAL_API_BASE_URL;
+  }
+
   return PROD_API_BASE_URL;
 };
 
@@ -41,6 +45,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     const response = await fetch(primaryUrl, init);
     if (
       fallbackUrl &&
+      fallbackUrl !== primaryUrl &&
       (response.status === 502 ||
         response.status === 503 ||
         response.status === 504 ||
@@ -52,10 +57,14 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       return fetch(fallbackUrl, init);
     }
     return response;
-  } catch (error) {
+  } catch {
     if (fallbackUrl) {
-      return fetch(fallbackUrl, init);
+      try {
+        return await fetch(fallbackUrl, init);
+      } catch {
+        return new Response(null, { status: 503, statusText: 'Service Unavailable' });
+      }
     }
-    throw error;
+    return new Response(null, { status: 503, statusText: 'Service Unavailable' });
   }
 }

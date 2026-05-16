@@ -31,7 +31,7 @@ export default function Navigation() {
   ];
   const schoolLinks = [
     { href: '/schools/picc-secondary', label: 'PICC Secondary School' },
-    { href: '/schools/hope-school', label: 'Hope School Ministry' },
+    { href: '/schools/hope-school', label: 'Hope School of Ministry' },
     { href: '/schools/discipleship', label: 'School of Discipleship' },
   ];
 
@@ -114,7 +114,7 @@ export default function Navigation() {
                     : 'text-foreground hover:text-primary transition-colors text-sm font-medium'
                 }
               >
-                Ministries
+                Ministry & Outreach
               </button>
               <div
                 className={

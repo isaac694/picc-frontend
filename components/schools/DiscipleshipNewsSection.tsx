@@ -1,61 +1,60 @@
-'use client';
-
 import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
+import { apiUrl } from '@/lib/api';
+import { DISCIPLESHIP_NEWS } from '@/components/schools/schoolNewsFallbacks';
 
-const DISCIPLESHIP_NEWS: NewsSectionItem[] = [
-  {
-    badge: 'Discipleship',
-    date: 'March 2026',
-    title: 'New Discipleship Intake Opens',
-    description: 'Enrollment is now open for the next Discipleship track. Join a class near you.',
-    image: '/hero/hero-8.JPG',
-  },
-  {
-    badge: 'Teaching',
-    date: 'March 2026',
-    title: 'Foundations Week Recap',
-    description: 'Highlights from our most recent foundations sessions and student testimonies.',
-    image: '/hero/hero-10.JPG',
-  },
-  {
-    badge: 'Prayer',
-    date: 'February 2026',
-    title: 'Prayer & Fasting Focus',
-    description: 'Weekly prayer rhythms and fasting guidance for students and volunteers.',
-    image: '/hero/hero-4.JPG',
-  },
-  {
-    badge: 'Leadership',
-    date: 'February 2026',
-    title: 'Leadership Level Announced',
-    description: 'A deeper module for servant-leadership and spiritual maturity launches soon.',
-    image: '/hero/hero-7.png',
-  },
-  {
-    badge: 'Community',
-    date: 'January 2026',
-    title: 'Mentorship Signups',
-    description: 'Mentors are needed to walk with new believers—sign up to serve in the school.',
-    image: '/hero/hero-3.JPG',
-  },
-  {
-    badge: 'Update',
-    date: 'January 2026',
-    title: 'Course Materials Available',
-    description: 'Updated course outlines and recommended reading lists are now available.',
-    image: '/hero/hero-5.png',
-  },
-];
+type ApiSchoolNewsItem = {
+  badge?: string | null;
+  title?: string | null;
+  content?: string | null;
+  imageUrl?: string | null;
+  createdAt?: string | null;
+};
 
-export default function DiscipleshipNewsSection() {
+const normalizeImageUrl = (value: string | null | undefined) => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('http') ? trimmed : apiUrl(trimmed);
+};
+
+async function getDiscipleshipNews(): Promise<NewsSectionItem[]> {
+  try {
+    const response = await fetch(apiUrl('/api/schools/discipleship/news'), {
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      return DISCIPLESHIP_NEWS;
+    }
+
+    const data = (await response.json().catch(() => null)) as { news?: ApiSchoolNewsItem[] } | null;
+    const news = Array.isArray(data?.news) ? data.news : [];
+
+    if (news.length === 0) {
+      return DISCIPLESHIP_NEWS;
+    }
+
+    return news.map((item, index) => ({
+      badge: item.badge?.trim() || 'Updates',
+      date: item.createdAt ? new Date(item.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'Latest',
+      title: item.title?.trim() || `Discipleship News ${index + 1}`,
+      description: item.content?.trim() || 'New update available.',
+      image: normalizeImageUrl(item.imageUrl) || DISCIPLESHIP_NEWS[index % DISCIPLESHIP_NEWS.length]?.image || '/hero/hero-8.JPG',
+    }));
+  } catch {
+    return DISCIPLESHIP_NEWS;
+  }
+}
+
+export default async function DiscipleshipNewsSection() {
+  const items = await getDiscipleshipNews();
+
   return (
     <NewsSection
       kicker="Updates"
       title="Discipleship News"
       description="Updates and highlights from the School of Discipleship."
-      items={DISCIPLESHIP_NEWS}
+      items={items}
       backgroundClassName="bg-[#eef4fb]"
     />
   );
 }
-

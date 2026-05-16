@@ -63,7 +63,10 @@ export default function ConfessionsAdminPage() {
   const [date, setDate] = useState(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().slice(0, 10);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
   const [publishTime, setPublishTime] = useState('01:00');
   const [title, setTitle] = useState('');
@@ -100,7 +103,14 @@ export default function ConfessionsAdminPage() {
   const uploadImage = async (file: File) => {
     if (!token) return null;
 
-    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setErrorStatus('Please upload an image file (JPEG, PNG, GIF, WebP, etc.)');
+      return null;
+    }
+
+    // Validate file size
+    if (file.size > 1024 * 1024) {
       setErrorStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
@@ -116,7 +126,9 @@ export default function ConfessionsAdminPage() {
         body: formData,
       });
       if (!response.ok) {
-        setErrorStatus('Image upload failed.');
+        const errorData = await response.json().catch(() => null);
+        const errorMsg = errorData?.error || 'Image upload failed.';
+        setErrorStatus(errorMsg);
         return null;
       }
       const data = await response.json();
@@ -154,6 +166,10 @@ export default function ConfessionsAdminPage() {
           if (confession.publishAt) {
             const parsed = new Date(confession.publishAt);
             if (!Number.isNaN(parsed.getTime())) {
+              const year = parsed.getFullYear();
+              const month = String(parsed.getMonth() + 1).padStart(2, '0');
+              const day = String(parsed.getDate()).padStart(2, '0');
+              setDate(`${year}-${month}-${day}`);
               const hours = String(parsed.getHours()).padStart(2, '0');
               const minutes = String(parsed.getMinutes()).padStart(2, '0');
               setPublishTime(`${hours}:${minutes}`);
@@ -212,7 +228,7 @@ export default function ConfessionsAdminPage() {
       return;
     }
 
-    const publishAt = `${date}T${publishTime}:00`;
+    const publishAt = new Date(`${date}T${publishTime}:00`).toISOString();
     setPendingPublishAt(publishAt);
     setPendingDate(date);
     setPendingTime(publishTime);
@@ -382,7 +398,7 @@ export default function ConfessionsAdminPage() {
             </label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif,.avif"
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;

@@ -92,6 +92,35 @@ type MediaMagazineItem = {
   imageUrl: string;
 };
 
+type NewsItem = {
+  badge: string;
+  date: string;
+  title: string;
+  description: string;
+  image: string;
+};
+
+type GalleryItem = {
+  title: string;
+  category: string;
+  image: string;
+};
+
+type BookItem = {
+  title: string;
+  author: string;
+  description: string;
+  cover: string;
+  file?: string;
+};
+
+type MagazineItem = {
+  title: string;
+  issue: string;
+  cover: string;
+  file?: string;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
@@ -126,7 +155,7 @@ async function fetchSiteList<T>(key: string): Promise<T[] | null> {
   }
 }
 
-const BOOKS = [
+const BOOKS: BookItem[] = [
   {
     title: 'Fire on the Altar Volume 3',
     author: 'PICC Publishing',
@@ -148,22 +177,25 @@ const BOOKS = [
   },
 ];
 
-const MAGAZINES = [
+const MAGAZINES: MagazineItem[] = [
   {
     title: 'Church Magazine Issue 1',
+    issue: 'Issue 1',
     cover: '/magazine/magazine-1.jpeg',
   },
   {
     title: 'Church Magazine Issue 2',
+    issue: 'Issue 2',
     cover: '/magazine/magazine-2.JPG',
   },
   {
     title: 'Church Magazine Issue 3',
+    issue: 'Issue 3',
     cover: '/magazine/magazine-3.jpeg',
   },
 ];
 
-const EVENT_GALLERY = [
+const EVENT_GALLERY: GalleryItem[] = [
   { title: 'Worship Service', category: 'Worship', image: '/hero/hero-10.JPG' },
   { title: 'Community Outreach', category: 'Outreach', image: '/hero/hero-8.JPG' },
   { title: 'Youth Gathering', category: 'Youth', image: '/hero/hero-9.JPG' },
@@ -176,10 +208,10 @@ const EVENT_GALLERY = [
 
 export default function MediaPage() {
   const [galleryFilter, setGalleryFilter] = useState('All');
-  const [news, setNews] = useState(CAMPUS_NEWS);
-  const [gallery, setGallery] = useState(EVENT_GALLERY);
-  const [books, setBooks] = useState(BOOKS);
-  const [magazines, setMagazines] = useState(MAGAZINES);
+  const [news, setNews] = useState<NewsItem[]>(CAMPUS_NEWS);
+  const [gallery, setGallery] = useState<GalleryItem[]>(EVENT_GALLERY);
+  const [books, setBooks] = useState<BookItem[]>(BOOKS);
+  const [magazines, setMagazines] = useState<MagazineItem[]>(MAGAZINES);
 
   useEffect(() => {
     let alive = true;
@@ -222,7 +254,7 @@ export default function MediaPage() {
             title: item.title || '',
             author: item.author || '',
             description: item.description || '',
-            cover: item.imageUrl ? normalizeAssetUrl(item.imageUrl) : undefined,
+            cover: normalizeAssetUrl(item.imageUrl) || '/fire_altar/fire-on-altar-cover.jpg',
             file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
           }))
         );
@@ -233,7 +265,7 @@ export default function MediaPage() {
           magazineItems.map((item) => ({
             title: item.title || '',
             issue: item.issue || '',
-            cover: item.imageUrl ? normalizeAssetUrl(item.imageUrl) : '/magazine/magazine-1.jpeg',
+            cover: normalizeAssetUrl(item.imageUrl) || '/magazine/magazine-1.jpeg',
             file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
           }))
         );
