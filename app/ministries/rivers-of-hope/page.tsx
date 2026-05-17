@@ -7,9 +7,10 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
 import { 
-  Waves, MapPin, Phone, Mail, CalendarClock, BookOpen, 
-  Globe, Target, MessageCircle, BookOpenText, MessageSquareText, 
-  StickyNote, Rocket, Sparkles, Flame, Baby, Users, Music, XIcon, Instagram, Facebook, Twitter
+  MapPin, Phone, Mail, CalendarClock, Globe, 
+  MessageSquareText, BookOpenText, StickyNote, 
+  Flame, Users, GraduationCap, Tent, BookOpen, 
+  XIcon, Facebook, Twitter, Instagram
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -59,73 +60,73 @@ const TOOL_TABS: Array<{
 const eventsList = [
   {
     id: 1,
-    type: 'Weekly Gathering',
-    title: 'Youth Church Sunday Service',
-    date: 'Every Sunday | 1:30 PM - 3:30 PM',
-    location: 'The Camp of God Cathedral, Area 49 Lilongwe',
-    description: 'Join us every Sunday for high-energy worship, creative expressions, and transparent conversations about the issues young people face. Bring a friend!',
-    image: '/images/youth-church/img-1.jpg',
+    type: 'Mega Crusade',
+    title: 'Mzuzu Rivers of Hope Crusade',
+    date: 'August 14 - 17, 2026',
+    location: 'Mzuzu Stadium, Northern Region',
+    description: 'Join Pastor Esau Banda for four days of dynamic preaching, worship, healing, and deliverance. Experience the power of the Gospel of Jesus Christ in an open-air gathering designed to bring spiritual transformation to the city.',
+    image: '/hero/hero-1.jpg',
   },
   {
     id: 2,
-    type: 'Upcoming Retreat',
-    title: '2026 Lake Retreat (Youth Church)',
-    date: 'August 28 - 30, 2026',
-    location: 'Lake Malawi',
-    description: 'Our annual Youth Church Lake Retreat is back! Three days of disconnecting from the noise, encountering God, and building lifelong friendships on the shores of Lake Malawi. Registration details are available on our WhatsApp channels.',
-    image: '/images/youth-church/img-7.jpg',
-  },
-  {
-    id: 3,
-    type: 'Past Event',
-    title: 'Inter-Church Sports Gala',
-    date: 'March 28, 2026',
-    location: 'Regional Stadium',
-    description: 'We built community through competition and took home the trophy in the regional football tournament. Thanks to all who came out to play and support!',
+    type: 'International Conference',
+    title: 'Global Pastors & Leaders Summit',
+    date: 'October 5 - 8, 2026',
+    location: 'Camp of God Cathedral, Lilongwe',
+    description: 'A global platform equipping church leaders across denominations. Receive spiritual impartation, leadership training, and strategic ministry insights to strengthen the Body of Christ in a rapidly changing world.',
     image: '/hero/hero-2.jpg',
   },
   {
+    id: 3,
+    type: 'Campus Outreach',
+    title: 'UNIMA Campus Crusade',
+    date: 'November 12 - 14, 2026',
+    location: 'University of Malawi, Zomba',
+    description: 'Raising a generation of spiritually grounded and purpose-driven young leaders. Three days of evangelism, mentorship, and empowerment for university students to integrate faith with academic excellence.',
+    image: '/images/youth-church/img-4.jpg',
+  },
+  {
     id: 4,
-    type: 'Upcoming Camp',
-    title: 'Heritage Kids Summer Camp',
-    date: 'August 5-10, 2026',
-    location: 'Camp Grounds',
-    description: 'Five days of fun, character building, and teaching our youngest members the ways of the Lord through interactive lessons, songs, and age-appropriate play.',
+    type: 'Regional Gathering',
+    title: 'Southern Region Leaders Conference',
+    date: 'Past Event - March 2026',
+    location: 'Blantyre City',
+    description: 'A contextualized platform for church leaders from different denominations to interact, grow, and receive practical tools and biblical teaching for effective ministry.',
     image: '/hero/hero-3.jpg',
   },
   {
     id: 5,
-    type: 'Upcoming Event',
-    title: 'Hope & Beauty Mentorship Tea',
-    date: 'September 12, 2026',
-    location: 'Cathedral Hall',
-    description: 'An elegant afternoon dedicated to mentoring young women. We will be discussing grace, purity, and purpose over tea and pastries.',
-    image: '/images/youth-church/img-2.jpg',
+    type: 'Youth Mission',
+    title: 'High School Invasion',
+    date: 'Ongoing 2026',
+    location: 'Various Secondary Schools',
+    description: 'Dedicated to reaching secondary school students with the transformative message of the Gospel, inspiring and guiding them in their spiritual journey and academic development.',
+    image: '/images/youth-church/img-3.jpg',
   },
 ];
 
 const highlightGallery = [
-  { id: 1, src: '/images/youth-church/img-1.jpg', caption: 'High-energy worship and sincere devotion.' },
-  { id: 2, src: '/images/youth-church/img-2.jpg', caption: 'Hope and Beauty: Sisterhood in action.' },
-  { id: 3, src: '/images/youth-church/img-3.jpg', caption: 'Called to Greatness: Building future leaders.' },
-  { id: 4, src: '/images/youth-church/img-4.jpg', caption: 'Teens Ministry: Navigating life with faith.' },
-  { id: 5, src: '/images/youth-church/img-5.jpg', caption: 'Heritage Ministry: Laying the early foundations.' },
-  { id: 6, src: '/images/youth-church/img-6.jpg', caption: 'Growing in Christ and community together.' },
+  { id: 1, src: '/hero/hero-1.jpg', caption: 'Mass open-air evangelism and soul-winning.' },
+  { id: 2, src: '/hero/hero-2.jpg', caption: 'Equipping global leaders for end-time harvest.' },
+  { id: 3, src: '/hero/hero-3.jpg', caption: 'Powerful moments of healing and deliverance.' },
+  { id: 4, src: '/images/youth-church/img-4.jpg', caption: 'Campus Crusade: Empowering university students.' },
+  { id: 5, src: '/images/youth-church/img-3.jpg', caption: 'Reaching the youth with the message of hope.' },
+  { id: 6, src: '/hero/hero-store.jpg', caption: 'Fostering unity among churches and ministries.' },
 ];
 
 const ministryProjects = [
-  { id: 1, type: 'Campus Outreach', title: 'University Mentorship Program', status: 'Ongoing', image: '/images/youth-church/img-4.jpg' },
-  { id: 2, type: 'Teens Initiative', title: 'High School Faith Clubs', status: 'Active', image: '/images/youth-church/img-3.jpg' },
-  { id: 3, type: 'CTG Project', title: 'Young Men’s Leadership Workshop', status: 'Active', image: '/images/youth-church/img-1.jpg' },
-  { id: 4, type: 'Hope & Beauty', title: 'Purity & Purpose Seminar', status: 'Upcoming', image: '/images/youth-church/img-2.jpg' },
-  { id: 5, type: 'Heritage', title: 'Vacation Bible School', status: 'August 2026', image: '/images/youth-church/img-6.jpg' },
+  { id: 1, type: 'Crusade Preparation', title: 'Mzuzu Outreach Mobilization', status: 'Active', image: '/hero/hero-1.jpg' },
+  { id: 2, type: 'Leadership Training', title: 'Pastors Empowerment Manuals', status: 'Ongoing', image: '/hero/hero-2.jpg' },
+  { id: 3, type: 'Campus Discipleship', title: 'University Fellowship Networks', status: 'Active', image: '/images/youth-church/img-4.jpg' },
+  { id: 4, type: 'Youth Mentorship', title: 'Secondary School Scripture Union Support', status: 'Ongoing', image: '/images/youth-church/img-3.jpg' },
+  { id: 5, type: 'Community Impact', title: 'Post-Crusade Discipleship Centers', status: 'Planning', image: '/hero/hero-store.jpg' },
 ];
 
-export default function YouthChurchMinistryPage() {
+export default function RiversOfHopePage() {
   // --- STATE ---
   const [activeGalleryId, setActiveGalleryId] = useState<number | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null); // State for the Event Pop-up
-  const [featuredEventIndex, setFeaturedEventIndex] = useState(0); // State for cycling events grid
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [featuredEventIndex, setFeaturedEventIndex] = useState(0);
 
   // --- LIVESTREAM STATE ---
   const [ytReady, setYtReady] = useState(false);
@@ -155,7 +156,7 @@ export default function YouthChurchMinistryPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       setFeaturedEventIndex((prev) => (prev + 1) % eventsList.length);
-    }, 5000); // Cycles every 5 seconds
+    }, 5000);
     return () => clearInterval(timer);
   }, []);
 
@@ -214,11 +215,11 @@ export default function YouthChurchMinistryPage() {
           } else {
             setVideos([{
               videoId: FALLBACK_HERO_ID,
-              title: "Youth Church Service",
+              title: "Rivers of Hope Crusades Live",
               publishedAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              channelTitle: "Youth Church",
-              description: "Helping young people grow in Christ and community.",
+              channelTitle: "PICC Worldwide",
+              description: "Proclaiming the Gospel of Jesus Christ with power and clarity.",
               thumbnail: "",
               url: `https://www.youtube.com/watch?v=${FALLBACK_HERO_ID}`,
               embedUrl: `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`,
@@ -352,7 +353,6 @@ export default function YouthChurchMinistryPage() {
               className="bg-white text-black w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative"
               onClick={(e) => e.stopPropagation()} 
             >
-              {/* Close Button */}
               <button 
                 onClick={() => setSelectedEvent(null)}
                 className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-md transition-colors"
@@ -360,7 +360,6 @@ export default function YouthChurchMinistryPage() {
                 <XIcon className="w-5 h-5" />
               </button>
 
-              {/* Event Poster / Image */}
               <div className="relative w-full md:w-1/2 h-64 md:h-[500px] bg-slate-100">
                 <Image 
                   src={selectedEvent.image} 
@@ -371,9 +370,8 @@ export default function YouthChurchMinistryPage() {
                 />
               </div>
 
-              {/* Event Details Area */}
               <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col justify-center bg-gray-50">
-                <span className="text-sm font-bold text-[#2D5A8C] uppercase tracking-wider mb-2">
+                <span className="text-sm font-bold text-[#b91c1c] uppercase tracking-wider mb-2">
                   {selectedEvent.type}
                 </span>
                 <h3 className="text-3xl font-black text-gray-900 mb-4 leading-tight">
@@ -397,21 +395,11 @@ export default function YouthChurchMinistryPage() {
                   {selectedEvent.description}
                 </p>
 
-                {/* Social & Contact Links */}
                 <div>
-                  <p className="text-sm font-bold text-gray-900 mb-3">MORE INFO & RSVP:</p>
+                  <p className="text-sm font-bold text-gray-900 mb-3">MORE INFO & CONNECT:</p>
                   <div className="flex flex-wrap gap-3">
-                    <a href="https://wa.me/265999000000" target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
-                      <Phone className="w-4 h-4" /> WhatsApp
-                    </a>
-                    <a href="https://facebook.com/piccyouthchurch" target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-[#1877F2] hover:bg-[#0c5bc6] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
-                      <Facebook className="w-4 h-4" /> Facebook
-                    </a>
-                    <a href="https://instagram.com/piccyouthchurch" target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
-                      <Instagram className="w-4 h-4" /> Instagram
-                    </a>
-                    <a href="https://twitter.com/piccyouthchurch" target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
-                      <Twitter className="w-4 h-4" /> X
+                    <a href="mailto:roh@piccworldwide.org" className="flex items-center gap-2 bg-[#b91c1c] hover:bg-red-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
+                      <Mail className="w-4 h-4" /> Email Us
                     </a>
                   </div>
                 </div>
@@ -423,115 +411,123 @@ export default function YouthChurchMinistryPage() {
 
       <main className="min-h-screen">
         
-        {/* 1. HERO SECTION (Youth Church Core) */}
+        {/* 1. HERO SECTION */}
         {!mobilePlayerActive && (
-          <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
+          <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-red-800 text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
-              <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20">
-                <Image 
-                  src="/logos/youth-church-logo.png" 
-                  alt="Youth Church Logo" 
-                  fill 
-                  className="object-contain p-2 rounded-full"
-                  onError={(e: any) => e.target.src = '/logos/picc-logo.png'} 
-                />
+              <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20 flex items-center justify-center">
+                <Tent className="w-12 h-12 sm:w-16 sm:h-16 text-red-800" />
               </div>
 
-              <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3 font-semibold">PICC Ministry</p>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">Youth Church</h1>
+              <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3 font-semibold">Pastor Esau Banda Ministries</p>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">Rivers of Hope Crusades</h1>
               
               <div className="inline-block border-y border-white/20 py-3 px-8 mb-6">
                 <p className="text-lg sm:text-xl font-medium tracking-wide text-white/90 italic">
-                  "Helping young people grow in Christ and community."
+                  "Proclaiming the Gospel of Jesus Christ with power and clarity."
                 </p>
               </div>
             </div>
           </section>
         )}
 
-        {/* 2. ABOUT YOUTH CHURCH */}
+        {/* 2. ABOUT THE MINISTRY */}
         {!mobilePlayerActive && (
           <section className="py-20 md:py-28 bg-white text-black">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="max-w-4xl mx-auto text-center">
-                <h2 className="text-3xl md:text-4xl font-bold mb-6">The Next Generation</h2>
-                <div className="w-16 h-1 bg-[#2D5A8C] mx-auto mb-8 rounded-full" />
+                <h2 className="text-3xl md:text-4xl font-bold mb-6">Spiritual Transformation & Revival</h2>
+                <div className="w-16 h-1 bg-red-800 mx-auto mb-8 rounded-full" />
                 <p className="text-lg text-black/70 leading-relaxed mb-6">
-                  The Youth Church at PICC is a vibrant community where children, teenagers, and young adults can experience God in a way that is relevant to their lives. We believe that young people are not just the leaders of tomorrow, but the influencers of today.
+                  The Rivers of Hope Crusades are flagship evangelistic outreach programs led by Pastor Esau Banda across Malawi and internationally. These large-scale crusades are designed to proclaim the Gospel of Jesus Christ with power and clarity, reaching diverse communities through open-air gatherings and mass evangelism.
                 </p>
                 <p className="text-lg text-black/70 leading-relaxed">
-                  Our services are packed with high-energy worship, creative expressions, and transparent conversations about the issues young people face—from mental health and career choices to identity and spiritual growth. To properly minister to every age group, the Youth Church is comprised of four specialized sub-ministries.
+                  Characterized by dynamic preaching, worship, healing, and deliverance sessions, we create an environment where individuals encounter genuine spiritual transformation. Beyond evangelism, the initiative also fosters unity among churches and serves as a catalyst for community revival and discipleship.
                 </p>
               </div>
             </div>
           </section>
         )}
 
-        {/* 3. THE SUB-MINISTRIES (Color Coded Sections) */}
+        {/* 3. PROGRAMS & OUTREACH INITIATIVES */}
         {!mobilePlayerActive && (
           <section className="py-20 bg-gray-50 border-y border-black/5 text-black">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Ministry Arms</h2>
-                <p className="text-black/60 max-w-2xl mx-auto">Discover the tailored ministries that make up the Youth Church family.</p>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">Programs & Outreach Initiatives</h2>
+                <p className="text-black/60 max-w-2xl mx-auto">Equipping leaders, reaching the youth, and spreading the Gospel to every corner.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 
-                {/* Called to Greatness (CTG) - Forest Green */}
-                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-green-600 bg-white">
+                {/* Rivers of Hope Crusades */}
+                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-red-700 bg-white md:col-span-2 lg:col-span-1">
                   <div className="p-8">
-                    <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <Rocket className="w-7 h-7 text-green-600" />
+                    <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <Flame className="w-7 h-7 text-red-700" />
                     </div>
-                    <h3 className="text-xl font-bold text-green-700 mb-3">Called to Greatness (CTG)</h3>
+                    <h3 className="text-xl font-bold text-red-900 mb-3">Rivers of Hope Crusades</h3>
                     <p className="text-black/70 text-sm leading-relaxed">
-                      A dedicated ministry empowering young men and young adults to discover their God-given potential, achieve excellence in their careers, and lead with integrity in the modern world.
+                      Our flagship open-air mass evangelism gatherings designed to reach diverse communities with dynamic preaching, worship, healing, and deliverance sessions.
                     </p>
                   </div>
-                  <div className="h-2 w-full bg-green-600/10 absolute bottom-0 left-0" />
+                  <div className="h-2 w-full bg-red-700/10 absolute bottom-0 left-0" />
                 </Card>
 
-                {/* Hope and Beauty - Rose Pink */}
-                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-rose-500 bg-white">
+                {/* International Interdenominational Conference */}
+                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-blue-700 bg-white">
                   <div className="p-8">
-                    <div className="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <Sparkles className="w-7 h-7 text-rose-500" />
+                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <Globe className="w-7 h-7 text-blue-700" />
                     </div>
-                    <h3 className="text-xl font-bold text-rose-600 mb-3">Hope and Beauty</h3>
+                    <h3 className="text-xl font-bold text-blue-900 mb-3">International Leaders Conference</h3>
                     <p className="text-black/70 text-sm leading-relaxed">
-                      A sisterhood focusing on mentoring and building up young women. We tackle real-life issues with biblical truth, encouraging grace, purity, and unwavering purpose in Christ.
+                      A global platform equipping pastors and church workers across denominations with spiritual impartation, leadership training, and strategic ministry insights.
                     </p>
                   </div>
-                  <div className="h-2 w-full bg-rose-500/10 absolute bottom-0 left-0" />
+                  <div className="h-2 w-full bg-blue-700/10 absolute bottom-0 left-0" />
                 </Card>
 
-                {/* Teens Ministry - Vibrant Orange */}
-                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-orange-500 bg-white">
+                {/* Interdenominational Pastors Conference */}
+                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-emerald-600 bg-white">
                   <div className="p-8">
-                    <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <Flame className="w-7 h-7 text-orange-500" />
+                    <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <Users className="w-7 h-7 text-emerald-600" />
                     </div>
-                    <h3 className="text-xl font-bold text-orange-600 mb-3">Teens Ministry</h3>
+                    <h3 className="text-xl font-bold text-emerald-900 mb-3">Local Leaders Conference</h3>
                     <p className="text-black/70 text-sm leading-relaxed">
-                      Designed specifically for high schoolers, this vibrant arm helps teenagers navigate the pivotal years of youth with faith, fun, deep friendships, and solid biblical foundations.
+                      Organized at regional and district levels, providing a contextualized platform to empower leaders with practical tools and promote unity within the Christian community.
                     </p>
                   </div>
-                  <div className="h-2 w-full bg-orange-500/10 absolute bottom-0 left-0" />
+                  <div className="h-2 w-full bg-emerald-600/10 absolute bottom-0 left-0" />
                 </Card>
 
-                {/* Heritage Ministry - Sky Blue / Teal */}
-                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-sky-500 bg-white">
+                {/* Campus Crusade */}
+                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-amber-500 bg-white md:col-span-1 lg:col-span-1 lg:col-start-1">
                   <div className="p-8">
-                    <div className="w-14 h-14 bg-sky-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <Baby className="w-7 h-7 text-sky-500" />
+                    <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <GraduationCap className="w-7 h-7 text-amber-600" />
                     </div>
-                    <h3 className="text-xl font-bold text-sky-600 mb-3">Heritage Ministry</h3>
+                    <h3 className="text-xl font-bold text-amber-800 mb-3">Campus Crusade</h3>
                     <p className="text-black/70 text-sm leading-relaxed">
-                      Our children's church where we lay the early foundations of faith. We teach our youngest members the ways of the Lord through interactive lessons, songs, and age-appropriate play.
+                      Targeting university and college students to raise spiritually grounded young leaders through evangelism, discipleship, and integrating faith with academics.
                     </p>
                   </div>
-                  <div className="h-2 w-full bg-sky-500/10 absolute bottom-0 left-0" />
+                  <div className="h-2 w-full bg-amber-500/10 absolute bottom-0 left-0" />
+                </Card>
+
+                {/* Ministry to Youth */}
+                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-purple-600 bg-white md:col-span-1 lg:col-span-2">
+                  <div className="p-8">
+                    <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <BookOpen className="w-7 h-7 text-purple-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-purple-900 mb-3">Ministry to Youth</h3>
+                    <p className="text-black/70 text-sm leading-relaxed">
+                      Dedicated to reaching secondary school students with the transformative message of the Gospel, guiding young people in both their spiritual journey and academic development.
+                    </p>
+                  </div>
+                  <div className="h-2 w-full bg-purple-600/10 absolute bottom-0 left-0" />
                 </Card>
 
               </div>
@@ -539,13 +535,13 @@ export default function YouthChurchMinistryPage() {
           </section>
         )}
 
-        {/* 4. MINISTRY HIGHLIGHTS (6-Grid Gallery with Interactive Captions) */}
+        {/* 4. CRUSADE HIGHLIGHTS (6-Grid Gallery) */}
         {!mobilePlayerActive && (
           <section className="py-20 bg-white text-black">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Youth Life</h2>
-                <p className="text-black/60 max-w-2xl mx-auto">Vibrant moments of energy, fun, and sincere devotion from across all our ministries.</p>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">Outreach Highlights</h2>
+                <p className="text-black/60 max-w-2xl mx-auto">Moments of power, deliverance, and mass salvation from our recent crusades and conferences.</p>
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
@@ -563,7 +559,6 @@ export default function YouthChurchMinistryPage() {
                       onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
                     />
                     
-                    {/* Caption Overlay - Shows on Click */}
                     <AnimatePresence>
                       {activeGalleryId === item.id && (
                         <motion.div 
@@ -579,8 +574,7 @@ export default function YouthChurchMinistryPage() {
                       )}
                     </AnimatePresence>
 
-                    {/* Hint overlay */}
-                    <div className={`absolute inset-0 bg-[#2D5A8C]/20 transition-opacity duration-300 ${activeGalleryId === item.id ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`} />
+                    <div className={`absolute inset-0 bg-[#b91c1c]/20 transition-opacity duration-300 ${activeGalleryId === item.id ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`} />
                   </div>
                 ))}
               </div>
@@ -589,13 +583,13 @@ export default function YouthChurchMinistryPage() {
           </section>
         )}
 
-        {/* 5. THE LIVE ALTAR (Livestream Section for Youth Church) */}
+        {/* 5. THE LIVE ALTAR (Livestream Section) */}
         {!mobilePlayerActive && (
           <section className="py-16 md:py-24 bg-[#0a1424] text-white">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-10">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Youth Church Live</h2>
-                <p className="text-white/70 max-w-2xl mx-auto">Tune into our high-energy worship and relevant word sessions from wherever you are.</p>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">Crusade Live Stream</h2>
+                <p className="text-white/70 max-w-2xl mx-auto">Join the massive open-air gatherings and powerful ministration from wherever you are in the world.</p>
               </div>
 
               <div className="overflow-hidden rounded-2xl border border-white/15 bg-black/50 shadow-2xl">
@@ -605,18 +599,17 @@ export default function YouthChurchMinistryPage() {
                     data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
                     id="yt-hero"
                     src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
-                    title={featuredVideo?.title || "Youth Church Live"}
+                    title={featuredVideo?.title || "Rivers of Hope Live"}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                   />
                 </div>
                 
-                {/* Tool Selection Bar */}
                 <div className="bg-white text-black px-6 py-5">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <h3 className="text-lg font-semibold text-[#2D5A8C]">
-                        {featuredVideo?.title || "Youth Church Broadcast"}
+                      <h3 className="text-lg font-semibold text-red-900">
+                        {featuredVideo?.title || "Rivers of Hope Broadcast"}
                       </h3>
                       {featuredVideo?.publishedAt && (
                         <p className="text-xs text-black/60 mt-1">
@@ -637,19 +630,18 @@ export default function YouthChurchMinistryPage() {
                       <button onClick={() => setActiveTool(activeTool === "testimony" ? null : "testimony")} className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-900 hover:bg-green-100 transition-colors">
                         Send Testimony
                       </button>
-                      <button onClick={() => setActiveTool(activeTool === "give" ? null : "give")} className="inline-flex items-center gap-2 rounded-full bg-[#2D5A8C] px-4 py-1 text-xs font-semibold text-white hover:bg-[#1E3A5F] transition-colors shadow-sm">
-                        Give
+                      <button onClick={() => setActiveTool(activeTool === "give" ? null : "give")} className="inline-flex items-center gap-2 rounded-full bg-red-800 px-4 py-1 text-xs font-semibold text-white hover:bg-red-900 transition-colors shadow-sm">
+                        Support Outreach
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Active Tool Content Area */}
                 {activeTool && (
                   <div className="border-t border-black/10 bg-gray-50 text-black">
                     <div className="flex flex-wrap items-center gap-2 border-b border-black/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black/50 bg-gray-100">
                       {TOOL_TABS.map((tool) => (
-                        <button key={tool.key} onClick={() => setActiveTool(tool.key)} className={`rounded-full px-3 py-1 transition-colors ${activeTool === tool.key ? "bg-[#2D5A8C] text-white" : "bg-white text-black hover:bg-gray-200"}`}>
+                        <button key={tool.key} onClick={() => setActiveTool(tool.key)} className={`rounded-full px-3 py-1 transition-colors ${activeTool === tool.key ? "bg-red-800 text-white" : "bg-white text-black hover:bg-gray-200"}`}>
                           {tool.label}
                         </button>
                       ))}
@@ -659,7 +651,7 @@ export default function YouthChurchMinistryPage() {
                     </div>
 
                     {activeTool === "bible" && <BibleTool />}
-                    {activeTool === "chat" && <div className="h-100 w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Youth Church Live'} /></div>}
+                    {activeTool === "chat" && <div className="h-[400px] w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Crusade Live'} /></div>}
                     {activeTool === "notepad" && <NotepadTool />}
                     {activeTool === "testimony" && <div className="px-5 py-6"><TestimonyTool /></div>}
                     {activeTool === "give" && <div className="px-5 py-6"><GiveTool isMobile={false} /></div>}
@@ -670,22 +662,21 @@ export default function YouthChurchMinistryPage() {
           </section>
         )}
 
-        {/* 6. ALL EVENTS SECTION (Cycling Grid triggering Modal) */}
+        {/* 6. ALL EVENTS SECTION (Cycling Grid) */}
         {!mobilePlayerActive && (
           <section className="py-20 bg-gray-50 text-black overflow-hidden border-y border-black/5">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming & Past Events</h2>
-                  <p className="text-black/60 max-w-xl">Encompassing gatherings from the Youth Church, CTG, Hope & Beauty, Teens, and Heritage.</p>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming Crusades & Conferences</h2>
+                  <p className="text-black/60 max-w-xl">See where Pastor Esau Banda and the team will be taking the Gospel next.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                {/* Large Featured Image (Cycling) - BUTTON */}
                 <button 
                   onClick={() => setSelectedEvent(featuredGridEvent)}
-                  className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
+                  className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-red-800"
                 >
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -703,8 +694,8 @@ export default function YouthChurchMinistryPage() {
                         className="object-cover group-hover:scale-105 transition-transform duration-700"
                         onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
                       />
-                      <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
-                        <span className="bg-[#2D5A8C] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
+                        <span className="bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
                           <CalendarClock className="w-4 h-4" />
                           {featuredGridEvent.type}
                         </span>
@@ -723,13 +714,12 @@ export default function YouthChurchMinistryPage() {
                   </div>
                 </button>
 
-                {/* Grid of Smaller Previous/Future Events - BUTTONS */}
                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
                   {remainingEvents.map((event) => (
                     <button 
                       key={event.id} 
                       onClick={() => setSelectedEvent(event)}
-                      className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group text-left w-full focus:outline-none focus:ring-2 focus:ring-[#2D5A8C]"
+                      className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group text-left w-full focus:outline-none focus:ring-2 focus:ring-red-800"
                     >
                       <Image 
                         src={event.image} 
@@ -739,7 +729,7 @@ export default function YouthChurchMinistryPage() {
                         onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
                       />
                       <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                        <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
+                        <span className="text-red-300 text-[10px] font-bold uppercase tracking-wider mb-1">
                           {event.type}
                         </span>
                         <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{event.title}</h4>
@@ -753,19 +743,18 @@ export default function YouthChurchMinistryPage() {
           </section>
         )}
 
-        {/* 7. MINISTRY PROJECTS (Initiatives Feed) */}
+        {/* 7. MINISTRY PROJECTS */}
         {!mobilePlayerActive && (
           <section className="py-20 bg-white text-black border-b border-black/5">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Ministry Initiatives</h2>
-                  <p className="text-black/60 max-w-xl">See what our youth and sub-ministries are building and championing.</p>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Strategic Discipleship</h2>
+                  <p className="text-black/60 max-w-xl">How we ensure the harvest is preserved and leaders are continuously equipped.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                {/* Large Featured Image (Current/Latest Project) */}
                 <div className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group">
                   <Image 
                     src={ministryProjects[0].image} 
@@ -775,7 +764,7 @@ export default function YouthChurchMinistryPage() {
                     onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
-                    <span className="bg-[#2D5A8C] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
+                    <span className="bg-red-800 text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
                       {ministryProjects[0].type}
                     </span>
                     <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{ministryProjects[0].title}</h3>
@@ -783,7 +772,6 @@ export default function YouthChurchMinistryPage() {
                   </div>
                 </div>
 
-                {/* Grid of Smaller Previous/Future Publications */}
                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
                   {ministryProjects.slice(1).map((material) => (
                     <div key={material.id} className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group">
@@ -795,7 +783,7 @@ export default function YouthChurchMinistryPage() {
                         onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
                       />
                       <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                        <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
+                        <span className="text-red-300 text-[10px] font-bold uppercase tracking-wider mb-1">
                           {material.type}
                         </span>
                         <h4 className="text-white text-sm font-semibold leading-tight mb-1">{material.title}</h4>
@@ -819,7 +807,7 @@ export default function YouthChurchMinistryPage() {
                   data-yt-id={mobileVideoId}
                   id="yt-hero-mobile"
                   src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0&autoplay=1&playsinline=1${mobileVideoStart}`}
-                  title={featuredVideo?.title || 'Youth Church Live'}
+                  title={featuredVideo?.title || 'Rivers of Hope Live'}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />
@@ -828,7 +816,7 @@ export default function YouthChurchMinistryPage() {
                 <div className="mb-4 border-b border-black/10 pb-3">
                   <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-black/70">
                     {TOOL_TABS.map((tool) => (
-                      <button key={tool.key} onClick={() => setActiveTool(tool.key)} className={`rounded-full px-3 py-1 transition-colors ${activeTool === tool.key ? 'bg-[#2D5A8C] text-white' : 'bg-white border border-black/10 text-black'}`}>
+                      <button key={tool.key} onClick={() => setActiveTool(tool.key)} className={`rounded-full px-3 py-1 transition-colors ${activeTool === tool.key ? 'bg-red-800 text-white' : 'bg-white border border-black/10 text-black'}`}>
                         {tool.label}
                       </button>
                     ))}
@@ -836,7 +824,7 @@ export default function YouthChurchMinistryPage() {
                   </div>
                 </div>
                 {activeEmbedTool && <div className="aspect-[4/3] w-full bg-white mb-4 rounded-xl overflow-hidden border border-black/10"><iframe className="h-full w-full" src={activeEmbedTool.url} title={activeEmbedTool.label} allow="clipboard-write; fullscreen" /></div>}
-                {activeTool === "chat" && <div className="h-[300px] w-full bg-white mb-4 rounded-xl overflow-hidden border border-black/10"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Youth Church Live'} /></div>}
+                {activeTool === "chat" && <div className="h-[300px] w-full bg-white mb-4 rounded-xl overflow-hidden border border-black/10"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Live Broadcast'} /></div>}
                 {activeTool === "bible" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><BibleTool /></div>}
                 {activeTool === "notepad" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><NotepadTool /></div>}
                 {activeTool === "testimony" && <div className="px-4 py-5"><TestimonyTool /></div>}
@@ -852,26 +840,26 @@ export default function YouthChurchMinistryPage() {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-6">Partner With Us</h2>
-                  <div className="w-16 h-1 bg-[#2D5A8C] mb-6 rounded-full" />
+                  <h2 className="text-3xl md:text-4xl font-bold mb-6">Partner With The Harvest</h2>
+                  <div className="w-16 h-1 bg-red-800 mb-6 rounded-full" />
                   <p className="text-lg text-black/70 mb-4">
-                    Equipping the next generation requires resources, dedicated mentors, and community support. You can partner with the Youth Church to fund our outreach programs, retreats, and mentorship camps.
+                    Taking the Gospel to the masses through open-air crusades and equipping international leaders requires significant resources and dedication.
                   </p>
                   <p className="text-lg text-black/70 mb-6">
-                    Whether you are investing in the Heritage Kids, Teens, Hope & Beauty, or CTG, your support helps us build strong foundations for tomorrow's leaders.
+                    When you partner with Rivers of Hope Crusades, you are directly contributing to soul-winning, community transformation, and raising up the next generation of spiritual leaders on campuses and in high schools.
                   </p>
                   
                   <div className="bg-white p-6 rounded-xl shadow-sm border border-black/5">
-                    <h3 className="font-bold text-xl mb-4 text-[#2D5A8C]">Sponsorship & Giving</h3>
+                    <h3 className="font-bold text-xl mb-4 text-red-900">Become a Crusade Partner</h3>
                     <div className="space-y-2 text-sm text-black/70">
-                      <p>If you'd like to sponsor a youth retreat or fund our campus outreach programs, please contact the main church office for designated giving details.</p>
+                      <p>To support an upcoming crusade or sponsor a pastors' conference, please contact our international office for partnership details.</p>
                     </div>
                   </div>
                 </div>
                 <div className="relative h-[400px] rounded-2xl overflow-hidden shadow-xl">
                   <Image 
-                    src="/hero/hero-store.jpg" 
-                    alt="Support Youth Ministry" 
+                    src="/hero/hero-1.jpg" 
+                    alt="Support the Crusade" 
                     fill 
                     className="object-cover"
                     onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
@@ -882,50 +870,31 @@ export default function YouthChurchMinistryPage() {
           </section>
         )}
 
-        {/* 9. NEWS SECTION */}
-        {!mobilePlayerActive && (
-          <section className="py-20 bg-white text-black border-y border-black/5">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-              <Globe className="w-12 h-12 mx-auto text-[#2D5A8C] mb-6" />
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">Latest News</h2>
-              <p className="text-lg text-black/70 max-w-2xl mx-auto mb-8">
-                Registrations are now open for the 2026 Lake Retreat! Connect with your youth leaders to secure your spot. Additionally, Hope & Beauty mentorship sign-ups close at the end of the month.
-              </p>
-            </div>
-          </section>
-        )}
-
-        {/* 10. CONTACTS SECTION */}
+        {/* 9. CONTACTS SECTION */}
         {!mobilePlayerActive && (
           <section className="py-20 bg-slate-900 text-white">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Get Involved</h2>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">Get In Touch</h2>
                 <p className="text-white/80 max-w-2xl mx-auto">
-                  Whether you're a teen looking for a community or an adult looking to mentor, we'd love to hear from you.
+                  For crusade invitations, conference details, or partnership inquiries, please contact our ministry desk.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto gap-8">
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
-                  <MapPin className="w-10 h-10 mx-auto text-blue-300 mb-4" />
-                  <h3 className="font-bold text-xl mb-2">Location</h3>
-                  <p className="text-white/70">PICC Youth Church</p>
-                  <p className="text-white/70">Camp of God Cathedral</p>
+                  <Mail className="w-10 h-10 mx-auto text-red-400 mb-4" />
+                  <h3 className="font-bold text-xl mb-2">Email Address</h3>
+                  <a href="mailto:roh@piccworldwide.org" className="text-white/70 hover:text-white transition-colors break-all">
+                    roh@piccworldwide.org
+                  </a>
                 </Card>
 
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
-                  <Phone className="w-10 h-10 mx-auto text-blue-300 mb-4" />
-                  <h3 className="font-bold text-xl mb-2">Phone</h3>
-                  <p className="text-white/70">Check with your local PICC branch for youth pastor contacts.</p>
-                </Card>
-
-                <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
-                  <Mail className="w-10 h-10 mx-auto text-blue-300 mb-4" />
-                  <h3 className="font-bold text-xl mb-2">Email</h3>
-                  <p className="text-white/70 break-all">
-                    info@picc.org
-                  </p>
+                  <Globe className="w-10 h-10 mx-auto text-red-400 mb-4" />
+                  <h3 className="font-bold text-xl mb-2">Ministry Office</h3>
+                  <p className="text-white/70">PICC Worldwide</p>
+                  <p className="text-white/70">Rivers of Hope Desk</p>
                 </Card>
               </div>
             </div>
