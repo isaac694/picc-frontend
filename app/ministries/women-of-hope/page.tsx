@@ -912,8 +912,8 @@ export default function WomenOfHopePage() {
                       <Card className="flex flex-col sm:flex-row h-full overflow-hidden border border-black/10 shadow-lg bg-white">
                         <div className="relative w-full sm:w-1/2 h-48 sm:h-full bg-sky-50 flex-shrink-0">
                           <Image 
-                            src={pastEvents[currentSlide]?.image || pastEvents[0].image} 
-                            alt={pastEvents[currentSlide]?.title || 'Event Image'} 
+                            src={eventCards[currentSlide]?.image || eventCards[0]?.image} 
+                            alt={eventCards[currentSlide]?.title || eventCards[0]?.title || 'Event Image'} 
                             fill 
                             className="object-cover"
                             onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
