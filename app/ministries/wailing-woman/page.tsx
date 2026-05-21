@@ -715,14 +715,6 @@ export default function WailingWomenPage() {
   const mobileVideoStart = mobileResumeAt && mobileResumeAt > 0 ? `&start=${mobileResumeAt}` : '';
 
   return (
-    <>
-      {/* 
-        Navbar Wrapper to force Wailing Woman purple.
-        Uses arbitrary variants to target inner header/nav tags.
-      */}
-      <div className="[&>header]:!bg-[#6B21A8] [&_header]:!bg-[#6B21A8] [&>nav]:!bg-[#6B21A8] [&_nav]:!bg-[#6B21A8]">
-        <Navigation />
-      </div>
       
       <main className="min-h-screen">
         

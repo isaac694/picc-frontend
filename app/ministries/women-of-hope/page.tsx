@@ -1035,7 +1035,7 @@ export default function WomenOfHopePage() {
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Mail className="w-10 h-10 mx-auto text-sky-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Email</h3>
-                  <p className="text-white/70 break-all">{ministryInfo.email || 'info@picc.org'}</p>
+                  <p className="text-white/70 break-all">{ministryInfo.email || 'woh@piccworldwide.org'}</p>
                 </Card>
               </div>
             </div>
