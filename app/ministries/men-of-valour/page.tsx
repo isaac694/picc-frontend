@@ -755,7 +755,7 @@ export default function MenOfValourPage() {
                   <Mail className="w-10 h-10 mx-auto text-blue-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Email</h3>
                   <p className="text-white/70 break-all">
-                    info@picc.org
+                    mov@piccworldwide.org
                   </p>
                 </Card>
               </div>

@@ -409,8 +409,8 @@ export default function HeritageMinistryPage() {
               <Card className="bg-sky-700/50 border-0 text-white p-8 text-center backdrop-blur-sm rounded-3xl">
                 <MapPin className="w-12 h-12 mx-auto text-yellow-300 mb-4" />
                 <h3 className="font-bold text-xl mb-2">Location</h3>
-                <p className="text-sky-100 font-medium">Children's Hall</p>
                 <p className="text-sky-100 font-medium">Camp of God Cathedral</p>
+                <p className="text-sky-100 font-medium">Area 49, Lilongwe</p>
               </Card>
 
               <Card className="bg-sky-700/50 border-0 text-white p-8 text-center backdrop-blur-sm rounded-3xl">
@@ -423,7 +423,7 @@ export default function HeritageMinistryPage() {
                 <Mail className="w-12 h-12 mx-auto text-yellow-300 mb-4" />
                 <h3 className="font-bold text-xl mb-2">Email</h3>
                 <p className="text-sky-100 break-all font-medium">
-                  info@picc.org
+                  heritage@piccworldwide.org
                 </p>
               </Card>
             </div>

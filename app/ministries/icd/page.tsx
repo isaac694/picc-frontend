@@ -749,8 +749,8 @@ export default function IcdMinistryPage() {
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <MapPin className="w-10 h-10 mx-auto text-blue-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Location</h3>
-                  <p className="text-white/70">PICC ICD Department</p>
                   <p className="text-white/70">Camp of God Cathedral</p>
+                  <p className="text-white/70">Area 49, Lilongwe</p>
                 </Card>
 
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
@@ -763,7 +763,7 @@ export default function IcdMinistryPage() {
                   <Mail className="w-10 h-10 mx-auto text-blue-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Email</h3>
                   <p className="text-white/70 break-all">
-                    info@picc.org
+                    icd@piccworldwide.org
                   </p>
                 </Card>
               </div>
