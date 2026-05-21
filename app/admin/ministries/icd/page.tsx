@@ -20,7 +20,7 @@ const icdFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
     'ICD is an intercessory and developmental ministry arm of PICC. Our goal is to move believers from being mere spectators to becoming active, effective disciples of Jesus Christ who are capable of leading and guiding others.\n\nWe provide structured modules covering biblical foundations, leadership development, and practical ministry skills. By combining sound doctrine with practical application, ICD ensures that every member is thoroughly equipped for every good work in the Kingdom.',
   heroImageUrl: '/hero/hero-icd.jpg',
   logoImageUrl: '/logos/icd-logo.png',
-  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=ydTADwZRquA',
+  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=Z_HD5WhhxOU',
   partnershipTitle: 'Partner With Us',
   partnershipBody:
     'The work of building disciples, ministering deliverance, and reaching out to our community through initiatives like our hospital visits is vast.\n\nBy partnering with the ICD Ministry financially, you ensure that we can continue bringing hope to the hopeless and life to the dying.',

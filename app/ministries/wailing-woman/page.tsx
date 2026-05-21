@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { 
   ChevronLeft, ChevronRight, Waves, MapPin, 
   Phone, Mail, CalendarClock, BookOpen, Globe, 
@@ -76,9 +77,99 @@ type YouTubePlaylistItem = {
   snippet?: YouTubeSnippet;
 };
 
+type PartnershipDetail = {
+  label: string;
+  value: string;
+};
+
+type MinistryInfo = {
+  name: string | null;
+  motto: string | null;
+  about: string | null;
+  heroImageUrl: string | null;
+  logoImageUrl: string | null;
+  liveSessionYoutubeUrl: string | null;
+  partnershipTitle: string | null;
+  partnershipBody: string | null;
+  partnershipDetails: PartnershipDetail[] | null;
+  partnershipImageUrl: string | null;
+  phone: string | null;
+  email: string | null;
+  location: string | null;
+  contactIntro: string | null;
+};
+
+type MinistryItem = {
+  id: string;
+  category: string;
+  title: string;
+  description: string | null;
+  label: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
+};
+
+const toAssetUrl = (value: string | null | undefined) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  return trimmed;
+};
+
+const videoIdFromUrl = (value: string | null | undefined) => {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+  const match = raw.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  return match ? match[1] : '';
+};
+
+const mergeItemsWithFallback = (loaded: MinistryItem[], fallback: MinistryItem[]) => {
+  if (!loaded.length) return fallback;
+  if (!fallback.length) return loaded;
+
+  const remainingFallback = fallback.filter(
+    (fallbackItem) =>
+      !loaded.some(
+        (loadedItem) =>
+          loadedItem.category === fallbackItem.category &&
+          loadedItem.sortOrder === fallbackItem.sortOrder,
+      ),
+  );
+
+  return [...loaded, ...remainingFallback].sort((first, second) => {
+    const sortDifference = (first.sortOrder ?? 0) - (second.sortOrder ?? 0);
+    if (sortDifference !== 0) return sortDifference;
+    return first.title.localeCompare(second.title);
+  });
+};
+
 type YouTubePlayer = {
   pauseVideo: () => void;
   getCurrentTime?: () => number;
+};
+
+const defaultMinistryInfo: MinistryInfo = {
+  name: 'Wailing Woman',
+  motto: 'Contending for the lives and destinies of our children through intensive warfare midnight prayers.',
+  about:
+    'The "Wailing Woman - My Seed Must Prosper!" is an interdenominational online warfare prayer ministry. It was founded by Pastor (Mrs.) Loyce Banda, the wife of Pastor Esau Banda, Senior Pastor of the Pentecost International Christian Centre (PICC).\n\nInspired by God, the ministry awakens mothers globally to take up the responsibility of shaping and securing the glorious destinies of their children through corporate intensive midnight prayers. We seek to resist Satan\'s schemes against children and enforce victories over them through word-based warfare prayers and prophetic declarations.',
+  heroImageUrl: '/hero/hero-1.jpg',
+  logoImageUrl: '/logos/wailing-woman-logo.png',
+  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=ydTADwZRquA',
+  partnershipTitle: 'Support the Vision',
+  partnershipBody:
+    'Launched on the 17th of January, 2025, our outreach has expanded rapidly. We now have over 2,500 members spanning across different countries.\n\nOur goal is to ensure that through this ministry, children accept Jesus Christ, walk in the fear of God, and enjoy success in their education, careers, and marriages.',
+  partnershipDetails: [
+    { label: 'Bank', value: 'National Bank (Gateway Mall), Account: 1012674801' },
+    { label: 'Airtel Money', value: '0986337644 (Catherine Kulemeka)' },
+    { label: 'TNM Mpamba', value: '0882550238 (Catherine Kulemeka)' },
+  ],
+  partnershipImageUrl: '/hero/outreach.jpg',
+  phone: '+265 995 46 55 40 / +265 999 31 77 81',
+  email: 'wailingwomanprayers@gmail.com',
+  location: 'P.O Box 31841, Lilongwe, Malawi',
+  contactIntro:
+    'If you are a mother or guardian ready to contend for your children, contact us to join our WhatsApp forum.',
 };
 
 type YouTubePlayerStateChangeEvent = {
@@ -140,6 +231,16 @@ const pastEvents = [
   },
 ];
 
+const defaultEventItems: MinistryItem[] = pastEvents.map((event, index) => ({
+  id: `default-event-${event.id}`,
+  category: 'event',
+  title: event.title,
+  description: event.description,
+  label: event.date,
+  imageUrl: event.image,
+  sortOrder: index,
+}));
+
 const highlightGallery = [
   { id: 1, src: '/moments/ww-1.jpg', caption: 'Deep intercession during the midnight watch.' },
   { id: 2, src: '/moments/ww-2.jpg', caption: 'Mothers standing in the gap for their children.' },
@@ -149,12 +250,65 @@ const highlightGallery = [
   { id: 6, src: '/moments/ww-6.jpg', caption: 'Corporate worship and warfare.' },
 ];
 
+const defaultHighlightItems: MinistryItem[] = highlightGallery.map((item, index) => ({
+  id: `default-highlight-${item.id}`,
+  category: 'highlight',
+  title: `Highlight ${item.id}`,
+  description: item.caption,
+  label: null,
+  imageUrl: item.src,
+  sortOrder: index,
+}));
+
 const publishedMaterials = [
   { id: 1, type: 'Prosperity Arrow', title: 'Week 42 Confession', date: 'April 27, 2026', image: '/materials/arrow-current.jpg' },
   { id: 2, type: 'Weekly Devotional', title: 'The Power of the Secret Place', date: 'April 23, 2026', image: '/materials/devo-1.jpg' },
   { id: 3, type: 'Prosperity Arrow', title: 'Week 41 Confession', date: 'April 20, 2026', image: '/materials/arrow-old1.jpg' },
   { id: 4, type: 'Weekly Devotional', title: 'Birthing Through Prayer', date: 'April 9, 2026', image: '/materials/devo-2.jpg' },
   { id: 5, type: 'Prosperity Arrow', title: 'Week 40 Confession', date: 'April 13, 2026', image: '/materials/arrow-old2.jpg' },
+];
+
+const defaultMaterialItems: MinistryItem[] = publishedMaterials.map((item, index) => ({
+  id: `default-material-${item.id}`,
+  category: 'material',
+  title: item.title,
+  description: item.type,
+  label: item.date,
+  imageUrl: item.image,
+  sortOrder: index,
+}));
+
+const defaultPillarItems: MinistryItem[] = [
+  {
+    id: 'default-pillar-1',
+    category: 'pillar',
+    title: 'Prosperity Arrows',
+    description:
+      'Weekly confessions for our children shared every Monday via WhatsApp, Telegram, and Facebook based on Job 22:28.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 0,
+  },
+  {
+    id: 'default-pillar-2',
+    category: 'pillar',
+    title: 'Weekly Devotional',
+    description:
+      '"My Seed Must Prosper" devotional is shared every second and fourth Thursday to empower mothers.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 1,
+  },
+  {
+    id: 'default-pillar-3',
+    category: 'pillar',
+    title: 'Preparatory Prayers',
+    description:
+      'Prayers of salvation and repentance are shared mornings before midnight prayers to ensure right standing with God.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 2,
+  },
 ];
 
 export default function WailingWomenPage() {
@@ -166,6 +320,8 @@ export default function WailingWomenPage() {
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
+  const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultMinistryInfo);
+  const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -175,6 +331,79 @@ export default function WailingWomenPage() {
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 
   const featuredVideo = videos[0] || null;
+  const itemGroups = {
+    pillars: ministryItems.filter((item) => item.category === 'pillar'),
+    highlights: ministryItems.filter((item) => item.category === 'highlight'),
+    materials: ministryItems.filter((item) => item.category === 'material'),
+    events: ministryItems.filter((item) => item.category === 'event'),
+  };
+  const pillarItems = mergeItemsWithFallback(itemGroups.pillars, defaultPillarItems);
+  const galleryItems = mergeItemsWithFallback(itemGroups.highlights, defaultHighlightItems).map((item, index) => ({
+    id: index + 1,
+    src: toAssetUrl(item.imageUrl) || highlightGallery[index % highlightGallery.length]?.src || '/hero/hero-store.jpg',
+    caption: item.description || item.title,
+  }));
+  const materialItems = mergeItemsWithFallback(itemGroups.materials, defaultMaterialItems).map((item, index) => ({
+    id: index + 1,
+    type: item.description || 'Material',
+    title: item.title,
+    date: item.label || '',
+    image: toAssetUrl(item.imageUrl) || publishedMaterials[index % publishedMaterials.length]?.image || '/hero/hero-store.jpg',
+  }));
+  const eventItems = mergeItemsWithFallback(itemGroups.events, defaultEventItems).map((item, index) => ({
+    id: index + 1,
+    title: item.title,
+    date: item.label || '',
+    description: item.description || '',
+    image: toAssetUrl(item.imageUrl) || pastEvents[index % pastEvents.length]?.image || '/hero/hero-store.jpg',
+  }));
+
+  useEffect(() => {
+    let active = true;
+
+    const loadMinistry = async () => {
+      try {
+        const response = await apiFetch('/api/ministries/wailing-woman/content');
+        if (!response.ok) return;
+        const data = await response.json().catch(() => null);
+        if (!active) return;
+
+        if (data?.info) {
+          const loaded = data.info;
+          setMinistryInfo({
+            ...defaultMinistryInfo,
+            name: loaded.name ?? defaultMinistryInfo.name,
+            motto: loaded.motto ?? defaultMinistryInfo.motto,
+            about: loaded.about ?? defaultMinistryInfo.about,
+            heroImageUrl: loaded.heroImageUrl ?? defaultMinistryInfo.heroImageUrl,
+            logoImageUrl: loaded.logoImageUrl ?? defaultMinistryInfo.logoImageUrl,
+            liveSessionYoutubeUrl: loaded.liveSessionYoutubeUrl ?? defaultMinistryInfo.liveSessionYoutubeUrl,
+            partnershipTitle: loaded.partnershipTitle ?? defaultMinistryInfo.partnershipTitle,
+            partnershipBody: loaded.partnershipBody ?? defaultMinistryInfo.partnershipBody,
+            partnershipDetails: Array.isArray(loaded.partnershipDetails)
+              ? loaded.partnershipDetails
+              : defaultMinistryInfo.partnershipDetails,
+            partnershipImageUrl: loaded.partnershipImageUrl ?? defaultMinistryInfo.partnershipImageUrl,
+            phone: loaded.phone ?? defaultMinistryInfo.phone,
+            email: loaded.email ?? defaultMinistryInfo.email,
+            location: loaded.location ?? defaultMinistryInfo.location,
+            contactIntro: loaded.contactIntro ?? defaultMinistryInfo.contactIntro,
+          });
+        }
+
+        if (Array.isArray(data?.items)) {
+          setMinistryItems(data.items);
+        }
+      } catch {
+        // keep fallback content
+      }
+    };
+
+    void loadMinistry();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const formatDate = (value: string) => {
     if (!value) return "";
@@ -186,13 +415,13 @@ export default function WailingWomenPage() {
   // --- EFFECTS ---
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % pastEvents.length);
+      setCurrentSlide((prev) => (prev + 1) % eventItems.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [eventItems.length]);
 
-  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % pastEvents.length);
-  const prevSlide = () => setCurrentSlide((prev) => (prev === 0 ? pastEvents.length - 1 : prev - 1));
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % eventItems.length);
+  const prevSlide = () => setCurrentSlide((prev) => (prev === 0 ? eventItems.length - 1 : prev - 1));
 
   useEffect(() => {
     let isMounted = true;
@@ -499,24 +728,33 @@ export default function WailingWomenPage() {
         
         {/* 1. HERO SECTION */}
         {!mobilePlayerActive && (
-          <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[radial-gradient(circle_at_top,#9333EA_0%,#6B21A8_45%,#4C1D95_100%)] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
+          <section
+            className="relative overflow-hidden pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[#6B21A8] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10"
+            style={{
+              backgroundImage: `linear-gradient(rgba(107,33,168,0.84), rgba(76,29,149,0.8)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/hero/hero-1.jpg'})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
               <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20">
                 <Image 
-                  src="/logos/wailing-woman-logo.png" 
-                  alt="Wailing Women Logo" 
+                  src={toAssetUrl(ministryInfo.logoImageUrl) || '/logos/wailing-woman-logo.png'} 
+                  alt={`${ministryInfo.name || 'Wailing Women'} Logo`} 
                   fill 
                   className="object-contain p-2 rounded-full"
-                  onError={(e: any) => e.target.src = '/logo.png'} 
+                  onError={(event) => {
+                    event.currentTarget.src = '/logo.png';
+                  }} 
                 />
               </div>
 
               <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3 font-semibold">My Seed Must Prosper</p>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">Wailing Woman</h1>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">{ministryInfo.name || 'Wailing Woman'}</h1>
               
               <div className="inline-block border-y border-white/20 py-3 px-8 mb-6">
                 <p className="text-lg sm:text-xl font-medium tracking-wide text-white/90 italic">
-                  "Contending for the lives and destinies of our children through intensive warfare midnight prayers."
+                  {ministryInfo.motto || 'Contending for the lives and destinies of our children through intensive warfare midnight prayers.'}
                 </p>
               </div>
             </div>
@@ -531,30 +769,25 @@ export default function WailingWomenPage() {
                 <h2 className="text-3xl md:text-4xl font-bold mb-6">About the Ministry</h2>
                 <div className="w-16 h-1 bg-[#6B21A8] mx-auto mb-8 rounded-full" />
                 <p className="text-lg text-black/70 leading-relaxed mb-6">
-                  The "Wailing Woman - My Seed Must Prosper!" is an interdenominational online warfare prayer ministry. It was founded by Pastor (Mrs.) Loyce Banda, the wife of Pastor Esau Banda, Senior Pastor of the Pentecost International Christian Centre (PICC). 
+                  {ministryInfo.about?.split('\n\n')[0] || 'The "Wailing Woman - My Seed Must Prosper!" is an interdenominational online warfare prayer ministry. It was founded by Pastor (Mrs.) Loyce Banda, the wife of Pastor Esau Banda, Senior Pastor of the Pentecost International Christian Centre (PICC).'}
                 </p>
                 <p className="text-lg text-black/70 leading-relaxed">
-                  Inspired by God, the ministry awakens mothers globally to take up the responsibility of shaping and securing the glorious destinies of their children through corporate intensive midnight prayers. We seek to resist Satan's schemes against children and enforce victories over them through word-based warfare prayers and prophetic declarations.
+                  {ministryInfo.about?.split('\n\n')[1] || 'Inspired by God, the ministry awakens mothers globally to take up the responsibility of shaping and securing the glorious destinies of their children through corporate intensive midnight prayers. We seek to resist Satan\'s schemes against children and enforce victories over them through word-based warfare prayers and prophetic declarations.'}
                 </p>
               </div>
 
               {/* Informational Cards moved inside About Section */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
-                <Card className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#6B21A8]">
-                  <Target className="w-12 h-12 mx-auto text-[#6B21A8] mb-4" />
-                  <h3 className="text-xl font-bold mb-2">Prosperity Arrows</h3>
-                  <p className="text-black/60">Weekly confessions for our children shared every Monday via WhatsApp, Telegram, and Facebook based on Job 22:28.</p>
-                </Card>
-                <Card className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#6B21A8]">
-                  <BookOpen className="w-12 h-12 mx-auto text-[#6B21A8] mb-4" />
-                  <h3 className="text-xl font-bold mb-2">Weekly Devotional</h3>
-                  <p className="text-black/60">"My Seed Must Prosper" devotional is shared every second and fourth Thursday to empower mothers.</p>
-                </Card>
-                <Card className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#6B21A8]">
-                  <MessageCircle className="w-12 h-12 mx-auto text-[#6B21A8] mb-4" />
-                  <h3 className="text-xl font-bold mb-2">Preparatory Prayers</h3>
-                  <p className="text-black/60">Prayers of salvation and repentance are shared mornings before midnight prayers to ensure right standing with God.</p>
-                </Card>
+                {pillarItems.map((item, index) => {
+                  const Icon = [Target, BookOpen, MessageCircle][index % 3];
+                  return (
+                    <Card key={item.id} className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#6B21A8]">
+                      <Icon className="w-12 h-12 mx-auto text-[#6B21A8] mb-4" />
+                      <h3 className="text-xl font-bold mb-2">{item.title}</h3>
+                      <p className="text-black/60">{item.description}</p>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -570,7 +803,7 @@ export default function WailingWomenPage() {
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                {highlightGallery.map((item) => (
+                {galleryItems.map((item) => (
                   <div 
                     key={item.id} 
                     className="relative h-48 md:h-64 bg-purple-200 rounded-xl overflow-hidden cursor-pointer group"
@@ -710,24 +943,24 @@ export default function WailingWomenPage() {
                 {/* Large Featured Image (Current/Latest) */}
                 <div className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group">
                   <Image 
-                    src={publishedMaterials[0].image} 
-                    alt={publishedMaterials[0].title}
+                    src={materialItems[0]?.image || '/hero/hero-store.jpg'} 
+                    alt={materialItems[0]?.title || 'Wailing Woman material'}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-700"
                     onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
                     <span className="bg-[#6B21A8] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
-                      Latest {publishedMaterials[0].type}
+                      Latest {materialItems[0]?.type || 'Material'}
                     </span>
-                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{publishedMaterials[0].title}</h3>
-                    <p className="text-white/80 text-sm font-medium">{publishedMaterials[0].date}</p>
+                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{materialItems[0]?.title || 'Wailing Woman Material'}</h3>
+                    <p className="text-white/80 text-sm font-medium">{materialItems[0]?.date}</p>
                   </div>
                 </div>
 
                 {/* Grid of Smaller Previous Publications */}
                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-                  {publishedMaterials.slice(1).map((material) => (
+                  {materialItems.slice(1).map((material) => (
                     <div key={material.id} className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group">
                       <Image 
                         src={material.image} 
@@ -830,8 +1063,8 @@ export default function WailingWomenPage() {
                       <Card className="flex flex-col sm:flex-row h-full overflow-hidden border border-black/10 shadow-lg bg-white">
                         <div className="relative w-full sm:w-1/2 h-48 sm:h-full bg-purple-50 flex-shrink-0">
                           <Image 
-                            src={pastEvents[currentSlide]?.image || pastEvents[0].image} 
-                            alt={pastEvents[currentSlide]?.title || 'Event Image'} 
+                            src={eventItems[currentSlide]?.image || eventItems[0]?.image || '/hero/hero-store.jpg'} 
+                            alt={eventItems[currentSlide]?.title || 'Event Image'} 
                             fill 
                             className="object-cover"
                             onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
@@ -840,13 +1073,13 @@ export default function WailingWomenPage() {
                         <div className="p-8 sm:p-10 flex flex-col justify-center w-full sm:w-1/2">
                           <div className="flex items-center gap-2 text-[#6B21A8] font-semibold text-sm mb-4 bg-purple-50 w-fit px-3 py-1 rounded-full">
                             <Waves className="w-4 h-4" />
-                            <span>{pastEvents[currentSlide]?.date || pastEvents[0].date}</span>
+                            <span>{eventItems[currentSlide]?.date || eventItems[0]?.date}</span>
                           </div>
                           <h3 className="text-2xl sm:text-3xl font-bold mb-4 leading-tight">
-                            {pastEvents[currentSlide]?.title || pastEvents[0].title}
+                            {eventItems[currentSlide]?.title || eventItems[0]?.title}
                           </h3>
                           <p className="text-black/60 leading-relaxed">
-                            {pastEvents[currentSlide]?.description || pastEvents[0].description}
+                            {eventItems[currentSlide]?.description || eventItems[0]?.description}
                           </p>
                         </div>
                       </Card>
@@ -882,18 +1115,28 @@ export default function WailingWomenPage() {
                   </p>
                   
                   <div className="bg-gray-50 p-6 rounded-xl shadow-sm border border-black/5">
-                    <h3 className="font-bold text-xl mb-4 text-[#6B21A8]">Support the Vision</h3>
+                    <h3 className="font-bold text-xl mb-4 text-[#6B21A8]">{ministryInfo.partnershipTitle || 'Support the Vision'}</h3>
                     <div className="space-y-2 text-sm text-black/70">
-                      <p><strong>National Bank (Gateway Mall):</strong> 1012674801 (SWIFT: NBMAMWMW007)</p>
-                      <p><strong>Airtel Money:</strong> 0986337644 (Catherine Kulemeka)</p>
-                      <p><strong>TNM Mpamba:</strong> 0882550238 (Catherine Kulemeka)</p>
+                      {(ministryInfo.partnershipDetails ?? []).length > 0 ? (
+                        ministryInfo.partnershipDetails.map((detail, index) => (
+                          <p key={index}>
+                            <strong>{detail.label || 'Detail'}:</strong> {detail.value || '---'}
+                          </p>
+                        ))
+                      ) : (
+                        <>
+                          <p><strong>National Bank (Gateway Mall):</strong> 1012674801 (SWIFT: NBMAMWMW007)</p>
+                          <p><strong>Airtel Money:</strong> 0986337644 (Catherine Kulemeka)</p>
+                          <p><strong>TNM Mpamba:</strong> 0882550238 (Catherine Kulemeka)</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="relative h-[400px] rounded-2xl overflow-hidden shadow-xl">
                   <Image 
-                    src="/hero/outreach.jpg" 
-                    alt="Global Outreach" 
+                    src={toAssetUrl(ministryInfo.partnershipImageUrl) || '/hero/outreach.jpg'} 
+                    alt={ministryInfo.partnershipTitle || 'Global Outreach'} 
                     fill 
                     className="object-cover"
                     onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
@@ -924,7 +1167,7 @@ export default function WailingWomenPage() {
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">Contact & Join Us</h2>
                 <p className="text-white/80 max-w-2xl mx-auto">
-                  If you are a mother or guardian ready to contend for your children, contact us to join our WhatsApp forum.
+                  {ministryInfo.contactIntro || 'If you are a mother or guardian ready to contend for your children, contact us to join our WhatsApp forum.'}
                 </p>
               </div>
 
@@ -932,24 +1175,24 @@ export default function WailingWomenPage() {
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <MapPin className="w-10 h-10 mx-auto text-purple-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Location</h3>
-                  <p className="text-white/70">Wailing Woman-My Seed Must Prosper!</p>
-                  <p className="text-white/70">P.O Box 31841, Lilongwe</p>
-                  <p className="text-white/70">Malawi, Central Africa</p>
+                  {(ministryInfo.location || 'Wailing Woman-My Seed Must Prosper!\nP.O Box 31841, Lilongwe\nMalawi, Central Africa').split('\n').map((line, index) => (
+                    <p key={index} className="text-white/70">{line}</p>
+                  ))}
                 </Card>
 
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Phone className="w-10 h-10 mx-auto text-purple-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Phone</h3>
-                  <p className="text-white/70">+265 995 46 55 40</p>
-                  <p className="text-white/70">+265 999 31 77 81</p>
-                  <p className="text-white/70">+265 888 380 732</p>
+                  {(ministryInfo.phone || '+265 995 46 55 40 / +265 999 31 77 81').split('/').map((line, index) => (
+                    <p key={index} className="text-white/70">{line.trim()}</p>
+                  ))}
                 </Card>
 
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Mail className="w-10 h-10 mx-auto text-purple-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Email</h3>
                   <p className="text-white/70 break-all">
-                    wailingwomanprayers@gmail.com
+                    {ministryInfo.email || 'wailingwomanprayers@gmail.com'}
                   </p>
                 </Card>
               </div>

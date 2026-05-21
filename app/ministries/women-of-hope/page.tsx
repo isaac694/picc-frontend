@@ -596,7 +596,14 @@ export default function WomenOfHopePage() {
         
         {/* 1. HERO SECTION */}
         {!mobilePlayerActive && (
-          <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[radial-gradient(circle_at_top,#45BFFF_0%,#029EFB_45%,#0178C0_100%)] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
+          <section
+            className="relative overflow-hidden pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[#029EFB] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10"
+            style={{
+              backgroundImage: `linear-gradient(rgba(2,158,251,0.82), rgba(1,120,192,0.78)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/hero/hero-8-woh.jpg'})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
             <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 text-center sm:px-6 lg:px-8">
               <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20">
                 <Image 
@@ -974,8 +981,8 @@ export default function WomenOfHopePage() {
                 </div>
                 <div className="relative h-[400px] rounded-2xl overflow-hidden shadow-xl">
                   <Image 
-                    src="/hero/hero-store.jpg" 
-                    alt="Global Vision" 
+                    src={toAssetUrl(ministryInfo.partnershipImageUrl) || '/hero/hero-store.jpg'} 
+                    alt={ministryInfo.partnershipTitle || 'Global Vision'} 
                     fill 
                     className="object-cover"
                     onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 

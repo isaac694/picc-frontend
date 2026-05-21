@@ -125,7 +125,9 @@ async function uploadMinistryImage(token: string, file: File, setStatus: (value:
     });
 
     if (!response.ok) {
-      setStatus('Image upload failed.');
+      const data = await response.json().catch(() => null);
+      const message = typeof data?.error === 'string' ? data.error : 'Image upload failed.';
+      setStatus(message);
       return null;
     }
 

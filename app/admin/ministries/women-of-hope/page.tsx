@@ -163,6 +163,12 @@ export default function WomenOfHopeAdminPage() {
           ministryKey="women-of-hope"
           ministryName="Women of Hope"
           fallbackInfo={womenOfHopeFallbackInfo}
+          fieldLabels={{
+            partnershipTitle: 'Global Vision Title',
+            partnershipBody: 'Global Vision Text',
+            partnershipDetails: 'Global Vision Details',
+            partnershipImageUrl: 'Global Vision Picture',
+          }}
         />
       )}
 

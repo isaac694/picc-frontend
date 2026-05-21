@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type SyntheticEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { 
   MapPin, Phone, Mail, CalendarClock, Globe, 
   MessageSquareText, BookOpenText, StickyNote, 
@@ -44,6 +45,86 @@ type YouTubeVideo = {
   isLive?: boolean;
 };
 
+type PartnershipDetail = {
+  label: string;
+  value: string;
+};
+
+type MinistryInfo = {
+  name: string | null;
+  motto: string | null;
+  about: string | null;
+  heroImageUrl: string | null;
+  logoImageUrl: string | null;
+  liveSessionYoutubeUrl: string | null;
+  partnershipTitle: string | null;
+  partnershipBody: string | null;
+  partnershipDetails: PartnershipDetail[] | null;
+  partnershipImageUrl: string | null;
+  phone: string | null;
+  email: string | null;
+  location: string | null;
+  contactIntro: string | null;
+};
+
+type MinistryItem = {
+  id: string;
+  category: string;
+  title: string;
+  description: string | null;
+  label: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
+};
+
+type EventCard = {
+  id: string | number;
+  type: string;
+  title: string;
+  date: string;
+  location: string;
+  description: string;
+  image: string;
+};
+
+const toAssetUrl = (value: string | null | undefined) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  return trimmed;
+};
+
+const videoIdFromUrl = (value: string | null | undefined) => {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+  const match = raw.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  return match ? match[1] : '';
+};
+
+const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
+  event.currentTarget.src = fallback;
+};
+
+const mergeItemsWithFallback = (loaded: MinistryItem[], fallback: MinistryItem[]) => {
+  if (!loaded.length) return fallback;
+  if (!fallback.length) return loaded;
+
+  const remainingFallback = fallback.filter(
+    (fallbackItem) =>
+      !loaded.some(
+        (loadedItem) =>
+          loadedItem.category === fallbackItem.category &&
+          loadedItem.sortOrder === fallbackItem.sortOrder,
+      ),
+  );
+
+  return [...loaded, ...remainingFallback].sort((first, second) => {
+    const sortDifference = (first.sortOrder ?? 0) - (second.sortOrder ?? 0);
+    if (sortDifference !== 0) return sortDifference;
+    return first.title.localeCompare(second.title);
+  });
+};
+
 const TOOL_TABS: Array<{
   key: ToolKey;
   label: string;
@@ -57,6 +138,29 @@ const TOOL_TABS: Array<{
 ];
 
 // --- MOCK DATA ---
+const defaultInfo: MinistryInfo = {
+  name: 'Rivers of Hope',
+  motto: 'Proclaiming the Gospel of Jesus Christ with power and clarity.',
+  about:
+    'The Rivers of Hope Crusades are flagship evangelistic outreach programs led by Pastor Esau Banda across Malawi and internationally. These large-scale crusades are designed to proclaim the Gospel of Jesus Christ with power and clarity, reaching diverse communities through open-air gatherings and mass evangelism.\n\nCharacterized by dynamic preaching, worship, healing, and deliverance sessions, we create an environment where individuals encounter genuine spiritual transformation. Beyond evangelism, the initiative also fosters unity among churches and serves as a catalyst for community revival and discipleship.',
+  heroImageUrl: '/hero/hero-1.jpg',
+  logoImageUrl: '/logo.png',
+  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=ydTADwZRquA',
+  partnershipTitle: 'Partner With The Harvest',
+  partnershipBody:
+    'Taking the Gospel to the masses through open-air crusades and equipping international leaders requires significant resources and dedication.\n\nWhen you partner with Rivers of Hope Crusades, you are directly contributing to soul-winning, community transformation, and raising up the next generation of spiritual leaders on campuses and in high schools.',
+  partnershipDetails: [
+    { label: 'Email', value: 'roh@piccworldwide.org' },
+    { label: 'Office', value: 'Rivers of Hope Desk, PICC Worldwide' },
+  ],
+  partnershipImageUrl: '/hero/hero-1.jpg',
+  phone: 'Check with your local PICC branch for contact details.',
+  email: 'roh@piccworldwide.org',
+  location: 'PICC Worldwide\nRivers of Hope Desk',
+  contactIntro:
+    'For crusade invitations, conference details, or partnership inquiries, please contact our ministry desk.',
+};
+
 const eventsList = [
   {
     id: 1,
@@ -105,6 +209,16 @@ const eventsList = [
   },
 ];
 
+const defaultEventItems: MinistryItem[] = eventsList.map((event, index) => ({
+  id: `default-event-${event.id}`,
+  category: 'event',
+  title: event.title,
+  description: event.description,
+  label: event.date,
+  imageUrl: event.image,
+  sortOrder: index,
+}));
+
 const highlightGallery = [
   { id: 1, src: '/hero/hero-1.jpg', caption: 'Mass open-air evangelism and soul-winning.' },
   { id: 2, src: '/hero/hero-2.jpg', caption: 'Equipping global leaders for end-time harvest.' },
@@ -114,6 +228,16 @@ const highlightGallery = [
   { id: 6, src: '/hero/hero-store.jpg', caption: 'Fostering unity among churches and ministries.' },
 ];
 
+const defaultHighlightItems: MinistryItem[] = highlightGallery.map((item, index) => ({
+  id: `default-highlight-${item.id}`,
+  category: 'highlight',
+  title: `Highlight ${item.id}`,
+  description: item.caption,
+  label: null,
+  imageUrl: item.src,
+  sortOrder: index,
+}));
+
 const ministryProjects = [
   { id: 1, type: 'Crusade Preparation', title: 'Mzuzu Outreach Mobilization', status: 'Active', image: '/hero/hero-1.jpg' },
   { id: 2, type: 'Leadership Training', title: 'Pastors Empowerment Manuals', status: 'Ongoing', image: '/hero/hero-2.jpg' },
@@ -122,11 +246,76 @@ const ministryProjects = [
   { id: 5, type: 'Community Impact', title: 'Post-Crusade Discipleship Centers', status: 'Planning', image: '/hero/hero-store.jpg' },
 ];
 
+const defaultInitiativeItems: MinistryItem[] = ministryProjects.map((project, index) => ({
+  id: `default-initiative-${project.id}`,
+  category: 'initiative',
+  title: project.title,
+  description: project.status,
+  label: project.type,
+  imageUrl: project.image,
+  sortOrder: index,
+}));
+
+const defaultProgramItems: MinistryItem[] = [
+  {
+    id: 'default-program-1',
+    category: 'program',
+    title: 'Rivers of Hope Crusades',
+    description:
+      'Our flagship open-air mass evangelism gatherings designed to reach diverse communities with dynamic preaching, worship, healing, and deliverance sessions.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 0,
+  },
+  {
+    id: 'default-program-2',
+    category: 'program',
+    title: 'International Leaders Conference',
+    description:
+      'A global platform equipping pastors and church workers across denominations with spiritual impartation, leadership training, and strategic ministry insights.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 1,
+  },
+  {
+    id: 'default-program-3',
+    category: 'program',
+    title: 'Local Leaders Conference',
+    description:
+      'Organized at regional and district levels, providing a contextualized platform to empower leaders with practical tools and promote unity within the Christian community.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 2,
+  },
+  {
+    id: 'default-program-4',
+    category: 'program',
+    title: 'Campus Crusade',
+    description:
+      'Targeting university and college students to raise spiritually grounded young leaders through evangelism, discipleship, and integrating faith with academics.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 3,
+  },
+  {
+    id: 'default-program-5',
+    category: 'program',
+    title: 'Ministry to Youth',
+    description:
+      'Dedicated to reaching secondary school students with the transformative message of the Gospel, guiding young people in both their spiritual journey and academic development.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 4,
+  },
+];
+
 export default function RiversOfHopePage() {
   // --- STATE ---
   const [activeGalleryId, setActiveGalleryId] = useState<number | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventCard | null>(null);
   const [featuredEventIndex, setFeaturedEventIndex] = useState(0);
+  const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
+  const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
 
   // --- LIVESTREAM STATE ---
   const [ytReady, setYtReady] = useState(false);
@@ -140,10 +329,41 @@ export default function RiversOfHopePage() {
 
   // --- LIVESTREAM CONSTANTS ---
   const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
-  const FALLBACK_HERO_ID = "ydTADwZRquA";
+  const FALLBACK_HERO_ID = videoIdFromUrl(ministryInfo.liveSessionYoutubeUrl) || "ydTADwZRquA";
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 
   const featuredVideo = videos[0] || null;
+  const itemGroups = {
+    programs: ministryItems.filter((item) => item.category === 'program'),
+    highlights: ministryItems.filter((item) => item.category === 'highlight'),
+    initiatives: ministryItems.filter((item) => item.category === 'initiative'),
+    events: ministryItems.filter((item) => item.category === 'event'),
+  };
+  const programItems = mergeItemsWithFallback(itemGroups.programs, defaultProgramItems);
+  const galleryItems = mergeItemsWithFallback(itemGroups.highlights, defaultHighlightItems).map((item, index) => ({
+    id: index + 1,
+    src: toAssetUrl(item.imageUrl) || highlightGallery[index % highlightGallery.length]?.src || '/hero/hero-store.jpg',
+    caption: item.description || item.title,
+  }));
+  const projectItems = mergeItemsWithFallback(itemGroups.initiatives, defaultInitiativeItems).map((item, index) => ({
+    id: index + 1,
+    type: item.label || 'Initiative',
+    title: item.title,
+    status: item.description || 'Active',
+    image: toAssetUrl(item.imageUrl) || ministryProjects[index % ministryProjects.length]?.image || '/hero/hero-store.jpg',
+  }));
+  const eventItems: EventCard[] = mergeItemsWithFallback(itemGroups.events, defaultEventItems).map((item, index) => ({
+    id: item.id,
+    type: eventsList[index % eventsList.length]?.type || 'Crusade & Conference',
+    title: item.title,
+    date: item.label || 'Upcoming',
+    location: eventsList[index % eventsList.length]?.location || ministryInfo.location || 'PICC Worldwide',
+    description: item.description || '',
+    image: toAssetUrl(item.imageUrl) || eventsList[index % eventsList.length]?.image || '/hero/hero-store.jpg',
+  }));
+  const aboutParagraphs = (ministryInfo.about || defaultInfo.about || '').split(/\n{2,}/).filter(Boolean);
+  const partnershipParagraphs = (ministryInfo.partnershipBody || defaultInfo.partnershipBody || '').split(/\n{2,}/).filter(Boolean);
+  const partnershipDetails = ministryInfo.partnershipDetails?.length ? ministryInfo.partnershipDetails : defaultInfo.partnershipDetails || [];
 
   const formatDate = (value: string) => {
     if (!value) return "";
@@ -155,15 +375,49 @@ export default function RiversOfHopePage() {
   // --- CYCLING EVENTS EFFECT ---
   useEffect(() => {
     const timer = setInterval(() => {
-      setFeaturedEventIndex((prev) => (prev + 1) % eventsList.length);
+      setFeaturedEventIndex((prev) => (prev + 1) % eventItems.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [eventItems.length]);
 
-  const featuredGridEvent = eventsList[featuredEventIndex];
-  const remainingEvents = eventsList.filter((_, idx) => idx !== featuredEventIndex);
+  const featuredGridEvent = eventItems[featuredEventIndex] || eventItems[0];
+  const remainingEvents = eventItems.filter((_, idx) => idx !== featuredEventIndex);
 
   // --- EFFECTS ---
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMinistryContent = async () => {
+      try {
+        const response = await apiFetch('/api/ministries/rivers-of-hope/content');
+        if (!response.ok) return;
+        const data = await response.json().catch(() => ({}));
+        if (!isMounted) return;
+
+        if (data?.info) {
+          setMinistryInfo({
+            ...defaultInfo,
+            ...data.info,
+            partnershipDetails: Array.isArray(data.info.partnershipDetails)
+              ? data.info.partnershipDetails
+              : defaultInfo.partnershipDetails,
+          });
+        }
+
+        if (Array.isArray(data?.items)) {
+          setMinistryItems(data.items);
+        }
+      } catch {
+        // Keep built-in Rivers of Hope content as the public fallback.
+      }
+    };
+
+    void loadMinistryContent();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -239,7 +493,7 @@ export default function RiversOfHopePage() {
 
     fetchVideos();
     return () => { isMounted = false; };
-  }, [YOUTUBE_API_KEY]);
+  }, [YOUTUBE_API_KEY, FALLBACK_HERO_ID]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -366,7 +620,7 @@ export default function RiversOfHopePage() {
                   alt={selectedEvent.title}
                   fill
                   className="object-cover"
-                  onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                  onError={swapImage('/hero/hero-store.jpg')}
                 />
               </div>
 
@@ -398,7 +652,7 @@ export default function RiversOfHopePage() {
                 <div>
                   <p className="text-sm font-bold text-gray-900 mb-3">MORE INFO & CONNECT:</p>
                   <div className="flex flex-wrap gap-3">
-                    <a href="mailto:roh@piccworldwide.org" className="flex items-center gap-2 bg-[#b91c1c] hover:bg-red-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
+                    <a href={`mailto:${ministryInfo.email || 'roh@piccworldwide.org'}`} className="flex items-center gap-2 bg-[#b91c1c] hover:bg-red-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
                       <Mail className="w-4 h-4" /> Email Us
                     </a>
                   </div>
@@ -413,24 +667,31 @@ export default function RiversOfHopePage() {
         
         {/* 1. HERO SECTION */}
         {!mobilePlayerActive && (
-          <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-red-800 text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
+          <section
+            className="relative overflow-hidden pt-28 pb-20 sm:pt-36 sm:pb-28 bg-red-800 text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10"
+            style={{
+              backgroundImage: `linear-gradient(rgba(153,27,27,0.82), rgba(69,10,10,0.78)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/hero/hero-1.jpg'})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
               <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20 flex items-center justify-center overflow-hidden">
                 <Image 
-                  src="/logo.png" 
-                  alt="Rivers of Hope Logo" 
+                  src={toAssetUrl(ministryInfo.logoImageUrl) || '/logo.png'} 
+                  alt={`${ministryInfo.name || 'Rivers of Hope'} Logo`} 
                   fill 
                   className="object-contain p-2"
-                  onError={(e: any) => e.target.src = '/logo.png'}
+                  onError={swapImage('/logo.png')}
                 />
               </div>
 
               <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3 font-semibold">Pastor Esau Banda Ministries</p>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">Rivers of Hope Crusades</h1>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">{ministryInfo.name || 'Rivers of Hope Crusades'}</h1>
               
               <div className="inline-block border-y border-white/20 py-3 px-8 mb-6">
                 <p className="text-lg sm:text-xl font-medium tracking-wide text-white/90 italic">
-                  "Proclaiming the Gospel of Jesus Christ with power and clarity."
+                  &quot;{ministryInfo.motto || defaultInfo.motto}&quot;
                 </p>
               </div>
             </div>
@@ -444,12 +705,11 @@ export default function RiversOfHopePage() {
               <div className="max-w-4xl mx-auto text-center">
                 <h2 className="text-3xl md:text-4xl font-bold mb-6">Spiritual Transformation & Revival</h2>
                 <div className="w-16 h-1 bg-red-800 mx-auto mb-8 rounded-full" />
-                <p className="text-lg text-black/70 leading-relaxed mb-6">
-                  The Rivers of Hope Crusades are flagship evangelistic outreach programs led by Pastor Esau Banda across Malawi and internationally. These large-scale crusades are designed to proclaim the Gospel of Jesus Christ with power and clarity, reaching diverse communities through open-air gatherings and mass evangelism.
-                </p>
-                <p className="text-lg text-black/70 leading-relaxed">
-                  Characterized by dynamic preaching, worship, healing, and deliverance sessions, we create an environment where individuals encounter genuine spiritual transformation. Beyond evangelism, the initiative also fosters unity among churches and serves as a catalyst for community revival and discipleship.
-                </p>
+                {aboutParagraphs.map((paragraph, index) => (
+                  <p key={`about-${index}`} className={`text-lg text-black/70 leading-relaxed ${index < aboutParagraphs.length - 1 ? 'mb-6' : ''}`}>
+                    {paragraph}
+                  </p>
+                ))}
               </div>
             </div>
           </section>
@@ -465,77 +725,29 @@ export default function RiversOfHopePage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                
-                {/* Rivers of Hope Crusades */}
-                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-red-700 bg-white md:col-span-2 lg:col-span-1">
-                  <div className="p-8">
-                    <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <Flame className="w-7 h-7 text-red-700" />
-                    </div>
-                    <h3 className="text-xl font-bold text-red-900 mb-3">Rivers of Hope Crusades</h3>
-                    <p className="text-black/70 text-sm leading-relaxed">
-                      Our flagship open-air mass evangelism gatherings designed to reach diverse communities with dynamic preaching, worship, healing, and deliverance sessions.
-                    </p>
-                  </div>
-                  <div className="h-2 w-full bg-red-700/10 absolute bottom-0 left-0" />
-                </Card>
-
-                {/* International Interdenominational Conference */}
-                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-blue-700 bg-white">
-                  <div className="p-8">
-                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <Globe className="w-7 h-7 text-blue-700" />
-                    </div>
-                    <h3 className="text-xl font-bold text-blue-900 mb-3">International Leaders Conference</h3>
-                    <p className="text-black/70 text-sm leading-relaxed">
-                      A global platform equipping pastors and church workers across denominations with spiritual impartation, leadership training, and strategic ministry insights.
-                    </p>
-                  </div>
-                  <div className="h-2 w-full bg-blue-700/10 absolute bottom-0 left-0" />
-                </Card>
-
-                {/* Interdenominational Pastors Conference */}
-                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-emerald-600 bg-white">
-                  <div className="p-8">
-                    <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <Users className="w-7 h-7 text-emerald-600" />
-                    </div>
-                    <h3 className="text-xl font-bold text-emerald-900 mb-3">Local Leaders Conference</h3>
-                    <p className="text-black/70 text-sm leading-relaxed">
-                      Organized at regional and district levels, providing a contextualized platform to empower leaders with practical tools and promote unity within the Christian community.
-                    </p>
-                  </div>
-                  <div className="h-2 w-full bg-emerald-600/10 absolute bottom-0 left-0" />
-                </Card>
-
-                {/* Campus Crusade */}
-                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-amber-500 bg-white md:col-span-1 lg:col-span-1 lg:col-start-1">
-                  <div className="p-8">
-                    <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <GraduationCap className="w-7 h-7 text-amber-600" />
-                    </div>
-                    <h3 className="text-xl font-bold text-amber-800 mb-3">Campus Crusade</h3>
-                    <p className="text-black/70 text-sm leading-relaxed">
-                      Targeting university and college students to raise spiritually grounded young leaders through evangelism, discipleship, and integrating faith with academics.
-                    </p>
-                  </div>
-                  <div className="h-2 w-full bg-amber-500/10 absolute bottom-0 left-0" />
-                </Card>
-
-                {/* Ministry to Youth */}
-                <Card className="relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-t-purple-600 bg-white md:col-span-1 lg:col-span-2">
-                  <div className="p-8">
-                    <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <BookOpen className="w-7 h-7 text-purple-600" />
-                    </div>
-                    <h3 className="text-xl font-bold text-purple-900 mb-3">Ministry to Youth</h3>
-                    <p className="text-black/70 text-sm leading-relaxed">
-                      Dedicated to reaching secondary school students with the transformative message of the Gospel, guiding young people in both their spiritual journey and academic development.
-                    </p>
-                  </div>
-                  <div className="h-2 w-full bg-purple-600/10 absolute bottom-0 left-0" />
-                </Card>
-
+                {programItems.map((program, index) => {
+                  const configs = [
+                    { Icon: Flame, border: 'border-t-red-700', bg: 'bg-red-50', icon: 'text-red-700', title: 'text-red-900', bar: 'bg-red-700/10', span: 'md:col-span-2 lg:col-span-1' },
+                    { Icon: Globe, border: 'border-t-blue-700', bg: 'bg-blue-50', icon: 'text-blue-700', title: 'text-blue-900', bar: 'bg-blue-700/10', span: '' },
+                    { Icon: Users, border: 'border-t-emerald-600', bg: 'bg-emerald-50', icon: 'text-emerald-600', title: 'text-emerald-900', bar: 'bg-emerald-600/10', span: '' },
+                    { Icon: GraduationCap, border: 'border-t-amber-500', bg: 'bg-amber-50', icon: 'text-amber-600', title: 'text-amber-800', bar: 'bg-amber-500/10', span: 'md:col-span-1 lg:col-span-1 lg:col-start-1' },
+                    { Icon: BookOpen, border: 'border-t-purple-600', bg: 'bg-purple-50', icon: 'text-purple-600', title: 'text-purple-900', bar: 'bg-purple-600/10', span: 'md:col-span-1 lg:col-span-2' },
+                  ];
+                  const config = configs[index % configs.length];
+                  const Icon = config.Icon;
+                  return (
+                    <Card key={program.id} className={`relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 ${config.border} bg-white ${config.span}`}>
+                      <div className="p-8">
+                        <div className={`w-14 h-14 ${config.bg} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                          <Icon className={`w-7 h-7 ${config.icon}`} />
+                        </div>
+                        <h3 className={`text-xl font-bold ${config.title} mb-3`}>{program.title}</h3>
+                        <p className="text-black/70 text-sm leading-relaxed">{program.description}</p>
+                      </div>
+                      <div className={`h-2 w-full ${config.bar} absolute bottom-0 left-0`} />
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -551,7 +763,7 @@ export default function RiversOfHopePage() {
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                {highlightGallery.map((item) => (
+                {galleryItems.map((item) => (
                   <div 
                     key={item.id} 
                     className="relative h-48 md:h-64 bg-slate-200 rounded-xl overflow-hidden cursor-pointer group"
@@ -562,7 +774,7 @@ export default function RiversOfHopePage() {
                       alt={`Gallery Highlight ${item.id}`} 
                       fill 
                       className={`object-cover transition-transform duration-700 ease-in-out ${activeGalleryId === item.id ? 'scale-110' : 'group-hover:scale-105'}`}
-                      onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
+                      onError={swapImage('/hero/hero-store.jpg')} 
                     />
                     
                     <AnimatePresence>
@@ -698,7 +910,7 @@ export default function RiversOfHopePage() {
                         alt={featuredGridEvent.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-700"
-                        onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                        onError={swapImage('/hero/hero-store.jpg')}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
                         <span className="bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
@@ -732,7 +944,7 @@ export default function RiversOfHopePage() {
                         alt={event.title}
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                        onError={swapImage('/hero/hero-store.jpg')}
                       />
                       <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
                         <span className="text-red-300 text-[10px] font-bold uppercase tracking-wider mb-1">
@@ -763,30 +975,30 @@ export default function RiversOfHopePage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 <div className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group">
                   <Image 
-                    src={ministryProjects[0].image} 
-                    alt={ministryProjects[0].title}
+                    src={projectItems[0]?.image || '/hero/hero-store.jpg'} 
+                    alt={projectItems[0]?.title || 'Rivers of Hope project'}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                    onError={swapImage('/hero/hero-store.jpg')}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
                     <span className="bg-red-800 text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
-                      {ministryProjects[0].type}
+                      {projectItems[0]?.type || 'Initiative'}
                     </span>
-                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{ministryProjects[0].title}</h3>
-                    <p className="text-white/80 text-sm font-medium">Status: {ministryProjects[0].status}</p>
+                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{projectItems[0]?.title || 'Rivers of Hope Project'}</h3>
+                    <p className="text-white/80 text-sm font-medium">Status: {projectItems[0]?.status || 'Active'}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-                  {ministryProjects.slice(1).map((material) => (
+                  {projectItems.slice(1).map((material) => (
                     <div key={material.id} className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group">
                       <Image 
                         src={material.image} 
                         alt={material.title}
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                        onError={swapImage('/hero/hero-store.jpg')}
                       />
                       <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
                         <span className="text-red-300 text-[10px] font-bold uppercase tracking-wider mb-1">
@@ -846,29 +1058,30 @@ export default function RiversOfHopePage() {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-6">Partner With The Harvest</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-6">{ministryInfo.partnershipTitle || 'Partner With The Harvest'}</h2>
                   <div className="w-16 h-1 bg-red-800 mb-6 rounded-full" />
-                  <p className="text-lg text-black/70 mb-4">
-                    Taking the Gospel to the masses through open-air crusades and equipping international leaders requires significant resources and dedication.
-                  </p>
-                  <p className="text-lg text-black/70 mb-6">
-                    When you partner with Rivers of Hope Crusades, you are directly contributing to soul-winning, community transformation, and raising up the next generation of spiritual leaders on campuses and in high schools.
-                  </p>
+                  {partnershipParagraphs.map((paragraph, index) => (
+                    <p key={`partnership-${index}`} className={`text-lg text-black/70 ${index < partnershipParagraphs.length - 1 ? 'mb-4' : 'mb-6'}`}>
+                      {paragraph}
+                    </p>
+                  ))}
                   
                   <div className="bg-white p-6 rounded-xl shadow-sm border border-black/5">
                     <h3 className="font-bold text-xl mb-4 text-red-900">Become a Crusade Partner</h3>
                     <div className="space-y-2 text-sm text-black/70">
-                      <p>To support an upcoming crusade or sponsor a pastors' conference, please contact our international office for partnership details.</p>
+                      {partnershipDetails.map((detail) => (
+                        <p key={`${detail.label}-${detail.value}`}><strong>{detail.label}:</strong> {detail.value}</p>
+                      ))}
                     </div>
                   </div>
                 </div>
                 <div className="relative h-[400px] rounded-2xl overflow-hidden shadow-xl">
                   <Image 
-                    src="/hero/hero-1.jpg" 
+                    src={toAssetUrl(ministryInfo.partnershipImageUrl) || '/hero/hero-1.jpg'} 
                     alt="Support the Crusade" 
                     fill 
                     className="object-cover"
-                    onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
+                    onError={swapImage('/hero/hero-store.jpg')} 
                   />
                 </div>
               </div>
@@ -883,7 +1096,7 @@ export default function RiversOfHopePage() {
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">Get In Touch</h2>
                 <p className="text-white/80 max-w-2xl mx-auto">
-                  For crusade invitations, conference details, or partnership inquiries, please contact our ministry desk.
+                  {ministryInfo.contactIntro || defaultInfo.contactIntro}
                 </p>
               </div>
 
@@ -891,16 +1104,17 @@ export default function RiversOfHopePage() {
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Mail className="w-10 h-10 mx-auto text-red-400 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Email Address</h3>
-                  <a href="mailto:roh@piccworldwide.org" className="text-white/70 hover:text-white transition-colors break-all">
-                    roh@piccworldwide.org
+                  <a href={`mailto:${ministryInfo.email || 'roh@piccworldwide.org'}`} className="text-white/70 hover:text-white transition-colors break-all">
+                    {ministryInfo.email || 'roh@piccworldwide.org'}
                   </a>
                 </Card>
 
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Globe className="w-10 h-10 mx-auto text-red-400 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Ministry Office</h3>
-                  <p className="text-white/70">PICC Worldwide</p>
-                  <p className="text-white/70">Rivers of Hope Desk</p>
+                  {(ministryInfo.location || 'PICC Worldwide\nRivers of Hope Desk').split('\n').map((line) => (
+                    <p key={line} className="text-white/70">{line}</p>
+                  ))}
                 </Card>
               </div>
             </div>
