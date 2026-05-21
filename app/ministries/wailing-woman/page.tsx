@@ -357,6 +357,7 @@ export default function WailingWomenPage() {
     description: item.description || '',
     image: toAssetUrl(item.imageUrl) || pastEvents[index % pastEvents.length]?.image || '/hero/hero-store.jpg',
   }));
+  const partnershipDetails = ministryInfo.partnershipDetails ?? [];
 
   useEffect(() => {
     let active = true;
@@ -715,7 +716,10 @@ export default function WailingWomenPage() {
   const mobileVideoStart = mobileResumeAt && mobileResumeAt > 0 ? `&start=${mobileResumeAt}` : '';
 
   return (
-      
+    <>
+      <div className="[&>header]:!bg-[#6B21A8] [&_header]:!bg-[#6B21A8] [&>nav]:!bg-[#6B21A8] [&_nav]:!bg-[#6B21A8]">
+        <Navigation />
+      </div>
       <main className="min-h-screen">
         
         {/* 1. HERO SECTION */}
@@ -1109,8 +1113,8 @@ export default function WailingWomenPage() {
                   <div className="bg-gray-50 p-6 rounded-xl shadow-sm border border-black/5">
                     <h3 className="font-bold text-xl mb-4 text-[#6B21A8]">{ministryInfo.partnershipTitle || 'Support the Vision'}</h3>
                     <div className="space-y-2 text-sm text-black/70">
-                      {(ministryInfo.partnershipDetails ?? []).length > 0 ? (
-                        ministryInfo.partnershipDetails.map((detail, index) => (
+                      {partnershipDetails.length > 0 ? (
+                        partnershipDetails.map((detail, index) => (
                           <p key={index}>
                             <strong>{detail.label || 'Detail'}:</strong> {detail.value || '---'}
                           </p>
