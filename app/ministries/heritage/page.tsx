@@ -168,8 +168,14 @@ export default function HeritageMinistryPage() {
         {/* 1. HERO SECTION */}
         <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-sky-500 text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
-            <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20 flex items-center justify-center">
-              <Baby className="w-12 h-12 sm:w-16 sm:h-16 text-sky-500" />
+            <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20 flex items-center justify-center overflow-hidden">
+              <Image 
+                src="/logo.png" 
+                alt="Heritage Ministry Logo" 
+                fill 
+                className="object-contain p-2"
+                onError={(e: any) => e.target.src = '/logo.png'}
+              />
             </div>
 
             <p className="text-xs uppercase tracking-[0.35em] text-white/90 mb-3 font-bold drop-shadow-md">PICC Children's Church</p>

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useSessionManagement } from './use-session-management';
 import type { AdminUser } from '@/lib/admin-pages';
@@ -47,7 +47,17 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   const { extendSession } = useSessionManagement();
 
-  const refreshMe = async () => {
+  const clearAdminSession = useCallback(() => {
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(EMAIL_KEY);
+    sessionStorage.removeItem(USER_KEY);
+    setToken(null);
+    setUser(null);
+    setEmail('');
+    setPassword('');
+  }, []);
+
+  const refreshMe = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -55,14 +65,18 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        clearAdminSession();
+        return;
+      }
+
       const me = await response.json();
       sessionStorage.setItem(USER_KEY, JSON.stringify(me));
       setUser(me);
     } catch {
-      // ignore
+      // Keep the current session if the validation request cannot reach the API.
     }
-  };
+  }, [clearAdminSession, token]);
 
   useEffect(() => {
     const storedToken = sessionStorage.getItem(TOKEN_KEY);
@@ -70,6 +84,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     const storedUser = safeParseUser(sessionStorage.getItem(USER_KEY));
 
     if (storedToken) {
+      // Restore the browser-only admin session after hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setToken(storedToken);
       if (storedEmail) setEmail(storedEmail);
       if (storedUser) setUser(storedUser);
@@ -79,12 +95,12 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!token) return;
-    if (user) return;
+    // Validate cached tokens as soon as the session is restored.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshMe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user]);
+  }, [token, refreshMe]);
 
-  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoginError('');
 
@@ -118,17 +134,11 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setLoginError('Unable to log in right now.');
     }
-  };
+  }, [email, extendSession, password]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(EMAIL_KEY);
-    sessionStorage.removeItem(USER_KEY);
-    setToken(null);
-    setUser(null);
-    setEmail('');
-    setPassword('');
-  };
+  const handleLogout = useCallback(() => {
+    clearAdminSession();
+  }, [clearAdminSession]);
 
   const value = useMemo<AdminAuthContextValue>(
     () => ({
@@ -144,7 +154,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       setToken,
       refreshMe,
     }),
-    [token, user, email, password, loginError]
+    [token, user, email, password, loginError, handleLogin, handleLogout, refreshMe]
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

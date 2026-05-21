@@ -24,7 +24,8 @@ import BibleTool from '@/components/livestream/BibleTool';
 // --- TYPES & GLOBALS ---
 declare global {
   interface Window {
-    YT?: YouTubeIframeApi;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    YT: any;
     onYouTubeIframeAPIReady?: () => void;
   }
 }
@@ -498,7 +499,7 @@ export default function WailingWomenPage() {
                   alt="Wailing Women Logo" 
                   fill 
                   className="object-contain p-2 rounded-full"
-                  onError={(e: any) => e.target.src = '/logos/wailing-woman-logo.png'} 
+                  onError={(e: any) => e.target.src = '/logo.png'} 
                 />
               </div>
 

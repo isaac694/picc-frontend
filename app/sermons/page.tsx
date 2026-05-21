@@ -24,7 +24,7 @@ function getYouTubeStart(url: string): number {
 }
 
 interface Sermon {
-  id: number;
+  id: string;
   title: string;
   date: string;
   image: string;
@@ -33,12 +33,12 @@ interface Sermon {
   audioSrc: string;
 }
 
-const SERMON_AUDIO = '/audio/sermon-audio.mp3';
+const SERMON_AUDIO = '';
 const FALLBACK_SERMON_IMAGE = '/sermons/header.JPG';
 
 const SERMONS = [
   {
-    id: 1,
+    id: '1',
     title: 'Faith for All-Round Possibilities',
     date: '10 April, 2025',
     image: '/hero/hero-6.jpg',
@@ -47,7 +47,7 @@ const SERMONS = [
     audioSrc: SERMON_AUDIO,
   },
   {
-    id: 2,
+    id: '2',
     title: 'Faith for Supernatural Supplies',
     date: '10 April, 2025',
     image: '/hero/hero-4.jpg',
@@ -56,7 +56,7 @@ const SERMONS = [
     audioSrc: SERMON_AUDIO,
   },
   {
-    id: 3,
+    id: '3',
     title: 'Impartation of the Spirit of Faith',
     date: '10 April, 2025',
     image: '/hero/hero-3.jpg',
@@ -65,7 +65,7 @@ const SERMONS = [
     audioSrc: SERMON_AUDIO,
   },
   {
-    id: 4,
+    id: '4',
     title: 'Operating in the Spirit of Faith',
     date: '16 February, 2023',
     image: '/hero/hero-2.jpg',
@@ -74,7 +74,7 @@ const SERMONS = [
     audioSrc: SERMON_AUDIO,
   },
   {
-    id: 5,
+    id: '5',
     title: 'The Faith That Works',
     date: '16 February, 2023',
     image: '/hero/hero-1.jpg',
@@ -83,7 +83,7 @@ const SERMONS = [
     audioSrc: SERMON_AUDIO,
   },
   {
-    id: 6,
+    id: '6',
     title: 'Faith-Provoking Praise (Part 4)',
     date: '16 February, 2023',
     image: '/hero/hero-5.png',
@@ -96,10 +96,10 @@ const SERMONS = [
 export default function SermonsPage() {
   const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const selectedSermonRef = useRef<HTMLElement | null>(null);
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [headerImage, setHeaderImage] = useState('/sermons/header.JPG');
-  const [loading, setLoading] = useState(true);
 
   const normalizeAssetUrl = (url?: string | null): string | undefined => {
     const trimmed = typeof url === 'string' ? url.trim() : '';
@@ -111,26 +111,67 @@ export default function SermonsPage() {
     return apiUrl(`/${trimmed}`);
   };
 
+  const extractIframeSrc = (value: string): string => {
+    const match = value.match(/src=["']([^"']+)["']/i);
+    return match ? match[1] : value;
+  };
+
+  const normalizeExternalUrl = (url?: string | null): string | undefined => {
+    const trimmed = typeof url === 'string' ? extractIframeSrc(url).trim() : '';
+    if (!trimmed) return undefined;
+    return trimmed;
+  };
+
+  const isPodbeanUrl = (url?: string): boolean => {
+    if (!url) return false;
+    try {
+      return new URL(url).hostname.toLowerCase().includes('podbean.com');
+    } catch {
+      return false;
+    }
+  };
+
+  const isPodbeanEmbedUrl = (url?: string): boolean => {
+    if (!url || !isPodbeanUrl(url)) return false;
+    return /player|embed/i.test(url);
+  };
+
+  const isPodbeanDirectAudioUrl = (url?: string): boolean => {
+    if (!url || !isPodbeanUrl(url)) return false;
+    try {
+      return /\.(mp3|m4a|aac|wav|ogg)(?:$|[?#])/i.test(new URL(url).pathname);
+    } catch {
+      return false;
+    }
+  };
+
   const normalizeSermon = (value: unknown): Sermon | null => {
     if (!value || typeof value !== 'object') return null;
     const record = value as Record<string, unknown>;
 
-    const idRaw = record.id;
-    const id = typeof idRaw === 'number' ? idRaw : Number(idRaw);
-    if (!Number.isFinite(id)) return null;
+    const id = typeof record.id === 'string' || typeof record.id === 'number' ? String(record.id) : '';
+    if (!id) return null;
 
     const title = typeof record.title === 'string' && record.title.trim() ? record.title.trim() : 'Untitled sermon';
     const date = typeof record.date === 'string' && record.date.trim() ? record.date.trim() : '';
     const views = typeof record.views === 'string' && record.views.trim() ? record.views.trim() : '0';
 
     const youtubeUrl =
-      typeof record.youtubeUrl === 'string' && record.youtubeUrl.trim() ? record.youtubeUrl.trim() : '';
+      typeof record.youtubeUrl === 'string' && record.youtubeUrl.trim()
+        ? record.youtubeUrl.trim()
+        : typeof record.videoUrl === 'string' && record.videoUrl.trim()
+          ? record.videoUrl.trim()
+          : '';
 
     const image =
       typeof record.image === 'string' && record.image.trim() ? record.image.trim() : FALLBACK_SERMON_IMAGE;
 
     const audioSrc =
-      typeof record.audioSrc === 'string' && record.audioSrc.trim() ? record.audioSrc.trim() : SERMON_AUDIO;
+      typeof record.audioSrc === 'string' && record.audioSrc.trim()
+        ? record.audioSrc.trim()
+        : typeof record.audioUrl === 'string' && record.audioUrl.trim()
+          ? record.audioUrl.trim()
+          : SERMON_AUDIO;
 
     return { id, title, date, image, views, youtubeUrl, audioSrc };
   };
@@ -164,11 +205,9 @@ export default function SermonsPage() {
           const resolvedHeader = normalizeAssetUrl(headerData.imageUrl);
           if (resolvedHeader) setHeaderImage(resolvedHeader);
         }
-      } catch (error) {
+      } catch {
         // Fallback to static data if API fails
         setSermons(SERMONS);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -177,9 +216,14 @@ export default function SermonsPage() {
 
   useEffect(() => {
     if (!selectedSermon) return;
-    setIsPlaying(false); // reset player when a new sermon is selected
     selectedSermonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [selectedSermon]);
+
+  const selectSermon = (sermon: Sermon) => {
+    setIsPlaying(false);
+    setIsAudioPlaying(false);
+    setSelectedSermon(sermon);
+  };
 
   // Build the YouTube embed URL with optional start time
   function buildEmbedUrl(youtubeUrl: string, autoplay = false): string {
@@ -193,6 +237,126 @@ export default function SermonsPage() {
     });
     return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
   }
+
+  const renderAudioPlayer = (sermon: Sermon) => {
+    const audioUrl = normalizeExternalUrl(sermon.audioSrc);
+    if (!audioUrl) return null;
+
+    if (isPodbeanEmbedUrl(audioUrl)) {
+      return (
+        <div className="space-y-4">
+          {isAudioPlaying && (
+            <iframe
+              key={audioUrl}
+              title={`${sermon.title} audio`}
+              src={audioUrl}
+              loading="lazy"
+              className="h-[300px] w-full rounded-2xl border-0 bg-white"
+              allow="autoplay; fullscreen"
+              allowFullScreen
+            />
+          )}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsAudioPlaying((current) => !current)}
+              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-white/90"
+            >
+              {isAudioPlaying ? 'Hide Player' : 'Play Now'}
+            </button>
+            <a
+              href={audioUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+            >
+              Listen on Podbean
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    if (isPodbeanDirectAudioUrl(audioUrl)) {
+      return (
+        <div className="space-y-4">
+          {isAudioPlaying && (
+            <audio
+              key={audioUrl}
+              controls
+              autoPlay
+              className="w-full rounded-full"
+              src={audioUrl}
+            >
+              Your browser does not support the audio element.
+            </audio>
+          )}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsAudioPlaying((current) => !current)}
+              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-white/90"
+            >
+              {isAudioPlaying ? 'Hide Player' : 'Play Now'}
+            </button>
+            <a
+              href={audioUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+            >
+              Listen on Podbean
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    if (isPodbeanUrl(audioUrl)) {
+      return (
+        <div className="space-y-4">
+          {isAudioPlaying && (
+            <div className="mx-auto max-w-2xl rounded-2xl bg-white/95 px-6 py-8 text-center text-primary shadow-sm">
+              <p className="text-sm font-semibold">
+                This Podbean page cannot play inside the website.
+              </p>
+              <p className="mt-2 text-sm text-primary/70">
+                Use a Podbean embed player link for in-page playback, or open the episode on Podbean.
+              </p>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsAudioPlaying((current) => !current)}
+              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-white/90"
+            >
+              {isAudioPlaying ? 'Hide Player' : 'Play Now'}
+            </button>
+            <a
+              href={audioUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+            >
+              Listen on Podbean
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <audio
+        key={sermon.id}
+        controls
+        className="w-full rounded-full"
+        src={normalizeAssetUrl(audioUrl)}
+      >
+        Your browser does not support the audio element.
+      </audio>
+    );
+  };
 
   return (
     <>
@@ -221,7 +385,7 @@ export default function SermonsPage() {
 
                 {/* Video player area */}
                 <div className="relative w-full max-w-4xl aspect-[16/9] rounded-[24px] overflow-hidden shadow-2xl bg-black">
-                  {isPlaying ? (
+                  {isPlaying && selectedSermon.youtubeUrl ? (
                     /* Embedded YouTube iframe — plays in-page, no redirect */
                     <iframe
                       key={selectedSermon.id}
@@ -241,43 +405,40 @@ export default function SermonsPage() {
                         className="object-cover"
                       />
                       <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <button
-                          type="button"
-                          onClick={() => setIsPlaying(true)}
-                          aria-label="Play sermon video"
-                          className="group flex items-center justify-center w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/60 hover:bg-white/30 transition-all duration-200 hover:scale-105"
-                        >
-                          {/* Triangle play icon */}
-                          <svg
-                            className="w-8 h-8 text-white ml-1"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
+                        {selectedSermon.youtubeUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setIsPlaying(true)}
+                            aria-label="Play sermon video"
+                            className="group flex items-center justify-center w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/60 hover:bg-white/30 transition-all duration-200 hover:scale-105"
                           >
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        </button>
+                            {/* Triangle play icon */}
+                            <svg
+                              className="w-8 h-8 text-white ml-1"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </>
                   )}
                 </div>
 
                 {/* Audio player */}
-                <div className="w-full max-w-4xl mt-6">
-                  <p className="text-xs uppercase tracking-[0.25em] text-white/60 mb-2 text-center">
-                    Listen to Audio
-                  </p>
-                  <audio
-                    key={selectedSermon.id}
-                    controls
-                    className="w-full rounded-full"
-                    src={normalizeAssetUrl(selectedSermon.audioSrc)}
-                  >
-                    Your browser does not support the audio element.
-                  </audio>
-                </div>
+                {selectedSermon.audioSrc && (
+                  <div className="w-full max-w-4xl mt-6">
+                    <p className="text-xs uppercase tracking-[0.25em] text-white/60 mb-2 text-center">
+                      Listen to Audio
+                    </p>
+                    {renderAudioPlayer(selectedSermon)}
+                  </div>
+                )}
 
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                  {!isPlaying && (
+                  {!isPlaying && selectedSermon.youtubeUrl && (
                     <button
                       type="button"
                       onClick={() => setIsPlaying(true)}
@@ -291,6 +452,7 @@ export default function SermonsPage() {
                     onClick={() => {
                       setSelectedSermon(null);
                       setIsPlaying(false);
+                      setIsAudioPlaying(false);
                     }}
                     className="inline-flex items-center justify-center rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white/90 hover:bg-white/10 transition-colors"
                   >
@@ -332,9 +494,9 @@ export default function SermonsPage() {
                   <div className="relative overflow-hidden rounded-[18px] bg-black/5 shadow-sm">
                     <button
                       type="button"
-                      onClick={() => setSelectedSermon(sermon)}
+                      onClick={() => selectSermon(sermon)}
                       className="relative aspect-[16/10] w-full text-left"
-                      aria-label={`Watch sermon: ${sermon.title}`}
+                      aria-label={`Open sermon: ${sermon.title}`}
                     >
                       {(() => {
                         const src = normalizeAssetUrl(sermon.image) ?? FALLBACK_SERMON_IMAGE;

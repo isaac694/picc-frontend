@@ -150,7 +150,7 @@ function parseSeeYouServices(body?: string | null): ServiceLike[] {
           time,
         };
       })
-      .filter((service): service is ServiceLike => Boolean(service));
+      .filter((service: ServiceLike | null): service is ServiceLike => Boolean(service));
 
     return normalized.length ? normalized : DEFAULT_SEE_YOU_SERVICES;
   } catch {

@@ -22,6 +22,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/page-images')) return ADMIN_PAGE.PAGE_IMAGES;
   if (path.startsWith('/admin/livechat')) return ADMIN_PAGE.LIVECHAT;
   if (path.startsWith('/admin/schools/')) return ADMIN_PAGE.SCHOOLS_ENROLLMENT;
+  if (path.startsWith('/admin/ministries/')) return ADMIN_PAGE.MINISTRIES;
   if (path.startsWith('/admin/about-page')) return ADMIN_PAGE.ABOUT_PAGE;
   if (path.startsWith('/admin/contact')) return ADMIN_PAGE.CONTACT_PAGE;
   if (path.startsWith('/admin/media')) return ADMIN_PAGE.MEDIA_PAGE;

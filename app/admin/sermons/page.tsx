@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { Plus } from 'lucide-react';
 
 interface Sermon {
-  id: number;
+  id: string;
   title: string;
   date: string;
   image: string;
@@ -47,7 +47,7 @@ export default function AdminSermonsPage() {
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [headerImage, setHeaderImage] = useState(DEFAULT_HEADER_IMAGE);
   const [draftSermon, setDraftSermon] = useState(DEFAULT_SERMON);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
   const [notifySubscribers, setNotifySubscribers] = useState(false);
   const [sermonSearch, setSermonSearch] = useState('');
@@ -60,9 +60,58 @@ export default function AdminSermonsPage() {
     return apiUrl(`/${value}`);
   };
 
+  const extractIframeSrc = (value: string) => {
+    const match = value.match(/src=["']([^"']+)["']/i);
+    return match ? match[1] : value;
+  };
+
+  const normalizeSermonDraft = (sermon: Omit<Sermon, 'id'>) => ({
+    ...sermon,
+    audioSrc: extractIframeSrc(sermon.audioSrc).trim(),
+  });
+
   const updateUploadName = (key: string, name: string) => {
     setUploadNames((prev) => ({ ...prev, [key]: name }));
   };
+
+  const normalizeSermon = useCallback((value: unknown): Sermon | null => {
+    if (!value || typeof value !== 'object') return null;
+    const record = value as Record<string, unknown>;
+    const id = typeof record.id === 'string' || typeof record.id === 'number' ? String(record.id) : '';
+    if (!id) return null;
+
+    return {
+      id,
+      title: typeof record.title === 'string' ? record.title : '',
+      date: typeof record.date === 'string' ? record.date.slice(0, 10) : '',
+      image: typeof record.image === 'string' ? record.image : '',
+      views: typeof record.views === 'string' ? record.views : '0',
+      youtubeUrl:
+        typeof record.youtubeUrl === 'string'
+          ? record.youtubeUrl
+          : typeof record.videoUrl === 'string'
+            ? record.videoUrl
+            : '',
+      audioSrc:
+        typeof record.audioSrc === 'string'
+          ? record.audioSrc
+          : typeof record.audioUrl === 'string'
+            ? record.audioUrl
+            : '',
+    };
+  }, []);
+
+  const extractSermons = useCallback((data: unknown): Sermon[] => {
+    const source = Array.isArray(data)
+      ? data
+      : data && typeof data === 'object' && Array.isArray((data as { sermons?: unknown[] }).sermons)
+        ? (data as { sermons: unknown[] }).sermons
+        : data && typeof data === 'object'
+          ? [data]
+          : [];
+
+    return source.map(normalizeSermon).filter(Boolean) as Sermon[];
+  }, [normalizeSermon]);
 
   const uploadFile = async (file: File) => {
     if (!token) return null;
@@ -102,17 +151,7 @@ export default function AdminSermonsPage() {
       const response = await apiFetch('/api/sermons');
       if (response.ok) {
         const data = await response.json();
-        // Handle different possible response formats
-        let sermonsArray: Sermon[] = [];
-        if (Array.isArray(data)) {
-          sermonsArray = data;
-        } else if (data && Array.isArray(data.sermons)) {
-          sermonsArray = data.sermons;
-        } else if (data && typeof data === 'object') {
-          // If it's an object but not an array, assume it's a single sermon
-          sermonsArray = [data as Sermon];
-        }
-        setSermons(sermonsArray);
+        setSermons(extractSermons(data));
       } else {
         setSermons([]);
       }
@@ -172,7 +211,7 @@ export default function AdminSermonsPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(draftSermon),
+        body: JSON.stringify(normalizeSermonDraft(draftSermon)),
       });
 
       if (response.ok) {
@@ -216,7 +255,7 @@ export default function AdminSermonsPage() {
     }
   };
 
-  const handleUpdateSermon = async (id: number) => {
+  const handleUpdateSermon = async (id: string) => {
     if (!token) return;
 
     try {
@@ -226,7 +265,7 @@ export default function AdminSermonsPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(draftSermon),
+        body: JSON.stringify(normalizeSermonDraft(draftSermon)),
       });
 
       if (response.ok) {
@@ -234,6 +273,8 @@ export default function AdminSermonsPage() {
         setDraftSermon(DEFAULT_SERMON);
         setEditingId(null);
         void fetchSermons();
+      } else if (response.status === 401) {
+        setStatus('Your admin session expired. Please log out and log in again.');
       } else {
         setStatus('Failed to update sermon.');
       }
@@ -242,7 +283,7 @@ export default function AdminSermonsPage() {
     }
   };
 
-  const handleDeleteSermon = async (id: number) => {
+  const handleDeleteSermon = async (id: string) => {
     if (!token) return;
 
     try {
@@ -294,15 +335,7 @@ export default function AdminSermonsPage() {
 
         if (sermonsResponse.ok) {
           const data = await sermonsResponse.json();
-          let sermonsArray: Sermon[] = [];
-          if (Array.isArray(data)) {
-            sermonsArray = data;
-          } else if (data && Array.isArray(data.sermons)) {
-            sermonsArray = data.sermons;
-          } else if (data && typeof data === 'object') {
-            sermonsArray = [data as Sermon];
-          }
-          setSermons(sermonsArray);
+          setSermons(extractSermons(data));
         } else {
           setSermons([]);
         }
@@ -322,7 +355,7 @@ export default function AdminSermonsPage() {
         setHeaderImage(DEFAULT_HEADER_IMAGE);
       }
     })();
-  }, [token]);
+  }, [token, extractSermons]);
 
   if (!token) {
     return (
@@ -348,7 +381,7 @@ export default function AdminSermonsPage() {
             Sermon Management
           </h1>
           <p className="text-foreground/70 mt-3 max-w-2xl">
-            Upload and manage sermons, update the header image, and notify subscribers.
+            Upload and manage sermons, add Podbean audio links, update the header image, and notify subscribers.
           </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
@@ -457,7 +490,7 @@ export default function AdminSermonsPage() {
                 id="youtube-url"
                 value={draftSermon.youtubeUrl}
                 onChange={(e) => setDraftSermon(prev => ({ ...prev, youtubeUrl: e.target.value }))}
-                placeholder="https://www.youtube.com/watch?v=..."
+                placeholder="Optional YouTube video URL"
                 className="rounded-xl border-border bg-background px-4 py-3"
               />
             </div>
@@ -487,27 +520,15 @@ export default function AdminSermonsPage() {
             </div>
 
             <div className="md:col-span-2">
-              <Label htmlFor="audio-upload">Audio File</Label>
-              <input
-                id="audio-upload"
-                type="file"
-                accept="audio/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    updateUploadName('audio', file.name);
-                    const url = await uploadFile(file);
-                    if (url) {
-                      setDraftSermon(prev => ({ ...prev, audioSrc: url }));
-                      updateUploadName('audio', '');
-                    }
-                  }
-                }}
-                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+              <Label htmlFor="podbean-url">Podbean Audio URL</Label>
+              <Input
+                id="podbean-url"
+                type="text"
+                value={draftSermon.audioSrc}
+                onChange={(e) => setDraftSermon(prev => ({ ...prev, audioSrc: extractIframeSrc(e.target.value).trim() }))}
+                placeholder="Paste a Podbean embed code, embed player URL, or direct audio URL"
+                className="rounded-xl border-border bg-background px-4 py-3"
               />
-              {uploadNames.audio && (
-                <p className="text-xs text-foreground/60 mt-1">Uploading: {uploadNames.audio}</p>
-              )}
             </div>
           </div>
 
@@ -537,7 +558,7 @@ export default function AdminSermonsPage() {
                 </Button>
               </>
             ) : (
-              <Button onClick={handleAddSermon} disabled={!draftSermon.title || !draftSermon.youtubeUrl}>
+              <Button onClick={handleAddSermon} disabled={!draftSermon.title || !draftSermon.date || !draftSermon.audioSrc}>
                 Add Sermon
               </Button>
             )}

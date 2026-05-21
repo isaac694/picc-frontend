@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type SyntheticEvent } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { 
-  Waves, MapPin, Phone, Mail, CalendarClock, BookOpen, 
-  Globe, Target, MessageCircle, BookOpenText, MessageSquareText, 
-  StickyNote, Rocket, Sparkles, Flame, Baby, Users, Music, XIcon, Instagram, Facebook, Twitter
+  MapPin, Phone, Mail, CalendarClock, Globe, BookOpenText, MessageSquareText, 
+  StickyNote, Rocket, Sparkles, Flame, Baby, XIcon, Instagram, Facebook, Twitter
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,8 +20,19 @@ import GiveTool from '@/components/livestream/GiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
 
 // --- TYPES & GLOBALS ---
+type YouTubePlayer = {
+  pauseVideo: () => void;
+  getCurrentTime?: () => number;
+};
+
+type YouTubeStateChangeEvent = {
+  data: number;
+  target: YouTubePlayer;
+};
+
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     YT: any;
     onYouTubeIframeAPIReady?: () => void;
   }
@@ -43,6 +53,65 @@ type YouTubeVideo = {
   isLive?: boolean;
 };
 
+type YouTubeSearchItem = {
+  id?: {
+    videoId?: string;
+  };
+  snippet?: {
+    title?: string;
+    publishedAt?: string;
+    channelTitle?: string;
+    description?: string;
+    liveBroadcastContent?: string;
+    thumbnails?: {
+      high?: { url?: string };
+      medium?: { url?: string };
+    };
+  };
+};
+
+type PartnershipDetail = {
+  label: string;
+  value: string;
+};
+
+type MinistryInfo = {
+  name: string | null;
+  motto: string | null;
+  about: string | null;
+  heroImageUrl: string | null;
+  logoImageUrl: string | null;
+  liveSessionYoutubeUrl: string | null;
+  partnershipTitle: string | null;
+  partnershipBody: string | null;
+  partnershipDetails: PartnershipDetail[] | null;
+  partnershipImageUrl: string | null;
+  phone: string | null;
+  email: string | null;
+  location: string | null;
+  contactIntro: string | null;
+};
+
+type MinistryItem = {
+  id: string;
+  category: string;
+  title: string;
+  description: string | null;
+  label: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
+};
+
+type YouthEvent = {
+  id: number;
+  type: string;
+  title: string;
+  date: string;
+  location: string;
+  description: string;
+  image: string;
+};
+
 const TOOL_TABS: Array<{
   key: ToolKey;
   label: string;
@@ -55,7 +124,74 @@ const TOOL_TABS: Array<{
   { key: "give", label: "Give", kind: "form" },
 ];
 
+const toAssetUrl = (value: string | null | undefined) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  return trimmed;
+};
+
+const videoIdFromUrl = (value: string | null | undefined) => {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (url.hostname.includes('youtu.be')) {
+      return url.pathname.replace(/^\//, '');
+    }
+    return url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop() || '';
+  } catch {
+    return raw;
+  }
+};
+
+const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
+  event.currentTarget.src = fallback;
+};
+
+const mergeItemsWithFallback = (loaded: MinistryItem[], fallback: MinistryItem[]) => {
+  if (!loaded.length) return fallback;
+  if (!fallback.length) return loaded;
+
+  const remainingFallback = fallback.filter(
+    (fallbackItem) =>
+      !loaded.some(
+        (loadedItem) =>
+          loadedItem.category === fallbackItem.category &&
+          loadedItem.sortOrder === fallbackItem.sortOrder,
+      ),
+  );
+
+  return [...loaded, ...remainingFallback].sort((first, second) => {
+    const sortDifference = (first.sortOrder ?? 0) - (second.sortOrder ?? 0);
+    if (sortDifference !== 0) return sortDifference;
+    return first.title.localeCompare(second.title);
+  });
+};
+
 // --- MOCK DATA ---
+const defaultInfo: MinistryInfo = {
+  name: 'Youth Church',
+  motto: 'Helping young people grow in Christ and community.',
+  about: `The Youth Church at PICC is a vibrant community where children, teenagers, and young adults can experience God in a way that is relevant to their lives. We believe that young people are not just the leaders of tomorrow, but the influencers of today.
+
+Our services are packed with high-energy worship, creative expressions, and transparent conversations about the issues young people face-from mental health and career choices to identity and spiritual growth. To properly minister to every age group, the Youth Church is comprised of four specialized sub-ministries.`,
+  heroImageUrl: '/hero/hero-2.jpg',
+  logoImageUrl: '/logos/youth-church-logo.png',
+  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=ydTADwZRquA',
+  partnershipTitle: 'Partner With Us',
+  partnershipBody: `Equipping the next generation requires resources, dedicated mentors, and community support. You can partner with the Youth Church to fund our outreach programs, retreats, and mentorship camps.
+
+Whether you are investing in the Heritage Kids, Teens, Hope & Beauty, or CTG, your support helps us build strong foundations for tomorrow's leaders.`,
+  partnershipDetails: [],
+  partnershipImageUrl: '/hero/hero-store.jpg',
+  phone: 'Check with your local PICC branch for youth pastor contacts.',
+  email: 'info@picc.org',
+  location: 'PICC Youth Church\nCamp of God Cathedral',
+  contactIntro:
+    "Whether you're a teen looking for a community or an adult looking to mentor, we'd love to hear from you.",
+};
+
 const eventsList = [
   {
     id: 1,
@@ -104,6 +240,16 @@ const eventsList = [
   },
 ];
 
+const defaultEventItems: MinistryItem[] = eventsList.map((event, index) => ({
+  id: `default-event-${event.id}`,
+  category: 'event',
+  title: event.title,
+  description: `${event.location}\n\n${event.description}`,
+  label: event.date,
+  imageUrl: event.image,
+  sortOrder: index,
+}));
+
 const highlightGallery = [
   { id: 1, src: '/images/youth-church/img-1.jpg', caption: 'High-energy worship and sincere devotion.' },
   { id: 2, src: '/images/youth-church/img-2.jpg', caption: 'Hope and Beauty: Sisterhood in action.' },
@@ -113,6 +259,16 @@ const highlightGallery = [
   { id: 6, src: '/images/youth-church/img-6.jpg', caption: 'Growing in Christ and community together.' },
 ];
 
+const defaultYouthLifeItems: MinistryItem[] = highlightGallery.map((item, index) => ({
+  id: `default-youth-life-${item.id}`,
+  category: 'youth-life',
+  title: `Youth Life ${item.id}`,
+  description: item.caption,
+  label: null,
+  imageUrl: item.src,
+  sortOrder: index,
+}));
+
 const ministryProjects = [
   { id: 1, type: 'Campus Outreach', title: 'University Mentorship Program', status: 'Ongoing', image: '/images/youth-church/img-4.jpg' },
   { id: 2, type: 'Teens Initiative', title: 'High School Faith Clubs', status: 'Active', image: '/images/youth-church/img-3.jpg' },
@@ -121,52 +277,189 @@ const ministryProjects = [
   { id: 5, type: 'Heritage', title: 'Vacation Bible School', status: 'August 2026', image: '/images/youth-church/img-6.jpg' },
 ];
 
+const defaultInitiativeItems: MinistryItem[] = ministryProjects.map((project, index) => ({
+  id: `default-initiative-${project.id}`,
+  category: 'initiative',
+  title: project.title,
+  description: project.type,
+  label: project.status,
+  imageUrl: project.image,
+  sortOrder: index,
+}));
+
+const defaultArmItems: MinistryItem[] = [
+  {
+    id: 'default-arm-1',
+    category: 'arm',
+    title: 'Called to Greatness (CTG)',
+    description:
+      'A dedicated ministry empowering young men and young adults to discover their God-given potential, achieve excellence in their careers, and lead with integrity in the modern world.',
+    label: 'Young Men',
+    imageUrl: null,
+    sortOrder: 0,
+  },
+  {
+    id: 'default-arm-2',
+    category: 'arm',
+    title: 'Hope and Beauty',
+    description:
+      'A sisterhood focusing on mentoring and building up young women. We tackle real-life issues with biblical truth, encouraging grace, purity, and unwavering purpose in Christ.',
+    label: 'Young Women',
+    imageUrl: null,
+    sortOrder: 1,
+  },
+  {
+    id: 'default-arm-3',
+    category: 'arm',
+    title: 'Teens Ministry',
+    description:
+      'Designed specifically for high schoolers, this vibrant arm helps teenagers navigate the pivotal years of youth with faith, fun, deep friendships, and solid biblical foundations.',
+    label: 'Teenagers',
+    imageUrl: null,
+    sortOrder: 2,
+  },
+  {
+    id: 'default-arm-4',
+    category: 'arm',
+    title: 'Heritage Ministry',
+    description:
+      "Our children's church where we lay the early foundations of faith. We teach our youngest members the ways of the Lord through interactive lessons, songs, and age-appropriate play.",
+    label: 'Children',
+    imageUrl: null,
+    sortOrder: 3,
+  },
+];
+
 export default function YouthChurchMinistryPage() {
   // --- STATE ---
   const [activeGalleryId, setActiveGalleryId] = useState<number | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null); // State for the Event Pop-up
+  const [selectedEvent, setSelectedEvent] = useState<YouthEvent | null>(null); // State for the Event Pop-up
   const [featuredEventIndex, setFeaturedEventIndex] = useState(0); // State for cycling events grid
 
   // --- LIVESTREAM STATE ---
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
-  const playersRef = useRef<Map<string, any>>(new Map());
+  const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
+  const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
+  const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
   // --- LIVESTREAM CONSTANTS ---
   const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
-  const FALLBACK_HERO_ID = "ydTADwZRquA";
+  const FALLBACK_HERO_ID = videoIdFromUrl(ministryInfo.liveSessionYoutubeUrl) || "ydTADwZRquA";
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 
   const featuredVideo = videos[0] || null;
+  const itemGroups = {
+    arms: ministryItems.filter((item) => item.category === 'arm'),
+    youthLife: ministryItems.filter((item) => item.category === 'youth-life'),
+    initiatives: ministryItems.filter((item) => item.category === 'initiative'),
+    events: ministryItems.filter((item) => item.category === 'event'),
+  };
+  const armItems = mergeItemsWithFallback(itemGroups.arms, defaultArmItems);
+  const youthLifeItems = mergeItemsWithFallback(itemGroups.youthLife, defaultYouthLifeItems);
+  const galleryItems = youthLifeItems.map((item, index) => ({
+    id: index + 1,
+    src: toAssetUrl(item.imageUrl) || highlightGallery[index % highlightGallery.length]?.src || '/hero/hero-store.jpg',
+    caption: item.description || item.title,
+  }));
+  const initiativeItems = mergeItemsWithFallback(itemGroups.initiatives, defaultInitiativeItems);
+  const projectItems = initiativeItems.map((item, index) => ({
+    id: index + 1,
+    type: item.description || 'Initiative',
+    title: item.title,
+    status: item.label || 'Active',
+    image: toAssetUrl(item.imageUrl) || ministryProjects[index % ministryProjects.length]?.image || '/hero/hero-store.jpg',
+  }));
+  const eventItems = mergeItemsWithFallback(itemGroups.events, defaultEventItems).map((item, index) => {
+    const [maybeLocation, ...bodyParts] = (item.description || '').split(/\n{2,}/);
+    const fallbackEvent = eventsList[index % eventsList.length];
+    const hasLocationAndBody = bodyParts.length > 0;
+
+    return {
+      id: index + 1,
+      type: fallbackEvent?.type || 'Youth Church Event',
+      title: item.title,
+      date: item.label || 'Upcoming',
+      location: hasLocationAndBody ? maybeLocation : fallbackEvent?.location || 'PICC Youth Church',
+      description: hasLocationAndBody ? bodyParts.join('\n\n') : item.description || '',
+      image: toAssetUrl(item.imageUrl) || fallbackEvent?.image || '/hero/hero-store.jpg',
+    };
+  });
+  const aboutParagraphs = (ministryInfo.about || defaultInfo.about || '').split(/\n{2,}/).filter(Boolean);
+  const partnershipParagraphs = (ministryInfo.partnershipBody || defaultInfo.partnershipBody || '').split(/\n{2,}/).filter(Boolean);
+  const partnershipDetails = ministryInfo.partnershipDetails?.length ? ministryInfo.partnershipDetails : defaultInfo.partnershipDetails || [];
+  const contactLocationLines = (ministryInfo.location || defaultInfo.location || '').split(/\n+/).filter(Boolean);
 
   const formatDate = (value: string) => {
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "Africa/Blantyre" });
   };
 
   // --- CYCLING EVENTS EFFECT ---
   useEffect(() => {
     const timer = setInterval(() => {
-      setFeaturedEventIndex((prev) => (prev + 1) % eventsList.length);
+      setFeaturedEventIndex((prev) => (prev + 1) % eventItems.length);
     }, 5000); // Cycles every 5 seconds
     return () => clearInterval(timer);
-  }, []);
+  }, [eventItems.length]);
 
-  const featuredGridEvent = eventsList[featuredEventIndex];
-  const remainingEvents = eventsList.filter((_, idx) => idx !== featuredEventIndex);
+  const fallbackGridEvent: YouthEvent = {
+    id: 0,
+    type: 'Youth Church Event',
+    title: 'Youth Church Sunday Service',
+    date: 'Every Sunday | 1:30 PM - 3:30 PM',
+    location: 'The Camp of God Cathedral, Area 49 Lilongwe',
+    description: 'Join us every Sunday for worship, word, and community.',
+    image: '/images/youth-church/img-1.jpg',
+  };
+  const safeFeaturedEventIndex = eventItems.length ? featuredEventIndex % eventItems.length : 0;
+  const featuredGridEvent = eventItems[safeFeaturedEventIndex] || fallbackGridEvent;
+  const remainingEvents = eventItems.filter((_, idx) => idx !== safeFeaturedEventIndex);
 
   // --- EFFECTS ---
   useEffect(() => {
     let isMounted = true;
 
-    const toVideoFromSearch = (item: any): YouTubeVideo | null => {
+    const loadMinistryContent = async () => {
+      try {
+        const response = await apiFetch('/api/ministries/youth-church/content');
+        if (!response.ok) return;
+        const data = await response.json().catch(() => ({}));
+        if (!isMounted) return;
+
+        if (data?.info) {
+          setMinistryInfo({
+            ...defaultInfo,
+            ...data.info,
+            partnershipDetails: Array.isArray(data.info.partnershipDetails)
+              ? data.info.partnershipDetails
+              : defaultInfo.partnershipDetails,
+          });
+        }
+
+        if (Array.isArray(data?.items)) {
+          setMinistryItems(data.items);
+        }
+      } catch {
+        // Keep the built-in Youth Church content as the public fallback.
+      }
+    };
+
+    void loadMinistryContent();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const toVideoFromSearch = (item: YouTubeSearchItem | undefined): YouTubeVideo | null => {
       const videoId = item?.id?.videoId;
       if (!videoId) return null;
       const snippet = item.snippet || {};
@@ -192,9 +485,6 @@ export default function YouthChurchMinistryPage() {
 
     const fetchVideos = async () => {
       try {
-        setIsLoading(true);
-        setLoadError(null);
-
         if (!YOUTUBE_API_KEY) throw new Error("Missing API key");
 
         const liveUrl = new URL("https://www.googleapis.com/youtube/v3/search");
@@ -226,19 +516,16 @@ export default function YouthChurchMinistryPage() {
             }]);
           }
         }
-      } catch (error) {
+      } catch {
         if (isMounted) {
-          setLoadError("Unable to load the live video right now.");
           setVideos([]);
         }
-      } finally {
-        if (isMounted) setIsLoading(false);
       }
     };
 
     fetchVideos();
     return () => { isMounted = false; };
-  }, [YOUTUBE_API_KEY]);
+  }, [YOUTUBE_API_KEY, FALLBACK_HERO_ID]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -271,16 +558,17 @@ export default function YouthChurchMinistryPage() {
 
   useEffect(() => {
     if (!ytReady || typeof window === "undefined" || !window.YT?.Player) return;
+    const youtube = window.YT;
     const players = playersRef.current;
     const iframes = Array.from(document.querySelectorAll<HTMLIFrameElement>("[data-yt-id]"));
 
     iframes.forEach((iframe) => {
       const videoId = iframe.dataset.ytId;
       if (!videoId || players.has(videoId)) return;
-      const player = new window.YT.Player(iframe, {
+      const player = new youtube.Player(iframe, {
         events: {
-          onStateChange: (event: any) => {
-            if (event.data === window.YT.PlayerState.PLAYING) {
+          onStateChange: (event: YouTubeStateChangeEvent) => {
+            if (event.data === youtube.PlayerState.PLAYING) {
               players.forEach((p) => {
                 if (p !== event.target) p.pauseVideo();
               });
@@ -293,7 +581,6 @@ export default function YouthChurchMinistryPage() {
   }, [ytReady, activeTool]);
 
   const mobilePlayerActive = isMobileViewport && activeTool;
-  const activeEmbedTool = TOOL_TABS.find(t => t.key === activeTool && t.kind === "embed") as { url: string; label: string } | undefined;
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -326,7 +613,7 @@ export default function YouthChurchMinistryPage() {
     } catch {
       setMobileResumeAt(null);
     }
-  }, [activeTool, isMobileViewport, featuredVideo?.videoId]);
+  }, [activeTool, isMobileViewport, featuredVideo?.videoId, FALLBACK_HERO_ID]);
 
   const mobileVideoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
   const mobileVideoStart = mobileResumeAt && mobileResumeAt > 0 ? `&start=${mobileResumeAt}` : '';
@@ -367,7 +654,7 @@ export default function YouthChurchMinistryPage() {
                   alt={selectedEvent.title}
                   fill
                   className="object-cover"
-                  onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                  onError={swapImage('/hero/hero-store.jpg')}
                 />
               </div>
 
@@ -425,24 +712,31 @@ export default function YouthChurchMinistryPage() {
         
         {/* 1. HERO SECTION (Youth Church Core) */}
         {!mobilePlayerActive && (
-          <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
+          <section
+            className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10 overflow-hidden"
+            style={{
+              backgroundImage: `linear-gradient(rgba(30,58,95,0.82), rgba(45,90,140,0.76)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/hero/hero-2.jpg'})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
               <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20">
                 <Image 
-                  src="/logos/youth-church-logo.png" 
-                  alt="Youth Church Logo" 
+                  src={toAssetUrl(ministryInfo.logoImageUrl) || '/logos/youth-church-logo.png'} 
+                  alt={`${ministryInfo.name || 'Youth Church'} Logo`} 
                   fill 
                   className="object-contain p-2 rounded-full"
-                  onError={(e: any) => e.target.src = '/logos/picc-logo.png'} 
+                  onError={swapImage('/logo.png')}
                 />
               </div>
 
               <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3 font-semibold">PICC Ministry</p>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">Youth Church</h1>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">{ministryInfo.name || 'Youth Church'}</h1>
               
               <div className="inline-block border-y border-white/20 py-3 px-8 mb-6">
                 <p className="text-lg sm:text-xl font-medium tracking-wide text-white/90 italic">
-                  "Helping young people grow in Christ and community."
+                  &quot;{ministryInfo.motto || defaultInfo.motto}&quot;
                 </p>
               </div>
             </div>
@@ -456,12 +750,11 @@ export default function YouthChurchMinistryPage() {
               <div className="max-w-4xl mx-auto text-center">
                 <h2 className="text-3xl md:text-4xl font-bold mb-6">The Next Generation</h2>
                 <div className="w-16 h-1 bg-[#2D5A8C] mx-auto mb-8 rounded-full" />
-                <p className="text-lg text-black/70 leading-relaxed mb-6">
-                  The Youth Church at PICC is a vibrant community where children, teenagers, and young adults can experience God in a way that is relevant to their lives. We believe that young people are not just the leaders of tomorrow, but the influencers of today.
-                </p>
-                <p className="text-lg text-black/70 leading-relaxed">
-                  Our services are packed with high-energy worship, creative expressions, and transparent conversations about the issues young people face—from mental health and career choices to identity and spiritual growth. To properly minister to every age group, the Youth Church is comprised of four specialized sub-ministries.
-                </p>
+                {aboutParagraphs.map((paragraph, index) => (
+                  <p key={`about-${index}`} className={`text-lg text-black/70 leading-relaxed ${index < aboutParagraphs.length - 1 ? 'mb-6' : ''}`}>
+                    {paragraph}
+                  </p>
+                ))}
               </div>
             </div>
           </section>
@@ -484,9 +777,9 @@ export default function YouthChurchMinistryPage() {
                     <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                       <Rocket className="w-7 h-7 text-green-600" />
                     </div>
-                    <h3 className="text-xl font-bold text-green-700 mb-3">Called to Greatness (CTG)</h3>
+                    <h3 className="text-xl font-bold text-green-700 mb-3">{armItems[0]?.title || 'Called to Greatness (CTG)'}</h3>
                     <p className="text-black/70 text-sm leading-relaxed">
-                      A dedicated ministry empowering young men and young adults to discover their God-given potential, achieve excellence in their careers, and lead with integrity in the modern world.
+                      {armItems[0]?.description || defaultArmItems[0].description}
                     </p>
                   </div>
                   <div className="h-2 w-full bg-green-600/10 absolute bottom-0 left-0" />
@@ -498,9 +791,9 @@ export default function YouthChurchMinistryPage() {
                     <div className="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                       <Sparkles className="w-7 h-7 text-rose-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-rose-600 mb-3">Hope and Beauty</h3>
+                    <h3 className="text-xl font-bold text-rose-600 mb-3">{armItems[1]?.title || 'Hope and Beauty'}</h3>
                     <p className="text-black/70 text-sm leading-relaxed">
-                      A sisterhood focusing on mentoring and building up young women. We tackle real-life issues with biblical truth, encouraging grace, purity, and unwavering purpose in Christ.
+                      {armItems[1]?.description || defaultArmItems[1].description}
                     </p>
                   </div>
                   <div className="h-2 w-full bg-rose-500/10 absolute bottom-0 left-0" />
@@ -512,9 +805,9 @@ export default function YouthChurchMinistryPage() {
                     <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                       <Flame className="w-7 h-7 text-orange-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-orange-600 mb-3">Teens Ministry</h3>
+                    <h3 className="text-xl font-bold text-orange-600 mb-3">{armItems[2]?.title || 'Teens Ministry'}</h3>
                     <p className="text-black/70 text-sm leading-relaxed">
-                      Designed specifically for high schoolers, this vibrant arm helps teenagers navigate the pivotal years of youth with faith, fun, deep friendships, and solid biblical foundations.
+                      {armItems[2]?.description || defaultArmItems[2].description}
                     </p>
                   </div>
                   <div className="h-2 w-full bg-orange-500/10 absolute bottom-0 left-0" />
@@ -526,9 +819,9 @@ export default function YouthChurchMinistryPage() {
                     <div className="w-14 h-14 bg-sky-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                       <Baby className="w-7 h-7 text-sky-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-sky-600 mb-3">Heritage Ministry</h3>
+                    <h3 className="text-xl font-bold text-sky-600 mb-3">{armItems[3]?.title || 'Heritage Ministry'}</h3>
                     <p className="text-black/70 text-sm leading-relaxed">
-                      Our children's church where we lay the early foundations of faith. We teach our youngest members the ways of the Lord through interactive lessons, songs, and age-appropriate play.
+                      {armItems[3]?.description || defaultArmItems[3].description}
                     </p>
                   </div>
                   <div className="h-2 w-full bg-sky-500/10 absolute bottom-0 left-0" />
@@ -549,7 +842,7 @@ export default function YouthChurchMinistryPage() {
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                {highlightGallery.map((item) => (
+                {galleryItems.map((item) => (
                   <div 
                     key={item.id} 
                     className="relative h-48 md:h-64 bg-slate-200 rounded-xl overflow-hidden cursor-pointer group"
@@ -560,7 +853,7 @@ export default function YouthChurchMinistryPage() {
                       alt={`Gallery Highlight ${item.id}`} 
                       fill 
                       className={`object-cover transition-transform duration-700 ease-in-out ${activeGalleryId === item.id ? 'scale-110' : 'group-hover:scale-105'}`}
-                      onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
+                      onError={swapImage('/hero/hero-store.jpg')} 
                     />
                     
                     {/* Caption Overlay - Shows on Click */}
@@ -701,7 +994,7 @@ export default function YouthChurchMinistryPage() {
                         alt={featuredGridEvent.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-700"
-                        onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                        onError={swapImage('/hero/hero-store.jpg')}
                       />
                       <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
                         <span className="bg-[#2D5A8C] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
@@ -736,7 +1029,7 @@ export default function YouthChurchMinistryPage() {
                         alt={event.title}
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                        onError={swapImage('/hero/hero-store.jpg')}
                       />
                       <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
                         <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
@@ -768,31 +1061,31 @@ export default function YouthChurchMinistryPage() {
                 {/* Large Featured Image (Current/Latest Project) */}
                 <div className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group">
                   <Image 
-                    src={ministryProjects[0].image} 
-                    alt={ministryProjects[0].title}
+                    src={projectItems[0]?.image || '/hero/hero-store.jpg'} 
+                    alt={projectItems[0]?.title || 'Youth Church Initiative'}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                    onError={swapImage('/hero/hero-store.jpg')}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
                     <span className="bg-[#2D5A8C] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
-                      {ministryProjects[0].type}
+                      {projectItems[0]?.type || 'Initiative'}
                     </span>
-                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{ministryProjects[0].title}</h3>
-                    <p className="text-white/80 text-sm font-medium">Status: {ministryProjects[0].status}</p>
+                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{projectItems[0]?.title || 'Youth Church Initiative'}</h3>
+                    <p className="text-white/80 text-sm font-medium">Status: {projectItems[0]?.status || 'Active'}</p>
                   </div>
                 </div>
 
                 {/* Grid of Smaller Previous/Future Publications */}
                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-                  {ministryProjects.slice(1).map((material) => (
+                  {projectItems.slice(1).map((material) => (
                     <div key={material.id} className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group">
                       <Image 
                         src={material.image} 
                         alt={material.title}
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                        onError={swapImage('/hero/hero-store.jpg')}
                       />
                       <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
                         <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
@@ -835,7 +1128,6 @@ export default function YouthChurchMinistryPage() {
                     <button onClick={() => setActiveTool(null)} className="ml-auto rounded-full bg-red-100 px-3 py-1 text-xs text-red-700">Close</button>
                   </div>
                 </div>
-                {activeEmbedTool && <div className="aspect-[4/3] w-full bg-white mb-4 rounded-xl overflow-hidden border border-black/10"><iframe className="h-full w-full" src={activeEmbedTool.url} title={activeEmbedTool.label} allow="clipboard-write; fullscreen" /></div>}
                 {activeTool === "chat" && <div className="h-[300px] w-full bg-white mb-4 rounded-xl overflow-hidden border border-black/10"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Youth Church Live'} /></div>}
                 {activeTool === "bible" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><BibleTool /></div>}
                 {activeTool === "notepad" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><NotepadTool /></div>}
@@ -852,29 +1144,34 @@ export default function YouthChurchMinistryPage() {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-6">Partner With Us</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-6">{ministryInfo.partnershipTitle || 'Partner With Us'}</h2>
                   <div className="w-16 h-1 bg-[#2D5A8C] mb-6 rounded-full" />
-                  <p className="text-lg text-black/70 mb-4">
-                    Equipping the next generation requires resources, dedicated mentors, and community support. You can partner with the Youth Church to fund our outreach programs, retreats, and mentorship camps.
-                  </p>
-                  <p className="text-lg text-black/70 mb-6">
-                    Whether you are investing in the Heritage Kids, Teens, Hope & Beauty, or CTG, your support helps us build strong foundations for tomorrow's leaders.
-                  </p>
+                  {partnershipParagraphs.map((paragraph, index) => (
+                    <p key={`partnership-${index}`} className={`text-lg text-black/70 ${index < partnershipParagraphs.length - 1 ? 'mb-4' : 'mb-6'}`}>
+                      {paragraph}
+                    </p>
+                  ))}
                   
                   <div className="bg-white p-6 rounded-xl shadow-sm border border-black/5">
                     <h3 className="font-bold text-xl mb-4 text-[#2D5A8C]">Sponsorship & Giving</h3>
                     <div className="space-y-2 text-sm text-black/70">
-                      <p>If you'd like to sponsor a youth retreat or fund our campus outreach programs, please contact the main church office for designated giving details.</p>
+                      {partnershipDetails.length > 0 ? (
+                        partnershipDetails.map((detail) => (
+                          <p key={`${detail.label}-${detail.value}`}><strong>{detail.label}:</strong> {detail.value}</p>
+                        ))
+                      ) : (
+                        <p>If you would like to sponsor a youth retreat or fund our campus outreach programs, please contact the main church office for designated giving details.</p>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="relative h-[400px] rounded-2xl overflow-hidden shadow-xl">
                   <Image 
-                    src="/hero/hero-store.jpg" 
+                    src={toAssetUrl(ministryInfo.partnershipImageUrl) || '/hero/hero-store.jpg'} 
                     alt="Support Youth Ministry" 
                     fill 
                     className="object-cover"
-                    onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
+                    onError={swapImage('/hero/hero-store.jpg')} 
                   />
                 </div>
               </div>
@@ -902,7 +1199,7 @@ export default function YouthChurchMinistryPage() {
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">Get Involved</h2>
                 <p className="text-white/80 max-w-2xl mx-auto">
-                  Whether you're a teen looking for a community or an adult looking to mentor, we'd love to hear from you.
+                  {ministryInfo.contactIntro || defaultInfo.contactIntro}
                 </p>
               </div>
 
@@ -910,21 +1207,22 @@ export default function YouthChurchMinistryPage() {
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <MapPin className="w-10 h-10 mx-auto text-blue-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Location</h3>
-                  <p className="text-white/70">PICC Youth Church</p>
-                  <p className="text-white/70">Camp of God Cathedral</p>
+                  {contactLocationLines.map((line) => (
+                    <p key={line} className="text-white/70">{line}</p>
+                  ))}
                 </Card>
 
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Phone className="w-10 h-10 mx-auto text-blue-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Phone</h3>
-                  <p className="text-white/70">Check with your local PICC branch for youth pastor contacts.</p>
+                  <p className="text-white/70 whitespace-pre-line">{ministryInfo.phone || defaultInfo.phone}</p>
                 </Card>
 
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Mail className="w-10 h-10 mx-auto text-blue-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Email</h3>
                   <p className="text-white/70 break-all">
-                    yc@piccworldwide.org
+                    {ministryInfo.email || defaultInfo.email}
                   </p>
                 </Card>
               </div>

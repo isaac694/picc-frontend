@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type SyntheticEvent } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { 
-  ChevronLeft, ChevronRight, Waves, MapPin, 
-  Phone, Mail, CalendarClock, BookOpen, Globe, 
-  Target, MessageCircle, BookOpenText, MessageSquareText, StickyNote,
-  Heart, Briefcase, Users, Shield, BookMarked, Landmark
+  ChevronLeft, ChevronRight, MapPin, 
+  Phone, Mail, CalendarClock, Globe, 
+  BookOpenText, MessageSquareText, StickyNote,
+  Briefcase, Users, Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,15 +21,17 @@ import TestimonyTool from '@/components/livestream/TestimonyTool';
 import GiveTool from '@/components/livestream/GiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
 
-// --- TYPES & GLOBALS ---
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
+
+type YouTubePlayer = {
+  pauseVideo: () => void;
+  getCurrentTime?: () => number;
+};
+
+type YouTubeStateChangeEvent = {
+  data: number;
+  target: YouTubePlayer;
+};
 
 type YouTubeVideo = {
   videoId: string;
@@ -44,6 +46,55 @@ type YouTubeVideo = {
   isLive?: boolean;
 };
 
+type YouTubeSearchItem = {
+  id?: {
+    videoId?: string;
+  };
+  snippet?: {
+    title?: string;
+    publishedAt?: string;
+    channelTitle?: string;
+    description?: string;
+    liveBroadcastContent?: string;
+    thumbnails?: {
+      high?: { url?: string };
+      medium?: { url?: string };
+    };
+  };
+};
+
+type PartnershipDetail = {
+  label: string;
+  value: string;
+};
+
+type MinistryInfo = {
+  name: string | null;
+  motto: string | null;
+  about: string | null;
+  heroImageUrl: string | null;
+  logoImageUrl: string | null;
+  liveSessionYoutubeUrl: string | null;
+  partnershipTitle: string | null;
+  partnershipBody: string | null;
+  partnershipDetails: PartnershipDetail[] | null;
+  partnershipImageUrl: string | null;
+  phone: string | null;
+  email: string | null;
+  location: string | null;
+  contactIntro: string | null;
+};
+
+type MinistryItem = {
+  id: string;
+  category: string;
+  title: string;
+  description: string | null;
+  label: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
+};
+
 const TOOL_TABS: Array<{
   key: ToolKey;
   label: string;
@@ -56,7 +107,76 @@ const TOOL_TABS: Array<{
   { key: "give", label: "Give", kind: "form" },
 ];
 
-// --- MOCK DATA ---
+const toAssetUrl = (value: string | null | undefined) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  return trimmed;
+};
+
+const videoIdFromUrl = (value: string | null | undefined) => {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (url.hostname.includes('youtu.be')) {
+      return url.pathname.replace(/^\//, '');
+    }
+    return url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop() || '';
+  } catch {
+    return raw;
+  }
+};
+
+const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
+  event.currentTarget.src = fallback;
+};
+
+const mergeItemsWithFallback = (loaded: MinistryItem[], fallback: MinistryItem[]) => {
+  if (!loaded.length) return fallback;
+  if (!fallback.length) return loaded;
+
+  const remainingFallback = fallback.filter(
+    (fallbackItem) =>
+      !loaded.some(
+        (loadedItem) =>
+          loadedItem.category === fallbackItem.category &&
+          loadedItem.sortOrder === fallbackItem.sortOrder,
+      ),
+  );
+
+  return [...loaded, ...remainingFallback].sort((first, second) => {
+    const sortDifference = (first.sortOrder ?? 0) - (second.sortOrder ?? 0);
+    if (sortDifference !== 0) return sortDifference;
+    return first.title.localeCompare(second.title);
+  });
+};
+
+const defaultInfo: MinistryInfo = {
+  name: 'Men of Valour',
+  motto: 'Leading with Faith, Courage, and Integrity.',
+  about: `PICC Men of Valour Ministry was birthed on the premise that every man has potential to make maximum impact in life and ministry. This is inspired by Gideon in Judges 6 to 8, who emerged as a powerful leader after being called a Mighty Man of Valour by God.
+
+The overarching objective of the ministry is to create a platform where men can be supported to break forth as mighty Men of Valour. Every man who is a member of PICC automatically becomes a member of this ministry.`,
+  heroImageUrl: '/hero/hero-7-mov.jpg',
+  logoImageUrl: '/logos/men-of-valour-logo.png',
+  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=ydTADwZRquA',
+  partnershipTitle: 'Ministry Membership & Support',
+  partnershipBody: `Every man who is a member of PICC automatically becomes a member of PICC Men of Valour. This membership comes with a monthly subscription fee.
+
+All members are expected to be involved in all activities initiated by the ministry, including purchasing at least one MoV branded t-shirt to be worn during related events.`,
+  partnershipDetails: [
+    { label: 'First Capital Bank', value: 'Account Name: PICC Men of Valour, Account Number: 0004502003491' },
+    { label: 'Airtel Money', value: 'Agent Code: 776628' },
+  ],
+  partnershipImageUrl: '/hero/hero-store.jpg',
+  phone: '0999 36 36 77 (Head of Dept)\n0999 35 43 71 (Finance Lead)',
+  email: 'info@picc.org',
+  location: 'PICC Men of Valour\nCamp of God Cathedral',
+  contactIntro:
+    'Whether you are a young professional starting your career or a seasoned elder passing down wisdom, there is a place for you.',
+};
+
 const pastEvents = [
   {
     id: 1,
@@ -81,6 +201,16 @@ const pastEvents = [
   },
 ];
 
+const defaultEventItems: MinistryItem[] = pastEvents.map((event, index) => ({
+  id: `default-event-${event.id}`,
+  category: 'event',
+  title: event.title,
+  description: event.description,
+  label: event.date,
+  imageUrl: event.image,
+  sortOrder: index,
+}));
+
 const highlightGallery = [
   { id: 1, src: '/hero/hero-7-mov.jpg', caption: 'Breaking forth as mighty Men of Valour in life and ministry.' },
   { id: 2, src: '/moments/1.jpg', caption: 'Total dedication through the Prayer Squad.' },
@@ -90,12 +220,65 @@ const highlightGallery = [
   { id: 6, src: '/moments/5.jpg', caption: 'Annual Conferences for vision and alignment.' },
 ];
 
+const defaultBrotherhoodItems: MinistryItem[] = highlightGallery.map((item, index) => ({
+  id: `default-brotherhood-${item.id}`,
+  category: 'brotherhood-picture',
+  title: `Brotherhood Picture ${item.id}`,
+  description: item.caption,
+  label: null,
+  imageUrl: item.src,
+  sortOrder: index,
+}));
+
 const ministryProjects = [
   { id: 1, type: 'Current Initiative', title: 'Monthly Empowerment Summits', status: 'Ongoing', image: '/moments/1.jpg' },
   { id: 2, type: 'Current Initiative', title: 'Quarterly Business Workshops', status: 'Ongoing', image: '/moments/2.jpg' },
   { id: 3, type: 'Current Initiative', title: 'MoV Social Groups', status: 'Active', image: '/moments/3.jpg' },
   { id: 4, type: 'Welfare Project', title: 'Charity Works & Outreach', status: 'Ongoing', image: '/moments/4.jpg' },
   { id: 5, type: 'Annual Event', title: 'Men of Valour Conference', status: 'November 2026', image: '/hero/hero-2.jpg' },
+];
+
+const defaultInitiativeItems: MinistryItem[] = ministryProjects.map((project, index) => ({
+  id: `default-initiative-${project.id}`,
+  category: 'initiative',
+  title: project.title,
+  description: project.status,
+  label: project.type,
+  imageUrl: project.image,
+  sortOrder: index,
+}));
+
+const defaultCards: MinistryItem[] = [
+  {
+    id: 'default-card-1',
+    category: 'card',
+    title: 'Spiritual Discipline',
+    description:
+      'Members are totally dedicated to prayer, participating in mountain prayers, fasting programs, and remaining exemplary in conduct.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 0,
+  },
+  {
+    id: 'default-card-2',
+    category: 'card',
+    title: 'Business & Empowerment',
+    description:
+      'We organize quarterly business seminars and empowerment summits to assist men in having clean, multiple streams of income.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 1,
+  },
+  {
+    id: 'default-card-3',
+    category: 'card',
+    title: 'Social & Welfare',
+    description:
+      'We actively participate in social groups, charity works, and support members through welfare programs during sickness, weddings, and funerals.',
+    label: null,
+    imageUrl: null,
+    sortOrder: 2,
+  },
 ];
 
 export default function MenOfValourPage() {
@@ -107,41 +290,106 @@ export default function MenOfValourPage() {
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
-  const playersRef = useRef<Map<string, any>>(new Map());
+  const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
+  const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
+  const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
   // --- LIVESTREAM CONSTANTS ---
   const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
-  const FALLBACK_HERO_ID = "ydTADwZRquA";
+  const FALLBACK_HERO_ID = videoIdFromUrl(ministryInfo.liveSessionYoutubeUrl) || "ydTADwZRquA";
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 
   const featuredVideo = videos[0] || null;
+  const itemGroups = {
+    cards: ministryItems.filter((item) => item.category === 'card'),
+    brotherhood: ministryItems.filter((item) => item.category === 'brotherhood-picture'),
+    initiatives: ministryItems.filter((item) => item.category === 'initiative'),
+    events: ministryItems.filter((item) => item.category === 'event'),
+  };
+  const aboutCards = mergeItemsWithFallback(itemGroups.cards, defaultCards);
+  const brotherhoodItems = mergeItemsWithFallback(itemGroups.brotherhood, defaultBrotherhoodItems);
+  const galleryItems = brotherhoodItems.map((item, index) => ({
+    id: index + 1,
+    src: toAssetUrl(item.imageUrl) || highlightGallery[index % highlightGallery.length]?.src || '/hero/hero-store.jpg',
+    caption: item.description || item.title,
+  }));
+  const initiativeItems = mergeItemsWithFallback(itemGroups.initiatives, defaultInitiativeItems);
+  const projectItems = initiativeItems.map((item, index) => ({
+    id: index + 1,
+    type: item.label || 'Initiative',
+    title: item.title,
+    status: item.description || 'Active',
+    image: toAssetUrl(item.imageUrl) || ministryProjects[index % ministryProjects.length]?.image || '/hero/hero-store.jpg',
+  }));
+  const eventItems = mergeItemsWithFallback(itemGroups.events, defaultEventItems).map((item, index) => ({
+    id: index + 1,
+    title: item.title,
+    date: item.label || 'Upcoming',
+    description: item.description || '',
+    image: toAssetUrl(item.imageUrl) || pastEvents[index % pastEvents.length]?.image || '/hero/hero-store.jpg',
+  }));
+  const aboutParagraphs = (ministryInfo.about || defaultInfo.about || '').split(/\n{2,}/).filter(Boolean);
+  const membershipParagraphs = (ministryInfo.partnershipBody || defaultInfo.partnershipBody || '').split(/\n{2,}/).filter(Boolean);
+  const paymentDetails = ministryInfo.partnershipDetails?.length ? ministryInfo.partnershipDetails : defaultInfo.partnershipDetails || [];
 
   const formatDate = (value: string) => {
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "Africa/Blantyre" });
   };
 
   // --- EFFECTS ---
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % pastEvents.length);
+      setCurrentSlide((prev) => (prev + 1) % eventItems.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [eventItems.length]);
 
-  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % pastEvents.length);
-  const prevSlide = () => setCurrentSlide((prev) => (prev === 0 ? pastEvents.length - 1 : prev - 1));
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % eventItems.length);
+  const prevSlide = () => setCurrentSlide((prev) => (prev === 0 ? eventItems.length - 1 : prev - 1));
 
   useEffect(() => {
     let isMounted = true;
 
-    const toVideoFromSearch = (item: any): YouTubeVideo | null => {
+    const loadMinistryContent = async () => {
+      try {
+        const response = await apiFetch('/api/ministries/men-of-valour/content');
+        if (!response.ok) return;
+        const data = await response.json().catch(() => ({}));
+        if (!isMounted) return;
+
+        if (data?.info) {
+          setMinistryInfo({
+            ...defaultInfo,
+            ...data.info,
+            partnershipDetails: Array.isArray(data.info.partnershipDetails)
+              ? data.info.partnershipDetails
+              : defaultInfo.partnershipDetails,
+          });
+        }
+
+        if (Array.isArray(data?.items)) {
+          setMinistryItems(data.items);
+        }
+      } catch {
+        // Keep the built-in Men of Valour content as the public fallback.
+      }
+    };
+
+    void loadMinistryContent();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const toVideoFromSearch = (item: YouTubeSearchItem | undefined): YouTubeVideo | null => {
       const videoId = item?.id?.videoId;
       if (!videoId) return null;
       const snippet = item.snippet || {};
@@ -167,9 +415,6 @@ export default function MenOfValourPage() {
 
     const fetchVideos = async () => {
       try {
-        setIsLoading(true);
-        setLoadError(null);
-
         if (!YOUTUBE_API_KEY) throw new Error("Missing API key");
 
         const liveUrl = new URL("https://www.googleapis.com/youtube/v3/search");
@@ -201,19 +446,16 @@ export default function MenOfValourPage() {
             }]);
           }
         }
-      } catch (error) {
+      } catch {
         if (isMounted) {
-          setLoadError("Unable to load the live video right now.");
           setVideos([]);
         }
-      } finally {
-        if (isMounted) setIsLoading(false);
       }
     };
 
     fetchVideos();
     return () => { isMounted = false; };
-  }, [YOUTUBE_API_KEY]);
+  }, [YOUTUBE_API_KEY, FALLBACK_HERO_ID]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -246,16 +488,17 @@ export default function MenOfValourPage() {
 
   useEffect(() => {
     if (!ytReady || typeof window === "undefined" || !window.YT?.Player) return;
+    const youtube = window.YT;
     const players = playersRef.current;
     const iframes = Array.from(document.querySelectorAll<HTMLIFrameElement>("[data-yt-id]"));
 
     iframes.forEach((iframe) => {
       const videoId = iframe.dataset.ytId;
       if (!videoId || players.has(videoId)) return;
-      const player = new window.YT.Player(iframe, {
+      const player = new youtube.Player(iframe, {
         events: {
-          onStateChange: (event: any) => {
-            if (event.data === window.YT.PlayerState.PLAYING) {
+          onStateChange: (event: YouTubeStateChangeEvent) => {
+            if (event.data === youtube.PlayerState.PLAYING) {
               players.forEach((p) => {
                 if (p !== event.target) p.pauseVideo();
               });
@@ -268,8 +511,6 @@ export default function MenOfValourPage() {
   }, [ytReady, activeTool]);
 
   const mobilePlayerActive = isMobileViewport && activeTool;
-  const activeEmbedTool = TOOL_TABS.find(t => t.key === activeTool && t.kind === "embed") as { url: string; label: string } | undefined;
-
   useEffect(() => {
     if (typeof document === 'undefined') return;
     if (!mobilePlayerActive) return;
@@ -301,7 +542,7 @@ export default function MenOfValourPage() {
     } catch {
       setMobileResumeAt(null);
     }
-  }, [activeTool, isMobileViewport, featuredVideo?.videoId]);
+  }, [activeTool, isMobileViewport, featuredVideo?.videoId, FALLBACK_HERO_ID]);
 
   const mobileVideoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
   const mobileVideoStart = mobileResumeAt && mobileResumeAt > 0 ? `&start=${mobileResumeAt}` : '';
@@ -314,24 +555,31 @@ export default function MenOfValourPage() {
         
         {/* 1. HERO SECTION */}
         {!mobilePlayerActive && (
-          <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
+          <section
+            className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[#1E3A5F] text-white rounded-b-[36px] md:rounded-b-[48px] shadow-lg z-10 overflow-hidden"
+            style={{
+              backgroundImage: `linear-gradient(rgba(30,58,95,0.82), rgba(45,90,140,0.74)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/hero/hero-7-mov.jpg'})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
               <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-8 bg-white rounded-full p-2 shadow-xl border-4 border-white/20">
                 <Image 
-                  src="/logos/men-of-valour-logo.png" 
+                  src={toAssetUrl(ministryInfo.logoImageUrl) || '/logos/men-of-valour-logo.png'} 
                   alt="Men of Valour Logo" 
                   fill 
                   className="object-contain p-2 rounded-full"
-                  onError={(e: any) => e.target.src = '/logos/picc-logo.png'} 
+                  onError={swapImage('/logo.png')} 
                 />
               </div>
 
               <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3 font-semibold">PICC Ministry</p>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">Men of Valour</h1>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">{ministryInfo.name || defaultInfo.name}</h1>
               
               <div className="inline-block border-y border-white/20 py-3 px-8 mb-6">
                 <p className="text-lg sm:text-xl font-medium tracking-wide text-white/90 italic">
-                  "Leading with Faith, Courage, and Integrity."
+                  &quot;{ministryInfo.motto || defaultInfo.motto}&quot;
                 </p>
               </div>
             </div>
@@ -345,31 +593,25 @@ export default function MenOfValourPage() {
               <div className="max-w-4xl mx-auto text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-6">About the Ministry</h2>
                 <div className="w-16 h-1 bg-[#2D5A8C] mx-auto mb-8 rounded-full" />
-                <p className="text-lg text-black/70 leading-relaxed mb-6">
-                  PICC Men of Valour Ministry was birthed on the premise that every man has potential to make maximum impact in life and ministry. This is inspired by Gideon in Judges 6 to 8, who emerged as a powerful leader after being called a Mighty Man of Valour by God. 
-                </p>
-                <p className="text-lg text-black/70 leading-relaxed">
-                  The overarching objective of the ministry is to create a platform where men can be supported to break forth as mighty Men of Valour. Every man who is a member of PICC automatically becomes a member of this ministry.
-                </p>
+                {aboutParagraphs.map((paragraph, index) => (
+                  <p key={`about-${index}`} className={`text-lg text-black/70 leading-relaxed ${index < aboutParagraphs.length - 1 ? 'mb-6' : ''}`}>
+                    {paragraph}
+                  </p>
+                ))}
               </div>
 
               {/* Informational Cards inside About Section */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
-                <Card className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#2D5A8C]">
-                  <Shield className="w-12 h-12 mx-auto text-[#2D5A8C] mb-4" />
-                  <h3 className="text-xl font-bold mb-2">Spiritual Discipline</h3>
-                  <p className="text-black/60">Members are totally dedicated to prayer, participating in mountain prayers, fasting programs, and remaining exemplary in conduct.</p>
-                </Card>
-                <Card className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#2D5A8C]">
-                  <Briefcase className="w-12 h-12 mx-auto text-[#2D5A8C] mb-4" />
-                  <h3 className="text-xl font-bold mb-2">Business & Empowerment</h3>
-                  <p className="text-black/60">We organize quarterly business seminars and empowerment summits to assist men in having clean, multiple streams of income.</p>
-                </Card>
-                <Card className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#2D5A8C]">
-                  <Users className="w-12 h-12 mx-auto text-[#2D5A8C] mb-4" />
-                  <h3 className="text-xl font-bold mb-2">Social & Welfare</h3>
-                  <p className="text-black/60">We actively participate in social groups, charity works, and support members through welfare programs during sickness, weddings, and funerals.</p>
-                </Card>
+                {aboutCards.map((card, index) => {
+                  const Icon = [Shield, Briefcase, Users][index % 3];
+                  return (
+                    <Card key={card.id} className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#2D5A8C]">
+                      <Icon className="w-12 h-12 mx-auto text-[#2D5A8C] mb-4" />
+                      <h3 className="text-xl font-bold mb-2">{card.title}</h3>
+                      <p className="text-black/60">{card.description}</p>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -385,7 +627,7 @@ export default function MenOfValourPage() {
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                {highlightGallery.map((item) => (
+                {galleryItems.map((item) => (
                   <div 
                     key={item.id} 
                     className="relative h-48 md:h-64 bg-slate-200 rounded-xl overflow-hidden cursor-pointer group"
@@ -396,7 +638,7 @@ export default function MenOfValourPage() {
                       alt={`Gallery Highlight ${item.id}`} 
                       fill 
                       className={`object-cover transition-transform duration-700 ease-in-out ${activeGalleryId === item.id ? 'scale-110' : 'group-hover:scale-105'}`}
-                      onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
+                      onError={swapImage('/hero/hero-store.jpg')} 
                     />
                     
                     {/* Caption Overlay - Shows on Click */}
@@ -521,31 +763,31 @@ export default function MenOfValourPage() {
                 {/* Large Featured Image (Current/Latest Project) */}
                 <div className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group">
                   <Image 
-                    src={ministryProjects[0].image} 
-                    alt={ministryProjects[0].title}
+                    src={projectItems[0]?.image || '/hero/hero-store.jpg'} 
+                    alt={projectItems[0]?.title || 'Men of Valour initiative'}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                    onError={swapImage('/hero/hero-store.jpg')}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
                     <span className="bg-[#2D5A8C] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
-                      {ministryProjects[0].type}
+                      {projectItems[0]?.type || 'Initiative'}
                     </span>
-                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{ministryProjects[0].title}</h3>
-                    <p className="text-white/80 text-sm font-medium">Status: {ministryProjects[0].status}</p>
+                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{projectItems[0]?.title || 'Men of Valour Ministry'}</h3>
+                    <p className="text-white/80 text-sm font-medium">Status: {projectItems[0]?.status || 'Active'}</p>
                   </div>
                 </div>
 
                 {/* Grid of Smaller Previous/Future Publications */}
                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-                  {ministryProjects.slice(1).map((material) => (
+                  {projectItems.slice(1).map((material) => (
                     <div key={material.id} className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group">
                       <Image 
                         src={material.image} 
                         alt={material.title}
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                        onError={swapImage('/hero/hero-store.jpg')}
                       />
                       <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
                         <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
@@ -588,7 +830,6 @@ export default function MenOfValourPage() {
                     <button onClick={() => setActiveTool(null)} className="ml-auto rounded-full bg-red-100 px-3 py-1 text-xs text-red-700">Close</button>
                   </div>
                 </div>
-                {activeEmbedTool && <div className="aspect-[4/3] w-full bg-white mb-4 rounded-xl overflow-hidden border border-black/10"><iframe className="h-full w-full" src={activeEmbedTool.url} title={activeEmbedTool.label} allow="clipboard-write; fullscreen" /></div>}
                 {activeTool === "chat" && <div className="h-[300px] w-full bg-white mb-4 rounded-xl overflow-hidden border border-black/10"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Men of Valour Live'} /></div>}
                 {activeTool === "bible" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><BibleTool /></div>}
                 {activeTool === "notepad" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><NotepadTool /></div>}
@@ -616,12 +857,12 @@ export default function MenOfValourPage() {
                     <CalendarClock className="w-10 h-10 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold">Empowerment Summits</h3>
-                    <p className="text-white/80 mt-1">Monthly gatherings and Quarterly Business Workshops.</p>
+                    <h3 className="text-2xl font-bold">Upcoming: {eventItems[0]?.title || 'Men of Valour Event'}</h3>
+                    <p className="text-white/80 mt-1">{eventItems[0]?.date || 'Upcoming'}</p>
                   </div>
                 </div>
                 <div className="text-center md:text-right">
-                  <p className="text-white/80 text-sm mt-1">Check local branch for specific timings</p>
+                  <p className="text-white/80 text-sm mt-1">{eventItems[0]?.description || 'Check local branch for specific timings.'}</p>
                 </div>
               </div>
 
@@ -639,23 +880,23 @@ export default function MenOfValourPage() {
                       <Card className="flex flex-col sm:flex-row h-full overflow-hidden border border-black/10 shadow-lg bg-white">
                         <div className="relative w-full sm:w-1/2 h-48 sm:h-full bg-slate-100 flex-shrink-0">
                           <Image 
-                            src={pastEvents[currentSlide]?.image || pastEvents[0].image} 
-                            alt={pastEvents[currentSlide]?.title || 'Event Image'} 
+                            src={eventItems[currentSlide]?.image || eventItems[0]?.image || '/hero/hero-store.jpg'} 
+                            alt={eventItems[currentSlide]?.title || 'Event Image'} 
                             fill 
                             className="object-cover"
-                            onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                            onError={swapImage('/hero/hero-store.jpg')}
                           />
                         </div>
                         <div className="p-8 sm:p-10 flex flex-col justify-center w-full sm:w-1/2">
                           <div className="flex items-center gap-2 text-[#2D5A8C] font-semibold text-sm mb-4 bg-blue-50 w-fit px-3 py-1 rounded-full">
                             <CalendarClock className="w-4 h-4" />
-                            <span>{pastEvents[currentSlide]?.date || pastEvents[0].date}</span>
+                            <span>{eventItems[currentSlide]?.date || eventItems[0]?.date}</span>
                           </div>
                           <h3 className="text-2xl sm:text-3xl font-bold mb-4 leading-tight">
-                            {pastEvents[currentSlide]?.title || pastEvents[0].title}
+                            {eventItems[currentSlide]?.title || eventItems[0]?.title}
                           </h3>
                           <p className="text-black/60 leading-relaxed">
-                            {pastEvents[currentSlide]?.description || pastEvents[0].description}
+                            {eventItems[currentSlide]?.description || eventItems[0]?.description}
                           </p>
                         </div>
                       </Card>
@@ -681,30 +922,30 @@ export default function MenOfValourPage() {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-6">Ministry Membership & Support</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-6">{ministryInfo.partnershipTitle || defaultInfo.partnershipTitle}</h2>
                   <div className="w-16 h-1 bg-[#2D5A8C] mb-6 rounded-full" />
-                  <p className="text-lg text-black/70 mb-4">
-                    Every man who is a member of PICC automatically becomes a member of PICC Men of Valour. This membership comes with a monthly subscription fee. 
-                  </p>
-                  <p className="text-lg text-black/70 mb-6">
-                    All members are expected to be involved in all activities initiated by the ministry, including purchasing at least one MoV branded t-shirt to be worn during related events.
-                  </p>
+                  {membershipParagraphs.map((paragraph, index) => (
+                    <p key={`membership-${index}`} className={`text-lg text-black/70 ${index < membershipParagraphs.length - 1 ? 'mb-4' : 'mb-6'}`}>
+                      {paragraph}
+                    </p>
+                  ))}
                   
                   <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-black/5">
                     <h3 className="font-bold text-xl mb-4 text-[#2D5A8C]">Payment Channels</h3>
                     <div className="space-y-2 text-sm text-black/70">
-                      <p><strong>First Capital Bank:</strong> Account Name: PICC Men of Valour, Account Number: 0004502003491</p>
-                      <p><strong>Airtel Money:</strong> Agent Code: 776628</p>
+                      {paymentDetails.map((detail) => (
+                        <p key={`${detail.label}-${detail.value}`}><strong>{detail.label}:</strong> {detail.value}</p>
+                      ))}
                     </div>
                   </div>
                 </div>
                 <div className="relative h-[400px] rounded-2xl overflow-hidden shadow-xl">
                   <Image 
-                    src="/hero/hero-store.jpg" 
+                    src={toAssetUrl(ministryInfo.partnershipImageUrl) || '/hero/hero-store.jpg'} 
                     alt="Support MoV" 
                     fill 
                     className="object-cover"
-                    onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
+                    onError={swapImage('/hero/hero-store.jpg')} 
                   />
                 </div>
               </div>
@@ -732,7 +973,7 @@ export default function MenOfValourPage() {
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">Get Involved</h2>
                 <p className="text-white/80 max-w-2xl mx-auto">
-                  Whether you are a young professional starting your career or a seasoned elder passing down wisdom, there is a place for you.
+                  {ministryInfo.contactIntro || defaultInfo.contactIntro}
                 </p>
               </div>
 
@@ -740,22 +981,24 @@ export default function MenOfValourPage() {
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <MapPin className="w-10 h-10 mx-auto text-blue-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Location</h3>
-                  <p className="text-white/70">PICC Men of Valour</p>
-                  <p className="text-white/70">Camp of God Cathedral</p>
+                  {(ministryInfo.location || defaultInfo.location || '').split('\n').map((line) => (
+                    <p key={line} className="text-white/70">{line}</p>
+                  ))}
                 </Card>
 
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Phone className="w-10 h-10 mx-auto text-blue-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Phone</h3>
-                  <p className="text-white/70">0999 36 36 77 (Head of Dept)</p>
-                  <p className="text-white/70">0999 35 43 71 (Finance Lead)</p>
+                  {(ministryInfo.phone || defaultInfo.phone || '').split('\n').map((line) => (
+                    <p key={line} className="text-white/70">{line}</p>
+                  ))}
                 </Card>
 
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Mail className="w-10 h-10 mx-auto text-blue-300 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Email</h3>
                   <p className="text-white/70 break-all">
-                    mov@piccworldwide.org
+                    {ministryInfo.email || defaultInfo.email}
                   </p>
                 </Card>
               </div>

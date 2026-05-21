@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import {
+  getDateTimeInputValueInMalawi,
+  getTomorrowDateInputValueInMalawi,
+  toMalawiIsoInstant,
+} from '@/lib/timezone';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -52,14 +57,7 @@ export default function DevotionsAdminPage() {
 
   const [devotionSearch, setDevotionSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [date, setDate] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const year = tomorrow.getFullYear();
-    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-    const day = String(tomorrow.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
+  const [date, setDate] = useState(getTomorrowDateInputValueInMalawi);
   const [publishTime, setPublishTime] = useState('01:00');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -102,13 +100,11 @@ export default function DevotionsAdminPage() {
           if (devotion.publishAt) {
             const parsed = new Date(devotion.publishAt);
             if (!Number.isNaN(parsed.getTime())) {
-              const year = parsed.getFullYear();
-              const month = String(parsed.getMonth() + 1).padStart(2, '0');
-              const day = String(parsed.getDate()).padStart(2, '0');
-              setDate(`${year}-${month}-${day}`);
-              const hours = String(parsed.getHours()).padStart(2, '0');
-              const minutes = String(parsed.getMinutes()).padStart(2, '0');
-              setPublishTime(`${hours}:${minutes}`);
+              const malawiDateTime = getDateTimeInputValueInMalawi(devotion.publishAt);
+              if (malawiDateTime) {
+                setDate(malawiDateTime.date);
+                setPublishTime(malawiDateTime.time);
+              }
             }
           }
         } else if (response.status === 404) {
@@ -157,13 +153,13 @@ export default function DevotionsAdminPage() {
       return;
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getDateTimeInputValueInMalawi(new Date().toISOString())?.date || new Date().toISOString().slice(0, 10);
     if (date < todayStr) {
       setStatus('You cannot post devotions for past dates. Please select today or a future date.');
       return;
     }
 
-    const publishAt = new Date(`${date}T${publishTime}:00`).toISOString();
+    const publishAt = toMalawiIsoInstant(date, publishTime);
     setPendingPublishAt(publishAt);
     setPendingDate(date);
     setPendingTime(publishTime);

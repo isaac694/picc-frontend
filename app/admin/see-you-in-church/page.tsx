@@ -62,7 +62,7 @@ const parseSeeYouServices = (body?: string | null): SeeYouService[] => {
           title,
         };
       })
-      .filter((service): service is SeeYouService => Boolean(service));
+      .filter((service: SeeYouService | null): service is SeeYouService => Boolean(service));
 
     return normalized.length ? normalized : DEFAULT_SEE_YOU_SERVICES;
   } catch {

@@ -42,15 +42,15 @@ const SITE_PAGE_ITEMS: NavItem[] = [
 ];
 
 const MINISTRIES_ITEMS: NavItem[] = [
-  { label: 'ICD', href: '/admin/ministries/icd' },
-  { label: 'Men of Valour', href: '/admin/ministries/men-of-valour' },
-  { label: 'Prison Ministry', href: '/admin/ministries/prison-ministry' },
-  { label: 'Youth Church', href: '/admin/ministries/youth-church' },
-  { label: 'Women of Hope', href: '/admin/ministries/women-of-hope' },
-  { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman' },
-  { label: 'Rivers of Hope', href: '/admin/ministries/rivers-of-hope' },
-  { label: 'Hope and Beauty', href: '/admin/ministries/hope-and-beauty' },
-  { label: 'Heritage', href: '/admin/ministries/heritage' },
+  { label: 'ICD', href: '/admin/ministries/icd', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Men of Valour', href: '/admin/ministries/men-of-valour', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Prison Ministry', href: '/admin/ministries/prison-ministry', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Youth Church', href: '/admin/ministries/youth-church', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Women of Hope', href: '/admin/ministries/women-of-hope', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Rivers of Hope', href: '/admin/ministries/rivers-of-hope', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Hope and Beauty', href: '/admin/ministries/hope-and-beauty', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Heritage', href: '/admin/ministries/heritage', pageKey: ADMIN_PAGE.MINISTRIES },
 ];
 
 const ARCHIVE_ITEMS: NavItem[] = [
@@ -78,7 +78,7 @@ export default function AdminSidebar() {
         nav: [{ label: 'Admin Hub', href: '/admin' }],
         site: [] as NavItem[],
         usersItem: null as NavItem | null,
-        showMinistries: false,
+        ministries: [] as NavItem[],
         showArchives: false,
       };
     }
@@ -98,7 +98,7 @@ export default function AdminSidebar() {
       nav,
       site,
       usersItem,
-      showMinistries: isSuperAdmin,
+      ministries: MINISTRIES_ITEMS.filter(canSee),
       showArchives: isSuperAdmin,
     };
   }, [user]);
@@ -172,11 +172,11 @@ export default function AdminSidebar() {
         </div>
       )}
 
-      {filtered.showMinistries && (
+      {filtered.ministries.length > 0 && (
         <div className="mt-6 pt-4 border-t border-border/60">
           <p className="text-[11px] uppercase tracking-[0.3em] text-foreground/50 mb-3">Ministries</p>
           <nav className="space-y-2">
-            {MINISTRIES_ITEMS.map((item) => (
+            {filtered.ministries.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
