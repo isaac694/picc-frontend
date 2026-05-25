@@ -550,7 +550,7 @@ export default async function HomePage() {
                   Pastor Esau Banda &amp; Pastor Loyce Banda
                 </h2>
                 <p className="text-white/80 text-lg leading-relaxed">
-                  Pastor Esau Banda and Pastor Loyce Banda serve with passion, vision, and a deep love for God&apos;s people.
+                  Pastor Esau Banda and Pastor (Mrs.) Loyce Banda serve with passion, vision, and a deep love for God&apos;s people.
                   Together, they lead PICC with a heart for discipleship, prayer, and transforming lives through the Gospel.
                 </p>
                 <p className="text-white/70">

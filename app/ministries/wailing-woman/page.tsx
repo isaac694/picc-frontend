@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type SyntheticEvent } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
@@ -116,11 +115,8 @@ const toAssetUrl = (value: string | null | undefined) => {
   return trimmed;
 };
 
-const videoIdFromUrl = (value: string | null | undefined) => {
-  const raw = (value || '').trim();
-  if (!raw) return '';
-  const match = raw.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
-  return match ? match[1] : '';
+const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
+  event.currentTarget.src = fallback;
 };
 
 const mergeItemsWithFallback = (loaded: MinistryItem[], fallback: MinistryItem[]) => {
@@ -175,20 +171,6 @@ const defaultMinistryInfo: MinistryInfo = {
 type YouTubePlayerStateChangeEvent = {
   data: number;
   target: YouTubePlayer;
-};
-
-type YouTubeIframeApi = {
-  Player: new (
-    iframe: HTMLIFrameElement,
-    options: {
-      events: {
-        onStateChange: (event: YouTubePlayerStateChangeEvent) => void;
-      };
-    },
-  ) => YouTubePlayer;
-  PlayerState: {
-    PLAYING: number;
-  };
 };
 
 const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
@@ -322,8 +304,6 @@ export default function WailingWomenPage() {
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultMinistryInfo);
   const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
   const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
@@ -568,9 +548,6 @@ export default function WailingWomenPage() {
 
     const fetchVideos = async () => {
       try {
-        setIsLoading(true);
-        setLoadError(null);
-
         if (!YOUTUBE_API_KEY) {
           throw new Error("Missing API key");
         }
@@ -611,11 +588,8 @@ export default function WailingWomenPage() {
         }
       } catch {
         if (isMounted) {
-          setLoadError("Unable to load the live video right now.");
           setVideos([]);
         }
-      } finally {
-        if (isMounted) setIsLoading(false);
       }
     };
 
@@ -764,12 +738,18 @@ export default function WailingWomenPage() {
               <div className="max-w-4xl mx-auto text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-6">About the Ministry</h2>
                 <div className="w-16 h-1 bg-[#6B21A8] mx-auto mb-8 rounded-full" />
-                <p className="text-lg text-black/70 leading-relaxed mb-6">
-                  {ministryInfo.about?.split('\n\n')[0] || 'The "Wailing Woman - My Seed Must Prosper!" is an interdenominational online warfare prayer ministry. It was founded by Pastor (Mrs.) Loyce Banda, the wife of Pastor Esau Banda, Senior Pastor of the Pentecost International Christian Centre (PICC).'}
-                </p>
-                <p className="text-lg text-black/70 leading-relaxed">
-                  {ministryInfo.about?.split('\n\n')[1] || 'Inspired by God, the ministry awakens mothers globally to take up the responsibility of shaping and securing the glorious destinies of their children through corporate intensive midnight prayers. We seek to resist Satan\'s schemes against children and enforce victories over them through word-based warfare prayers and prophetic declarations.'}
-                </p>
+                {ministryInfo.about && (
+                  <>
+                    <p className="text-lg text-black/70 leading-relaxed mb-6">
+                      {ministryInfo.about.split('\n\n')[0]}
+                    </p>
+                    {ministryInfo.about.split('\n\n')[1] && (
+                      <p className="text-lg text-black/70 leading-relaxed">
+                        {ministryInfo.about.split('\n\n')[1]}
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Informational Cards moved inside About Section */}
@@ -810,7 +790,7 @@ export default function WailingWomenPage() {
                       alt={`Gallery Highlight ${item.id}`} 
                       fill 
                       className={`object-cover transition-transform duration-700 ease-in-out ${activeGalleryId === item.id ? 'scale-110' : 'group-hover:scale-105'}`}
-                      onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
+                      onError={swapImage('/hero/hero-store.jpg')} 
                     />
                     
                     {/* Caption Overlay - Shows on Click */}
@@ -943,7 +923,7 @@ export default function WailingWomenPage() {
                     alt={materialItems[0]?.title || 'Wailing Woman material'}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                    onError={swapImage('/hero/hero-store.jpg')}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
                     <span className="bg-[#6B21A8] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
@@ -963,7 +943,7 @@ export default function WailingWomenPage() {
                         alt={material.title}
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                        onError={swapImage('/hero/hero-store.jpg')}
                       />
                       <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
                         <span className="text-purple-300 text-[10px] font-bold uppercase tracking-wider mb-1">
@@ -1063,7 +1043,7 @@ export default function WailingWomenPage() {
                             alt={eventItems[currentSlide]?.title || 'Event Image'} 
                             fill 
                             className="object-cover"
-                            onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
+                            onError={swapImage('/hero/hero-store.jpg')}
                           />
                         </div>
                         <div className="p-8 sm:p-10 flex flex-col justify-center w-full sm:w-1/2">
@@ -1135,7 +1115,7 @@ export default function WailingWomenPage() {
                     alt={ministryInfo.partnershipTitle || 'Global Outreach'} 
                     fill 
                     className="object-cover"
-                    onError={(e: any) => e.target.src = '/hero/hero-store.jpg'} 
+                    onError={swapImage('/hero/hero-store.jpg')} 
                   />
                 </div>
               </div>
