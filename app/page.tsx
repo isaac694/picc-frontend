@@ -547,7 +547,7 @@ export default async function HomePage() {
               <div className="space-y-5">
                 <p className="text-xs uppercase tracking-[0.35em] text-white/70">Our Pastors</p>
                 <h2 className="text-3xl md:text-5xl font-semibold leading-tight">
-                  Pastor Esau Banda &amp; Pastor Loyce Banda
+                  Pastor Esau Banda &amp; Pastor (Mrs.) Loyce Banda
                 </h2>
                 <p className="text-white/80 text-lg leading-relaxed">
                   Pastor Esau Banda and Pastor (Mrs.) Loyce Banda serve with passion, vision, and a deep love for God&apos;s people.
