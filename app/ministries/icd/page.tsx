@@ -154,10 +154,10 @@ By partnering with the ICD Ministry financially, you ensure that we can continue
     { label: 'Account Number', value: '1010850537' },
     { label: 'Branch', value: 'Gateway Mall' },
   ],
-  partnershipImageUrl: '/images/icd/ICD-MAY-26.png',
-  phone: 'Check with your local PICC branch for contact details.',
-  email: 'info@picc.org',
-  location: 'PICC ICD Department\nCamp of God Cathedral',
+  partnershipImageUrl: '/ministries/icd/icd7.jpg',
+  phone: '0995652414 / 0992874401',
+  email: 'icd@piccworldwide.org',
+  location: 'Camp of God Cathedral Area 49, Lilongwe Malawi',
   contactIntro:
     'Whether you need counselling, deliverance, or wish to grow as an active disciple, we are here to walk alongside you.',
 };
@@ -230,12 +230,12 @@ const mergeItemsWithFallback = (loaded: MinistryItem[], fallback: MinistryItem[]
 };
 
 const highlightGallery = [
-  { id: 1, src: '/hero/hero-icd.jpg', caption: 'Moving believers from spectators to active disciples.' },
-  { id: 2, src: '/moments/1.JPG', caption: 'Structured modules covering biblical foundations.' },
-  { id: 3, src: '/moments/2.JPG', caption: 'Leadership development and practical ministry skills.' },
-  { id: 4, src: '/moments/3.JPG', caption: 'Intercession, Counselling, and Deliverance in action.' },
-  { id: 5, src: '/moments/4.JPG', caption: 'Combining sound doctrine with practical application.' },
-  { id: 6, src: '/moments/5.JPG', caption: 'Equipping every member for good works.' },
+  { id: 1, src: '/ministries/icd/icd2.jpg', caption: 'Moving believers from spectators to active disciples.' },
+  { id: 2, src: '/ministries/icd/icd3.jpg', caption: 'Structured modules covering biblical foundations.' },
+  { id: 3, src: '/ministries/icd/icd4.jpg', caption: 'Leadership development and practical ministry skills.' },
+  { id: 4, src: '/ministries/icd/icd5.jpg', caption: 'Intercession, Counselling, and Deliverance in action.' },
+  { id: 5, src: '/ministries/icd/icd6.jpg', caption: 'Combining sound doctrine with practical application.' },
+  { id: 6, src: '/ministries/icd/icd7.jpg', caption: 'Equipping every member for good works.' },
 ];
 
 const defaultLearningItems: MinistryItem[] = highlightGallery.map((item, index) => ({
@@ -573,7 +573,7 @@ export default function IcdMinistryPage() {
           <section
             className="relative z-10 overflow-hidden rounded-b-[36px] bg-[#033D7A] pt-28 pb-20 text-white shadow-lg sm:pt-36 sm:pb-28 md:rounded-b-[48px]"
             style={{
-              backgroundImage: `linear-gradient(rgba(2,24,48,0.78), rgba(4,91,180,0.72)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/hero/hero-icd.jpg'})`,
+              backgroundImage: `linear-gradient(rgba(2,24,48,0.78), rgba(4,91,180,0.72)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/ministries/icd/icd6.jpg'})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
@@ -964,19 +964,6 @@ export default function IcdMinistryPage() {
                   />
                 </div>
               </div>
-            </div>
-          </section>
-        )}
-
-        {/* 8. NEWS SECTION */}
-        {!mobilePlayerActive && (
-          <section className="py-20 bg-gray-50 text-black border-y border-black/5">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-              <Globe className="w-12 h-12 mx-auto text-[#045BB4] mb-6" />
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">Latest News</h2>
-              <p className="text-lg text-black/70 max-w-2xl mx-auto mb-8">
-                Preparations are in full swing for the upcoming Kamuzu Central Hospital Visits on May 3 and 17, 2026. All volunteers and partners are encouraged to register early. The newest Discipleship Intensive cohort materials are also now available for download.
-              </p>
             </div>
           </section>
         )}
