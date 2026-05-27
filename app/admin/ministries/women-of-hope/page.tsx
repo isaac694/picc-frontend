@@ -130,7 +130,7 @@ export default function WomenOfHopeAdminPage() {
           <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Admin</p>
           <h1 className="text-3xl font-semibold text-foreground md:text-5xl">Women of Hope Admin</h1>
           <p className="mt-3 max-w-2xl text-foreground/70">
-            Manage logo, motto, hero picture, about text, ministry pillars, highlights gallery, live YouTube link,
+            Manage logo, motto, hero picture, about text, ministry pillars, highlights gallery,
             projects, events, partnership details, phone number, and email.
           </p>
         </div>

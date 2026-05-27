@@ -5,6 +5,7 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { Search } from 'lucide-react';
 import Image from 'next/image';
 
@@ -316,6 +317,15 @@ export default function EventsAdminPage() {
     }
   };
 
+  const requestDeleteEvent = (eventId: string) => {
+    const eventTitle = events.find((event) => event.id === eventId)?.title || eventDraft.title;
+    confirmDeleteToast({
+      title: 'Delete this event?',
+      description: eventTitle || 'This event will be permanently removed.',
+      onConfirm: () => handleDeleteEvent(eventId),
+    });
+  };
+
   if (!token) {
     return (
       <AdminLoginCard
@@ -515,7 +525,7 @@ export default function EventsAdminPage() {
               </Button>
             )}
             {selectedEventId && (
-              <Button variant="destructive" onClick={() => handleDeleteEvent(selectedEventId)}>
+              <Button variant="destructive" onClick={() => requestDeleteEvent(selectedEventId)}>
                 Delete Event
               </Button>
             )}

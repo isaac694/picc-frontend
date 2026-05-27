@@ -164,7 +164,7 @@ export default function SermonsPage() {
           : '';
 
     const image =
-      typeof record.image === 'string' && record.image.trim() ? record.image.trim() : FALLBACK_SERMON_IMAGE;
+      typeof record.image === 'string' && record.image.trim() ? record.image.trim() : '';
 
     const audioSrc =
       typeof record.audioSrc === 'string' && record.audioSrc.trim()
@@ -399,7 +399,7 @@ export default function SermonsPage() {
                     /* Thumbnail with play button overlay */
                     <>
                       <Image
-                        src={normalizeAssetUrl(selectedSermon.image) ?? FALLBACK_SERMON_IMAGE}
+                        src={normalizeAssetUrl(selectedSermon.image) ?? headerImage ?? FALLBACK_SERMON_IMAGE}
                         alt={selectedSermon.title}
                         fill
                         className="object-cover"
@@ -499,7 +499,7 @@ export default function SermonsPage() {
                       aria-label={`Open sermon: ${sermon.title}`}
                     >
                       {(() => {
-                        const src = normalizeAssetUrl(sermon.image) ?? FALLBACK_SERMON_IMAGE;
+                        const src = normalizeAssetUrl(sermon.image) ?? headerImage ?? FALLBACK_SERMON_IMAGE;
                         return src ? (
                           <Image
                             src={src}

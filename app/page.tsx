@@ -10,6 +10,7 @@ import QuoteSection from '@/components/QuoteSection';
 import MomentsSection from '@/components/MomentsSection';
 import SpotifyFollowDialog from '@/components/SpotifyFollowDialog';
 import DevotionReadMore from '@/components/DevotionReadMore';
+import VideoDeclarationCard, { type VideoDeclarationCardContent } from '@/components/VideoDeclarationCard';
 import { apiFetch, apiUrl } from '@/lib/api';
 
 const HOME_HERO_SLOTS = [
@@ -122,6 +123,12 @@ type SeeYouContent = {
   imageUrl?: string | null;
 };
 
+type VideoDeclaration = VideoDeclarationCardContent;
+
+const VIDEO_DECLARATION_KEY = 'home-video-declaration';
+const VIDEO_DECLARATION_FALLBACK_TITLE = "Listen to God's Word for You.";
+const VIDEO_DECLARATION_FALLBACK_SUBTITLE = 'Video Declaration';
+
 function parseSeeYouServices(body?: string | null): ServiceLike[] {
   if (!body) return DEFAULT_SEE_YOU_SERVICES;
 
@@ -197,6 +204,40 @@ async function getSeeYouInChurch(): Promise<SeeYouContent | null> {
     });
     if (!response.ok) return null;
     return response.json();
+  } catch {
+    return null;
+  }
+}
+
+async function getVideoDeclaration(): Promise<VideoDeclaration | null> {
+  try {
+    const response = await apiFetch(`/api/site-content/${VIDEO_DECLARATION_KEY}`, {
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const body = typeof data?.body === 'string' ? data.body : '';
+    if (!body) return null;
+
+    const parsed = JSON.parse(body);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    const mediaUrl = normalizeImageUrl(typeof parsed.mediaUrl === 'string' ? parsed.mediaUrl : '');
+    if (!mediaUrl) return null;
+
+    return {
+      source: parsed.source === 'upload' ? 'upload' : 'youtube',
+      title:
+        typeof parsed.title === 'string' && parsed.title.trim()
+          ? parsed.title.trim()
+          : VIDEO_DECLARATION_FALLBACK_TITLE,
+      subtitle:
+        typeof parsed.subtitle === 'string' && parsed.subtitle.trim()
+          ? parsed.subtitle.trim()
+          : VIDEO_DECLARATION_FALLBACK_SUBTITLE,
+      mediaUrl,
+      mediaKind: parsed.mediaKind === 'audio' ? 'audio' : 'video',
+    };
   } catch {
     return null;
   }
@@ -288,13 +329,14 @@ export default async function HomePage() {
     'home-livestream-bg',
   ];
 
-  const [devotion, confession, seeYouInChurch, quoteOfMonth, siteImages, homeVerse] = await Promise.all([
+  const [devotion, confession, seeYouInChurch, quoteOfMonth, siteImages, homeVerse, videoDeclaration] = await Promise.all([
     getDailyDevotion(),
     getDailyConfession(),
     getSeeYouInChurch(),
     getQuoteOfMonth(),
     getSiteImages(imageKeys),
     getHomeVerse(),
+    getVideoDeclaration(),
   ]);
 
   const seeYouBg =
@@ -682,36 +724,21 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Latest Livestreams Section */}
+        {/* Video Declarations Section */}
         <section className="py-16 sm:py-16 sm:py-24 md:py-32 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="relative overflow-hidden rounded-[28px] shadow-2xl max-w-5xl mx-auto min-h-[360px] sm:min-h-[440px] md:min-h-[560px] flex items-center">
-              <div className="absolute inset-0">
-                <Image
-                  src={livestreamImage}
-                  alt="Latest livestream"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 80vw"
-                  className="object-cover"
-                />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/20" />
-
-              <div className="relative p-8 md:p-12 lg:p-14 text-white">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">Livestream</p>
-                <h2 className="text-3xl md:text-5xl font-semibold leading-tight mb-6 max-w-2xl">
-                  Listen to God&apos;s Word for You.
-                </h2>
-
-                <div className="flex flex-wrap gap-4">
-                  <Link href="/livestream">
-                    <Button className="bg-red-600 text-white hover:bg-red-700 rounded-full px-6 py-3">
-                      View Livestream
-                    </Button>
-                  </Link>
-                </div>
-              </div>
+            <div className="mb-8 text-center text-white">
+              <h2 className="text-3xl font-semibold md:text-5xl">
+                Video Declarations
+              </h2>
             </div>
+            <VideoDeclarationCard
+              key={videoDeclaration?.mediaUrl || 'fallback-video-declaration'}
+              declaration={videoDeclaration}
+              fallbackImage={livestreamImage}
+              fallbackTitle={VIDEO_DECLARATION_FALLBACK_TITLE}
+              fallbackSubtitle={VIDEO_DECLARATION_FALLBACK_SUBTITLE}
+            />
           </div>
         </section>
         {/* Moments Section */}

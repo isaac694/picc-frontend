@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Events', href: '/admin/events', pageKey: ADMIN_PAGE.EVENTS },
   { label: 'Qoutes', href: '/admin/quote-of-month', pageKey: ADMIN_PAGE.QUOTE_OF_MONTH },
   { label: 'Homepage Images', href: '/admin/page-images', pageKey: ADMIN_PAGE.PAGE_IMAGES },
+  { label: 'Video Declarations', href: '/admin/video-declarations', pageKey: ADMIN_PAGE.VIDEO_DECLARATIONS },
   { label: 'FAQ (Footer)', href: '/admin/faqs', pageKey: ADMIN_PAGE.FAQS },
   { label: 'Hope School', href: '/admin/schools/hope-school', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT },
   { label: 'Discipleship', href: '/admin/schools/discipleship', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT },

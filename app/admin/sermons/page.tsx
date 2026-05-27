@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { Plus } from 'lucide-react';
 
 interface Sermon {
@@ -52,6 +53,8 @@ export default function AdminSermonsPage() {
   const [notifySubscribers, setNotifySubscribers] = useState(false);
   const [sermonSearch, setSermonSearch] = useState('');
   const [sermonFilter, setSermonFilter] = useState<'all' | 'week' | 'month' | 'year'>('all');
+  const [podbeanFeedUrl, setPodbeanFeedUrl] = useState('https://feed.podbean.com/esaubanda/feed.xml');
+  const [isSyncingPodbean, setIsSyncingPodbean] = useState(false);
 
   const normalizeRemoteUrl = (value: string) => {
     if (!value) return '';
@@ -174,6 +177,60 @@ export default function AdminSermonsPage() {
       setHeaderImage(DEFAULT_HEADER_IMAGE);
     } catch {
       setHeaderImage(DEFAULT_HEADER_IMAGE);
+    }
+  };
+
+  const fetchPodbeanSettings = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const response = await apiFetch('/api/admin/sermons/podbean-settings', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const data = await response.json().catch(() => null);
+      if (typeof data?.feedUrl === 'string' && data.feedUrl.trim()) {
+        setPodbeanFeedUrl(data.feedUrl);
+      }
+    } catch {
+      // Keep the default feed URL.
+    }
+  }, [token]);
+
+  const syncPodbeanEpisodes = async () => {
+    if (!token) return;
+    if (!podbeanFeedUrl.trim()) {
+      setStatus('Please enter the Podbean RSS feed URL.');
+      return;
+    }
+
+    setIsSyncingPodbean(true);
+    setStatus('');
+    try {
+      const response = await apiFetch('/api/admin/sermons/podbean-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ feedUrl: podbeanFeedUrl.trim() }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setStatus(typeof data?.error === 'string' ? data.error : 'Unable to sync Podbean episodes.');
+        return;
+      }
+
+      setPodbeanFeedUrl(typeof data?.feedUrl === 'string' ? data.feedUrl : podbeanFeedUrl);
+      setStatus(
+        `Podbean sync complete. Updated ${data?.updated ?? 0}, created ${data?.created ?? 0}, skipped ${data?.skippedExistingAudio ?? 0}.`,
+      );
+      void fetchSermons();
+    } catch {
+      setStatus('Unable to sync Podbean episodes.');
+    } finally {
+      setIsSyncingPodbean(false);
     }
   };
 
@@ -305,6 +362,15 @@ export default function AdminSermonsPage() {
     }
   };
 
+  const requestDeleteSermon = (sermonId: string) => {
+    const sermonTitle = sermons.find((sermon) => sermon.id === sermonId)?.title;
+    confirmDeleteToast({
+      title: 'Delete this sermon?',
+      description: sermonTitle || 'This sermon will be permanently removed.',
+      onConfirm: () => handleDeleteSermon(sermonId),
+    });
+  };
+
   const startEditing = (sermon: Sermon) => {
     setDraftSermon({
       title: sermon.title || '',
@@ -355,7 +421,8 @@ export default function AdminSermonsPage() {
         setHeaderImage(DEFAULT_HEADER_IMAGE);
       }
     })();
-  }, [token, extractSermons]);
+    void fetchPodbeanSettings();
+  }, [token, extractSermons, fetchPodbeanSettings]);
 
   if (!token) {
     return (
@@ -443,6 +510,30 @@ export default function AdminSermonsPage() {
         </div>
       </section>
 
+      <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Podbean Sync</h2>
+            <p className="text-sm text-foreground/60">
+              Import Podbean episodes into sermon audio by matching episode publish dates to sermon dates.
+            </p>
+          </div>
+          <Button onClick={syncPodbeanEpisodes} disabled={isSyncingPodbean || !podbeanFeedUrl.trim()}>
+            {isSyncingPodbean ? 'Syncing...' : 'Sync Podbean'}
+          </Button>
+        </div>
+        <div>
+          <Label htmlFor="podbean-feed-url">Podbean RSS Feed URL</Label>
+          <Input
+            id="podbean-feed-url"
+            value={podbeanFeedUrl}
+            onChange={(event) => setPodbeanFeedUrl(event.target.value)}
+            placeholder="https://feed.podbean.com/esaubanda/feed.xml"
+            className="rounded-xl border-border bg-background px-4 py-3"
+          />
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
         {/* Left Side: Form */}
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">
@@ -520,13 +611,13 @@ export default function AdminSermonsPage() {
             </div>
 
             <div className="md:col-span-2">
-              <Label htmlFor="podbean-url">Podbean Audio URL</Label>
+              <Label htmlFor="podbean-url">Podbean Audio URL <span className="text-[11px] font-normal text-muted-foreground">(Optional)</span></Label>
               <Input
                 id="podbean-url"
                 type="text"
                 value={draftSermon.audioSrc}
                 onChange={(e) => setDraftSermon(prev => ({ ...prev, audioSrc: extractIframeSrc(e.target.value).trim() }))}
-                placeholder="Paste a Podbean embed code, embed player URL, or direct audio URL"
+                placeholder="Optional manual override. Podbean Sync can fill this by sermon date."
                 className="rounded-xl border-border bg-background px-4 py-3"
               />
             </div>
@@ -550,7 +641,7 @@ export default function AdminSermonsPage() {
                 <Button onClick={() => handleUpdateSermon(editingId)}>
                   Update Sermon
                 </Button>
-                <Button variant="destructive" onClick={() => handleDeleteSermon(editingId)}>
+                <Button variant="destructive" onClick={() => requestDeleteSermon(editingId)}>
                   Delete
                 </Button>
                 <Button variant="outline" onClick={cancelEditing}>
@@ -558,7 +649,7 @@ export default function AdminSermonsPage() {
                 </Button>
               </>
             ) : (
-              <Button onClick={handleAddSermon} disabled={!draftSermon.title || !draftSermon.date || !draftSermon.audioSrc}>
+              <Button onClick={handleAddSermon} disabled={!draftSermon.title || !draftSermon.date}>
                 Add Sermon
               </Button>
             )}

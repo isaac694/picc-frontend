@@ -272,7 +272,6 @@ export function MinistryInfoManager({
         { field: 'about' as const, label: fieldLabels.about || 'About Text', kind: 'textarea' as const, rows: 8 },
         { field: 'logoImageUrl' as const, label: fieldLabels.logoImageUrl || 'Logo', kind: 'image' as const },
         { field: 'heroImageUrl' as const, label: fieldLabels.heroImageUrl || 'Hero Picture', kind: 'image' as const },
-        { field: 'liveSessionYoutubeUrl' as const, label: fieldLabels.liveSessionYoutubeUrl || 'Live Session YouTube Link', kind: 'text' as const, placeholder: 'https://www.youtube.com/watch?v=...' },
         { field: 'partnershipTitle' as const, label: fieldLabels.partnershipTitle || 'Partnership Title', kind: 'text' as const, placeholder: 'Partner With Us' },
         { field: 'partnershipBody' as const, label: fieldLabels.partnershipBody || 'Partnership Text', kind: 'textarea' as const, rows: 6 },
         { field: 'partnershipDetails' as const, label: fieldLabels.partnershipDetails || 'Partnership Details', kind: 'details' as const },

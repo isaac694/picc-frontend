@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 
 const SECTION_KEYS = {
   news: 'media-news',
@@ -380,6 +381,19 @@ export default function AdminMediaPage() {
     }
   };
 
+  const requestDeleteItem = <S extends SectionId>(
+    section: S,
+    item: SectionItems[S],
+    items: SectionItems[S][],
+    setItems: (items: SectionItems[S][]) => void,
+  ) => {
+    confirmDeleteToast({
+      title: 'Delete this item?',
+      description: item.title || 'This media item will be permanently removed.',
+      onConfirm: () => handleDeleteItem(section, item.id, items, setItems),
+    });
+  };
+
   if (!token) {
     return (
       <AdminLoginCard
@@ -563,7 +577,7 @@ export default function AdminMediaPage() {
                         <Button variant="outline" onClick={() => startEditingNews(item)}>
                           {editingIds.news === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        <Button variant="outline" onClick={() => handleDeleteItem('news', item.id, newsItems, setNewsItems)}>
+                        <Button variant="outline" onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)}>
                           Delete
                         </Button>
                       </div>
@@ -684,7 +698,7 @@ export default function AdminMediaPage() {
                         </Button>
                         <Button
                           variant="outline"
-                          onClick={() => handleDeleteItem('gallery', item.id, galleryItems, setGalleryItems)}
+                          onClick={() => requestDeleteItem('gallery', item, galleryItems, setGalleryItems)}
                         >
                           Delete
                         </Button>
@@ -809,7 +823,7 @@ export default function AdminMediaPage() {
                         <Button variant="outline" onClick={() => startEditingBook(item)}>
                           {editingIds.books === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        <Button variant="outline" onClick={() => handleDeleteItem('books', item.id, bookItems, setBookItems)}>
+                        <Button variant="outline" onClick={() => requestDeleteItem('books', item, bookItems, setBookItems)}>
                           Delete
                         </Button>
                       </div>
@@ -933,7 +947,7 @@ export default function AdminMediaPage() {
                         </Button>
                         <Button
                           variant="outline"
-                          onClick={() => handleDeleteItem('magazines', item.id, magazineItems, setMagazineItems)}
+                          onClick={() => requestDeleteItem('magazines', item, magazineItems, setMagazineItems)}
                         >
                           Delete
                         </Button>

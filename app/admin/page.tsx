@@ -41,6 +41,15 @@ export default function AdminHomePage() {
       variant: 'default' as const,
     },
     {
+      key: 'video-declarations',
+      pageKey: ADMIN_PAGE.VIDEO_DECLARATIONS,
+      title: 'Video Declarations',
+      description: 'Publish the video or audio declaration shown on the homepage.',
+      href: '/admin/video-declarations',
+      button: 'Open Declarations',
+      variant: 'default' as const,
+    },
+    {
       key: 'livechat',
       pageKey: ADMIN_PAGE.LIVECHAT,
       title: 'Live Chat Archive',

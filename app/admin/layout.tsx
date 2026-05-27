@@ -20,6 +20,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/events')) return ADMIN_PAGE.EVENTS;
   if (path.startsWith('/admin/quote-of-month')) return ADMIN_PAGE.QUOTE_OF_MONTH;
   if (path.startsWith('/admin/page-images')) return ADMIN_PAGE.PAGE_IMAGES;
+  if (path.startsWith('/admin/video-declarations')) return ADMIN_PAGE.VIDEO_DECLARATIONS;
   if (path.startsWith('/admin/livechat')) return ADMIN_PAGE.LIVECHAT;
   if (path.startsWith('/admin/schools/')) return ADMIN_PAGE.SCHOOLS_ENROLLMENT;
   if (path.startsWith('/admin/ministries/')) return ADMIN_PAGE.MINISTRIES;

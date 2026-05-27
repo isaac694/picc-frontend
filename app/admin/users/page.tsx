@@ -9,16 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { Eye, EyeOff } from 'lucide-react';
 
 type UserRow = {
@@ -31,6 +22,9 @@ type UserRow = {
   createdAt: string;
   updatedAt: string;
 };
+
+const isUserRole = (value: string): value is UserRow['role'] =>
+  value === 'USER' || value === 'ADMIN' || value === 'SUPER_ADMIN';
 
 const toLocal = (iso: string) => {
   const parsed = new Date(iso);
@@ -64,7 +58,6 @@ export default function AdminUsersPage() {
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const editingUser = useMemo(() => users.find((u) => u.id === editingId) || null, [users, editingId]);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -242,11 +235,18 @@ export default function AdminUsersPage() {
       }
 
       setStatus('User deleted.');
-      setDeleteConfirmId(null);
       await fetchUsers();
     } catch {
       setStatus('Unable to delete user.');
     }
+  };
+
+  const requestDeleteUser = (user: UserRow) => {
+    confirmDeleteToast({
+      title: 'Delete this user?',
+      description: user.email || user.name || 'This user will be permanently removed.',
+      onConfirm: () => handleDelete(user.id),
+    });
   };
 
   if (!token) {
@@ -331,7 +331,12 @@ export default function AdminUsersPage() {
             <select
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
               value={createForm.role}
-              onChange={(e) => setCreateForm((p) => ({ ...p, role: e.target.value as any }))}
+              onChange={(e) => {
+                const role = e.target.value;
+                if (isUserRole(role)) {
+                  setCreateForm((p) => ({ ...p, role }));
+                }
+              }}
             >
               <option value="ADMIN">Admin</option>
               <option value="SUPER_ADMIN">Super Admin</option>
@@ -413,7 +418,7 @@ export default function AdminUsersPage() {
                       <Button variant="outline" size="sm" onClick={() => setEditingId(u.id)}>
                         Edit
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmId(u.id)}>
+                      <Button variant="destructive" size="sm" onClick={() => requestDeleteUser(u)}>
                         Delete
                       </Button>
                     </div>
@@ -464,7 +469,12 @@ export default function AdminUsersPage() {
                 <select
                   className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
                   value={editForm.role}
-                  onChange={(e) => setEditForm((p) => ({ ...p, role: e.target.value as any }))}
+                  onChange={(e) => {
+                    const role = e.target.value;
+                    if (isUserRole(role)) {
+                      setEditForm((p) => ({ ...p, role }));
+                    }
+                  }}
                 >
                   <option value="ADMIN">Admin</option>
                   <option value="SUPER_ADMIN">Super Admin</option>
@@ -506,28 +516,6 @@ export default function AdminUsersPage() {
             </div>
           </div>
         )}
-      <AlertDialog open={Boolean(deleteConfirmId)} onOpenChange={(open) => setDeleteConfirmId(open ? deleteConfirmId : null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove the user from the system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteConfirmId(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteConfirmId) {
-                  void handleDelete(deleteConfirmId);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       </div>
     </div>
   );
