@@ -1,22 +1,28 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Trash2, Save, GripVertical } from 'lucide-react';
+import { Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export type FAQRecord = {
   id: number;
   question: string;
   answer: string;
-  order: number;
   isActive: boolean;
 };
 
 type FAQDraft = {
   question: string;
   answer: string;
-  order: number;
+  isActive: boolean;
+};
+
+const EMPTY_DRAFT: FAQDraft = {
+  question: '',
+  answer: '',
+  isActive: true,
 };
 
 export default function FAQManager({
@@ -27,29 +33,22 @@ export default function FAQManager({
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [faqs, setFaqs] = useState<FAQRecord[]>([]);
-  const savedSnapshotRef = useRef<Record<number, string>>({});
+  const [searchTerm, setSearchTerm] = useState('');
   const [savingFaqId, setSavingFaqId] = useState<number | null>(null);
-  const [faqDraft, setFaqDraft] = useState<FAQDraft>({
-    question: '',
-    answer: '',
-    order: 0,
-  });
+  const [deletingFaqId, setDeletingFaqId] = useState<number | null>(null);
+  const [editingFaqId, setEditingFaqId] = useState<number | null>(null);
+  const [faqDraft, setFaqDraft] = useState<FAQDraft>(EMPTY_DRAFT);
 
-  const snapshot = useMemo(
-    () => (faq: FAQRecord) =>
-      JSON.stringify({
-        question: faq.question,
-        answer: faq.answer,
-        order: faq.order,
-        isActive: faq.isActive,
-      }),
-    [],
-  );
+  const filteredFaqs = useMemo(() => {
+    if (!searchTerm.trim()) return faqs;
+    const lowerSearch = searchTerm.toLowerCase();
 
-  const isDirty = useMemo(
-    () => (faq: FAQRecord) => savedSnapshotRef.current[faq.id] !== snapshot(faq),
-    [snapshot],
-  );
+    return faqs.filter(
+      (faq) =>
+        faq.question.toLowerCase().includes(lowerSearch) ||
+        faq.answer.toLowerCase().includes(lowerSearch),
+    );
+  }, [faqs, searchTerm]);
 
   const refreshFaqs = async () => {
     try {
@@ -58,7 +57,6 @@ export default function FAQManager({
       const data = await response.json();
       const list: FAQRecord[] = Array.isArray(data) ? data : [];
       setFaqs(list);
-      savedSnapshotRef.current = Object.fromEntries(list.map((item) => [item.id, snapshot(item)]));
     } catch {
       setFaqs([]);
     } finally {
@@ -70,16 +68,33 @@ export default function FAQManager({
     refreshFaqs();
   }, []);
 
-  const handleAddFaq = async () => {
-    if (!faqDraft.question || !faqDraft.answer) {
+  const resetEditor = () => {
+    setEditingFaqId(null);
+    setFaqDraft(EMPTY_DRAFT);
+  };
+
+  const startEditingFaq = (faq: FAQRecord) => {
+    setEditingFaqId(faq.id);
+    setFaqDraft({
+      question: faq.question,
+      answer: faq.answer,
+      isActive: faq.isActive,
+    });
+    setStatus('');
+  };
+
+  const handleSaveFaq = async () => {
+    if (!faqDraft.question.trim() || !faqDraft.answer.trim()) {
       setStatus('Please fill both question and answer.');
       return;
     }
 
     setStatus('');
+    setSavingFaqId(editingFaqId ?? 0);
+
     try {
-      const response = await apiFetch('/api/faqs', {
-        method: 'POST',
+      const response = await apiFetch(editingFaqId ? `/api/faqs/${editingFaqId}` : '/api/faqs', {
+        method: editingFaqId ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -88,51 +103,24 @@ export default function FAQManager({
       });
 
       if (!response.ok) {
-        setStatus('Unable to add FAQ.');
+        setStatus(editingFaqId ? 'Unable to update FAQ.' : 'Unable to add FAQ.');
         return;
       }
 
-      setFaqDraft({
-        question: '',
-        answer: '',
-        order: faqs.length + 1,
-      });
       await refreshFaqs();
-      setStatus('FAQ added.');
+      resetEditor();
+      setStatus(editingFaqId ? 'FAQ updated.' : 'FAQ added.');
     } catch {
-      setStatus('Unable to add FAQ.');
-    }
-  };
-
-  const handleUpdateFaq = async (faq: FAQRecord) => {
-    setStatus('');
-    setSavingFaqId(faq.id);
-    try {
-      const response = await apiFetch(`/api/faqs/${faq.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(faq),
-      });
-      if (!response.ok) {
-        setStatus('Unable to update FAQ.');
-        return;
-      }
-      await refreshFaqs();
-      setStatus('FAQ updated.');
-    } catch {
-      setStatus('Unable to update FAQ.');
+      setStatus(editingFaqId ? 'Unable to update FAQ.' : 'Unable to add FAQ.');
     } finally {
       setSavingFaqId(null);
     }
   };
 
   const handleDeleteFaq = async (faqId: number) => {
-    if (!confirm('Are you sure you want to delete this FAQ?')) return;
-    
     setStatus('');
+    setDeletingFaqId(faqId);
+
     try {
       const response = await apiFetch(`/api/faqs/${faqId}`, {
         method: 'DELETE',
@@ -140,15 +128,40 @@ export default function FAQManager({
           Authorization: `Bearer ${token}`,
         },
       });
+
       if (!response.ok) {
         setStatus('Unable to delete FAQ.');
         return;
       }
+
       await refreshFaqs();
+      if (editingFaqId === faqId) {
+        resetEditor();
+      }
       setStatus('FAQ deleted.');
     } catch {
       setStatus('Unable to delete FAQ.');
+    } finally {
+      setDeletingFaqId(null);
     }
+  };
+
+  const requestDeleteFaq = (faq: FAQRecord) => {
+    const toastId = toast('Delete this FAQ?', {
+      description: faq.question,
+      duration: Infinity,
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          toast.dismiss(toastId);
+          void handleDeleteFaq(faq.id);
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => toast.dismiss(toastId),
+      },
+    });
   };
 
   if (isLoading) {
@@ -162,20 +175,30 @@ export default function FAQManager({
   return (
     <div className="space-y-6">
       {status && (
-        <div className={`p-4 rounded-xl text-sm ${status.includes('Unable') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+        <div className={`rounded-xl p-4 text-sm ${status.includes('Unable') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
           {status}
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1fr] gap-6">
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Add New FAQ
-          </h2>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
+        <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+              <Plus className="h-5 w-5" />
+              {editingFaqId ? 'Edit FAQ' : 'Add New FAQ'}
+            </h2>
+            {editingFaqId && (
+              <Button variant="outline" onClick={resetEditor}>
+                New FAQ
+              </Button>
+            )}
+          </div>
+
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">Question</label>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+                Question
+              </label>
               <input
                 type="text"
                 placeholder="e.g., What time are services?"
@@ -183,143 +206,118 @@ export default function FAQManager({
                 onChange={(event) =>
                   setFaqDraft((prev) => ({ ...prev, question: event.target.value }))
                 }
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
               />
             </div>
+
             <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">Answer</label>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+                Answer
+              </label>
               <textarea
                 placeholder="The answer to the question..."
                 value={faqDraft.answer}
                 onChange={(event) =>
                   setFaqDraft((prev) => ({ ...prev, answer: event.target.value }))
                 }
-                rows={4}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
+                rows={6}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">Display Order</label>
+
+            <label className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground">
               <input
-                type="number"
-                value={faqDraft.order}
+                type="checkbox"
+                checked={faqDraft.isActive}
                 onChange={(event) =>
-                  setFaqDraft((prev) => ({ ...prev, order: parseInt(event.target.value) || 0 }))
+                  setFaqDraft((prev) => ({ ...prev, isActive: event.target.checked }))
                 }
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
+                className="rounded border-border"
               />
+              <span>Show this FAQ in the footer</span>
+            </label>
+
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleSaveFaq} disabled={savingFaqId !== null}>
+                {savingFaqId !== null ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {editingFaqId ? 'Saving...' : 'Adding...'}
+                  </>
+                ) : editingFaqId ? (
+                  'Save FAQ'
+                ) : (
+                  'Add FAQ'
+                )}
+              </Button>
+              <Button variant="outline" onClick={resetEditor}>
+                Clear
+              </Button>
             </div>
-            <Button onClick={handleAddFaq} className="w-full md:w-auto">Add FAQ</Button>
           </div>
         </div>
 
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Current FAQs
-          </h2>
-          {faqs.length === 0 ? (
-            <div className="text-center py-12 border border-dashed rounded-xl border-border/60">
-              <p className="text-sm text-foreground/60">No FAQs added yet.</p>
+          <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <h2 className="text-lg font-semibold text-foreground">
+              Current FAQs
+            </h2>
+            <div className="relative max-w-sm flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
+              <input
+                type="text"
+                placeholder="Search FAQs..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-4 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </div>
+
+          {filteredFaqs.length === 0 ? (
+            <div className="rounded-xl border border-border/60 border-dashed py-12 text-center">
+              <p className="text-sm text-foreground/60">
+                {searchTerm ? 'No FAQs match your search.' : 'No FAQs added yet.'}
+              </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {faqs.map((faq) => (
+            <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+              {filteredFaqs.map((faq) => (
                 <div
                   key={faq.id}
-                  className="rounded-xl border border-border/60 bg-background p-4 space-y-4 group"
+                  className={`rounded-xl border p-4 transition ${
+                    editingFaqId === faq.id
+                      ? 'border-primary/60 bg-primary/5'
+                      : 'border-border/60 bg-background'
+                  }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-3 text-foreground/20 group-hover:text-foreground/40 transition">
-                      <GripVertical className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 space-y-3">
-                      <input
-                        type="text"
-                        value={faq.question}
-                        onChange={(event) =>
-                          setFaqs((prev) =>
-                            prev.map((item) =>
-                              item.id === faq.id ? { ...item, question: event.target.value } : item,
-                            ),
-                          )
-                        }
-                        className="w-full font-medium bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition px-1 py-1"
-                      />
-                      <textarea
-                        value={faq.answer}
-                        onChange={(event) =>
-                          setFaqs((prev) =>
-                            prev.map((item) =>
-                              item.id === faq.id ? { ...item, answer: event.target.value } : item,
-                            ),
-                          )
-                        }
-                        rows={3}
-                        className="w-full text-sm text-foreground/70 bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none transition rounded-lg px-2 py-2"
-                      />
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] uppercase font-bold text-foreground/40">Order:</span>
-                          <input
-                            type="number"
-                            value={faq.order}
-                            onChange={(event) =>
-                              setFaqs((prev) =>
-                                prev.map((item) =>
-                                  item.id === faq.id ? { ...item, order: parseInt(event.target.value) || 0 } : item,
-                                ),
-                              )
-                            }
-                            className="w-16 text-xs bg-muted/50 rounded-lg px-2 py-1 focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={faq.isActive}
-                            onChange={(event) =>
-                              setFaqs((prev) =>
-                                prev.map((item) =>
-                                  item.id === faq.id ? { ...item, isActive: event.target.checked } : item,
-                                ),
-                              )
-                            }
-                            className="rounded border-border"
-                          />
-                          <span className="text-[10px] uppercase font-bold text-foreground/40">Active</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {isDirty(faq) ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleUpdateFaq(faq)}
-                            className="h-8 gap-1"
-                            disabled={savingFaqId === faq.id}
-                          >
-                            {savingFaqId === faq.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Save className="h-3 w-3" />
-                            )}
-                            Save
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline" className="h-8 gap-1" disabled>
-                            Saved
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteFaq(faq.id)}
-                          className="h-8 gap-1 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {faq.question}
+                  </p>
+                  <p className="mt-2 text-sm text-foreground/70">
+                    {faq.answer}
+                  </p>
+                  <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">
+                    {faq.isActive ? 'Active' : 'Hidden'}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => startEditingFaq(faq)}>
+                      {editingFaqId === faq.id ? 'Editing' : 'Edit'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => requestDeleteFaq(faq)}
+                      disabled={deletingFaqId === faq.id}
+                      className="gap-1 text-destructive hover:text-destructive"
+                    >
+                      {deletingFaqId === faq.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                      Delete
+                    </Button>
                   </div>
                 </div>
               ))}

@@ -62,10 +62,10 @@ const MINISTRY_CARDS = [
   { title: 'Prison Ministry', key: 'home-ministry-card-4', fallback: '/hero/hero-14.jpg', href: '/ministries/prison-ministry' },
   { title: 'Youth Church Ministry', key: 'home-ministry-card-5', fallback: '/hero/hero-10-yc.jpg', href: '/ministries/youth-church-ministry' },
   { title: 'Hope and Beauty', key: 'home-ministry-card-6', fallback: '/hero/hero-13-hb.jpg', href: '/ministries/hope-and-beauty' },
-  { title: 'Heritage Ministry', key: 'home-ministry-card-7', fallback: '/hero/hero-12-heritage.jpg', href: '/ministries/heritage-ministry' },
+  { title: 'Heritage Ministry', key: 'home-ministry-card-7', fallback: '/hero/hero-12-heritage.jpg', href: '/ministries/heritage' },
 ];
 
-const DEFAULT_SERVICES = [
+const DEFAULT_SEE_YOU_SERVICES = [
   {
     day: 'Tuesday',
     time: '5:30 PM - 7:30 PM',
@@ -104,6 +104,7 @@ const DEFAULT_SERVICES = [
 ];
 
 type ServiceLike = {
+  id?: number | string | null;
   day?: string | null;
   dayOfWeek?: string | null;
   title?: string | null;
@@ -113,6 +114,49 @@ type ServiceLike = {
   location?: string | null;
   description?: string | null;
 };
+
+type SeeYouContent = {
+  title?: string | null;
+  subtitle?: string | null;
+  body?: string | null;
+  imageUrl?: string | null;
+};
+
+function parseSeeYouServices(body?: string | null): ServiceLike[] {
+  if (!body) return DEFAULT_SEE_YOU_SERVICES;
+
+  try {
+    const parsed = JSON.parse(body);
+    const services = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.services)
+        ? parsed.services
+        : [];
+
+    const normalized = services
+      .map((service: unknown, index: number) => {
+        if (!service || typeof service !== 'object') return null;
+        const item = service as Record<string, unknown>;
+        const day = typeof item.day === 'string' ? item.day : typeof item.dayOfWeek === 'string' ? item.dayOfWeek : '';
+        const title = typeof item.title === 'string' ? item.title : '';
+        const time = typeof item.time === 'string' ? item.time : '';
+
+        if (!day && !title && !time) return null;
+
+        return {
+          id: typeof item.id === 'string' || typeof item.id === 'number' ? item.id : `see-you-service-${index}`,
+          day,
+          title,
+          time,
+        };
+      })
+      .filter((service: ServiceLike | null): service is ServiceLike => Boolean(service));
+
+    return normalized.length ? normalized : DEFAULT_SEE_YOU_SERVICES;
+  } catch {
+    return DEFAULT_SEE_YOU_SERVICES;
+  }
+}
 
 async function getDailyDevotion() {
   try {
@@ -146,22 +190,10 @@ async function getDailyConfession() {
   }
 }
 
-async function getServices() {
-  try {
-    const response = await apiFetch('/api/services', {
-      next: { revalidate: 300 },
-    });
-    if (!response.ok) return [];
-    return response.json();
-  } catch {
-    return [];
-  }
-}
-
-async function getSeeYouInChurch() {
+async function getSeeYouInChurch(): Promise<SeeYouContent | null> {
   try {
     const response = await apiFetch('/api/site-content/see-you-in-church', {
-      next: { revalidate: 300 },
+      cache: 'no-store',
     });
     if (!response.ok) return null;
     return response.json();
@@ -232,9 +264,12 @@ async function getHomeVerse() {
 }
 
 function normalizeImageUrl(url?: string | null) {
-  if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return apiUrl(url);
+  const trimmed = url?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('http')) return trimmed;
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  if (trimmed === '/home/see-you-in-church.jpg') return '/home/see-you-in-church.JPG';
+  return trimmed;
 }
 
 function isLocalUpstreamImage(url?: string | null) {
@@ -253,15 +288,18 @@ export default async function HomePage() {
     'home-livestream-bg',
   ];
 
-  const [devotion, confession, services, seeYouInChurch, quoteOfMonth, siteImages, homeVerse] = await Promise.all([
+  const [devotion, confession, seeYouInChurch, quoteOfMonth, siteImages, homeVerse] = await Promise.all([
     getDailyDevotion(),
     getDailyConfession(),
-    getServices(),
     getSeeYouInChurch(),
     getQuoteOfMonth(),
     getSiteImages(imageKeys),
     getHomeVerse(),
   ]);
+
+  const seeYouBg =
+    normalizeImageUrl(seeYouInChurch?.imageUrl) ?? '/home/see-you-in-church.JPG';
+  const seeYouServices = parseSeeYouServices(seeYouInChurch?.body);
   const devotionDate = devotion?.publishAt
     ? new Intl.DateTimeFormat('en-US', {
       month: 'long',
@@ -456,7 +494,7 @@ export default async function HomePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
               <h2 className="text-4xl md:text-5xl font-bold text-primary mb-2">Grow in Every Season</h2>
-              <p className="text-foreground/70">Whether you&apos;re new or have been with us for years &mdash; there&apos;s always more.</p>
+              <p className="text-foreground/70">Whether you&apos;re new or have been with us for years, there&apos;s always more.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8">
@@ -509,10 +547,10 @@ export default async function HomePage() {
               <div className="space-y-5">
                 <p className="text-xs uppercase tracking-[0.35em] text-white/70">Our Pastors</p>
                 <h2 className="text-3xl md:text-5xl font-semibold leading-tight">
-                  Pastor Esau Banda &amp; Pastor Loyce Banda
+                  Pastor Esau Banda &amp; Pastor (Mrs.) Loyce Banda
                 </h2>
                 <p className="text-white/80 text-lg leading-relaxed">
-                  Pastor Esau Banda and Pastor Loyce Banda serve with passion, vision, and a deep love for God&apos;s people.
+                  Pastor Esau Banda and Pastor (Mrs.) Loyce Banda serve with passion, vision, and a deep love for God&apos;s people.
                   Together, they lead PICC with a heart for discipleship, prayer, and transforming lives through the Gospel.
                 </p>
                 <p className="text-white/70">
@@ -612,7 +650,7 @@ export default async function HomePage() {
                   You Were Made For This.
                 </h2>
                 <p className="text-foreground/70 mt-4 max-w-xl">
-                  Find your family, your calling, and your community — right here.
+                  Find your family, your calling, and your community right here.
                 </p>
               </div>
             </div>
@@ -685,12 +723,12 @@ export default async function HomePage() {
             <div className="relative overflow-hidden rounded-[28px] shadow-2xl">
               <div className="absolute inset-0">
                 <Image
-  src="/home/see-you-in-church.jpg"
+  src={seeYouBg}
   alt="See you in church"
   fill
   sizes="100vw"
   className="object-cover"
-  unoptimized={isLocalUpstreamImage("/see-you-in-church.jpg")}
+  unoptimized={isLocalUpstreamImage(seeYouBg)}
 />
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/35" />
@@ -713,7 +751,7 @@ export default async function HomePage() {
                 </div>
 
                 <div className="mt-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 text-left">
-                  {(services?.length ? services : DEFAULT_SERVICES).map((program: ServiceLike) => {
+                  {seeYouServices.map((program: ServiceLike) => {
                     const time = program.startTime
                       ? program.endTime
                         ? `${program.startTime} - ${program.endTime}`
@@ -722,7 +760,7 @@ export default async function HomePage() {
 
                     return (
                       <div
-                        key={`${program.dayOfWeek || program.day}-${program.title}`}
+                        key={program.id || `${program.dayOfWeek || program.day}-${program.title}-${time}`}
                         className="rounded-2xl bg-white/10 border border-white/10 p-4 sm:p-6"
                       >
                         <p className="text-sm uppercase tracking-[0.2em] text-white/70">

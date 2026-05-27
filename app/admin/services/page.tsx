@@ -41,7 +41,7 @@ export default function ServicesAdminPage() {
             Service Times
           </h1>
           <p className="text-foreground/70 mt-3 max-w-2xl">
-            Keep weekly service schedules and descriptions up to date.
+            Keep the Contact page Locate Us service times up to date.
           </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>

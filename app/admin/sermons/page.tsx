@@ -1,18 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { Plus } from 'lucide-react';
 
 interface Sermon {
-  id: number;
+  id: string;
   title: string;
   date: string;
   image: string;
@@ -20,6 +19,8 @@ interface Sermon {
   youtubeUrl: string;
   audioSrc: string;
 }
+
+const DEFAULT_HEADER_IMAGE = '/sermons/header.JPG';
 
 const DEFAULT_SERMON: Omit<Sermon, 'id'> = {
   title: '',
@@ -44,20 +45,73 @@ export default function AdminSermonsPage() {
 
   const [status, setStatus] = useState('');
   const [sermons, setSermons] = useState<Sermon[]>([]);
-  const [headerImage, setHeaderImage] = useState('');
+  const [headerImage, setHeaderImage] = useState(DEFAULT_HEADER_IMAGE);
   const [draftSermon, setDraftSermon] = useState(DEFAULT_SERMON);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
   const [notifySubscribers, setNotifySubscribers] = useState(false);
+  const [sermonSearch, setSermonSearch] = useState('');
+  const [sermonFilter, setSermonFilter] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
   const normalizeRemoteUrl = (value: string) => {
     if (!value) return '';
-    return value.startsWith('http') ? value : apiUrl(value);
+    if (value.startsWith('http')) return value;
+    if (value.startsWith('/')) return value;
+    return apiUrl(`/${value}`);
   };
+
+  const extractIframeSrc = (value: string) => {
+    const match = value.match(/src=["']([^"']+)["']/i);
+    return match ? match[1] : value;
+  };
+
+  const normalizeSermonDraft = (sermon: Omit<Sermon, 'id'>) => ({
+    ...sermon,
+    audioSrc: extractIframeSrc(sermon.audioSrc).trim(),
+  });
 
   const updateUploadName = (key: string, name: string) => {
     setUploadNames((prev) => ({ ...prev, [key]: name }));
   };
+
+  const normalizeSermon = useCallback((value: unknown): Sermon | null => {
+    if (!value || typeof value !== 'object') return null;
+    const record = value as Record<string, unknown>;
+    const id = typeof record.id === 'string' || typeof record.id === 'number' ? String(record.id) : '';
+    if (!id) return null;
+
+    return {
+      id,
+      title: typeof record.title === 'string' ? record.title : '',
+      date: typeof record.date === 'string' ? record.date.slice(0, 10) : '',
+      image: typeof record.image === 'string' ? record.image : '',
+      views: typeof record.views === 'string' ? record.views : '0',
+      youtubeUrl:
+        typeof record.youtubeUrl === 'string'
+          ? record.youtubeUrl
+          : typeof record.videoUrl === 'string'
+            ? record.videoUrl
+            : '',
+      audioSrc:
+        typeof record.audioSrc === 'string'
+          ? record.audioSrc
+          : typeof record.audioUrl === 'string'
+            ? record.audioUrl
+            : '',
+    };
+  }, []);
+
+  const extractSermons = useCallback((data: unknown): Sermon[] => {
+    const source = Array.isArray(data)
+      ? data
+      : data && typeof data === 'object' && Array.isArray((data as { sermons?: unknown[] }).sermons)
+        ? (data as { sermons: unknown[] }).sermons
+        : data && typeof data === 'object'
+          ? [data]
+          : [];
+
+    return source.map(normalizeSermon).filter(Boolean) as Sermon[];
+  }, [normalizeSermon]);
 
   const uploadFile = async (file: File) => {
     if (!token) return null;
@@ -86,7 +140,7 @@ export default function AdminSermonsPage() {
 
       const data = await response.json();
       return apiUrl(data.url);
-    } catch (error) {
+    } catch {
       setStatus('File upload failed.');
       return null;
     }
@@ -97,21 +151,11 @@ export default function AdminSermonsPage() {
       const response = await apiFetch('/api/sermons');
       if (response.ok) {
         const data = await response.json();
-        // Handle different possible response formats
-        let sermonsArray: Sermon[] = [];
-        if (Array.isArray(data)) {
-          sermonsArray = data;
-        } else if (data && Array.isArray(data.sermons)) {
-          sermonsArray = data.sermons;
-        } else if (data && typeof data === 'object') {
-          // If it's an object but not an array, assume it's a single sermon
-          sermonsArray = [data as Sermon];
-        }
-        setSermons(sermonsArray);
+        setSermons(extractSermons(data));
       } else {
         setSermons([]);
       }
-    } catch (error) {
+    } catch {
       setStatus('Failed to fetch sermons.');
       setSermons([]);
     }
@@ -124,10 +168,12 @@ export default function AdminSermonsPage() {
         const data = await response.json();
         if (data.imageUrl) {
           setHeaderImage(normalizeRemoteUrl(data.imageUrl));
+          return;
         }
       }
-    } catch (error) {
-      // Header image will remain empty
+      setHeaderImage(DEFAULT_HEADER_IMAGE);
+    } catch {
+      setHeaderImage(DEFAULT_HEADER_IMAGE);
     }
   };
 
@@ -136,7 +182,7 @@ export default function AdminSermonsPage() {
 
     try {
       const response = await apiFetch('/api/site-content/sermons-header-image', {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -146,10 +192,11 @@ export default function AdminSermonsPage() {
 
       if (response.ok) {
         setStatus('Header image updated successfully.');
+        void fetchHeaderImage();
       } else {
         setStatus('Failed to update header image.');
       }
-    } catch (error) {
+    } catch {
       setStatus('Failed to update header image.');
     }
   };
@@ -164,13 +211,13 @@ export default function AdminSermonsPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(draftSermon),
+        body: JSON.stringify(normalizeSermonDraft(draftSermon)),
       });
 
       if (response.ok) {
         setStatus('Sermon added successfully.');
         setDraftSermon(DEFAULT_SERMON);
-        fetchSermons();
+        void fetchSermons();
 
         // Send notification to subscribers if requested
         if (notifySubscribers && draftSermon.title) {
@@ -203,12 +250,12 @@ export default function AdminSermonsPage() {
       } else {
         setStatus('Failed to add sermon.');
       }
-    } catch (error) {
+    } catch {
       setStatus('Failed to add sermon.');
     }
   };
 
-  const handleUpdateSermon = async (id: number) => {
+  const handleUpdateSermon = async (id: string) => {
     if (!token) return;
 
     try {
@@ -218,23 +265,25 @@ export default function AdminSermonsPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(draftSermon),
+        body: JSON.stringify(normalizeSermonDraft(draftSermon)),
       });
 
       if (response.ok) {
         setStatus('Sermon updated successfully.');
         setDraftSermon(DEFAULT_SERMON);
         setEditingId(null);
-        fetchSermons();
+        void fetchSermons();
+      } else if (response.status === 401) {
+        setStatus('Your admin session expired. Please log out and log in again.');
       } else {
         setStatus('Failed to update sermon.');
       }
-    } catch (error) {
+    } catch {
       setStatus('Failed to update sermon.');
     }
   };
 
-  const handleDeleteSermon = async (id: number) => {
+  const handleDeleteSermon = async (id: string) => {
     if (!token) return;
 
     try {
@@ -247,11 +296,11 @@ export default function AdminSermonsPage() {
 
       if (response.ok) {
         setStatus('Sermon deleted successfully.');
-        fetchSermons();
+        void fetchSermons();
       } else {
         setStatus('Failed to delete sermon.');
       }
-    } catch (error) {
+    } catch {
       setStatus('Failed to delete sermon.');
     }
   };
@@ -275,11 +324,38 @@ export default function AdminSermonsPage() {
   };
 
   useEffect(() => {
-    if (token) {
-      fetchSermons();
-      fetchHeaderImage();
-    }
-  }, [token]);
+    if (!token) return;
+
+    void (async () => {
+      try {
+        const [sermonsResponse, headerResponse] = await Promise.all([
+          apiFetch('/api/sermons'),
+          apiFetch('/api/site-content/sermons-header-image'),
+        ]);
+
+        if (sermonsResponse.ok) {
+          const data = await sermonsResponse.json();
+          setSermons(extractSermons(data));
+        } else {
+          setSermons([]);
+        }
+
+        if (headerResponse.ok) {
+          const data = await headerResponse.json();
+          if (data.imageUrl) {
+            setHeaderImage(normalizeRemoteUrl(data.imageUrl));
+            return;
+          }
+        }
+
+        setHeaderImage(DEFAULT_HEADER_IMAGE);
+      } catch {
+        setStatus('Failed to fetch sermons.');
+        setSermons([]);
+        setHeaderImage(DEFAULT_HEADER_IMAGE);
+      }
+    })();
+  }, [token, extractSermons]);
 
   if (!token) {
     return (
@@ -295,33 +371,57 @@ export default function AdminSermonsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Admin - Sermons</h1>
-          <Button variant="outline" onClick={handleLogout}>
-            Logout
+    <div className="space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
+            Admin
+          </p>
+          <h1 className="text-3xl md:text-5xl font-semibold text-foreground">
+            Sermon Management
+          </h1>
+          <p className="text-foreground/70 mt-3 max-w-2xl">
+            Upload and manage sermons, add Podbean audio links, update the header image, and notify subscribers.
+          </p>
+        </div>
+        <Button variant="outline" onClick={handleLogout}>
+          Log out
+        </Button>
+      </div>
+
+      {status && (
+        <p className="text-sm text-foreground/70">{status}</p>
+      )}
+
+      {/* Header Image Section */}
+      <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Header Image</h2>
+            <p className="text-sm text-foreground/60">
+              Update the background image shown on the sermons page header.
+            </p>
+          </div>
+          <Button variant="outline" onClick={saveHeaderImage} disabled={!headerImage}>
+            Save Image
           </Button>
         </div>
 
-        {status && (
-          <div className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">
-            {status}
-          </div>
-        )}
-
-        {/* Header Image Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Sermons Page Header Image</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="header-upload">Upload Header Image <span className="text-[11px] font-normal text-muted-foreground">(Max 1MB allowed)</span></Label>
-              <Input
-                id="header-upload"
+        <div className="grid grid-cols-1 gap-4">
+          <div className="rounded-2xl border border-border/60 bg-background p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className="text-sm font-semibold text-foreground">Header Background</p>
+            </div>
+            {headerImage && (
+              <div
+                className="h-40 rounded-xl border border-border/60 bg-cover bg-center mb-4"
+                style={{ backgroundImage: `url(${headerImage})` }}
+              />
+            )}
+            <div className="space-y-3">
+              <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif,.avif"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
@@ -333,70 +433,74 @@ export default function AdminSermonsPage() {
                     }
                   }
                 }}
+                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
               />
               {uploadNames.header && (
-                <p className="text-sm text-muted-foreground mt-1">Uploading: {uploadNames.header}</p>
+                <p className="text-xs text-foreground/60">Uploading: {uploadNames.header}</p>
               )}
             </div>
-            <Button onClick={saveHeaderImage} disabled={!headerImage}>
-              Save Header Image
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </section>
 
-        {/* Add/Edit Sermon Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingId ? 'Edit Sermon' : 'Add New Sermon'}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={draftSermon.title}
-                  onChange={(e) => setDraftSermon(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Sermon title"
-                />
-              </div>
-              <div>
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  value={draftSermon.date}
-                  onChange={(e) => setDraftSermon(prev => ({ ...prev, date: e.target.value }))}
-                  placeholder="e.g., 10 April, 2025"
-                />
-              </div>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+        {/* Left Side: Form */}
+        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">
+                {editingId ? 'Edit Sermon' : 'Add New Sermon'}
+              </h2>
+              <p className="text-sm text-foreground/60">
+                {editingId ? 'Update the details for this sermon.' : 'Create a new sermon entry.'}
+              </p>
             </div>
+            {editingId && (
+              <Button variant="outline" onClick={cancelEditing}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Sermon
+              </Button>
+            )}
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={draftSermon.title}
+                onChange={(e) => setDraftSermon(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Sermon title"
+                className="rounded-xl border-border bg-background px-4 py-3"
+              />
+            </div>
+            <div>
+              <Label htmlFor="date">Date</Label>
+              <input
+                id="date"
+                type="date"
+                value={draftSermon.date}
+                onChange={(e) => setDraftSermon(prev => ({ ...prev, date: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+            </div>
             <div>
               <Label htmlFor="youtube-url">YouTube URL</Label>
               <Input
                 id="youtube-url"
                 value={draftSermon.youtubeUrl}
                 onChange={(e) => setDraftSermon(prev => ({ ...prev, youtubeUrl: e.target.value }))}
-                placeholder="https://www.youtube.com/watch?v=..."
+                placeholder="Optional YouTube video URL"
+                className="rounded-xl border-border bg-background px-4 py-3"
               />
             </div>
 
-            <div>
-              <Label htmlFor="views">Views</Label>
-              <Input
-                id="views"
-                value={draftSermon.views}
-                onChange={(e) => setDraftSermon(prev => ({ ...prev, views: e.target.value }))}
-                placeholder="e.g., 1,232"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="image-upload">Upload Sermon Image <span className="text-[11px] font-normal text-muted-foreground">(Max 1MB allowed)</span></Label>
-              <Input
+            <div className="md:col-span-2">
+              <Label htmlFor="image-upload">Sermon Image <span className="text-[11px] font-normal text-muted-foreground">(Max 1MB allowed)</span></Label>
+              <input
                 id="image-upload"
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif,.avif"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
@@ -408,95 +512,150 @@ export default function AdminSermonsPage() {
                     }
                   }
                 }}
+                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
               />
               {uploadNames.image && (
-                <p className="text-sm text-muted-foreground mt-1">Uploading: {uploadNames.image}</p>
+                <p className="text-xs text-foreground/60 mt-1">Uploading: {uploadNames.image}</p>
               )}
             </div>
 
-            <div>
-              <Label htmlFor="audio-upload">Upload Audio File</Label>
+            <div className="md:col-span-2">
+              <Label htmlFor="podbean-url">Podbean Audio URL</Label>
               <Input
-                id="audio-upload"
-                type="file"
-                accept="audio/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    updateUploadName('audio', file.name);
-                    const url = await uploadFile(file);
-                    if (url) {
-                      setDraftSermon(prev => ({ ...prev, audioSrc: url }));
-                      updateUploadName('audio', '');
-                    }
-                  }
-                }}
+                id="podbean-url"
+                type="text"
+                value={draftSermon.audioSrc}
+                onChange={(e) => setDraftSermon(prev => ({ ...prev, audioSrc: extractIframeSrc(e.target.value).trim() }))}
+                placeholder="Paste a Podbean embed code, embed player URL, or direct audio URL"
+                className="rounded-xl border-border bg-background px-4 py-3"
               />
-              {uploadNames.audio && (
-                <p className="text-sm text-muted-foreground mt-1">Uploading: {uploadNames.audio}</p>
-              )}
             </div>
+          </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="notify-subscribers"
-                checked={notifySubscribers}
-                onCheckedChange={(checked) => setNotifySubscribers(checked as boolean)}
-              />
-              <Label htmlFor="notify-subscribers" className="text-sm">
-                Notify subscribers about this new sermon
-              </Label>
-            </div>
+          <div className="flex items-center space-x-3 p-4 rounded-xl border border-primary/20 bg-primary/5">
+            <Checkbox
+              id="notify-subscribers"
+              checked={notifySubscribers}
+              onCheckedChange={(checked) => setNotifySubscribers(checked as boolean)}
+              className="h-5 w-5 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+            />
+            <Label htmlFor="notify-subscribers" className="text-sm font-semibold text-foreground cursor-pointer">
+              Notify subscribers about this new sermon
+            </Label>
+          </div>
 
-            <div className="flex gap-2">
-              {editingId ? (
-                <>
-                  <Button onClick={() => handleUpdateSermon(editingId)}>
-                    Update Sermon
-                  </Button>
-                  <Button variant="outline" onClick={cancelEditing}>
-                    Cancel
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={handleAddSermon} disabled={!draftSermon.title || !draftSermon.youtubeUrl}>
-                  Add Sermon
+          <div className="flex flex-wrap items-center gap-3">
+            {editingId ? (
+              <>
+                <Button onClick={() => handleUpdateSermon(editingId)}>
+                  Update Sermon
                 </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                <Button variant="destructive" onClick={() => handleDeleteSermon(editingId)}>
+                  Delete
+                </Button>
+                <Button variant="outline" onClick={cancelEditing}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleAddSermon} disabled={!draftSermon.title || !draftSermon.date || !draftSermon.audioSrc}>
+                Add Sermon
+              </Button>
+            )}
+          </div>
+        </div>
 
-        {/* Existing Sermons */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Existing Sermons</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {(sermons || []).filter(sermon => sermon && typeof sermon === 'object' && sermon.id).map((sermon) => (
-                <div key={sermon.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{sermon.title || 'Untitled'}</h3>
-                    <p className="text-sm text-muted-foreground">{sermon.date || 'No date'} • {sermon.views || '0'} views</p>
-                    <p className="text-sm text-muted-foreground">YouTube: {sermon.youtubeUrl || 'No URL'}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => startEditing(sermon)}>
-                      Edit
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDeleteSermon(sermon.id)}>
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {(sermons || []).length === 0 && (
-                <p className="text-sm text-muted-foreground">No sermons found.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Right Side: Searchable List */}
+        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-foreground mb-4">
+            Existing Sermons
+          </h2>
+
+          <div className="mb-4">
+            <input
+              type="search"
+              value={sermonSearch}
+              onChange={(e) => setSermonSearch(e.target.value)}
+              placeholder="Search by title or date..."
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-foreground/40 outline-none focus:ring-2 focus:ring-primary/20 transition"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {(['all', 'week', 'month', 'year'] as const).map((f) => (
+              <Button
+                key={f}
+                variant={sermonFilter === f ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSermonFilter(f)}
+                className="capitalize h-8 text-xs"
+              >
+                {f === 'all' ? 'All' : `This ${f}`}
+              </Button>
+            ))}
+          </div>
+
+          {(sermons || []).length === 0 ? (
+            <p className="text-sm text-foreground/60">No sermons found.</p>
+          ) : (() => {
+            const query = sermonSearch.trim().toLowerCase();
+            const now = new Date();
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay());
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+            const filtered = (sermons || []).filter((s) => {
+              // Search filter
+              const matchesSearch = !query || 
+                (s.title || '').toLowerCase().includes(query) ||
+                (s.date || '').toLowerCase().includes(query);
+              
+              if (!matchesSearch) return false;
+
+              // Time filter
+              if (sermonFilter === 'all') return true;
+              if (!s.date) return false;
+
+              const sermonDate = new Date(s.date);
+              if (isNaN(sermonDate.getTime())) return false;
+
+              if (sermonFilter === 'week') return sermonDate >= startOfWeek;
+              if (sermonFilter === 'month') return sermonDate >= startOfMonth;
+              if (sermonFilter === 'year') return sermonDate >= startOfYear;
+
+              return true;
+            });
+
+            return filtered.length === 0 ? (
+              <p className="text-sm text-foreground/60">No sermons match your filters.</p>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                {filtered.map((sermon) => (
+                  <button
+                    key={sermon.id}
+                    type="button"
+                    onClick={() => startEditing(sermon)}
+                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                      editingId === sermon.id
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : 'border-border/60 bg-background hover:border-primary/60'
+                    }`}
+                  >
+                    <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                      {sermon.date || 'No date'}
+                    </p>
+                    <p className="text-sm font-semibold text-foreground mt-1">
+                      {sermon.title || 'Untitled'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
       </div>
     </div>
   );

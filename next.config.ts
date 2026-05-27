@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     workerThreads: true,
   },
   images: {
+    // Next blocks proxying to private IPs by default; allow it for local dev when your API base is localhost.
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       {
         protocol: apiProtocol,
@@ -38,6 +40,11 @@ const nextConfig: NextConfig = {
         port: "5000",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "i.ytimg.com",
+        pathname: "/**",
+      },
     ],
   },
   async headers() {
@@ -47,7 +54,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://www.google.com;",
+            value: "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://www.google.com https://www.podbean.com https://*.podbean.com;",
           },
         ],
       },

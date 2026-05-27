@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import {
+  getDateTimeInputValueInMalawi,
+  getTomorrowDateInputValueInMalawi,
+  toMalawiIsoInstant,
+} from '@/lib/timezone';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -60,11 +65,7 @@ export default function ConfessionsAdminPage() {
   const [confessionSearch, setConfessionSearch] = useState('');
   const [status, setStatus] = useState('');
   const [statusIsError, setStatusIsError] = useState(false);
-  const [date, setDate] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().slice(0, 10);
-  });
+  const [date, setDate] = useState(getTomorrowDateInputValueInMalawi);
   const [publishTime, setPublishTime] = useState('01:00');
   const [title, setTitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -100,7 +101,14 @@ export default function ConfessionsAdminPage() {
   const uploadImage = async (file: File) => {
     if (!token) return null;
 
-    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setErrorStatus('Please upload an image file (JPEG, PNG, GIF, WebP, etc.)');
+      return null;
+    }
+
+    // Validate file size
+    if (file.size > 1024 * 1024) {
       setErrorStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
@@ -116,7 +124,9 @@ export default function ConfessionsAdminPage() {
         body: formData,
       });
       if (!response.ok) {
-        setErrorStatus('Image upload failed.');
+        const errorData = await response.json().catch(() => null);
+        const errorMsg = errorData?.error || 'Image upload failed.';
+        setErrorStatus(errorMsg);
         return null;
       }
       const data = await response.json();
@@ -154,9 +164,11 @@ export default function ConfessionsAdminPage() {
           if (confession.publishAt) {
             const parsed = new Date(confession.publishAt);
             if (!Number.isNaN(parsed.getTime())) {
-              const hours = String(parsed.getHours()).padStart(2, '0');
-              const minutes = String(parsed.getMinutes()).padStart(2, '0');
-              setPublishTime(`${hours}:${minutes}`);
+              const malawiDateTime = getDateTimeInputValueInMalawi(confession.publishAt);
+              if (malawiDateTime) {
+                setDate(malawiDateTime.date);
+                setPublishTime(malawiDateTime.time);
+              }
             }
           }
         } else if (response.status === 404) {
@@ -206,13 +218,13 @@ export default function ConfessionsAdminPage() {
       return;
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getDateTimeInputValueInMalawi(new Date().toISOString())?.date || new Date().toISOString().slice(0, 10);
     if (date < todayStr) {
       setErrorStatus('You cannot post confessions for past dates. Please select today or a future date.');
       return;
     }
 
-    const publishAt = `${date}T${publishTime}:00`;
+    const publishAt = toMalawiIsoInstant(date, publishTime);
     setPendingPublishAt(publishAt);
     setPendingDate(date);
     setPendingTime(publishTime);
@@ -382,7 +394,7 @@ export default function ConfessionsAdminPage() {
             </label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif,.avif"
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;

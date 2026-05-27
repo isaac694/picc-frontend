@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { apiFetch, apiUrl } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 
 const DEFAULT_GIVING_TYPES = [
   'First Fruit',
@@ -17,10 +18,18 @@ const DEFAULT_GIVING_TYPES = [
   "Prophet's Offering",
 ];
 
+type BankTransferDetails = {
+  bank_name?: string;
+  account_number?: string;
+  account_name?: string;
+  account_expiration_timestamp?: number;
+};
+
 export default function GivePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [bankTransferDetails, setBankTransferDetails] = useState<BankTransferDetails | null>(null);
   const [givingTypes, setGivingTypes] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     currency: 'MWK',
@@ -48,7 +57,7 @@ export default function GivePage() {
         } else {
           setGivingTypes(DEFAULT_GIVING_TYPES);
         }
-      } catch (error) {
+      } catch {
         setGivingTypes(DEFAULT_GIVING_TYPES);
       }
     };
@@ -74,6 +83,7 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
   event.preventDefault();
   setFormError(null);
   setFormSuccess(null);
+  setBankTransferDetails(null);
 
   if (!formData.amount || !formData.fullName || !formData.phone) {
     setFormError('Please complete the required fields before submitting.');
@@ -134,6 +144,8 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         amount: parseFloat(formData.amount),
+        currency: formData.currency,
+        email: formData.email,
         firstName,
         lastName,
         phone: normalizedPhone,
@@ -153,10 +165,21 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
       throw new Error(errorMessage);
     }
 
-    // 3. Success message
-    setFormSuccess(
-      'Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment. You will receive a confirmation email once payment is successful.'
-    );
+    if (formData.paymentMethod === 'card' && paymentData?.checkoutUrl) {
+      window.location.href = paymentData.checkoutUrl;
+      return;
+    }
+
+    if (formData.paymentMethod === 'bank') {
+      setBankTransferDetails(paymentData?.bankTransfer || null);
+      setFormSuccess(
+        'Thank you! Your bank transfer account has been generated. Use the details below to complete your giving. You will receive a confirmation email once payment is successful.'
+      );
+    } else {
+      setFormSuccess(
+        'Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment. You will receive a confirmation email once payment is successful.'
+      );
+    }
 
     // 4. Reset form
     setFormData((prev) => ({
@@ -189,7 +212,7 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         <section className="bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-14 pb-6 md:pb-8">
             <div className="text-sm text-foreground/60 flex items-center gap-3">
-              <a href="/" className="hover:text-foreground">Home</a>
+              <Link href="/" className="hover:text-foreground">Home</Link>
               <span className="text-foreground/30">›</span>
               <span className="text-foreground/40">Give</span>
             </div>
@@ -394,6 +417,28 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
                       />
                       <span className="text-sm font-medium text-foreground">Mpamba</span>
                     </label>
+                    <label htmlFor="paymentMethodBank" className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3">
+                      <input
+                        id="paymentMethodBank"
+                        type="radio"
+                        name="paymentMethod"
+                        value="bank"
+                        checked={formData.paymentMethod === 'bank'}
+                        onChange={handleChange}
+                      />
+                      <span className="text-sm font-medium text-foreground">Bank Transfer</span>
+                    </label>
+                    <label htmlFor="paymentMethodCard" className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3">
+                      <input
+                        id="paymentMethodCard"
+                        type="radio"
+                        name="paymentMethod"
+                        value="card"
+                        checked={formData.paymentMethod === 'card'}
+                        onChange={handleChange}
+                      />
+                      <span className="text-sm font-medium text-foreground">Card Payment</span>
+                    </label>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col gap-2">
@@ -425,6 +470,33 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
                 {formSuccess && (
                   <p className="mt-4 text-sm text-green-600">{formSuccess}</p>
                 )}
+                {bankTransferDetails && (
+                  <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+                    <p className="font-semibold">Bank transfer details</p>
+                    <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <dt className="text-green-700">Bank</dt>
+                        <dd className="font-medium">{bankTransferDetails.bank_name || 'N/A'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-green-700">Account Name</dt>
+                        <dd className="font-medium">{bankTransferDetails.account_name || 'N/A'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-green-700">Account Number</dt>
+                        <dd className="font-medium">{bankTransferDetails.account_number || 'N/A'}</dd>
+                      </div>
+                      {bankTransferDetails.account_expiration_timestamp && (
+                        <div>
+                          <dt className="text-green-700">Expires</dt>
+                          <dd className="font-medium">
+                            {new Date(bankTransferDetails.account_expiration_timestamp * 1000).toLocaleString()}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                  </div>
+                )}
               </div>
             </form>
           </div>
@@ -435,6 +507,3 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     </>
   );
 }
-
-
-

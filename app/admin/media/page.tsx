@@ -13,6 +13,20 @@ const SECTION_KEYS = {
   magazines: 'media-magazines',
 } as const;
 
+const DRAFT_UPLOAD_KEYS = {
+  news: 'news-draft',
+  gallery: 'gallery-draft',
+  books: 'books-draft',
+  magazines: 'magazines-draft',
+} as const;
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const GALLERY_CATEGORIES = ['worship', 'outreach', 'youth', 'music', 'celebration', 'prayer'];
+
 type NewsItem = {
   id: string;
   badge: string;
@@ -69,9 +83,37 @@ const DEFAULT_NEWS_ITEM: Omit<NewsItem, 'id'> = {
   description: '',
   imageUrl: '',
 };
-const DEFAULT_GALLERY_ITEM: Omit<GalleryItem, 'id'> = { title: '', category: '', imageUrl: '' };
-const DEFAULT_BOOK_ITEM: Omit<BookItem, 'id'> = { title: '', author: '', description: '', imageUrl: '', fileUrl: '' };
-const DEFAULT_MAGAZINE_ITEM: Omit<MagazineItem, 'id'> = { title: '', issue: '', fileUrl: '', imageUrl: '' };
+
+const DEFAULT_GALLERY_ITEM: Omit<GalleryItem, 'id'> = {
+  title: '',
+  category: '',
+  imageUrl: '',
+};
+
+const DEFAULT_BOOK_ITEM: Omit<BookItem, 'id'> = {
+  title: '',
+  author: '',
+  description: '',
+  imageUrl: '',
+  fileUrl: '',
+};
+
+const DEFAULT_MAGAZINE_ITEM: Omit<MagazineItem, 'id'> = {
+  title: '',
+  issue: '',
+  fileUrl: '',
+  imageUrl: '',
+};
+
+const EMPTY_EDITING_IDS: Record<SectionId, string | null> = {
+  news: null,
+  gallery: null,
+  books: null,
+  magazines: null,
+};
+
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 13 }, (_, index) => (currentYear - 2 + index).toString());
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -80,17 +122,21 @@ const newId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
+
   return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
 const parseJson = (value: unknown) => {
   if (typeof value !== 'string') return null;
+
   try {
     return JSON.parse(value) as unknown;
   } catch {
     return null;
   }
 };
+
+const sectionCardClassName = 'rounded-3xl border border-border/60 bg-card p-6 shadow-sm';
 
 export default function AdminMediaPage() {
   const {
@@ -113,10 +159,66 @@ export default function AdminMediaPage() {
   const [draftGallery, setDraftGallery] = useState(DEFAULT_GALLERY_ITEM);
   const [draftBook, setDraftBook] = useState(DEFAULT_BOOK_ITEM);
   const [draftMagazine, setDraftMagazine] = useState(DEFAULT_MAGAZINE_ITEM);
+  const [editingIds, setEditingIds] = useState<Record<SectionId, string | null>>(EMPTY_EDITING_IDS);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
 
   const updateUploadName = (key: string, name: string) => {
     setUploadNames((prev) => ({ ...prev, [key]: name }));
+  };
+
+  const resetSectionEditor = (section: SectionId) => {
+    setEditingIds((prev) => ({ ...prev, [section]: null }));
+    updateUploadName(DRAFT_UPLOAD_KEYS[section], '');
+
+    if (section === 'news') setDraftNews(DEFAULT_NEWS_ITEM);
+    if (section === 'gallery') setDraftGallery(DEFAULT_GALLERY_ITEM);
+    if (section === 'books') setDraftBook(DEFAULT_BOOK_ITEM);
+    if (section === 'magazines') setDraftMagazine(DEFAULT_MAGAZINE_ITEM);
+  };
+
+  const startEditingNews = (item: NewsItem) => {
+    setDraftNews({
+      badge: item.badge || 'Updates',
+      date: item.date || '',
+      title: item.title || '',
+      description: item.description || '',
+      imageUrl: item.imageUrl || '',
+    });
+    setEditingIds((prev) => ({ ...prev, news: item.id }));
+    updateUploadName(DRAFT_UPLOAD_KEYS.news, '');
+  };
+
+  const startEditingGallery = (item: GalleryItem) => {
+    setDraftGallery({
+      title: item.title || '',
+      category: item.category || '',
+      imageUrl: item.imageUrl || '',
+    });
+    setEditingIds((prev) => ({ ...prev, gallery: item.id }));
+    updateUploadName(DRAFT_UPLOAD_KEYS.gallery, '');
+  };
+
+  const startEditingBook = (item: BookItem) => {
+    setDraftBook({
+      title: item.title || '',
+      author: item.author || '',
+      description: item.description || '',
+      imageUrl: item.imageUrl || '',
+      fileUrl: item.fileUrl || '',
+    });
+    setEditingIds((prev) => ({ ...prev, books: item.id }));
+    updateUploadName(DRAFT_UPLOAD_KEYS.books, '');
+  };
+
+  const startEditingMagazine = (item: MagazineItem) => {
+    setDraftMagazine({
+      title: item.title || '',
+      issue: item.issue || '',
+      fileUrl: item.fileUrl || '',
+      imageUrl: item.imageUrl || '',
+    });
+    setEditingIds((prev) => ({ ...prev, magazines: item.id }));
+    updateUploadName(DRAFT_UPLOAD_KEYS.magazines, '');
   };
 
   const uploadImage = async (file: File) => {
@@ -213,16 +315,16 @@ export default function AdminMediaPage() {
     fetchSection<MagazineItem>(SECTION_KEYS.magazines, setMagazineItems);
   }, [token]);
 
-  const handleAddItem = async <S extends SectionId>(
+  const handleSaveItem = async <S extends SectionId>(
     section: S,
     draft: SectionDrafts[S],
-    resetDraft: () => void,
+    editingId: string | null,
     items: SectionItems[S][],
-    setItems: (items: SectionItems[S][]) => void
+    setItems: (items: SectionItems[S][]) => void,
   ) => {
     if (!token) return;
 
-    if (!draft.title) {
+    if (!draft.title.trim()) {
       setStatus('Please add a title before saving.');
       return;
     }
@@ -230,52 +332,34 @@ export default function AdminMediaPage() {
     setStatus('');
 
     try {
-      const nextItems = [...items, { ...draft, id: newId() }] as SectionItems[S][];
+      const nextItems = editingId
+        ? items.map((existing) =>
+            existing.id === editingId ? ({ ...draft, id: editingId } as SectionItems[S]) : existing
+          )
+        : ([...items, { ...draft, id: newId() }] as SectionItems[S][]);
+
       const ok = await saveSection(SECTION_KEYS[section], nextItems);
       if (!ok) {
-        setStatus('Unable to add item to the media section.');
+        setStatus(editingId ? 'Unable to update item.' : 'Unable to add item to the media section.');
         return;
       }
 
       setItems(nextItems);
-      resetDraft();
-      setStatus('Item added.');
+      resetSectionEditor(section);
+      setStatus(editingId ? 'Item updated.' : 'Item added.');
     } catch {
-      setStatus('Unable to add item to the media section.');
-    }
-  };
-
-  const handleUpdateItem = async <S extends SectionId>(
-    section: S,
-    item: SectionItems[S],
-    setItems: (items: SectionItems[S][]) => void,
-    items: SectionItems[S][]
-  ) => {
-    if (!token) return;
-    setStatus('');
-
-    try {
-      const nextItems = items.map((existing) => (existing.id === item.id ? item : existing));
-      const ok = await saveSection(SECTION_KEYS[section], nextItems);
-      if (!ok) {
-        setStatus('Unable to update item.');
-        return;
-      }
-
-      setItems(nextItems);
-      setStatus('Item updated.');
-    } catch {
-      setStatus('Unable to update item.');
+      setStatus(editingId ? 'Unable to update item.' : 'Unable to add item to the media section.');
     }
   };
 
   const handleDeleteItem = async <S extends SectionId>(
     section: S,
     itemId: string,
+    items: SectionItems[S][],
     setItems: (items: SectionItems[S][]) => void,
-    items: SectionItems[S][]
   ) => {
     if (!token) return;
+
     setStatus('');
 
     try {
@@ -287,6 +371,9 @@ export default function AdminMediaPage() {
       }
 
       setItems(nextItems);
+      if (editingIds[section] === itemId) {
+        resetSectionEditor(section);
+      }
       setStatus('Item deleted.');
     } catch {
       setStatus('Unable to delete item.');
@@ -308,16 +395,16 @@ export default function AdminMediaPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
+          <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">
             Admin
           </p>
-          <h1 className="text-3xl md:text-5xl font-semibold text-foreground">
+          <h1 className="text-3xl font-semibold text-foreground md:text-5xl">
             Media Page Editor
           </h1>
-          <p className="text-foreground/70 mt-3 max-w-2xl">
-            Manage church news, gallery items, Fire on the Altar books, and magazines.
+          <p className="mt-3 max-w-2xl text-foreground/70">
+            Manage church news, gallery items, Fire on the Altar books, and magazines with a cleaner editor and separate review panels.
           </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
@@ -327,521 +414,456 @@ export default function AdminMediaPage() {
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
 
-      <div className="space-y-10">
-        <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
-                Church News
-              </p>
-              <p className="text-sm text-foreground/60">Create news stories and remove items as needed.</p>
-            </div>
+      <div className="space-y-12">
+        <section className="space-y-5 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
+          <div>
+            <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Church News</p>
+            <p className="text-sm text-foreground/60">
+              Keep news stories separate from the rest of the media page and edit them from one focused workspace.
+            </p>
           </div>
 
-          <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <input
-                type="text"
-                placeholder="Badge (e.g. Updates)"
-                value={draftNews.badge}
-                onChange={(event) => setDraftNews((prev) => ({ ...prev, badge: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-              <input
-                type="text"
-                placeholder="Date (e.g. March 2026)"
-                value={draftNews.date}
-                onChange={(event) => setDraftNews((prev) => ({ ...prev, date: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-              <input
-                type="text"
-                placeholder="Headline"
-                value={draftNews.title}
-                onChange={(event) => setDraftNews((prev) => ({ ...prev, title: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
+            <div className={`${sectionCardClassName} space-y-5`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    {editingIds.news ? 'Edit News Item' : 'Create News Item'}
+                  </h2>
+                  <p className="text-sm text-foreground/60">
+                    The editor stays right after the sidebar, just like the devotions flow.
+                  </p>
+                </div>
+                {editingIds.news && (
+                  <Button variant="outline" onClick={() => resetSectionEditor('news')}>
+                    New Item
+                  </Button>
+                )}
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input
-                type="text"
-                placeholder="Description"
-                value={draftNews.description}
-                onChange={(event) => setDraftNews((prev) => ({ ...prev, description: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
-              />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.1fr_1.35fr_1.35fr_0.95fr]">
+                <input
+                  type="text"
+                  placeholder="Badge"
+                  value={draftNews.badge}
+                  onChange={(event) => setDraftNews((prev) => ({ ...prev, badge: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+                <select
+                  value={draftNews.date.split(' ')[0] || ''}
+                  onChange={(event) => {
+                    const year = draftNews.date.split(' ')[1] || '';
+                    setDraftNews((prev) => ({
+                      ...prev,
+                      date: event.target.value ? `${event.target.value}${year ? ` ${year}` : ''}` : year,
+                    }));
+                  }}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                >
+                  <option value="">Month</option>
+                  {MONTHS.map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={draftNews.date.split(' ')[1] || ''}
+                  onChange={(event) => {
+                    const month = draftNews.date.split(' ')[0] || '';
+                    setDraftNews((prev) => ({
+                      ...prev,
+                      date: event.target.value ? `${month ? `${month} ` : ''}${event.target.value}` : month,
+                    }));
+                  }}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                >
+                  <option value="">Year</option>
+                  {YEARS.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Headline"
+                  value={draftNews.title}
+                  onChange={(event) => setDraftNews((prev) => ({ ...prev, title: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Upload Image</label>
+                <label className="mb-2 block text-sm font-medium text-foreground">Description</label>
+                <textarea
+                  value={draftNews.description}
+                  onChange={(event) => setDraftNews((prev) => ({ ...prev, description: event.target.value }))}
+                  rows={5}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                  placeholder="Write a short summary for the news story."
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">Upload Image</label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif,.avif"
                   onChange={async (event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
                     const url = await uploadImage(file);
-                    if (url) {
-                      setDraftNews((prev) => ({ ...prev, imageUrl: url }));
-                      updateUploadName('news-draft', file.name);
-                    }
+                    if (!url) return;
+                    setDraftNews((prev) => ({ ...prev, imageUrl: url }));
+                    updateUploadName(DRAFT_UPLOAD_KEYS.news, file.name);
                   }}
                   className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
                 />
+                {uploadNames[DRAFT_UPLOAD_KEYS.news] && (
+                  <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.news]}</p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => handleSaveItem('news', draftNews, editingIds.news, newsItems, setNewsItems)}>
+                  {editingIds.news ? 'Save News Item' : 'Add News Item'}
+                </Button>
+                <Button variant="outline" onClick={() => resetSectionEditor('news')}>
+                  Clear
+                </Button>
               </div>
             </div>
-            {uploadNames['news-draft'] && (
-              <p className="text-xs text-foreground/60">Selected: {uploadNames['news-draft']}</p>
-            )}
-            <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={() =>
-                  handleAddItem('news', draftNews, () => {
-                    setDraftNews(DEFAULT_NEWS_ITEM);
-                    updateUploadName('news-draft', '');
-                  }, newsItems, setNewsItems)
-                }
-              >
-                Add News Item
-              </Button>
-            </div>
 
-            <div className="space-y-4">
+            <div className={sectionCardClassName}>
+              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing News</h3>
               {newsItems.length === 0 ? (
                 <p className="text-sm text-foreground/60">No news items yet.</p>
               ) : (
-                newsItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-2xl border border-border/60 bg-background p-4 space-y-3"
-                  >
-                    <div className="grid gap-3 md:grid-cols-4">
-                      <input
-                        type="text"
-                        value={item.badge || ''}
-                        onChange={(event) =>
-                          setNewsItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, badge: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                        placeholder="Badge"
-                      />
-                      <input
-                        type="text"
-                        value={item.date || ''}
-                        onChange={(event) =>
-                          setNewsItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, date: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                        placeholder="Date"
-                      />
-                      <input
-                        type="text"
-                        value={item.title || ''}
-                        onChange={(event) =>
-                          setNewsItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, title: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
-                        placeholder="Headline"
-                      />
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-3 mt-3">
-                      <input
-                        type="text"
-                        value={item.description || ''}
-                        onChange={(event) =>
-                          setNewsItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, description: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
-                        placeholder="Description"
-                      />
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">Upload Image</label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={async (event) => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
-                            const url = await uploadImage(file);
-                            if (!url) return;
-                            setNewsItems((prev) =>
-                              prev.map((current) =>
-                                current.id === item.id ? { ...current, imageUrl: url } : current
-                              )
-                            );
-                            updateUploadName(`news-${item.id}`, file.name);
-                          }}
-                          className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-                        />
+                <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+                  {newsItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`rounded-2xl border p-4 transition ${
+                        editingIds.news === item.id
+                          ? 'border-primary/60 bg-primary/5'
+                          : 'border-border/60 bg-background'
+                      }`}
+                    >
+                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                        {[item.badge, item.date].filter(Boolean).join(' - ') || 'News Item'}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
+                        {item.title || 'Untitled news item'}
+                      </p>
+                      {item.description && (
+                        <p className="mt-2 text-sm text-foreground/70">{item.description}</p>
+                      )}
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Button variant="outline" onClick={() => startEditingNews(item)}>
+                          {editingIds.news === item.id ? 'Editing' : 'Edit'}
+                        </Button>
+                        <Button variant="outline" onClick={() => handleDeleteItem('news', item.id, newsItems, setNewsItems)}>
+                          Delete
+                        </Button>
                       </div>
                     </div>
-                    {uploadNames[`news-${item.id}`] && (
-                      <p className="text-xs text-foreground/60">Selected: {uploadNames[`news-${item.id}`]}</p>
-                    )}
-                    <div className="flex flex-wrap gap-3">
-                      <Button onClick={() => handleUpdateItem('news', item, setNewsItems, newsItems)}>
-                        Save
-                      </Button>
-                      <Button variant="outline" onClick={() => handleDeleteItem('news', item.id, setNewsItems, newsItems)}>
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
-                Events Gallery
-              </p>
-              <p className="text-sm text-foreground/60">
-                Manage featured gallery images shown on the media page.
-              </p>
-            </div>
+        <section className="space-y-5 border-t border-border/60 pt-8">
+          <div>
+            <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Events Gallery</p>
+            <p className="text-sm text-foreground/60">
+              Gallery items are now managed in their own split area so they do not overlap with church news.
+            </p>
           </div>
 
-          <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input
-                type="text"
-                placeholder="Title (e.g. Worship Service)"
-                value={draftGallery.title}
-                onChange={(event) => setDraftGallery((prev) => ({ ...prev, title: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-              <input
-                type="text"
-                placeholder="Category (e.g. Worship)"
-                value={draftGallery.category}
-                onChange={(event) => setDraftGallery((prev) => ({ ...prev, category: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
+            <div className={`${sectionCardClassName} space-y-5`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    {editingIds.gallery ? 'Edit Gallery Item' : 'Create Gallery Item'}
+                  </h2>
+                  <p className="text-sm text-foreground/60">
+                    Select an item on the right to update it here.
+                  </p>
+                </div>
+                {editingIds.gallery && (
+                  <Button variant="outline" onClick={() => resetSectionEditor('gallery')}>
+                    New Item
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <input
+                  type="text"
+                  placeholder="Title"
+                  value={draftGallery.title}
+                  onChange={(event) => setDraftGallery((prev) => ({ ...prev, title: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+                <select
+                  value={draftGallery.category}
+                  onChange={(event) => setDraftGallery((prev) => ({ ...prev, category: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                >
+                  <option value="">Select a category</option>
+                  {GALLERY_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Upload Image</label>
+                <label className="mb-2 block text-sm font-medium text-foreground">Upload Image</label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif,.avif"
                   onChange={async (event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
                     const url = await uploadImage(file);
-                    if (url) {
-                      setDraftGallery((prev) => ({ ...prev, imageUrl: url }));
-                      updateUploadName('gallery-draft', file.name);
-                    }
+                    if (!url) return;
+                    setDraftGallery((prev) => ({ ...prev, imageUrl: url }));
+                    updateUploadName(DRAFT_UPLOAD_KEYS.gallery, file.name);
                   }}
                   className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
                 />
+                {uploadNames[DRAFT_UPLOAD_KEYS.gallery] && (
+                  <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.gallery]}</p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={() =>
+                    handleSaveItem('gallery', draftGallery, editingIds.gallery, galleryItems, setGalleryItems)
+                  }
+                >
+                  {editingIds.gallery ? 'Save Gallery Item' : 'Add Gallery Item'}
+                </Button>
+                <Button variant="outline" onClick={() => resetSectionEditor('gallery')}>
+                  Clear
+                </Button>
               </div>
             </div>
-            {uploadNames['gallery-draft'] && (
-              <p className="text-xs text-foreground/60">Selected: {uploadNames['gallery-draft']}</p>
-            )}
-            <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={() =>
-                  handleAddItem('gallery', draftGallery, () => {
-                    setDraftGallery(DEFAULT_GALLERY_ITEM);
-                    updateUploadName('gallery-draft', '');
-                  }, galleryItems, setGalleryItems)
-                }
-              >
-                Add Gallery Item
-              </Button>
-            </div>
 
-            <div className="space-y-4">
+            <div className={sectionCardClassName}>
+              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing Gallery Items</h3>
               {galleryItems.length === 0 ? (
                 <p className="text-sm text-foreground/60">No gallery items yet.</p>
               ) : (
-                galleryItems.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-border/60 bg-background p-4 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <input
-                        type="text"
-                        value={item.title || ''}
-                        onChange={(event) =>
-                          setGalleryItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, title: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                        placeholder="Title"
-                      />
-                      <input
-                        type="text"
-                        value={item.category || ''}
-                        onChange={(event) =>
-                          setGalleryItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, category: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                        placeholder="Category"
-                      />
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">Upload Image</label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={async (event) => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
-                            const url = await uploadImage(file);
-                            if (!url) return;
-                            setGalleryItems((prev) =>
-                              prev.map((current) =>
-                                current.id === item.id ? { ...current, imageUrl: url } : current
-                              )
-                            );
-                            updateUploadName(`gallery-${item.id}`, file.name);
-                          }}
-                          className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-                        />
+                <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+                  {galleryItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`rounded-2xl border p-4 transition ${
+                        editingIds.gallery === item.id
+                          ? 'border-primary/60 bg-primary/5'
+                          : 'border-border/60 bg-background'
+                      }`}
+                    >
+                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                        {item.category || 'Gallery'}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
+                        {item.title || 'Untitled gallery item'}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Button variant="outline" onClick={() => startEditingGallery(item)}>
+                          {editingIds.gallery === item.id ? 'Editing' : 'Edit'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleDeleteItem('gallery', item.id, galleryItems, setGalleryItems)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
-                    {uploadNames[`gallery-${item.id}`] && (
-                      <p className="text-xs text-foreground/60">Selected: {uploadNames[`gallery-${item.id}`]}</p>
-                    )}
-                    <div className="flex flex-wrap gap-3">
-                      <Button onClick={() => handleUpdateItem('gallery', item, setGalleryItems, galleryItems)}>
-                        Save
-                      </Button>
-                      <Button variant="outline" onClick={() => handleDeleteItem('gallery', item.id, setGalleryItems, galleryItems)}>
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
-                Fire on the Altar Books
-              </p>
-              <p className="text-sm text-foreground/60">
-                Add or remove books in the Fire on the Altar section.
-              </p>
-            </div>
+        <section className="space-y-5 border-t border-border/60 pt-8">
+          <div>
+            <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Fire on the Altar Books</p>
+            <p className="text-sm text-foreground/60">
+              Book uploads now have their own separated editor and review list for safer updates.
+            </p>
           </div>
 
-          <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <input
-                type="text"
-                placeholder="Book title"
-                value={draftBook.title}
-                onChange={(event) => setDraftBook((prev) => ({ ...prev, title: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-              <input
-                type="text"
-                placeholder="Author"
-                value={draftBook.author}
-                onChange={(event) => setDraftBook((prev) => ({ ...prev, author: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-              <input
-                type="text"
-                placeholder="Description"
-                value={draftBook.description}
-                onChange={(event) => setDraftBook((prev) => ({ ...prev, description: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-              <input
-                type="text"
-                placeholder="PDF link URL (optional)"
-                value={draftBook.fileUrl}
-                onChange={(event) => setDraftBook((prev) => ({ ...prev, fileUrl: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
+            <div className={`${sectionCardClassName} space-y-5`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    {editingIds.books ? 'Edit Book' : 'Create a new Fire on the Altar Book'}
+                  </h2>
+                  <p className="text-sm text-foreground/60">
+                    Pick a saved book on the right when you need to update it.
+                  </p>
+                </div>
+                {editingIds.books && (
+                  <Button variant="outline" onClick={() => resetSectionEditor('books')}>
+                    New Item
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <input
+                  type="text"
+                  placeholder="Book title"
+                  value={draftBook.title}
+                  onChange={(event) => setDraftBook((prev) => ({ ...prev, title: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+                <input
+                  type="text"
+                  placeholder="Author"
+                  value={draftBook.author}
+                  onChange={(event) => setDraftBook((prev) => ({ ...prev, author: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Cover Image</label>
+                <label className="mb-2 block text-sm font-medium text-foreground">Description</label>
+                <textarea
+                  value={draftBook.description}
+                  onChange={(event) => setDraftBook((prev) => ({ ...prev, description: event.target.value }))}
+                  rows={5}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                  placeholder="Write a short description of the book."
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">Cover Image</label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif,.avif"
                   onChange={async (event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
                     const url = await uploadImage(file);
-                    if (url) {
-                      setDraftBook((prev) => ({ ...prev, imageUrl: url }));
-                      updateUploadName('books-draft', file.name);
-                    }
+                    if (!url) return;
+                    setDraftBook((prev) => ({ ...prev, imageUrl: url }));
+                    updateUploadName(DRAFT_UPLOAD_KEYS.books, file.name);
                   }}
                   className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
                 />
+                {uploadNames[DRAFT_UPLOAD_KEYS.books] && (
+                  <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.books]}</p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => handleSaveItem('books', draftBook, editingIds.books, bookItems, setBookItems)}>
+                  {editingIds.books ? 'Save Book' : 'Add Book'}
+                </Button>
+                <Button variant="outline" onClick={() => resetSectionEditor('books')}>
+                  Clear
+                </Button>
               </div>
             </div>
-            {uploadNames['books-draft'] && (
-              <p className="text-xs text-foreground/60">Selected: {uploadNames['books-draft']}</p>
-            )}
-            <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={() =>
-                  handleAddItem('books', draftBook, () => {
-                    setDraftBook(DEFAULT_BOOK_ITEM);
-                    updateUploadName('books-draft', '');
-                  }, bookItems, setBookItems)
-                }
-              >
-                Add Book
-              </Button>
-            </div>
 
-            <div className="space-y-4">
+            <div className={sectionCardClassName}>
+              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing Fire on the Altar</h3>
               {bookItems.length === 0 ? (
                 <p className="text-sm text-foreground/60">No books yet.</p>
               ) : (
-                bookItems.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-border/60 bg-background p-4 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-5">
-                      <input
-                        type="text"
-                        value={item.title || ''}
-                        onChange={(event) =>
-                          setBookItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, title: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                      />
-                      <input
-                        type="text"
-                        value={item.author || ''}
-                        onChange={(event) =>
-                          setBookItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, author: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                      />
-                      <input
-                        type="text"
-                        value={item.description || ''}
-                        onChange={(event) =>
-                          setBookItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, description: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                      />
-                      <input
-                        type="text"
-                        value={item.fileUrl || ''}
-                        onChange={(event) =>
-                          setBookItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, fileUrl: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                        placeholder="PDF link URL"
-                      />
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">Cover Image</label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={async (event) => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
-                            const url = await uploadImage(file);
-                            if (!url) return;
-                            setBookItems((prev) =>
-                              prev.map((current) =>
-                                current.id === item.id ? { ...current, imageUrl: url } : current
-                              )
-                            );
-                            updateUploadName(`books-${item.id}`, file.name);
-                          }}
-                          className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-                        />
+                <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+                  {bookItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`rounded-2xl border p-4 transition ${
+                        editingIds.books === item.id
+                          ? 'border-primary/60 bg-primary/5'
+                          : 'border-border/60 bg-background'
+                      }`}
+                    >
+                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                        {item.author || 'Book'}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
+                        {item.title || 'Untitled book'}
+                      </p>
+                      {item.description && (
+                        <p className="mt-2 text-sm text-foreground/70">{item.description}</p>
+                      )}
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Button variant="outline" onClick={() => startEditingBook(item)}>
+                          {editingIds.books === item.id ? 'Editing' : 'Edit'}
+                        </Button>
+                        <Button variant="outline" onClick={() => handleDeleteItem('books', item.id, bookItems, setBookItems)}>
+                          Delete
+                        </Button>
                       </div>
                     </div>
-                    {uploadNames[`books-${item.id}`] && (
-                      <p className="text-xs text-foreground/60">Selected: {uploadNames[`books-${item.id}`]}</p>
-                    )}
-                    <div className="flex flex-wrap gap-3">
-                      <Button onClick={() => handleUpdateItem('books', item, setBookItems, bookItems)}>
-                        Save
-                      </Button>
-                      <Button variant="outline" onClick={() => handleDeleteItem('books', item.id, setBookItems, bookItems)}>
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
-                Church Magazines
-              </p>
-              <p className="text-sm text-foreground/60">
-                Upload and manage magazine issues for the public media page.
-              </p>
-            </div>
+        <section className="space-y-5 border-t border-border/60 pt-8">
+          <div>
+            <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Church Magazines</p>
+            <p className="text-sm text-foreground/60">
+              Magazine entries now sit in their own final section with a dedicated review column.
+            </p>
           </div>
 
-          <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <input
-                type="text"
-                placeholder="Magazine title"
-                value={draftMagazine.title}
-                onChange={(event) => setDraftMagazine((prev) => ({ ...prev, title: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-              <input
-                type="text"
-                placeholder="Issue"
-                value={draftMagazine.issue}
-                onChange={(event) => setDraftMagazine((prev) => ({ ...prev, issue: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
+            <div className={`${sectionCardClassName} space-y-5`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    {editingIds.magazines ? 'Edit Magazine' : 'Create Magazine'}
+                  </h2>
+                  <p className="text-sm text-foreground/60">
+                    Use the list on the right to load an existing issue into this editor.
+                  </p>
+                </div>
+                {editingIds.magazines && (
+                  <Button variant="outline" onClick={() => resetSectionEditor('magazines')}>
+                    New Item
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <input
+                  type="text"
+                  placeholder="Magazine title"
+                  value={draftMagazine.title}
+                  onChange={(event) => setDraftMagazine((prev) => ({ ...prev, title: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+                <input
+                  type="text"
+                  placeholder="Issue"
+                  value={draftMagazine.issue}
+                  onChange={(event) => setDraftMagazine((prev) => ({ ...prev, issue: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+              </div>
+
               <input
                 type="text"
                 placeholder="Link URL"
@@ -849,120 +871,76 @@ export default function AdminMediaPage() {
                 onChange={(event) => setDraftMagazine((prev) => ({ ...prev, fileUrl: event.target.value }))}
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
               />
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Cover Image</label>
+                <label className="mb-2 block text-sm font-medium text-foreground">Cover Image</label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif,.avif"
                   onChange={async (event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
                     const url = await uploadImage(file);
-                    if (url) {
-                      setDraftMagazine((prev) => ({ ...prev, imageUrl: url }));
-                      updateUploadName('magazines-draft', file.name);
-                    }
+                    if (!url) return;
+                    setDraftMagazine((prev) => ({ ...prev, imageUrl: url }));
+                    updateUploadName(DRAFT_UPLOAD_KEYS.magazines, file.name);
                   }}
                   className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
                 />
+                {uploadNames[DRAFT_UPLOAD_KEYS.magazines] && (
+                  <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.magazines]}</p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={() =>
+                    handleSaveItem('magazines', draftMagazine, editingIds.magazines, magazineItems, setMagazineItems)
+                  }
+                >
+                  {editingIds.magazines ? 'Save Magazine' : 'Add Magazine'}
+                </Button>
+                <Button variant="outline" onClick={() => resetSectionEditor('magazines')}>
+                  Clear
+                </Button>
               </div>
             </div>
-            {uploadNames['magazines-draft'] && (
-              <p className="text-xs text-foreground/60">Selected: {uploadNames['magazines-draft']}</p>
-            )}
-            <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={() =>
-                  handleAddItem('magazines', draftMagazine, () => {
-                    setDraftMagazine(DEFAULT_MAGAZINE_ITEM);
-                    updateUploadName('magazines-draft', '');
-                  }, magazineItems, setMagazineItems)
-                }
-              >
-                Add Magazine
-              </Button>
-            </div>
 
-            <div className="space-y-4">
+            <div className={sectionCardClassName}>
+              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing Magazines</h3>
               {magazineItems.length === 0 ? (
                 <p className="text-sm text-foreground/60">No magazine issues yet.</p>
               ) : (
-                magazineItems.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-border/60 bg-background p-4 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-4">
-                      <input
-                        type="text"
-                        value={item.title || ''}
-                        onChange={(event) =>
-                          setMagazineItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, title: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                      />
-                      <input
-                        type="text"
-                        value={item.issue || ''}
-                        onChange={(event) =>
-                          setMagazineItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, issue: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                      />
-                      <input
-                        type="text"
-                        value={item.fileUrl || ''}
-                        onChange={(event) =>
-                          setMagazineItems((prev) =>
-                            prev.map((current) =>
-                              current.id === item.id ? { ...current, fileUrl: event.target.value } : current
-                            )
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                      />
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">Cover Image</label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={async (event) => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
-                            const url = await uploadImage(file);
-                            if (!url) return;
-                            setMagazineItems((prev) =>
-                              prev.map((current) =>
-                                current.id === item.id ? { ...current, imageUrl: url } : current
-                              )
-                            );
-                            updateUploadName(`magazines-${item.id}`, file.name);
-                          }}
-                          className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-                        />
+                <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+                  {magazineItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`rounded-2xl border p-4 transition ${
+                        editingIds.magazines === item.id
+                          ? 'border-primary/60 bg-primary/5'
+                          : 'border-border/60 bg-background'
+                      }`}
+                    >
+                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                        {item.issue || 'Magazine'}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
+                        {item.title || 'Untitled magazine'}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Button variant="outline" onClick={() => startEditingMagazine(item)}>
+                          {editingIds.magazines === item.id ? 'Editing' : 'Edit'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleDeleteItem('magazines', item.id, magazineItems, setMagazineItems)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
-                    {uploadNames[`magazines-${item.id}`] && (
-                      <p className="text-xs text-foreground/60">Selected: {uploadNames[`magazines-${item.id}`]}</p>
-                    )}
-                    <div className="flex flex-wrap gap-3">
-                      <Button onClick={() => handleUpdateItem('magazines', item, setMagazineItems, magazineItems)}>
-                        Save
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleDeleteItem('magazines', item.id, setMagazineItems, magazineItems)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           </div>

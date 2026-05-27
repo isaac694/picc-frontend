@@ -12,6 +12,10 @@ import { apiFetch } from '@/lib/api';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const prayerlineNumbers = ['+265 996 80 08 00', '+265 886 80 08 00'];
+  const piccEmail = 'info@piccworldwide.org';
+  const piccPhone = '+265 992 433 333';
+  const gmailHref = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(piccEmail)}`;
   const [showFaqs, setShowFaqs] = useState(false);
   const [email, setEmail] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
@@ -156,6 +160,42 @@ Lilongwe 3
 Malawi
 
               </p>
+              <div className="mt-5 space-y-4 text-sm text-white/80">
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-white">Prayerline:</span>
+                  {prayerlineNumbers.map((number) => (
+                    <a
+                      key={number}
+                      href={`https://wa.me/${number.replace(/[^0-9]/g, '')}`}
+                      className="hover:text-white underline underline-offset-4"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {number}
+                    </a>
+                  ))}
+                </div>
+                <p>
+                  <span className="font-semibold text-white">Email:</span>{' '}
+                  <a
+                    href={gmailHref}
+                    className="hover:text-white underline underline-offset-4"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {piccEmail}
+                  </a>
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Phone:</span>{' '}
+                  <a
+                    href={`tel:${piccPhone.replace(/\s/g, '')}`}
+                    className="hover:text-white underline underline-offset-4"
+                  >
+                    {piccPhone}
+                  </a>
+                </p>
+              </div>
               <div className="mt-6 flex items-center gap-4 text-white/80">
                 <Link href="https://www.facebook.com/PICCWorldwide/" aria-label="Facebook" className="hover:text-white" target="_blank" rel="noreferrer">
                   <Facebook size={20} />

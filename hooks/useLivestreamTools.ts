@@ -5,25 +5,23 @@ import { sendGivingNotification, sendTestimonyNotification } from '@/lib/email';
 const NOTEPAD_STORAGE_KEY = 'picc-livestream-notepad';
 const LEGACY_NOTEPAD_STORAGE_KEY = 'livestream-notepad-content';
 
-export function useNotepad() {
-  const [notepadContent, setNotepadContent] = useState('');
-  const [isInitialized, setIsInitialized] = useState(false);
+type BankTransferDetails = {
+  bank_name?: string;
+  account_number?: string;
+  account_name?: string;
+  account_expiration_timestamp?: number;
+};
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(NOTEPAD_STORAGE_KEY) || localStorage.getItem(LEGACY_NOTEPAD_STORAGE_KEY);
-    if (saved) {
-      setNotepadContent(saved);
-    }
-    setIsInitialized(true);
-  }, []);
+export function useNotepad() {
+  const [notepadContent, setNotepadContent] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem(NOTEPAD_STORAGE_KEY) || localStorage.getItem(LEGACY_NOTEPAD_STORAGE_KEY) || '';
+  });
 
   // Save to localStorage whenever content changes
   useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem(NOTEPAD_STORAGE_KEY, notepadContent);
-    }
-  }, [notepadContent, isInitialized]);
+    localStorage.setItem(NOTEPAD_STORAGE_KEY, notepadContent);
+  }, [notepadContent]);
 
   return { notepadContent, setNotepadContent };
 }
@@ -101,6 +99,7 @@ export function useGiveForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [bankTransferDetails, setBankTransferDetails] = useState<BankTransferDetails | null>(null);
 
   const normalizePaychanguPhone = (countryCode: string, rawPhone: string) => {
     const digits = rawPhone.replace(/\D/g, '');
@@ -121,6 +120,7 @@ export function useGiveForm() {
     event.preventDefault();
     setFormError(null);
     setFormSuccess(null);
+    setBankTransferDetails(null);
 
     if (!giveForm.amount || !giveForm.fullName || !giveForm.phone) {
       setFormError('Please complete the required fields before submitting.');
@@ -181,6 +181,8 @@ export function useGiveForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: parseFloat(giveForm.amount),
+          currency: giveForm.currency,
+          email: giveForm.email,
           firstName,
           lastName,
           phone: normalizedPhone,
@@ -219,7 +221,17 @@ export function useGiveForm() {
         console.error('Giving notification email failed:', emailError);
       }
 
-      setFormSuccess('Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment.');
+      if (giveForm.paymentMethod === 'card' && paymentData?.checkoutUrl) {
+        window.location.href = paymentData.checkoutUrl;
+        return;
+      }
+
+      if (giveForm.paymentMethod === 'bank') {
+        setBankTransferDetails(paymentData?.bankTransfer || null);
+        setFormSuccess('Thank you! Your bank transfer account has been generated. Use the details below to complete your giving.');
+      } else {
+        setFormSuccess('Thank you! Your giving request was submitted. Follow the mobile prompt to complete payment.');
+      }
       setGiveForm((prev) => ({
         ...prev,
         currency: 'MWK',
@@ -242,5 +254,5 @@ export function useGiveForm() {
     }
   };
 
-  return { giveForm, isSubmitting, formError, formSuccess, handleGiveChange, handleGiveSubmit };
+  return { giveForm, isSubmitting, formError, formSuccess, bankTransferDetails, handleGiveChange, handleGiveSubmit };
 }

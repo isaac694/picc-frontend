@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
 import { Moon, Sun, Users } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { ADMIN_PAGE, canAccessAdminPage } from '@/lib/admin-pages';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useAdminTheme } from '@/hooks/use-admin-theme';
+import type { AdminPageKey } from '@/lib/admin-pages';
 
 type NavItem = {
   label: string;
   href: string;
-  pageKey?: string;
+  pageKey?: AdminPageKey;
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -21,7 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'See You in Church', href: '/admin/see-you-in-church', pageKey: ADMIN_PAGE.SEE_YOU_IN_CHURCH },
   { label: 'Services', href: '/admin/services', pageKey: ADMIN_PAGE.SERVICES },
   { label: 'Events', href: '/admin/events', pageKey: ADMIN_PAGE.EVENTS },
-  { label: 'Quote of the Month', href: '/admin/quote-of-month', pageKey: ADMIN_PAGE.QUOTE_OF_MONTH },
+  { label: 'Qoutes', href: '/admin/quote-of-month', pageKey: ADMIN_PAGE.QUOTE_OF_MONTH },
   { label: 'Homepage Images', href: '/admin/page-images', pageKey: ADMIN_PAGE.PAGE_IMAGES },
   { label: 'FAQ (Footer)', href: '/admin/faqs', pageKey: ADMIN_PAGE.FAQS },
   { label: 'Hope School', href: '/admin/schools/hope-school', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT },
@@ -31,24 +32,24 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const SITE_PAGE_ITEMS: NavItem[] = [
-  { label: 'About Page (Edit)', href: '/admin/about-page', pageKey: ADMIN_PAGE.ABOUT_PAGE },
-  { label: 'Contact Page (Edit)', href: '/admin/contact', pageKey: ADMIN_PAGE.CONTACT_PAGE },
-  { label: 'Media Page (Edit)', href: '/admin/media', pageKey: ADMIN_PAGE.MEDIA_PAGE },
-  { label: 'Forms Page (Edit)', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE },
-  { label: 'Sermons Page (Edit)', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE },
-  { label: 'Give Page (Edit)', href: '/admin/give', pageKey: ADMIN_PAGE.GIVE_PAGE },
-  { label: 'Church Locations (Edit)', href: '/admin/locations', pageKey: ADMIN_PAGE.LOCATIONS_PAGE },
+  { label: 'About Page', href: '/admin/about-page', pageKey: ADMIN_PAGE.ABOUT_PAGE },
+  { label: 'Contact Page', href: '/admin/contact', pageKey: ADMIN_PAGE.CONTACT_PAGE },
+  { label: 'Media Page', href: '/admin/media', pageKey: ADMIN_PAGE.MEDIA_PAGE },
+  { label: 'Forms Page', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE },
+  { label: 'Sermons Page', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE },
+  { label: 'Give Page', href: '/admin/give', pageKey: ADMIN_PAGE.GIVE_PAGE },
+  { label: 'Church Locations', href: '/admin/locations', pageKey: ADMIN_PAGE.LOCATIONS_PAGE },
 ];
 
 const MINISTRIES_ITEMS: NavItem[] = [
-  { label: 'ICD', href: '/admin/ministries/icd' },
-  { label: 'Men of Valour', href: '/admin/ministries/men-of-valour' },
-  { label: 'Prison Ministry', href: '/admin/ministries/prison-ministry' },
-  { label: 'Youth Church', href: '/admin/ministries/youth-church' },
-  { label: 'Women of Hope', href: '/admin/ministries/women-of-hope' },
-  { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman' },
-  { label: 'Hope and Beauty', href: '/admin/ministries/hope-and-beauty' },
-  { label: 'Heritage', href: '/admin/ministries/heritage' },
+  { label: 'ICD', href: '/admin/ministries/icd', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Men of Valour', href: '/admin/ministries/men-of-valour', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Prison Ministry', href: '/admin/ministries/prison-ministry', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Youth Church', href: '/admin/ministries/youth-church', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Women of Hope', href: '/admin/ministries/women-of-hope', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Rivers of Hope', href: '/admin/ministries/rivers-of-hope', pageKey: ADMIN_PAGE.MINISTRIES },
+  { label: 'Heritage', href: '/admin/ministries/heritage', pageKey: ADMIN_PAGE.MINISTRIES },
 ];
 
 const ARCHIVE_ITEMS: NavItem[] = [
@@ -59,18 +60,13 @@ const ARCHIVE_ITEMS: NavItem[] = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const { mounted, isDark, setTheme } = useAdminTheme();
   const { user } = useAdminAuth();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const isActive = (href: string) =>
     href === '/admin' ? pathname === href : pathname?.startsWith(href);
 
-  const isDark = mounted && resolvedTheme === 'dark';
+  const showThemeToggle = mounted;
 
   const filtered = useMemo(() => {
     const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -81,14 +77,14 @@ export default function AdminSidebar() {
         nav: [{ label: 'Admin Hub', href: '/admin' }],
         site: [] as NavItem[],
         usersItem: null as NavItem | null,
-        showMinistries: false,
+        ministries: [] as NavItem[],
         showArchives: false,
       };
     }
 
     const canSee = (item: NavItem) => {
       if (!item.pageKey) return true;
-      return canAccessAdminPage(user, item.pageKey as any);
+      return canAccessAdminPage(user, item.pageKey);
     };
 
     const nav = NAV_ITEMS.filter(canSee);
@@ -101,7 +97,7 @@ export default function AdminSidebar() {
       nav,
       site,
       usersItem,
-      showMinistries: isSuperAdmin,
+      ministries: MINISTRIES_ITEMS.filter(canSee),
       showArchives: isSuperAdmin,
     };
   }, [user]);
@@ -115,6 +111,7 @@ export default function AdminSidebar() {
           onClick={() => setTheme(isDark ? 'light' : 'dark')}
           className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-foreground/70 hover:text-foreground hover:bg-muted transition"
           aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+          disabled={!showThemeToggle}
         >
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           <span className="hidden sm:inline">{isDark ? 'Light' : 'Dark'}</span>
@@ -174,11 +171,11 @@ export default function AdminSidebar() {
         </div>
       )}
 
-      {filtered.showMinistries && (
+      {filtered.ministries.length > 0 && (
         <div className="mt-6 pt-4 border-t border-border/60">
           <p className="text-[11px] uppercase tracking-[0.3em] text-foreground/50 mb-3">Ministries</p>
           <nav className="space-y-2">
-            {MINISTRIES_ITEMS.map((item) => (
+            {filtered.ministries.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

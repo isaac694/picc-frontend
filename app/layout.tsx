@@ -2,8 +2,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ScrollActions from '@/components/ScrollActions';
-import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import AdminThemeSync from '@/components/admin/AdminThemeSync';
 
 /**
  * Metadata (SEO, title, description, icons, etc.)
@@ -55,11 +55,10 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
-          <Toaster richColors closeButton />
-          <ScrollActions />
-        </ThemeProvider>
+        <AdminThemeSync />
+        {children}
+        <Toaster richColors closeButton />
+        <ScrollActions />
       </body>
     </html>
   );

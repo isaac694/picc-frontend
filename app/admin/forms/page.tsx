@@ -192,7 +192,7 @@ export default function FormsAdminPage() {
                 <div>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.heic,.heif,.avif"
                     onChange={async (event) => {
                       const file = event.target.files?.[0];
                       if (!file) return;

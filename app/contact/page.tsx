@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiFetch, apiUrl } from '@/lib/api';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 type ServiceRecord = {
   id?: string | null;
@@ -37,6 +38,7 @@ export default function ContactPage() {
 
   const [currentSlide, setCurrentSlide] = useState(1);
   const [slideTransition, setSlideTransition] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -126,9 +128,14 @@ export default function ContactPage() {
       .filter(Boolean)
     : DEFAULT_SERVICE_LINES;
 
-  const splitIndex = Math.ceil(serviceLines.length / 2);
-  const leftServiceLines = serviceLines.slice(0, splitIndex);
-  const rightServiceLines = serviceLines.slice(splitIndex);
+  const serviceLineItems = serviceLines.map((line, index) => ({
+    id: `service-line-${index}`,
+    line,
+  }));
+
+  const splitIndex = Math.ceil(serviceLineItems.length / 2);
+  const leftServiceLines = serviceLineItems.slice(0, splitIndex);
+  const rightServiceLines = serviceLineItems.slice(splitIndex);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -139,6 +146,8 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
     try {
       const response = await apiFetch('/api/contact', {
         method: 'POST',
@@ -146,13 +155,29 @@ export default function ContactPage() {
         body: JSON.stringify(formData)
       });
 
-      if (response.ok) {
-        alert('Thank you for reaching out! We will get back to you soon.');
-        setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+      if (!response.ok) {
+        let message = 'There was an error sending your message. Please try again.';
+
+        try {
+          const data = await response.json();
+          if (typeof data?.error === 'string' && data.error.trim()) {
+            message = data.error;
+          }
+        } catch {
+          // Fall back to the default toast message if the response body is not JSON.
+        }
+
+        toast.error(message);
+        return;
       }
+
+      toast.success('Thank you for reaching out! We will get back to you soon.');
+      setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('There was an error sending your message. Please try again.');
+      toast.error('There was an error sending your message. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -218,15 +243,15 @@ export default function ContactPage() {
                 </div>
                 <div className="mt-8 text-sm text-foreground/80">
                   <p>
-                    <span className="font-semibold text-foreground">PHONE:</span>{' '}
-                    <a href="tel:+265992433333" className="underline underline-offset-4">
-                      +265 992 433 333
-                    </a>
-                  </p>
-                  <p>
                     <span className="font-semibold text-foreground">EMAIL:</span>{' '}
                     <a href="mailto:info@piccworldwide.org" className="underline underline-offset-4">
                       info@piccworldwide.org
+                    </a>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-foreground">PHONE:</span>{' '}
+                    <a href="tel:+265992433333" className="underline underline-offset-4">
+                      +265 992 433 333
                     </a>
                   </p>
                 </div>
@@ -295,13 +320,13 @@ export default function ContactPage() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-foreground/80">
                     <div className="space-y-2">
-                      {leftServiceLines.map((line) => (
-                        <p key={line}>{line}</p>
+                      {leftServiceLines.map((item) => (
+                        <p key={item.id}>{item.line}</p>
                       ))}
                     </div>
                     <div className="space-y-2">
-                      {rightServiceLines.map((line) => (
-                        <p key={line}>{line}</p>
+                      {rightServiceLines.map((item) => (
+                        <p key={item.id}>{item.line}</p>
                       ))}
                     </div>
                   </div>
@@ -396,8 +421,12 @@ export default function ContactPage() {
                       ></textarea>
                     </div>
 
-                    <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                      Send Message
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      {isSubmitting ? 'Sending...' : 'Send Message'}
                     </Button>
                   </form>
                 </Card>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -9,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { sendMembershipNotification, sendPrayerNotification, sendTestimonyNotification } from '@/lib/email';
+import { toast } from 'sonner';
 
 export default function FormsPage() {
   const [memberForm, setMemberForm] = useState({
@@ -20,8 +20,6 @@ export default function FormsPage() {
     country: '',
   });
   const [memberSubmitting, setMemberSubmitting] = useState(false);
-  const [memberError, setMemberError] = useState<string | null>(null);
-  const [memberSuccess, setMemberSuccess] = useState<string | null>(null);
   const [testimonyForm, setTestimonyForm] = useState({
     fullName: '',
     phone: '',
@@ -30,8 +28,6 @@ export default function FormsPage() {
     testimony: '',
   });
   const [testimonySubmitting, setTestimonySubmitting] = useState(false);
-  const [testimonyError, setTestimonyError] = useState<string | null>(null);
-  const [testimonySuccess, setTestimonySuccess] = useState<string | null>(null);
   const [prayerForm, setPrayerForm] = useState({
     fullName: '',
     email: '',
@@ -45,8 +41,6 @@ export default function FormsPage() {
     request: '',
   });
   const [prayerSubmitting, setPrayerSubmitting] = useState(false);
-  const [prayerError, setPrayerError] = useState<string | null>(null);
-  const [prayerSuccess, setPrayerSuccess] = useState<string | null>(null);
   const [formImages, setFormImages] = useState<Record<string, string>>({
     membershipForm: '/images/our-church.JPG',
     testimonyForm: '/images/send-message-2.JPG',
@@ -76,7 +70,7 @@ export default function FormsPage() {
             }
             const data = await response.json();
             return [item.stateKey, data.imageUrl ? normalizeImageUrl(data.imageUrl) : item.fallback] as const;
-          } catch (error) {
+          } catch {
             return [item.stateKey, item.fallback] as const;
           }
         })
@@ -93,11 +87,9 @@ export default function FormsPage() {
 
   const handleMemberSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMemberError(null);
-    setMemberSuccess(null);
 
     if (!memberForm.fullName || !memberForm.gender || !memberForm.email || !memberForm.phone || !memberForm.city || !memberForm.country) {
-      setMemberError('Please complete the required fields before submitting.');
+      toast.error('Please complete the required fields before submitting.');
       return;
     }
 
@@ -112,7 +104,7 @@ export default function FormsPage() {
         city: memberForm.city,
         country: memberForm.country,
       });
-      setMemberSuccess('Thank you! Your membership form was submitted.');
+      toast.success('Thank you! Your membership form was submitted.');
       setMemberForm({
         fullName: '',
         gender: '',
@@ -122,23 +114,23 @@ export default function FormsPage() {
         country: '',
       });
     } catch (error) {
-      setMemberError(error instanceof Error ? error.message : 'Failed to submit membership form.');
+      toast.error(error instanceof Error ? error.message : 'Failed to submit membership form.');
     } finally {
       setMemberSubmitting(false);
     }
   };
 
-  const handleTestimonyChange = (field: keyof typeof testimonyForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleTestimonyChange =
+    (field: keyof typeof testimonyForm) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setTestimonyForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
   const handleTestimonySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setTestimonyError(null);
-    setTestimonySuccess(null);
 
     if (!testimonyForm.fullName || !testimonyForm.situation || !testimonyForm.testimony) {
-      setTestimonyError('Please complete the required fields before submitting.');
+      toast.error('Please complete the required fields before submitting.');
       return;
     }
 
@@ -152,7 +144,7 @@ export default function FormsPage() {
         situation: testimonyForm.situation,
         testimony: testimonyForm.testimony,
       });
-      setTestimonySuccess('Thank you! Your testimony has been sent.');
+      toast.success('Thank you! Your testimony has been sent.');
       setTestimonyForm({
         fullName: '',
         phone: '',
@@ -161,7 +153,7 @@ export default function FormsPage() {
         testimony: '',
       });
     } catch (error) {
-      setTestimonyError(error instanceof Error ? error.message : 'Failed to submit testimony.');
+      toast.error(error instanceof Error ? error.message : 'Failed to submit testimony.');
     } finally {
       setTestimonySubmitting(false);
     }
@@ -173,11 +165,9 @@ export default function FormsPage() {
 
   const handlePrayerSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setPrayerError(null);
-    setPrayerSuccess(null);
 
     if (!prayerForm.fullName || !prayerForm.request) {
-      setPrayerError('Please complete the required fields before submitting.');
+      toast.error('Please complete the required fields before submitting.');
       return;
     }
 
@@ -196,7 +186,7 @@ export default function FormsPage() {
         areaOfNeed: prayerForm.areaOfNeed || undefined,
         request: prayerForm.request,
       });
-      setPrayerSuccess('Thank you! Your prayer request was submitted.');
+      toast.success('Thank you! Your prayer request was submitted.');
       setPrayerForm({
         fullName: '',
         email: '',
@@ -210,7 +200,7 @@ export default function FormsPage() {
         request: '',
       });
     } catch (error) {
-      setPrayerError(error instanceof Error ? error.message : 'Failed to submit prayer request.');
+      toast.error(error instanceof Error ? error.message : 'Failed to submit prayer request.');
     } finally {
       setPrayerSubmitting(false);
     }
@@ -249,16 +239,6 @@ export default function FormsPage() {
                   <p className="text-white/80 mb-6">
                     If you made a decision today, we would love to connect with you.
                   </p>
-                  {memberError && (
-                    <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                      {memberError}
-                    </div>
-                  )}
-                  {memberSuccess && (
-                    <div className="mb-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50">
-                      {memberSuccess}
-                    </div>
-                  )}
 
                     <form className="space-y-4" onSubmit={handleMemberSubmit}>
                       <div>
@@ -374,16 +354,6 @@ export default function FormsPage() {
                   <p className="text-foreground/70 mb-6">
                     Share what God has done in your life and encourage others.
                   </p>
-                  {testimonyError && (
-                    <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
-                      {testimonyError}
-                    </div>
-                  )}
-                  {testimonySuccess && (
-                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
-                      {testimonySuccess}
-                    </div>
-                  )}
 
                   <form className="space-y-4" onSubmit={handleTestimonySubmit}>
                     <div>
@@ -417,7 +387,7 @@ export default function FormsPage() {
                       </label>
                       <select
                         value={testimonyForm.area}
-                        onChange={handleTestimonyChange('area') as any}
+                        onChange={handleTestimonyChange('area')}
                         className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                         required
                       >
@@ -486,16 +456,6 @@ export default function FormsPage() {
               <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-10 items-stretch">
                 <div className="flex flex-col justify-center">
                   <h2 className="text-3xl md:text-4xl font-semibold mb-4">Prayer Request</h2>
-                  {prayerError && (
-                    <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                      {prayerError}
-                    </div>
-                  )}
-                  {prayerSuccess && (
-                    <div className="mb-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50">
-                      {prayerSuccess}
-                    </div>
-                  )}
                   <form className="space-y-4" onSubmit={handlePrayerSubmit}>
                     <div>
                       <label className="text-xs uppercase tracking-[0.2em] text-white/70">

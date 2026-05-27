@@ -28,12 +28,13 @@ export default function Navigation() {
     { href: '/ministries/youth-church-ministry', label: 'Youth Church Ministry' },
     { href: '/ministries/women-of-hope', label: 'Women of Hope' },
     { href: '/ministries/wailing-woman', label: 'Wailing Woman' },
-    { href: '/ministries/hope-and-beauty', label: 'Hope and Beauty' },
-    { href: '/ministries/heritage-ministry', label: 'Heritage Ministry' },
+    { href: '/ministries/rivers-of-hope', label: 'Rivers of Hope' },
+    { href: '/ministries/heritage', label: 'Heritage Ministry' },
+
   ];
   const schoolLinks = [
     { href: '/schools/picc-secondary', label: 'PICC Secondary School' },
-    { href: '/schools/hope-school', label: 'Hope School Ministry' },
+    { href: '/schools/hope-school', label: 'Hope School of Ministry' },
     { href: '/schools/discipleship', label: 'School of Discipleship' },
   ];
 
@@ -116,7 +117,7 @@ export default function Navigation() {
                     : 'text-foreground hover:text-primary transition-colors text-sm font-medium'
                 }
               >
-                Ministries
+                Ministry & Outreach
               </button>
               <div
                 className={

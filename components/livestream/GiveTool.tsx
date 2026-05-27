@@ -8,11 +8,39 @@ export default function GiveTool({ isMobile }: { isMobile?: boolean }) {
     isSubmitting,
     formError,
     formSuccess,
+    bankTransferDetails,
     handleGiveChange,
     handleGiveSubmit,
   } = useGiveForm();
 
   const idSuffix = isMobile ? 'Mobile' : '';
+  const bankTransferPanel = bankTransferDetails ? (
+    <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+      <p className="font-semibold">Bank transfer details</p>
+      <dl className="mt-3 grid grid-cols-1 gap-2">
+        <div>
+          <dt className="text-green-700">Bank</dt>
+          <dd className="font-medium">{bankTransferDetails.bank_name || 'N/A'}</dd>
+        </div>
+        <div>
+          <dt className="text-green-700">Account Name</dt>
+          <dd className="font-medium">{bankTransferDetails.account_name || 'N/A'}</dd>
+        </div>
+        <div>
+          <dt className="text-green-700">Account Number</dt>
+          <dd className="font-medium">{bankTransferDetails.account_number || 'N/A'}</dd>
+        </div>
+        {bankTransferDetails.account_expiration_timestamp && (
+          <div>
+            <dt className="text-green-700">Expires</dt>
+            <dd className="font-medium">
+              {new Date(bankTransferDetails.account_expiration_timestamp * 1000).toLocaleString()}
+            </dd>
+          </div>
+        )}
+      </dl>
+    </div>
+  ) : null;
 
   if (isMobile) {
     return (
@@ -210,6 +238,28 @@ export default function GiveTool({ isMobile }: { isMobile?: boolean }) {
                     />
                     <span className="text-sm font-medium text-black">Mpamba</span>
                   </label>
+                  <label htmlFor={`paymentMethodBank${idSuffix}`} className="flex items-center gap-3 rounded-2xl border border-black/10 px-4 py-3">
+                    <input
+                      id={`paymentMethodBank${idSuffix}`}
+                      type="radio"
+                      name="paymentMethod"
+                      value="bank"
+                      checked={giveForm.paymentMethod === 'bank'}
+                      onChange={handleGiveChange}
+                    />
+                    <span className="text-sm font-medium text-black">Bank Transfer</span>
+                  </label>
+                  <label htmlFor={`paymentMethodCard${idSuffix}`} className="flex items-center gap-3 rounded-2xl border border-black/10 px-4 py-3">
+                    <input
+                      id={`paymentMethodCard${idSuffix}`}
+                      type="radio"
+                      name="paymentMethod"
+                      value="card"
+                      checked={giveForm.paymentMethod === 'card'}
+                      onChange={handleGiveChange}
+                    />
+                    <span className="text-sm font-medium text-black">Card Payment</span>
+                  </label>
                 </div>
               </div>
               <div className="mt-3 flex flex-col gap-2">
@@ -241,6 +291,7 @@ export default function GiveTool({ isMobile }: { isMobile?: boolean }) {
               {formSuccess && (
                 <p className="mt-4 text-sm text-green-600">{formSuccess}</p>
               )}
+              {bankTransferPanel}
             </div>
           </form>
         </div>
@@ -447,6 +498,28 @@ export default function GiveTool({ isMobile }: { isMobile?: boolean }) {
                   />
                   <span className="text-sm font-medium text-black">Mpamba</span>
                 </label>
+                <label htmlFor={`paymentMethodBank${idSuffix}`} className="flex items-center gap-3 rounded-2xl border border-black/10 px-4 py-3">
+                  <input
+                    id={`paymentMethodBank${idSuffix}`}
+                    type="radio"
+                    name="paymentMethod"
+                    value="bank"
+                    checked={giveForm.paymentMethod === 'bank'}
+                    onChange={handleGiveChange}
+                  />
+                  <span className="text-sm font-medium text-black">Bank Transfer</span>
+                </label>
+                <label htmlFor={`paymentMethodCard${idSuffix}`} className="flex items-center gap-3 rounded-2xl border border-black/10 px-4 py-3">
+                  <input
+                    id={`paymentMethodCard${idSuffix}`}
+                    type="radio"
+                    name="paymentMethod"
+                    value="card"
+                    checked={giveForm.paymentMethod === 'card'}
+                    onChange={handleGiveChange}
+                  />
+                  <span className="text-sm font-medium text-black">Card Payment</span>
+                </label>
               </div>
             </div>
             <div className="mt-4 flex flex-col gap-2">
@@ -478,6 +551,7 @@ export default function GiveTool({ isMobile }: { isMobile?: boolean }) {
             {formSuccess && (
               <p className="mt-4 text-sm text-green-600">{formSuccess}</p>
             )}
+            {bankTransferPanel}
           </div>
         </form>
       </div>

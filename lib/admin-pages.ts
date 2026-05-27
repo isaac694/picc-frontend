@@ -16,6 +16,7 @@ export const ADMIN_PAGE = {
   LOCATIONS_PAGE: 'LOCATIONS_PAGE',
   FAQS: 'FAQS',
   SCHOOLS_ENROLLMENT: 'SCHOOLS_ENROLLMENT',
+  MINISTRIES: 'MINISTRIES',
 } as const;
 
 export type AdminPageKey = (typeof ADMIN_PAGE)[keyof typeof ADMIN_PAGE];
@@ -36,7 +37,7 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.SEE_YOU_IN_CHURCH, label: 'See You in Church' },
   { key: ADMIN_PAGE.SERVICES, label: 'Services' },
   { key: ADMIN_PAGE.EVENTS, label: 'Events' },
-  { key: ADMIN_PAGE.QUOTE_OF_MONTH, label: 'Quote of the Month' },
+  { key: ADMIN_PAGE.QUOTE_OF_MONTH, label: 'Qoutes' },
   { key: ADMIN_PAGE.PAGE_IMAGES, label: 'Homepage Images' },
   { key: ADMIN_PAGE.LIVECHAT, label: 'Live Chat Archive' },
   { key: ADMIN_PAGE.ABOUT_PAGE, label: 'About Page' },
@@ -48,6 +49,7 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.LOCATIONS_PAGE, label: 'Church Locations' },
   { key: ADMIN_PAGE.FAQS, label: 'FAQ (Footer)' },
   { key: ADMIN_PAGE.SCHOOLS_ENROLLMENT, label: 'Schools Enrollment' },
+  { key: ADMIN_PAGE.MINISTRIES, label: 'Ministries' },
 ];
 
 export function canAccessAdminPage(user: AdminUser | null, page: AdminPageKey): boolean {

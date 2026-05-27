@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { toast } from 'sonner';
 
 export default function QuoteOfMonthAdminPage() {
   const {
@@ -19,9 +21,14 @@ export default function QuoteOfMonthAdminPage() {
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
-  const [quoteText, setQuoteText] = useState('');
-  const [quoteAuthor, setQuoteAuthor] = useState('');
-  const [quoteImageUrl, setQuoteImageUrl] = useState('');
+
+  const [currentQuoteText, setCurrentQuoteText] = useState('');
+  const [currentQuoteAuthor, setCurrentQuoteAuthor] = useState('');
+  const [currentQuoteImageUrl, setCurrentQuoteImageUrl] = useState('');
+
+  const [draftQuoteText, setDraftQuoteText] = useState('');
+  const [draftQuoteAuthor, setDraftQuoteAuthor] = useState('');
+  const [draftQuoteImageUrl, setDraftQuoteImageUrl] = useState('');
   const [uploadName, setUploadName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -33,14 +40,22 @@ export default function QuoteOfMonthAdminPage() {
         const response = await apiFetch('/api/quote-of-month');
         if (!response.ok) return;
         const data = await response.json();
-        setQuoteText(data.quote || '');
-        setQuoteAuthor(data.author || '');
+        const quote = data.quote || '';
+        const author = data.author || '';
         const imageUrl = data.imageUrl
           ? data.imageUrl.startsWith('http')
             ? data.imageUrl
             : apiUrl(data.imageUrl)
           : '';
-        setQuoteImageUrl(imageUrl);
+
+        setCurrentQuoteText(quote);
+        setCurrentQuoteAuthor(author);
+        setCurrentQuoteImageUrl(imageUrl);
+
+        // Pre-fill drafts to make edits easy, but the preview always reflects the saved/current values.
+        setDraftQuoteText(quote);
+        setDraftQuoteAuthor(author);
+        setDraftQuoteImageUrl(imageUrl);
       } catch {
         // ignore
       }
@@ -80,7 +95,7 @@ export default function QuoteOfMonthAdminPage() {
   };
 
   const handleSaveQuote = async () => {
-    if (!quoteText.trim()) {
+    if (!draftQuoteText.trim()) {
       setStatus('Please add a quote before saving.');
       return;
     }
@@ -93,15 +108,35 @@ export default function QuoteOfMonthAdminPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          quote: quoteText,
-          author: quoteAuthor,
-          imageUrl: quoteImageUrl,
+          quote: draftQuoteText,
+          author: draftQuoteAuthor,
+          imageUrl: draftQuoteImageUrl,
         }),
       });
       if (!response.ok) {
         setStatus('Unable to save quote of the month.');
         return;
       }
+
+      const saved = await response.json().catch(() => null);
+      const savedQuote = saved?.quote ? String(saved.quote) : draftQuoteText;
+      const savedAuthor = saved?.author ? String(saved.author) : draftQuoteAuthor;
+      const resolvedImageUrl = saved?.imageUrl
+        ? String(saved.imageUrl).startsWith('http')
+          ? String(saved.imageUrl)
+          : apiUrl(String(saved.imageUrl))
+        : draftQuoteImageUrl;
+
+      setCurrentQuoteText(savedQuote);
+      setCurrentQuoteAuthor(savedAuthor);
+      setCurrentQuoteImageUrl(resolvedImageUrl || '');
+
+      // After save: clear inputs like devotions/confessions; preview keeps showing saved values.
+      setDraftQuoteText('');
+      setDraftQuoteAuthor('');
+      setDraftQuoteImageUrl('');
+      setUploadName('');
+
       setStatus('Quote of the month updated.');
     } catch {
       setStatus('Unable to save quote of the month.');
@@ -110,7 +145,6 @@ export default function QuoteOfMonthAdminPage() {
 
   const handleDeleteQuote = async () => {
     if (!token) return;
-    if (!confirm('Delete the current Quote of the Month?')) return;
 
     setIsDeleting(true);
     setStatus('');
@@ -127,9 +161,13 @@ export default function QuoteOfMonthAdminPage() {
         return;
       }
 
-      setQuoteText('');
-      setQuoteAuthor('');
-      setQuoteImageUrl('');
+      setCurrentQuoteText('');
+      setCurrentQuoteAuthor('');
+      setCurrentQuoteImageUrl('');
+
+      setDraftQuoteText('');
+      setDraftQuoteAuthor('');
+      setDraftQuoteImageUrl('');
       setUploadName('');
       setStatus('Quote of the month deleted.');
     } catch {
@@ -137,6 +175,24 @@ export default function QuoteOfMonthAdminPage() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const requestDeleteQuote = () => {
+    const toastId = toast('Delete the current Quote of the Month?', {
+      description: 'This action cannot be undone.',
+      duration: Infinity,
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          toast.dismiss(toastId);
+          void handleDeleteQuote();
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => toast.dismiss(toastId),
+      },
+    });
   };
 
   if (!token) {
@@ -159,9 +215,7 @@ export default function QuoteOfMonthAdminPage() {
           <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
             Admin
           </p>
-          <h1 className="text-3xl md:text-5xl font-semibold text-foreground">
-            Quote of the Month
-          </h1>
+          <h1 className="text-3xl md:text-5xl font-semibold text-foreground">Qoutes</h1>
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Refresh the monthly quote and its background image.
           </p>
@@ -180,8 +234,8 @@ export default function QuoteOfMonthAdminPage() {
               Quote
             </label>
             <textarea
-              value={quoteText}
-              onChange={(event) => setQuoteText(event.target.value)}
+              value={draftQuoteText}
+              onChange={(event) => setDraftQuoteText(event.target.value)}
               rows={4}
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
             />
@@ -192,8 +246,8 @@ export default function QuoteOfMonthAdminPage() {
             </label>
             <input
               type="text"
-              value={quoteAuthor}
-              onChange={(event) => setQuoteAuthor(event.target.value)}
+              value={draftQuoteAuthor}
+              onChange={(event) => setDraftQuoteAuthor(event.target.value)}
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
             />
           </div>
@@ -203,13 +257,13 @@ export default function QuoteOfMonthAdminPage() {
             </label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif,.avif"
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 const url = await uploadImage(file);
                 if (url) {
-                  setQuoteImageUrl(url);
+                  setDraftQuoteImageUrl(url);
                   setUploadName(file.name);
                 }
               }}
@@ -220,7 +274,7 @@ export default function QuoteOfMonthAdminPage() {
             <Button
               variant="outline"
               onClick={() => {
-                setQuoteImageUrl('');
+                setDraftQuoteImageUrl('');
                 setUploadName('');
               }}
             >
@@ -234,7 +288,7 @@ export default function QuoteOfMonthAdminPage() {
             <Button onClick={handleSaveQuote}>Save Quote</Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteQuote}
+              onClick={requestDeleteQuote}
               disabled={isDeleting}
             >
               {isDeleting ? 'Deleting...' : 'Delete Quote'}
@@ -246,14 +300,21 @@ export default function QuoteOfMonthAdminPage() {
           <p className="text-xs uppercase tracking-[0.3em] text-foreground/50 mb-3">
             Preview
           </p>
+          <div className="mb-4">
+            <Link href="/quotes">
+              <Button variant="outline" className="rounded-full">
+                Search
+              </Button>
+            </Link>
+          </div>
           <p className="text-lg font-semibold text-foreground mb-2">
-            &ldquo;{quoteText || 'Quote of the month'}&rdquo;
+            &ldquo;{currentQuoteText || 'Quote of the month'}&rdquo;
           </p>
-          <p className="text-sm text-foreground/60">{quoteAuthor || 'Author'}</p>
-          {quoteImageUrl && (
+          <p className="text-sm text-foreground/60">{currentQuoteAuthor || 'Author'}</p>
+          {currentQuoteImageUrl && (
             <div
               className="mt-4 h-40 rounded-xl bg-cover bg-center"
-              style={{ backgroundImage: `url(${quoteImageUrl})` }}
+              style={{ backgroundImage: `url(${currentQuoteImageUrl})` }}
             />
           )}
         </div>

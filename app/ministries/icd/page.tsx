@@ -34,15 +34,8 @@ type YouTubeStateChangeEvent = {
 
 declare global {
   interface Window {
-    YT?: {
-      Player: new (
-        element: HTMLIFrameElement,
-        options: { events: { onStateChange: (event: YouTubeStateChangeEvent) => void } },
-      ) => YouTubePlayer;
-      PlayerState: {
-        PLAYING: number;
-      };
-    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    YT: any;
     onYouTubeIframeAPIReady?: () => void;
   }
 }
@@ -60,6 +53,7 @@ type YouTubeVideo = {
   url: string;
   embedUrl: string;
   isLive?: boolean;
+  canEmbed?: boolean;
 };
 
 type PartnershipDetail = {
@@ -94,21 +88,27 @@ type MinistryItem = {
   sortOrder: number;
 };
 
+type YouTubeThumbnail = {
+  url?: string;
+};
+
+type YouTubeSnippet = {
+  title?: string;
+  publishedAt?: string;
+  channelTitle?: string;
+  description?: string;
+  liveBroadcastContent?: string;
+  thumbnails?: {
+    high?: YouTubeThumbnail;
+    medium?: YouTubeThumbnail;
+  };
+};
+
 type YouTubeSearchItem = {
   id?: {
     videoId?: string;
   };
-  snippet?: {
-    title?: string;
-    publishedAt?: string;
-    channelTitle?: string;
-    description?: string;
-    liveBroadcastContent?: string;
-    thumbnails?: {
-      high?: { url?: string };
-      medium?: { url?: string };
-    };
-  };
+  snippet?: YouTubeSnippet;
 };
 
 const TOOL_TABS: Array<{
@@ -130,20 +130,6 @@ const toAssetUrl = (value: string | null | undefined) => {
   return trimmed;
 };
 
-const videoIdFromUrl = (value: string | null | undefined) => {
-  const raw = (value || '').trim();
-  if (!raw) return '';
-  try {
-    const url = new URL(raw);
-    if (url.hostname.includes('youtu.be')) {
-      return url.pathname.replace(/^\//, '');
-    }
-    return url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop() || '';
-  } catch {
-    return raw;
-  }
-};
-
 const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
   event.currentTarget.src = fallback;
 };
@@ -157,7 +143,7 @@ const defaultInfo: MinistryInfo = {
 We provide structured modules covering biblical foundations, leadership development, and practical ministry skills. By combining sound doctrine with practical application, ICD ensures that every member is thoroughly equipped for every good work in the Kingdom.`,
   heroImageUrl: '/hero/hero-icd.jpg',
   logoImageUrl: '/logo.png',
-  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=ydTADwZRquA',
+  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=Z_HD5WhhxOU',
   partnershipTitle: 'Partner With Us',
   partnershipBody: `The work of building disciples, ministering deliverance, and reaching out to our community through initiatives like our hospital visits is vast.
 
@@ -245,11 +231,11 @@ const mergeItemsWithFallback = (loaded: MinistryItem[], fallback: MinistryItem[]
 
 const highlightGallery = [
   { id: 1, src: '/hero/hero-icd.jpg', caption: 'Moving believers from spectators to active disciples.' },
-  { id: 2, src: '/moments/icd-1.jpg', caption: 'Structured modules covering biblical foundations.' },
-  { id: 3, src: '/moments/icd-2.jpg', caption: 'Leadership development and practical ministry skills.' },
-  { id: 4, src: '/moments/icd-3.jpg', caption: 'Intercession, Counselling, and Deliverance in action.' },
-  { id: 5, src: '/moments/icd-4.jpg', caption: 'Combining sound doctrine with practical application.' },
-  { id: 6, src: '/moments/icd-5.jpg', caption: 'Equipping every member for good works.' },
+  { id: 2, src: '/moments/1.JPG', caption: 'Structured modules covering biblical foundations.' },
+  { id: 3, src: '/moments/2.JPG', caption: 'Leadership development and practical ministry skills.' },
+  { id: 4, src: '/moments/3.JPG', caption: 'Intercession, Counselling, and Deliverance in action.' },
+  { id: 5, src: '/moments/4.JPG', caption: 'Combining sound doctrine with practical application.' },
+  { id: 6, src: '/moments/5.JPG', caption: 'Equipping every member for good works.' },
 ];
 
 const defaultLearningItems: MinistryItem[] = highlightGallery.map((item, index) => ({
@@ -265,9 +251,9 @@ const defaultLearningItems: MinistryItem[] = highlightGallery.map((item, index) 
 const ministryProjects = [
   { id: 1, type: 'Upcoming Event', title: 'Hospital Visitation Ministry', status: '3 May 2026', image: '/images/icd/ICD-MAY-26.png' },
   { id: 2, type: 'Upcoming Event', title: 'Hospital Visitation Ministry', status: '17 May 2026', image: '/images/icd/ICD-MAY-26.png' },
-  { id: 3, type: 'Current Initiative', title: 'Counselling Programs', status: 'Active', image: '/moments/icd-2.jpg' },
-  { id: 4, type: 'Training Project', title: 'School of Ministry', status: 'Ongoing', image: '/moments/icd-3.jpg' },
-  { id: 5, type: 'Outreach', title: 'Deliverance Workshops', status: 'Upcoming', image: '/moments/icd-4.jpg' },
+  { id: 3, type: 'Current Initiative', title: 'Counselling Programs', status: 'Active', image: '/moments/2.JPG' },
+  { id: 4, type: 'Training Project', title: 'School of Ministry', status: 'Ongoing', image: '/moments/3.JPG' },
+  { id: 5, type: 'Outreach', title: 'Deliverance Workshops', status: 'Upcoming', image: '/moments/4.JPG' },
 ];
 
 const defaultInitiativeItems: MinistryItem[] = ministryProjects.map((project, index) => ({
@@ -296,8 +282,8 @@ export default function IcdMinistryPage() {
   const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
   // --- LIVESTREAM CONSTANTS ---
-  const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
-  const FALLBACK_HERO_ID = videoIdFromUrl(ministryInfo.liveSessionYoutubeUrl) || "ydTADwZRquA";
+  const CHANNEL_ID = "UC8JUC-G4wKhrrPr7xjxYWJw";
+  const FALLBACK_HERO_ID = "Z_HD5WhhxOU";
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 
   const featuredVideo = videos[0] || null;
@@ -419,6 +405,22 @@ export default function IcdMinistryPage() {
       return response.json();
     };
 
+    const fetchLatestEmbeddableVideo = async (channelId: string) => {
+      const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
+      searchUrl.searchParams.set("part", "snippet");
+      searchUrl.searchParams.set("channelId", channelId);
+      searchUrl.searchParams.set("type", "video");
+      searchUrl.searchParams.set("order", "date");
+      searchUrl.searchParams.set("videoEmbeddable", "true");
+      searchUrl.searchParams.set("maxResults", "1");
+      searchUrl.searchParams.set("key", YOUTUBE_API_KEY);
+
+      const searchData = await fetchJson(searchUrl.toString());
+      return Array.isArray(searchData?.items)
+        ? toVideoFromSearch(searchData.items[0])
+        : null;
+    };
+
     const fetchVideos = async () => {
       try {
         if (!YOUTUBE_API_KEY) throw new Error("Missing API key");
@@ -428,15 +430,21 @@ export default function IcdMinistryPage() {
         liveUrl.searchParams.set("channelId", CHANNEL_ID);
         liveUrl.searchParams.set("eventType", "live");
         liveUrl.searchParams.set("type", "video");
+        liveUrl.searchParams.set("videoEmbeddable", "true");
         liveUrl.searchParams.set("maxResults", "1");
         liveUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
-        const liveData = await fetchJson(liveUrl.toString());
+        const [liveData, latestEmbeddableVideo] = await Promise.all([
+          fetchJson(liveUrl.toString()),
+          fetchLatestEmbeddableVideo(CHANNEL_ID),
+        ]);
+
         const liveVideo = Array.isArray(liveData?.items) ? toVideoFromSearch(liveData.items[0]) : null;
+        const finalVideo = liveVideo || latestEmbeddableVideo;
 
         if (isMounted) {
-          if (liveVideo) {
-            setVideos([liveVideo]);
+          if (finalVideo) {
+            setVideos([finalVideo]);
           } else {
             setVideos([{
               videoId: FALLBACK_HERO_ID,

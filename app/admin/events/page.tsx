@@ -1,32 +1,75 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { Search } from 'lucide-react';
+import Image from 'next/image';
 
 type EventScope = 'general' | 'discipleship' | 'hope-school';
 
 type AdminEvent = {
   id: string;
   title: string;
-  date: string;
+  startDate: string;
+  endDate: string;
   time: string;
   location: string;
   description: string;
   image: string;
+  requiresRegistration: boolean;
+  registrationEmail: string;
   scope: EventScope;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+const DEFAULT_EVENT_DRAFT = {
+  title: '',
+  startDate: new Date().toISOString().slice(0, 10),
+  endDate: new Date().toISOString().slice(0, 10),
+  time: '',
+  location: '',
+  description: '',
+  image: '',
+  requiresRegistration: false,
+  registrationEmail: '',
+  scope: 'general' as EventScope,
+};
+
 const normalizeScope = (value: unknown): EventScope => {
   const normalized = String(value ?? 'general').toLowerCase().replace(/_/g, '-');
   if (normalized === 'discipleship') return 'discipleship';
   if (normalized === 'hope-school' || normalized === 'hopeschool') return 'hope-school';
   return 'general';
+};
+
+const normalizeEventImageUrl = (value?: string | null) => {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (!trimmed) return '';
+  if (trimmed.startsWith('http')) return trimmed;
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  return trimmed;
+};
+
+const buildSearchableDateParts = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  const parsed = new Date(`${trimmed}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return [trimmed.toLowerCase()];
+
+  return [
+    trimmed.toLowerCase(),
+    parsed.toLocaleDateString('en-US').toLowerCase(),
+    parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase(),
+    parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase(),
+    parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toLowerCase(),
+    String(parsed.getFullYear()).toLowerCase(),
+  ];
 };
 
 export default function EventsAdminPage() {
@@ -43,20 +86,43 @@ export default function EventsAdminPage() {
 
   const [status, setStatus] = useState('');
   const [events, setEvents] = useState<AdminEvent[]>([]);
-  const [eventDraft, setEventDraft] = useState({
-    title: '',
-    date: new Date().toISOString().slice(0, 10),
-    time: '',
-    location: '',
-    description: '',
-    image: '',
-    scope: 'general' as EventScope,
-  });
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [eventDraft, setEventDraft] = useState(DEFAULT_EVENT_DRAFT);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const updateUploadName = (key: string, name: string) => {
     setUploadNames((prev) => ({ ...prev, [key]: name }));
   };
+
+  const formatEventDateLabel = (event: Pick<AdminEvent, 'startDate' | 'endDate'>) =>
+    event.startDate === event.endDate ? event.startDate : `${event.startDate} - ${event.endDate}`;
+
+  const sortedEvents = useMemo(
+    () =>
+      [...events].sort((a, b) => {
+        const aTime = new Date(a.startDate || a.endDate).getTime();
+        const bTime = new Date(b.startDate || b.endDate).getTime();
+        return bTime - aTime;
+      }),
+    [events],
+  );
+
+  const filteredEvents = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return sortedEvents;
+
+    return sortedEvents.filter((event) => {
+      const title = event.title.toLowerCase();
+      const dateParts = [
+        ...buildSearchableDateParts(event.startDate),
+        ...buildSearchableDateParts(event.endDate),
+        formatEventDateLabel(event).toLowerCase(),
+      ];
+      return title.includes(query) || dateParts.some((part) => part.includes(query));
+    });
+  }, [searchQuery, sortedEvents]);
 
   const uploadImage = async (file: File) => {
     if (!token) return null;
@@ -102,21 +168,38 @@ export default function EventsAdminPage() {
 
       const normalized: AdminEvent[] = list
         .filter(isRecord)
-        .map((event) => ({
-          id: typeof event.id === 'string' ? event.id : String(event.id ?? ''),
-          title: typeof event.title === 'string' ? event.title : '',
-          date: event.date ? String(event.date).slice(0, 10) : '',
-          time: typeof event.time === 'string' ? event.time : '',
-          location: typeof event.location === 'string' ? event.location : '',
-          description: typeof event.description === 'string' ? event.description : '',
-          image:
+        .map((event) => {
+          const rawImage =
             typeof event.image === 'string'
               ? event.image
               : typeof event.imageUrl === 'string'
                 ? event.imageUrl
-                : '',
-          scope: normalizeScope(event.scope),
-        }))
+                : '';
+
+          return {
+            id: typeof event.id === 'string' ? event.id : String(event.id ?? ''),
+            title: typeof event.title === 'string' ? event.title : '',
+            startDate:
+              event.startDate
+                ? String(event.startDate).slice(0, 10)
+                : event.date
+                  ? String(event.date).slice(0, 10)
+                  : '',
+            endDate:
+              event.endDate
+                ? String(event.endDate).slice(0, 10)
+                : event.date
+                  ? String(event.date).slice(0, 10)
+                  : '',
+            time: typeof event.time === 'string' ? event.time : '',
+            location: typeof event.location === 'string' ? event.location : '',
+            description: typeof event.description === 'string' ? event.description : '',
+            image: normalizeEventImageUrl(rawImage),
+            requiresRegistration: Boolean(event.requiresRegistration),
+            registrationEmail: typeof event.registrationEmail === 'string' ? event.registrationEmail : '',
+            scope: normalizeScope(event.scope),
+          };
+        })
         .filter((event) => Boolean(event.id));
 
       setEvents(normalized);
@@ -133,9 +216,44 @@ export default function EventsAdminPage() {
     return () => clearTimeout(id);
   }, [token, refreshEvents]);
 
-  const handleAddEvent = async () => {
-    if (!eventDraft.title || !eventDraft.date || !eventDraft.time) {
-      setStatus('Please fill in title, date, and time.');
+  const handleSelectEvent = (event: AdminEvent) => {
+    setSelectedEventId(event.id);
+    setEventDraft({
+      title: event.title,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      time: event.time,
+      location: event.location,
+      description: event.description,
+      image: event.image,
+      requiresRegistration: event.requiresRegistration,
+      registrationEmail: event.registrationEmail,
+      scope: event.scope,
+    });
+    updateUploadName('event-draft', '');
+  };
+
+  const handleClearSelection = () => {
+    setSelectedEventId(null);
+    setEventDraft(DEFAULT_EVENT_DRAFT);
+    updateUploadName('event-draft', '');
+  };
+
+  const handleSearch = () => {
+    setSearchQuery(searchInput);
+  };
+
+  const handleSaveEvent = async () => {
+    if (!eventDraft.title || !eventDraft.startDate || !eventDraft.endDate || !eventDraft.time) {
+      setStatus('Please fill in title, start date, end date, and time.');
+      return;
+    }
+    if (eventDraft.endDate < eventDraft.startDate) {
+      setStatus('End date cannot be earlier than start date.');
+      return;
+    }
+    if (eventDraft.requiresRegistration && !eventDraft.registrationEmail.trim()) {
+      setStatus('Please enter the registration email for events that require registration.');
       return;
     }
     setStatus('');
@@ -147,63 +265,34 @@ export default function EventsAdminPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          ...(selectedEventId && { id: selectedEventId }),
           title: eventDraft.title,
-          date: eventDraft.date,
+          date: eventDraft.startDate,
+          startDate: eventDraft.startDate,
+          endDate: eventDraft.endDate,
           time: eventDraft.time,
           location: eventDraft.location,
           description: eventDraft.description,
           imageUrl: eventDraft.image,
+          requiresRegistration: eventDraft.requiresRegistration,
+          registrationEmail: eventDraft.requiresRegistration ? eventDraft.registrationEmail.trim() : null,
           scope: eventDraft.scope,
         }),
       });
       if (!response.ok) {
-        setStatus('Unable to add event.');
+        setStatus(selectedEventId ? 'Unable to update event.' : 'Unable to add event.');
         return;
       }
-      setEventDraft({
-        title: '',
-        date: new Date().toISOString().slice(0, 10),
-        time: '',
-        location: '',
-        description: '',
-        image: '',
-        scope: 'general',
-      });
-      updateUploadName('event-draft', '');
-      await refreshEvents();
-      setStatus('Event added.');
-    } catch {
-      setStatus('Unable to add event.');
-    }
-  };
-
-  const handleUpdateEvent = async (event: AdminEvent) => {
-    setStatus('');
-    try {
-      const response = await apiFetch(`/api/events/${event.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: event.title,
-          date: event.date,
-          time: event.time,
-          location: event.location,
-          description: event.description,
-          imageUrl: event.image,
-          scope: event.scope,
-        }),
-      });
-      if (!response.ok) {
-        setStatus('Unable to update event.');
-        return;
+      if (!selectedEventId) {
+        setEventDraft(DEFAULT_EVENT_DRAFT);
+        updateUploadName('event-draft', '');
+        setStatus('Event added.');
+      } else {
+        setStatus('Event updated.');
       }
       await refreshEvents();
-      setStatus('Event updated.');
     } catch {
-      setStatus('Unable to update event.');
+      setStatus(selectedEventId ? 'Unable to update event.' : 'Unable to add event.');
     }
   };
 
@@ -263,23 +352,52 @@ export default function EventsAdminPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1fr] gap-6">
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Add Event
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">
+                {selectedEventId ? 'Edit Event' : 'Add Event'}
+              </h2>
+              <p className="text-sm text-foreground/60">
+                {selectedEventId
+                  ? 'Update the selected event and save your changes.'
+                  : 'Create a new event and publish it to the site.'}
+              </p>
+            </div>
+            {selectedEventId && (
+              <Button variant="outline" onClick={handleClearSelection}>
+                Clear selection
+              </Button>
+            )}
+          </div>
+
+          <input
+            type="text"
+            placeholder="Event title"
+            value={eventDraft.title}
+            onChange={(event) => setEventDraft((prev) => ({ ...prev, title: event.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input
-              type="text"
-              placeholder="Event title"
-              value={eventDraft.title}
-              onChange={(event) => setEventDraft((prev) => ({ ...prev, title: event.target.value }))}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-            />
-            <input
-              type="date"
-              value={eventDraft.date}
-              onChange={(event) => setEventDraft((prev) => ({ ...prev, date: event.target.value }))}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-            />
+            <label className="grid gap-2 text-sm text-foreground/70">
+              <span>Start date</span>
+              <input
+                type="date"
+                value={eventDraft.startDate}
+                onChange={(event) => setEventDraft((prev) => ({ ...prev, startDate: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                aria-label="Start date"
+              />
+            </label>
+            <label className="grid gap-2 text-sm text-foreground/70">
+              <span>End date</span>
+              <input
+                type="date"
+                value={eventDraft.endDate}
+                onChange={(event) => setEventDraft((prev) => ({ ...prev, endDate: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                aria-label="End date"
+              />
+            </label>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
@@ -313,36 +431,44 @@ export default function EventsAdminPage() {
             </label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif,.avif"
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 const url = await uploadImage(file);
                 if (url) {
-                  setEventDraft((prev) => ({ ...prev, image: url }));
+                  setEventDraft((prev) => ({ ...prev, image: normalizeEventImageUrl(url) }));
                   updateUploadName('event-draft', file.name);
                 }
               }}
               className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
             />
           </div>
-          <div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEventDraft((prev) => ({ ...prev, image: '' }));
-                updateUploadName('event-draft', '');
-              }}
-            >
-              Remove Event Image
-            </Button>
-          </div>
+          {uploadNames['event-draft'] ? (
+            <div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEventDraft((prev) => ({ ...prev, image: '' }));
+                  updateUploadName('event-draft', '');
+                }}
+              >
+                Remove Uploaded Image
+              </Button>
+            </div>
+          ) : null}
           {eventDraft.image && (
             <div className="rounded-xl border border-border/60 bg-background p-3">
-              <div
-                className="h-32 rounded-lg bg-cover bg-center"
-                style={{ backgroundImage: `url(${eventDraft.image})` }}
-              />
+              <div className="relative h-32 overflow-hidden rounded-lg">
+                <Image
+                  src={eventDraft.image}
+                  alt={eventDraft.title ? `${eventDraft.title} event image` : 'Current event image'}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 520px"
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
               <p className="mt-2 text-xs text-foreground/60">
                 {uploadNames['event-draft'] ? `Selected: ${uploadNames['event-draft']}` : 'Current image'}
               </p>
@@ -355,144 +481,98 @@ export default function EventsAdminPage() {
             rows={3}
             className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
           />
-          <Button onClick={handleAddEvent}>Add Event</Button>
+          <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={eventDraft.requiresRegistration}
+              onChange={(event) =>
+                setEventDraft((prev) => ({
+                  ...prev,
+                  requiresRegistration: event.target.checked,
+                  registrationEmail: event.target.checked ? prev.registrationEmail : '',
+                }))
+              }
+              className="h-4 w-4"
+            />
+            <span>This event requires registration</span>
+          </label>
+          {eventDraft.requiresRegistration ? (
+            <input
+              type="email"
+              placeholder="Registration email recipient"
+              value={eventDraft.registrationEmail}
+              onChange={(event) => setEventDraft((prev) => ({ ...prev, registrationEmail: event.target.value }))}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            />
+          ) : null}
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={handleSaveEvent}>
+              {selectedEventId ? 'Save Event' : 'Add Event'}
+            </Button>
+            {selectedEventId && (
+              <Button variant="outline" onClick={handleClearSelection}>
+                Cancel
+              </Button>
+            )}
+            {selectedEventId && (
+              <Button variant="destructive" onClick={() => handleDeleteEvent(selectedEventId)}>
+                Delete Event
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground mb-4">
             Current Events
           </h2>
+          <div className="mb-4 space-y-2">
+            <label htmlFor="event-search" className="sr-only">
+              Search current events by title or date
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/50" />
+                <input
+                  id="event-search"
+                  type="search"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      handleSearch();
+                    }
+                  }}
+                  placeholder="Search by event name or date"
+                  className="w-full rounded-xl border border-border/60 bg-background py-3 pl-11 pr-4 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <Button variant="secondary" size="sm" onClick={handleSearch}>
+                Search
+              </Button>
+            </div>
+          </div>
           {events.length === 0 ? (
             <p className="text-sm text-foreground/60">No events yet.</p>
+          ) : filteredEvents.length === 0 ? (
+            <p className="text-sm text-foreground/60">No events match your search.</p>
           ) : (
-            <div className="space-y-4">
-              {events.map((event) => (
-                <div key={event.id} className="rounded-xl border border-border/60 bg-background p-4 space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      value={event.title || ''}
-                      onChange={(e) =>
-                        setEvents((prev) =>
-                          prev.map((item) => (item.id === event.id ? { ...item, title: e.target.value } : item))
-                        )
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                    />
-                    <input
-                      type="date"
-                      value={event.date || ''}
-                      onChange={(e) =>
-                        setEvents((prev) =>
-                          prev.map((item) => (item.id === event.id ? { ...item, date: e.target.value } : item))
-                        )
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Time (e.g., 8:00 AM - 4:00 PM)"
-                      value={event.time || ''}
-                      onChange={(e) =>
-                        setEvents((prev) =>
-                          prev.map((item) => (item.id === event.id ? { ...item, time: e.target.value } : item))
-                        )
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                    />
-                    <select
-                      value={event.scope || 'general'}
-                      onChange={(e) =>
-                        setEvents((prev) =>
-                          prev.map((item) =>
-                            item.id === event.id ? { ...item, scope: e.target.value } : item
-                          )
-                        )
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                      aria-label="Event scope"
-                    >
-                      <option value="general">General</option>
-                      <option value="discipleship">Discipleship</option>
-                      <option value="hope-school">Hope School</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Location"
-                      value={event.location || ''}
-                      onChange={(e) =>
-                        setEvents((prev) =>
-                          prev.map((item) => (item.id === event.id ? { ...item, location: e.target.value } : item))
-                        )
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-[0.25em] text-foreground/50 mb-2">
-                      Upload Image <span className="text-[10px] font-normal lowercase tracking-normal">(Max 1MB allowed)</span>
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const url = await uploadImage(file);
-                        if (!url) return;
-                        setEvents((prev) =>
-                          prev.map((item) => (item.id === event.id ? { ...item, image: url } : item))
-                        );
-                        updateUploadName(`event-${event.id}`, file.name);
-                      }}
-                      className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-                    />
-                  </div>
-                  <div>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setEvents((prev) =>
-                          prev.map((item) => (item.id === event.id ? { ...item, image: '' } : item))
-                        );
-                        updateUploadName(`event-${event.id}`, '');
-                      }}
-                    >
-                      Remove Event Image
-                    </Button>
-                  </div>
-                  {event.image && (
-                    <div className="rounded-xl border border-border/60 bg-background p-3">
-                      <div
-                        className="h-28 rounded-lg bg-cover bg-center"
-                        style={{ backgroundImage: `url(${event.image})` }}
-                      />
-                      <p className="mt-2 text-xs text-foreground/60">
-                        {uploadNames[`event-${event.id}`]
-                          ? `Selected: ${uploadNames[`event-${event.id}`]}`
-                          : 'Current image'}
-                      </p>
-                    </div>
-                  )}
-                  <textarea
-                    value={event.description || ''}
-                    onChange={(e) =>
-                      setEvents((prev) =>
-                        prev.map((item) => (item.id === event.id ? { ...item, description: e.target.value } : item))
-                      )
-                    }
-                    rows={3}
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                  />
-                  <div className="flex flex-wrap gap-3">
-                    <Button onClick={() => handleUpdateEvent(event)}>Update</Button>
-                    <Button variant="outline" onClick={() => handleDeleteEvent(event.id)}>
-                      Delete
-                    </Button>
-                  </div>
-                </div>
+            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
+              {filteredEvents.map((event) => (
+                <button
+                  key={event.id}
+                  type="button"
+                  onClick={() => handleSelectEvent(event)}
+                  className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-left hover:border-primary/60 transition"
+                >
+                  <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                    {formatEventDateLabel(event)}
+                  </p>
+                  <p className="text-sm font-semibold text-foreground mt-1">
+                    {event.title || 'Untitled event'}
+                  </p>
+                </button>
               ))}
             </div>
           )}

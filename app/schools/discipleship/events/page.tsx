@@ -26,7 +26,7 @@ export default function DiscipleshipEventsPage() {
           </div>
         </section>
 
-        <EventsListSection apiPath="/api/events?scope=discipleship" />
+        <EventsListSection apiPath="/api/schools/discipleship/events" layout="classic" />
       </main>
       <Footer />
     </>

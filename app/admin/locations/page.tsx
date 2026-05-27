@@ -98,6 +98,7 @@ export default function LocationsAdminPage() {
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [locationSearch, setLocationSearch] = useState('');
 
   // Form state for editing/adding
   const [formData, setFormData] = useState({
@@ -368,7 +369,7 @@ export default function LocationsAdminPage() {
                 <div className='mt-4 space-y-3'>
                   <input
                     type='file'
-                    accept='image/*'
+                    accept='image/*,.heic,.heif,.avif'
                     onChange={async (event) => {
                       const file = event.target.files?.[0];
                       if (!file) return;
@@ -403,143 +404,174 @@ export default function LocationsAdminPage() {
         </div>
       </div>
 
-      {/* Branches Management Section */}
-      <div className='rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6'>
-        <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
-          <div>
-            <h2 className='text-xl font-semibold text-foreground'>Church Branches</h2>
-            <p className='text-sm text-foreground/60'>
-              Add, edit, or remove church branch locations.
-            </p>
-          </div>
-          <Button onClick={handleAddNewBranch} disabled={isAddingNew || editingBranch !== null}>
-            <Plus className='w-4 h-4 mr-2' />
-            Add New Branch
-          </Button>
-        </div>
-
-        {/* Edit/Add Form */}
-        {(editingBranch || isAddingNew) && (
-          <Card className='p-6 space-y-4'>
-            <h3 className='text-lg font-semibold'>
-              {editingBranch ? 'Edit Branch' : 'Add New Branch'}
-            </h3>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div>
-                <Label htmlFor='region'>Region</Label>
-                <Select
-                  value={formData.region}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select region' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {regions.map((region) => (
-                      <SelectItem key={region.id} value={region.id}>
-                        {region.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor='name'>Branch Name</Label>
-                <Input
-                  id='name'
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder='e.g., PICC Headquarters'
-                />
-              </div>
-              <div>
-                <Label htmlFor='pastor'>Pastor</Label>
-                <Input
-                  id='pastor'
-                  value={formData.pastor}
-                  onChange={(e) => setFormData(prev => ({ ...prev, pastor: e.target.value }))}
-                  placeholder='e.g., Apostle Grace Malenga'
-                />
-              </div>
-              <div>
-                <Label htmlFor='location'>Location</Label>
-                <Input
-                  id='location'
-                  value={formData.location}
-                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder='e.g., Area 49, New Gulliver'
-                />
-              </div>
-              <div>
-                <Label htmlFor='phone'>Phone</Label>
-                <Input
-                  id='phone'
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder='e.g., +265 992 433 333'
-                />
-              </div>
-              <div>
-                <Label htmlFor='email'>Email</Label>
-                <Input
-                  id='email'
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder='e.g., apostle@picc.org.mw'
-                />
-              </div>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+        {/* Left Side: Form */}
+        <div className='rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6'>
+          <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
+            <div>
+              <h2 className='text-xl font-semibold text-foreground'>
+                {editingBranch ? 'Edit Branch' : 'Add New Branch'}
+              </h2>
+              <p className='text-sm text-foreground/60'>
+                {editingBranch ? 'Update the details for this branch.' : 'Create a new church branch entry.'}
+              </p>
             </div>
-            <div className='flex gap-2'>
-              <Button onClick={handleSaveBranch}>
-                {editingBranch ? 'Update Branch' : 'Add Branch'}
+            {editingBranch && (
+              <Button variant="outline" onClick={handleAddNewBranch}>
+                <Plus className='w-4 h-4 mr-2' />
+                New Branch
               </Button>
+            )}
+          </div>
+
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <div>
+              <Label htmlFor='region'>Region</Label>
+              <Select
+                value={formData.region}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}
+              >
+                <SelectTrigger className="w-full rounded-xl border-border bg-background px-4 py-3">
+                  <SelectValue placeholder='Select region' />
+                </SelectTrigger>
+                <SelectContent>
+                  {regions.map((region) => (
+                    <SelectItem key={region.id} value={region.id}>
+                      {region.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor='name'>Branch Name</Label>
+              <Input
+                id='name'
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder='e.g., PICC Headquarters'
+                className="rounded-xl border-border bg-background px-4 py-3"
+              />
+            </div>
+            <div>
+              <Label htmlFor='pastor'>Pastor</Label>
+              <Input
+                id='pastor'
+                value={formData.pastor}
+                onChange={(e) => setFormData(prev => ({ ...prev, pastor: e.target.value }))}
+                placeholder='e.g., Apostle Grace Malenga'
+                className="rounded-xl border-border bg-background px-4 py-3"
+              />
+            </div>
+            <div>
+              <Label htmlFor='location'>Location</Label>
+              <Input
+                id='location'
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                placeholder='e.g., Area 49, New Gulliver'
+                className="rounded-xl border-border bg-background px-4 py-3"
+              />
+            </div>
+            <div>
+              <Label htmlFor='phone'>Phone</Label>
+              <Input
+                id='phone'
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder='e.g., +265 992 433 333'
+                className="rounded-xl border-border bg-background px-4 py-3"
+              />
+            </div>
+            <div>
+              <Label htmlFor='email'>Email</Label>
+              <Input
+                id='email'
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder='e.g., apostle@picc.org.mw'
+                className="rounded-xl border-border bg-background px-4 py-3"
+              />
+            </div>
+          </div>
+          <div className='flex flex-wrap items-center gap-3'>
+            <Button onClick={handleSaveBranch}>
+              {editingBranch ? 'Update Branch' : 'Add Branch'}
+            </Button>
+            {editingBranch && (
+              <Button
+                variant='destructive'
+                onClick={() => setDeleteConfirm(editingBranch.id)}
+              >
+                Delete
+              </Button>
+            )}
+            {(editingBranch || isAddingNew) && (
               <Button variant='outline' onClick={handleCancelEdit}>
                 Cancel
               </Button>
-            </div>
-          </Card>
-        )}
+            )}
+          </div>
+        </div>
 
-        {/* Branches List */}
-        <div className='space-y-4'>
+        {/* Right Side: Searchable List */}
+        <div className='rounded-2xl border border-border/60 bg-card p-6 shadow-sm'>
+          <h2 className='text-lg font-semibold text-foreground mb-4'>
+            Church Branches
+          </h2>
+
+          <div className="mb-4">
+            <input
+              type="search"
+              value={locationSearch}
+              onChange={(e) => setLocationSearch(e.target.value)}
+              placeholder="Search by name, region or pastor..."
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-foreground/40 outline-none focus:ring-2 focus:ring-primary/20 transition"
+            />
+          </div>
+
           {branches.length === 0 ? (
             <p className='text-sm text-foreground/60'>No branches yet.</p>
-          ) : (
-            branches.map((branch) => (
-              <Card key={branch.id} className='p-4'>
-                <div className='flex items-center justify-between'>
-                  <div className='flex-1'>
-                    <h4 className='font-semibold'>{branch.name}</h4>
-                    <p className='text-sm text-foreground/70'>
-                      Region: {regions.find(r => r.id === branch.region)?.label || branch.region}
+          ) : (() => {
+            const query = locationSearch.trim().toLowerCase();
+            const filtered = query
+              ? branches.filter(
+                  (b) =>
+                    b.name.toLowerCase().includes(query) ||
+                    b.pastor.toLowerCase().includes(query) ||
+                    (regions.find(r => r.id === b.region)?.label || '').toLowerCase().includes(query)
+                )
+              : branches;
+
+            return filtered.length === 0 ? (
+              <p className="text-sm text-foreground/60">No branches match your search.</p>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                {filtered.map((branch) => (
+                  <button
+                    key={branch.id}
+                    type="button"
+                    onClick={() => handleEditBranch(branch)}
+                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                      editingBranch?.id === branch.id
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : 'border-border/60 bg-background hover:border-primary/60'
+                    }`}
+                  >
+                    <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                      {regions.find(r => r.id === branch.region)?.label || branch.region}
                     </p>
-                    <p className='text-sm text-foreground/70'>Pastor: {branch.pastor}</p>
-                    <p className='text-sm text-foreground/70'>Location: {branch.location}</p>
-                    <p className='text-sm text-foreground/70'>Phone: {branch.phone}</p>
-                    <p className='text-sm text-foreground/70'>Email: {branch.email}</p>
-                  </div>
-                  <div className='flex gap-2'>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => handleEditBranch(branch)}
-                      disabled={isAddingNew || editingBranch !== null}
-                    >
-                      <Edit className='w-4 h-4' />
-                    </Button>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => setDeleteConfirm(branch.id)}
-                      disabled={isAddingNew || editingBranch !== null}
-                    >
-                      <Trash2 className='w-4 h-4' />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))
-          )}
+                    <p className="text-sm font-semibold text-foreground mt-1">
+                      {branch.name}
+                    </p>
+                    <p className="text-xs text-foreground/60 mt-0.5">
+                      {branch.pastor}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
