@@ -18,37 +18,6 @@ type Props = {
   fallbackSubtitle: string;
 };
 
-type YouTubePlayerState = {
-  PLAYING: number;
-  PAUSED: number;
-  ENDED: number;
-};
-
-type YouTubePlayer = {
-  destroy: () => void;
-};
-
-type YouTubeNamespace = {
-  Player: new (
-    element: HTMLElement,
-    options: {
-      videoId: string;
-      playerVars?: Record<string, string | number>;
-      events?: {
-        onStateChange?: (event: { data: number }) => void;
-      };
-    },
-  ) => YouTubePlayer;
-  PlayerState: YouTubePlayerState;
-};
-
-declare global {
-  interface Window {
-    YT?: YouTubeNamespace;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
 const getYouTubeVideoId = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return '';

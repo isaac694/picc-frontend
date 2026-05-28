@@ -29,16 +29,8 @@ type YouTubePlayer = {
 
 type YouTubeStateChangeEvent = {
   data: number;
-  target: YouTubePlayer;
+  target?: YouTubePlayer;
 };
-
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    YT: any;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
 
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
 
@@ -502,7 +494,7 @@ export default function IcdMinistryPage() {
 
   useEffect(() => {
     if (!ytReady || typeof window === "undefined" || !window.YT?.Player) return;
-    const youtube = window.YT;
+    const youtube = window.YT as YouTubeNamespace;
     const players = playersRef.current;
     const iframes = Array.from(document.querySelectorAll<HTMLIFrameElement>("[data-yt-id]"));
 
@@ -512,14 +504,14 @@ export default function IcdMinistryPage() {
       const player = new youtube.Player(iframe, {
         events: {
           onStateChange: (event: YouTubeStateChangeEvent) => {
-            if (event.data === youtube.PlayerState.PLAYING) {
+            if (event.data === youtube.PlayerState.PLAYING && event.target) {
               players.forEach((p) => {
                 if (p !== event.target) p.pauseVideo();
               });
             }
           },
         },
-      });
+      }) as YouTubePlayer;
       players.set(videoId, player);
     });
   }, [ytReady, activeTool]);
@@ -861,7 +853,7 @@ export default function IcdMinistryPage() {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming & Past Events</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Events</h2>
                   <p className="text-black/60 max-w-xl">A record of our commitment to continuous spiritual and leadership development.</p>
                 </div>
               </div>

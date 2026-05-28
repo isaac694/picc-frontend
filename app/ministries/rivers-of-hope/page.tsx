@@ -23,13 +23,6 @@ import GiveTool from '@/components/livestream/GiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
 
 // --- TYPES & GLOBALS ---
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
 
 type YouTubeVideo = {

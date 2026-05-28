@@ -23,13 +23,6 @@ import GiveTool from '@/components/livestream/GiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
 
 // --- TYPES & GLOBALS ---
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
 
 type YouTubeVideo = {
@@ -530,14 +523,16 @@ export default function WomenOfHopePage() {
     if (!ytReady || typeof window === "undefined" || !window.YT?.Player) return;
     const players = playersRef.current;
     const iframes = Array.from(document.querySelectorAll<HTMLIFrameElement>("[data-yt-id]"));
+    const YT = window.YT;
 
     iframes.forEach((iframe) => {
       const videoId = iframe.dataset.ytId;
       if (!videoId || players.has(videoId)) return;
-      const player = new window.YT.Player(iframe, {
+      const player = new YT.Player(iframe, {
+        videoId,
         events: {
-          onStateChange: (event: any) => {
-            if (event.data === window.YT.PlayerState.PLAYING) {
+          onStateChange: (event: YouTubeStateChangeEvent) => {
+            if (event.data === YT.PlayerState.PLAYING) {
               players.forEach((p) => {
                 if (p !== event.target) p.pauseVideo();
               });

@@ -30,14 +30,6 @@ type YouTubeStateChangeEvent = {
   target: YouTubePlayer;
 };
 
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    YT: any;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
 
 type YouTubeVideo = {
@@ -200,7 +192,7 @@ const eventsList = [
     date: 'Every Sunday | 1:30 PM - 3:30 PM',
     location: 'The Camp of God Cathedral, Area 49 Lilongwe',
     description: 'Join us every Sunday for high-energy worship, creative expressions, and transparent conversations about the issues young people face. Bring a friend!',
-    image: '/images/youth-church/img-1.jpg',
+    image: '/ministries/youth-church/img-1.jpg',
   },
   {
     id: 2,
@@ -209,7 +201,7 @@ const eventsList = [
     date: 'August 28 - 30, 2026',
     location: 'Lake Malawi',
     description: 'Our annual Youth Church Lake Retreat is back! Three days of disconnecting from the noise, encountering God, and building lifelong friendships on the shores of Lake Malawi. Registration details are available on our WhatsApp channels.',
-    image: '/images/youth-church/img-7.jpg',
+    image: '/ministries/youth-church/img-7.jpg',
   },
   {
     id: 3,
@@ -236,7 +228,7 @@ const eventsList = [
     date: 'September 12, 2026',
     location: 'Cathedral Hall',
     description: 'An elegant afternoon dedicated to mentoring young women. We will be discussing grace, purity, and purpose over tea and pastries.',
-    image: '/images/youth-church/img-2.jpg',
+    image: '/ministries/youth-church/img-2.jpg',
   },
 ];
 
@@ -251,12 +243,12 @@ const defaultEventItems: MinistryItem[] = eventsList.map((event, index) => ({
 }));
 
 const highlightGallery = [
-  { id: 1, src: '/images/youth-church/img-1.jpg', caption: 'High-energy worship and sincere devotion.' },
-  { id: 2, src: '/images/youth-church/img-2.jpg', caption: 'Hope and Beauty: Sisterhood in action.' },
-  { id: 3, src: '/images/youth-church/img-3.jpg', caption: 'Called to Greatness: Building future leaders.' },
-  { id: 4, src: '/images/youth-church/img-4.jpg', caption: 'Teens Ministry: Navigating life with faith.' },
-  { id: 5, src: '/images/youth-church/img-5.jpg', caption: 'Heritage Ministry: Laying the early foundations.' },
-  { id: 6, src: '/images/youth-church/img-6.jpg', caption: 'Growing in Christ and community together.' },
+  { id: 1, src: '/ministries/youth-church/img-1.jpg', caption: 'High-energy worship and sincere devotion.' },
+  { id: 2, src: '/ministries/youth-church/img-2.jpg', caption: 'Hope and Beauty: Sisterhood in action.' },
+  { id: 3, src: '/ministries/youth-church/img-3.jpg', caption: 'Called to Greatness: Building future leaders.' },
+  { id: 4, src: '/ministries/youth-church/img-4.jpg', caption: 'Teens Ministry: Navigating life with faith.' },
+  { id: 5, src: '/ministries/youth-church/img-5.jpg', caption: 'Heritage Ministry: Laying the early foundations.' },
+  { id: 6, src: '/ministries/youth-church/img-6.jpg', caption: 'Growing in Christ and community together.' },
 ];
 
 const defaultYouthLifeItems: MinistryItem[] = highlightGallery.map((item, index) => ({
@@ -270,11 +262,11 @@ const defaultYouthLifeItems: MinistryItem[] = highlightGallery.map((item, index)
 }));
 
 const ministryProjects = [
-  { id: 1, type: 'Campus Outreach', title: 'University Mentorship Program', status: 'Ongoing', image: '/images/youth-church/img-4.jpg' },
-  { id: 2, type: 'Teens Initiative', title: 'High School Faith Clubs', status: 'Active', image: '/images/youth-church/img-3.jpg' },
-  { id: 3, type: 'CTG Project', title: 'Young Men’s Leadership Workshop', status: 'Active', image: '/images/youth-church/img-1.jpg' },
-  { id: 4, type: 'Hope & Beauty', title: 'Purity & Purpose Seminar', status: 'Upcoming', image: '/images/youth-church/img-2.jpg' },
-  { id: 5, type: 'Heritage', title: 'Vacation Bible School', status: 'August 2026', image: '/images/youth-church/img-6.jpg' },
+  { id: 1, type: 'Campus Outreach', title: 'University Mentorship Program', status: 'Ongoing', image: '/ministries/youth-church/img-4.jpg' },
+  { id: 2, type: 'Teens Initiative', title: 'High School Faith Clubs', status: 'Active', image: '/ministries/youth-church/img-3.jpg' },
+  { id: 3, type: 'CTG Project', title: 'Young Men’s Leadership Workshop', status: 'Active', image: '/ministries/youth-church/img-1.jpg' },
+  { id: 4, type: 'Hope & Beauty', title: 'Purity & Purpose Seminar', status: 'Upcoming', image: '/ministries/youth-church/img-2.jpg' },
+  { id: 5, type: 'Heritage', title: 'Vacation Bible School', status: 'August 2026', image: '/ministries/youth-church/img-6.jpg' },
 ];
 
 const defaultInitiativeItems: MinistryItem[] = ministryProjects.map((project, index) => ({
@@ -415,7 +407,7 @@ export default function YouthChurchMinistryPage() {
     date: 'Every Sunday | 1:30 PM - 3:30 PM',
     location: 'The Camp of God Cathedral, Area 49 Lilongwe',
     description: 'Join us every Sunday for worship, word, and community.',
-    image: '/images/youth-church/img-1.jpg',
+    image: '/ministries/youth-church/img-1.jpg',
   };
   const safeFeaturedEventIndex = eventItems.length ? featuredEventIndex % eventItems.length : 0;
   const featuredGridEvent = eventItems[safeFeaturedEventIndex] || fallbackGridEvent;

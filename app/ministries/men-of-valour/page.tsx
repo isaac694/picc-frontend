@@ -846,7 +846,7 @@ export default function MenOfValourPage() {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming & Past Events</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Events</h2>
                   <p className="text-black/60 max-w-xl">Highlights from our recent gatherings, conferences, and community outreach programs.</p>
                 </div>
               </div>

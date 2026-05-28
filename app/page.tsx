@@ -185,7 +185,7 @@ async function getDailyDevotion() {
 async function getDailyConfession() {
   try {
     const response = await apiFetch('/api/confessions/latest', {
-      next: { revalidate: 300 },
+      cache: 'no-store',
     });
 
     if (!response.ok) {
