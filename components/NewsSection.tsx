@@ -16,12 +16,14 @@ export default function NewsSection({
   description,
   items,
   backgroundClassName = 'bg-[#eef4fb]',
+  maxItems = 6,
 }: {
   kicker?: string;
   title?: string;
   description?: string;
   items: NewsSectionItem[];
   backgroundClassName?: string;
+  maxItems?: number;
 }) {
   return (
     <section className={`py-16 sm:py-20 md:py-24 ${backgroundClassName}`}>
@@ -38,7 +40,7 @@ export default function NewsSection({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10 px-4 sm:px-6 lg:px-10">
-          {items.slice(0, 6).map((item, index) => (
+          {items.slice(0, maxItems).map((item, index) => (
             <div
               key={`${item.title}-${item.date}-${index}`}
               className="rounded-3xl border border-primary/10 bg-white/90 shadow-sm overflow-hidden"

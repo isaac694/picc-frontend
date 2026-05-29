@@ -30,6 +30,7 @@ interface Event {
   acceptsOnlinePayment: boolean;
   paymentAmount: number | null;
   paymentCurrency: string;
+  paymentAccount?: string | null;
   imageUrl?: string | null;
   scope?: string | null;
 }
@@ -288,6 +289,7 @@ export default function EventsListSection({
                     ? Number(event.paymentAmount)
                     : null,
               paymentCurrency: typeof event.paymentCurrency === 'string' ? event.paymentCurrency : 'MWK',
+              paymentAccount: typeof event.paymentAccount === 'string' ? event.paymentAccount : null,
               imageUrl: typeof event.imageUrl === 'string' ? event.imageUrl : null,
               scope: typeof event.scope === 'string' ? event.scope : null,
             }))
@@ -507,6 +509,7 @@ export default function EventsListSection({
     const amount = Number(paymentEvent.paymentAmount || 0);
     const currency = paymentEvent.paymentCurrency || 'MWK';
     const reason = `Event: ${paymentEvent.title}`;
+    const paymentAccount = paymentEvent.paymentAccount || (paymentEvent.scope === 'youth-church' ? 'youth' : 'main');
 
     setPaymentSubmitting(true);
     try {
@@ -523,6 +526,7 @@ export default function EventsListSection({
           paymentMethod: paymentForm.paymentMethod,
           givingType: 'Event Payment',
           reason,
+          paymentAccount,
         }),
       });
       const givingData = await givingResponse.json().catch(() => null);
@@ -530,7 +534,7 @@ export default function EventsListSection({
         throw new Error(givingData?.error || 'Failed to save payment record.');
       }
 
-      const paymentResponse = await apiFetch('/api/paychangu/initialize', {
+      const paymentResponse = await fetch('/api/paychangu/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -543,6 +547,7 @@ export default function EventsListSection({
           paymentMethod: paymentForm.paymentMethod,
           reason,
           givingId: givingData.id,
+          account: paymentAccount,
         }),
       });
       const paymentData = await paymentResponse.json().catch(() => null);

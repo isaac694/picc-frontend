@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, type SyntheticEvent } from 'react';
+import { useState, useEffect, useRef, type SyntheticEvent, type FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
@@ -11,7 +11,7 @@ import {
   ChevronLeft, ChevronRight, Waves, MapPin, 
   Phone, Mail, CalendarClock, BookOpen, Globe, 
   Target, MessageCircle, BookOpenText, MessageSquareText, StickyNote,
-  Heart, Briefcase, Users
+  Heart, Briefcase, Users, Search, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -80,6 +80,14 @@ type MinistryItem = {
   label: string | null;
   imageUrl: string | null;
   sortOrder: number;
+};
+
+type EventCard = {
+  id: string;
+  title: string;
+  date: string;
+  description: string;
+  image: string;
 };
 
 const toAssetUrl = (value: string | null | undefined) => {
@@ -307,8 +315,11 @@ const defaultEvents: MinistryItem[] = [
 
 export default function WomenOfHopePage() {
   // --- STATE ---
-  const [currentSlide, setCurrentSlide] = useState(0);
   const [activeGalleryId, setActiveGalleryId] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventCard | null>(null);
+  const [featuredEventIndex, setFeaturedEventIndex] = useState(0);
+  const [eventSearchInput, setEventSearchInput] = useState('');
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
 
   // --- LIVESTREAM STATE ---
   const [ytReady, setYtReady] = useState(false);
@@ -321,7 +332,7 @@ export default function WomenOfHopePage() {
   const playersRef = useRef<Map<string, any>>(new Map());
 
   // --- LIVESTREAM CONSTANTS ---
-  const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
+  const CHANNEL_ID = "UC8JUC-G4wKhrrPr7xjxYWJw";
   const FALLBACK_HERO_ID = "ydTADwZRquA";
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 
@@ -357,6 +368,55 @@ export default function WomenOfHopePage() {
     description: item.description || '',
     image: toAssetUrl(item.imageUrl) || '/hero/hero-store.jpg',
   }));
+
+  const normalizeSearchText = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+  const formatSearchDate = (value: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
+  const normalizedEventSearchQuery = normalizeSearchText(eventSearchQuery);
+  const normalizedFormattedSearchDate = normalizeSearchText(formatSearchDate(eventSearchQuery));
+
+  const displayedEventItems = normalizedEventSearchQuery
+    ? eventCards.filter((event) => {
+        const searchableText = normalizeSearchText(`${event.title} ${event.date} ${event.description}`);
+        return (
+          searchableText.includes(normalizedEventSearchQuery) ||
+          (normalizedFormattedSearchDate && searchableText.includes(normalizedFormattedSearchDate))
+        );
+      })
+    : eventCards;
+
+  const safeFeaturedEventIndex = displayedEventItems.length ? featuredEventIndex % displayedEventItems.length : 0;
+  const featuredGridEvent = displayedEventItems[safeFeaturedEventIndex] || eventCards[0];
+  const remainingEvents = displayedEventItems.filter((_, idx) => idx !== safeFeaturedEventIndex);
+
+  useEffect(() => {
+    if (!displayedEventItems.length) return;
+    const timer = setInterval(() => {
+      setFeaturedEventIndex((prev) => (prev + 1) % displayedEventItems.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [displayedEventItems.length]);
+
+  useEffect(() => {
+    setFeaturedEventIndex(0);
+  }, [eventSearchQuery]);
+
+  const handleEventSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setEventSearchQuery(eventSearchInput.trim());
+  };
+
+  const clearEventSearch = () => {
+    setEventSearchInput('');
+    setEventSearchQuery('');
+  };
 
   const fallbackHeroId = videoIdFromUrl(ministryInfo.liveSessionYoutubeUrl) || FALLBACK_HERO_ID;
 
@@ -404,14 +464,16 @@ export default function WomenOfHopePage() {
 
   // --- EFFECTS ---
   useEffect(() => {
+    if (!displayedEventItems.length) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % eventCards.length);
+      setFeaturedEventIndex((prev) => (prev + 1) % displayedEventItems.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [eventCards.length]);
+  }, [displayedEventItems.length]);
 
-  const nextSlide = () => setCurrentSlide((prev) => (eventCards.length ? (prev + 1) % eventCards.length : 0));
-  const prevSlide = () => setCurrentSlide((prev) => (eventCards.length ? (prev === 0 ? eventCards.length - 1 : prev - 1) : 0));
+  useEffect(() => {
+    setFeaturedEventIndex(0);
+  }, [eventSearchQuery]);
 
   useEffect(() => {
     let isMounted = true;
@@ -586,7 +648,63 @@ export default function WomenOfHopePage() {
   return (
     <>
       <Navigation />
-      
+
+      <AnimatePresence>
+        {selectedEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setSelectedEvent(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white text-black w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="relative w-full md:w-1/2 h-64 md:h-[500px] bg-slate-100">
+                <Image
+                  src={selectedEvent.image}
+                  alt={selectedEvent.title}
+                  fill
+                  className="object-cover"
+                  onError={(e: any) => (e.target.src = '/hero/hero-store.jpg')}
+                />
+              </div>
+
+              <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col justify-center bg-gray-50">
+                <span className="text-sm font-bold text-[#029EFB] uppercase tracking-wider mb-2">
+                  Women of Hope Event
+                </span>
+                <h3 className="text-3xl font-black text-gray-900 mb-4 leading-tight">
+                  {selectedEvent.title}
+                </h3>
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-start gap-3">
+                    <CalendarClock className="w-5 h-5 text-gray-400 mt-0.5" />
+                    <p className="text-gray-700 font-medium">{selectedEvent.date}</p>
+                  </div>
+                </div>
+                <div className="w-12 h-1 bg-gray-200 rounded-full mb-6" />
+                <p className="text-gray-600 leading-relaxed mb-8">
+                  {selectedEvent.description}
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <main className="min-h-screen">
         
         {/* 1. HERO SECTION */}
@@ -883,69 +1001,115 @@ export default function WomenOfHopePage() {
                   <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming & Past Events</h2>
                   <p className="text-black/60 max-w-xl">Highlights from our recent gatherings, conferences, and community outreach programs.</p>
                 </div>
-              </div>
-
-              <div className="bg-[#029EFB] text-white rounded-2xl p-8 mb-12 flex flex-col md:flex-row items-center justify-between shadow-xl">
-                <div className="flex items-center gap-4 mb-6 md:mb-0">
-                  <div className="p-4 bg-white/20 rounded-full">
-                    <Users className="w-10 h-10 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold">Women of Hope Services</h3>
-                    <p className="text-white/80 mt-1">Scheduled empowerment meetings and services.</p>
-                  </div>
-                </div>
-                <div className="text-center md:text-right">
-                  <p className="text-white/80 text-sm mt-1">Check local branch for specific timings</p>
-                </div>
-              </div>
-
-              <div className="relative w-full max-w-4xl mx-auto">
-                <div className="relative h-[450px] sm:h-[400px] w-full">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={currentSlide}
-                      initial={{ opacity: 0, x: 50 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -50 }}
-                      transition={{ duration: 0.5, ease: "easeInOut" }}
-                      className="absolute inset-0"
+                <div className="flex flex-col items-start gap-2 md:items-end">
+                  <form onSubmit={handleEventSearch} className="flex w-full items-center gap-2 sm:w-auto">
+                    <input
+                      type="search"
+                      value={eventSearchInput}
+                      onChange={(event) => setEventSearchInput(event.target.value)}
+                      placeholder="March 28, 2026"
+                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#029EFB] focus:ring-2 focus:ring-[#029EFB]/15 sm:w-48"
+                      aria-label="Search women of hope events by date"
+                    />
+                    <button
+                      type="submit"
+                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#029EFB] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#1E3A5F] focus:outline-none focus:ring-2 focus:ring-[#029EFB]/30"
                     >
-                      <Card className="flex flex-col sm:flex-row h-full overflow-hidden border border-black/10 shadow-lg bg-white">
-                        <div className="relative w-full sm:w-1/2 h-48 sm:h-full bg-sky-50 flex-shrink-0">
-                          <Image 
-                            src={eventCards[currentSlide]?.image || eventCards[0]?.image} 
-                            alt={eventCards[currentSlide]?.title || eventCards[0]?.title || 'Event Image'} 
-                            fill 
-                            className="object-cover"
-                            onError={(e: any) => e.target.src = '/hero/hero-store.jpg'}
-                          />
-                        </div>
-                        <div className="p-8 sm:p-10 flex flex-col justify-center w-full sm:w-1/2">
-                          <div className="flex items-center gap-2 text-[#029EFB] font-semibold text-sm mb-4 bg-sky-50 w-fit px-3 py-1 rounded-full">
-                            <CalendarClock className="w-4 h-4" />
-                            <span>{eventCards[currentSlide]?.date || eventCards[0]?.date || 'TBA'}</span>
-                          </div>
-                          <h3 className="text-2xl sm:text-3xl font-bold mb-4 leading-tight">
-                            {eventCards[currentSlide]?.title || eventCards[0]?.title || 'Upcoming Event'}
+                      <Search className="h-3.5 w-3.5" />
+                      Search
+                    </button>
+                  </form>
+                  {eventSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={clearEventSearch}
+                      className="text-xs font-semibold text-[#029EFB] hover:text-[#1E3A5F]"
+                    >
+                      Clear search
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {displayedEventItems.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvent(featuredGridEvent)}
+                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#029EFB]"
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={featuredGridEvent.id}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.5 }}
+                        className="absolute inset-0"
+                      >
+                        <Image
+                          src={featuredGridEvent.image}
+                          alt={featuredGridEvent.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-700"
+                          onError={(e: any) => (e.target.src = '/hero/hero-store.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
+                          <span className="bg-[#029EFB] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
+                            Women of Hope Event
+                          </span>
+                          <h3 className="text-white text-3xl md:text-4xl font-bold mb-2 group-hover:underline decoration-2 underline-offset-4">
+                            {featuredGridEvent.title}
                           </h3>
-                          <p className="text-black/60 leading-relaxed">
-                            {eventCards[currentSlide]?.description || eventCards[0]?.description || 'Stay tuned for upcoming details.'}
+                          <p className="text-white/90 text-sm md:text-base font-medium flex items-center gap-2 mb-1">
+                            <CalendarClock className="w-4 h-4" /> {featuredGridEvent.date}
+                          </p>
+                          <p className="text-white/70 text-sm">
+                            {featuredGridEvent.description}
                           </p>
                         </div>
-                      </Card>
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-                <div className="flex items-center justify-center gap-6 mt-8">
-                  <button onClick={prevSlide} className="p-2 rounded-full bg-white shadow hover:bg-sky-50 border border-black/5">
-                    <ChevronLeft className="w-5 h-5" />
+                      </motion.div>
+                    </AnimatePresence>
+                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Click for Details
+                    </div>
                   </button>
-                  <button onClick={nextSlide} className="p-2 rounded-full bg-white shadow hover:bg-sky-50 border border-black/5">
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
+
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#029EFB]/30">
+                    {remainingEvents.map((event) => (
+                      <button
+                        key={event.id}
+                        type="button"
+                        onClick={() => setSelectedEvent(event)}
+                        className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#029EFB] sm:w-72 lg:h-[113px] lg:w-full"
+                      >
+                        <Image
+                          src={event.image}
+                          alt={event.title}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={(e: any) => (e.target.src = '/hero/hero-store.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
+                          <span className="text-sky-300 text-[10px] font-bold uppercase tracking-wider mb-1">
+                            Women of Hope Event
+                          </span>
+                          <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">
+                            {event.title}
+                          </h4>
+                          <p className="text-white/60 text-[10px] truncate">
+                            {event.date}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#029EFB]/25 bg-white p-8 text-center text-sm text-black/55">
+                  No Women of Hope events found for this date search.
+                </div>
+              )}
             </div>
           </section>
         )}

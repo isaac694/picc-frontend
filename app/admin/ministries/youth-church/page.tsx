@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import SiteNewsManager from '@/components/admin/SiteNewsManager';
+import { YOUTH_CHURCH_NEWS_ITEMS, YOUTH_CHURCH_NEWS_KEY } from '@/components/youthChurchNews';
 import {
   MinistryInfoManager,
   MinistryItemsManager,
@@ -11,7 +13,7 @@ import {
   type MinistryItem,
 } from '@/components/admin/MinistryContentManagers';
 
-type Tab = 'info' | 'arms' | 'youth-life' | 'initiatives' | 'events';
+type Tab = 'info' | 'arms' | 'youth-life' | 'initiatives' | 'events' | 'news';
 
 const youthChurchFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'Youth Church',
@@ -25,7 +27,7 @@ const youthChurchFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   partnershipBody:
     'Equipping the next generation requires resources, dedicated mentors, and community support. You can partner with the Youth Church to fund our outreach programs, retreats, and mentorship camps.\n\nWhether you are investing in the Heritage Kids, Teens, Hope & Beauty, or CTG, your support helps us build strong foundations for tomorrow\'s leaders.',
   partnershipDetails: [],
-  partnershipImageUrl: '/hero/hero-store.jpg',
+  partnershipImageUrl: '/ministries/youth-church/partner.jpg',
   phone: 'Check with your local PICC branch for youth pastor contacts.',
   email: 'info@picc.org',
   location: 'PICC Youth Church\nCamp of God Cathedral',
@@ -142,6 +144,7 @@ export default function YouthChurchAdminPage() {
     { id: 'youth-life', label: 'Youth Life' },
     { id: 'initiatives', label: 'Initiatives' },
     { id: 'events', label: 'Events' },
+    { id: 'news', label: 'News' },
   ];
 
   return (
@@ -236,6 +239,18 @@ export default function YouthChurchAdminPage() {
           description="Manage upcoming and past Youth Church events."
           fallbackItems={events}
           labels={{ title: 'Event Title', description: 'Event Description', label: 'Date / Time', image: 'Event Picture', save: 'Save Event' }}
+          showPaymentFields
+          defaultPaymentAccount="youth"
+        />
+      )}
+
+      {activeTab === 'news' && (
+        <SiteNewsManager
+          token={token}
+          contentKey={YOUTH_CHURCH_NEWS_KEY}
+          title="Youth Church News"
+          description="Manage the Latest News section shown on the public Youth Church page."
+          fallbackItems={YOUTH_CHURCH_NEWS_ITEMS}
         />
       )}
     </div>

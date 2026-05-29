@@ -41,6 +41,10 @@ export type MinistryItem = {
   imageUrl: string | null;
   sortOrder: number;
   isPublished: boolean;
+  acceptsOnlinePayment?: boolean;
+  paymentAmount?: number | null;
+  paymentCurrency?: string | null;
+  paymentAccount?: string | null;
   createdAt: string;
   isFallback?: boolean;
 };
@@ -54,6 +58,10 @@ type MinistryItemDraft = {
   imageUrl: string;
   sortOrder: string;
   isPublished: boolean;
+  acceptsOnlinePayment: boolean;
+  paymentAmount: string;
+  paymentCurrency: string;
+  paymentAccount: string;
 };
 
 const toInput = (value: string | null | undefined) => value || '';
@@ -526,6 +534,8 @@ export function MinistryItemsManager({
   showLabel = true,
   showSortOrder = true,
   showImage = true,
+  showPaymentFields = false,
+  defaultPaymentAccount = 'main',
 }: {
   token: string;
   ministryKey: string;
@@ -544,10 +554,23 @@ export function MinistryItemsManager({
   showLabel?: boolean;
   showSortOrder?: boolean;
   showImage?: boolean;
+  showPaymentFields?: boolean;
+  defaultPaymentAccount?: 'main' | 'youth';
 }) {
   const [items, setItems] = useState<MinistryItem[]>([]);
   const [editingItem, setEditingItem] = useState<MinistryItem | null>(null);
-  const [draft, setDraft] = useState<MinistryItemDraft>({ title: '', description: '', label: '', imageUrl: '', sortOrder: '0', isPublished: true });
+  const [draft, setDraft] = useState<MinistryItemDraft>({
+    title: '',
+    description: '',
+    label: '',
+    imageUrl: '',
+    sortOrder: '0',
+    isPublished: true,
+    acceptsOnlinePayment: false,
+    paymentAmount: '',
+    paymentCurrency: 'MWK',
+    paymentAccount: defaultPaymentAccount,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
@@ -565,10 +588,14 @@ export function MinistryItemsManager({
         imageUrl: item.imageUrl ?? null,
         sortOrder: item.sortOrder ?? index,
         isPublished: item.isPublished ?? true,
+        acceptsOnlinePayment: item.acceptsOnlinePayment ?? false,
+        paymentAmount: item.paymentAmount ?? null,
+        paymentCurrency: item.paymentCurrency ?? 'MWK',
+        paymentAccount: item.paymentAccount ?? defaultPaymentAccount,
         createdAt: new Date().toISOString(),
         isFallback: true,
       })),
-    [category, fallbackItems, ministryKey],
+    [category, defaultPaymentAccount, fallbackItems, ministryKey],
   );
 
   const refresh = async () => {
@@ -608,17 +635,41 @@ export function MinistryItemsManager({
       imageUrl: item.imageUrl || '',
       sortOrder: String(item.sortOrder ?? 0),
       isPublished: item.isPublished,
+      acceptsOnlinePayment: Boolean(item.acceptsOnlinePayment),
+      paymentAmount:
+        typeof item.paymentAmount === 'number'
+          ? String(item.paymentAmount)
+          : item.paymentAmount
+            ? String(item.paymentAmount)
+            : '',
+      paymentCurrency: item.paymentCurrency || 'MWK',
+      paymentAccount: item.paymentAccount || defaultPaymentAccount,
     });
   };
 
   const addNew = () => {
     setEditingItem(null);
-    setDraft({ title: '', description: '', label: '', imageUrl: '', sortOrder: String(items.length), isPublished: true });
+    setDraft({
+      title: '',
+      description: '',
+      label: '',
+      imageUrl: '',
+      sortOrder: String(items.length),
+      isPublished: true,
+      acceptsOnlinePayment: false,
+      paymentAmount: '',
+      paymentCurrency: 'MWK',
+      paymentAccount: defaultPaymentAccount,
+    });
   };
 
   const save = async () => {
     if (!draft.title.trim()) {
       setStatus('Please enter a title.');
+      return;
+    }
+    if (showPaymentFields && draft.acceptsOnlinePayment && (!Number(draft.paymentAmount) || Number(draft.paymentAmount) <= 0)) {
+      setStatus('Please enter the event payment amount.');
       return;
     }
 
@@ -642,6 +693,10 @@ export function MinistryItemsManager({
           imageUrl: draft.imageUrl.trim() || null,
           sortOrder,
           isPublished: draft.isPublished,
+          acceptsOnlinePayment: showPaymentFields ? draft.acceptsOnlinePayment : undefined,
+          paymentAmount: showPaymentFields && draft.acceptsOnlinePayment ? Number(draft.paymentAmount) : null,
+          paymentCurrency: showPaymentFields && draft.acceptsOnlinePayment ? draft.paymentCurrency : 'MWK',
+          paymentAccount: showPaymentFields && draft.acceptsOnlinePayment ? draft.paymentAccount : defaultPaymentAccount,
         }),
       });
 
@@ -807,6 +862,47 @@ export function MinistryItemsManager({
             Published
           </label>
 
+          {showPaymentFields && (
+            <div className="space-y-3 rounded-xl border border-border/60 bg-background/50 p-4">
+              <label className="flex items-center gap-3 text-sm font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  checked={draft.acceptsOnlinePayment}
+                  onChange={(event) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      acceptsOnlinePayment: event.target.checked,
+                      paymentAmount: event.target.checked ? prev.paymentAmount : '',
+                      paymentCurrency: event.target.checked ? prev.paymentCurrency : 'MWK',
+                      paymentAccount: event.target.checked ? prev.paymentAccount || defaultPaymentAccount : defaultPaymentAccount,
+                    }))
+                  }
+                />
+                Allow users to pay for this event on the website
+              </label>
+              {draft.acceptsOnlinePayment && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr]">
+                  <select
+                    value={draft.paymentCurrency}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, paymentCurrency: event.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                    aria-label="Event payment currency"
+                  >
+                    <option value="MWK">MWK</option>
+                    <option value="USD">USD</option>
+                  </select>
+                  <Field
+                    label="Payment Amount"
+                    value={draft.paymentAmount}
+                    onChange={(value) => setDraft((prev) => ({ ...prev, paymentAmount: value }))}
+                    placeholder="Event payment amount"
+                    type="number"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3 border-t border-border/60 pt-4">
             <Button onClick={save} disabled={savingId !== null} className="gap-2">
               {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -840,6 +936,11 @@ export function MinistryItemsManager({
               </div>
               {item.label ? <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{item.label}</p> : null}
               {item.description ? <p className="mt-2 line-clamp-2 text-xs text-foreground/60">{item.description}</p> : null}
+              {item.acceptsOnlinePayment && item.paymentAmount ? (
+                <p className="mt-2 text-xs font-semibold text-primary">
+                  Online payment: {item.paymentCurrency || 'MWK'} {Number(item.paymentAmount).toLocaleString('en-US')}
+                </p>
+              ) : null}
               {item.isFallback ? <p className="mt-2 text-[10px] text-foreground/40">Fallback content ready to edit</p> : null}
             </button>
           ))}

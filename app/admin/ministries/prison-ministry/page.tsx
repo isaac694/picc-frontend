@@ -11,7 +11,7 @@ import {
   type MinistryItem,
 } from '@/components/admin/MinistryContentManagers';
 
-type Tab = 'info' | 'field' | 'outreaches';
+type Tab = 'info' | 'outreaches';
 
 const prisonFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'Prison Ministry',
@@ -30,15 +30,6 @@ const prisonFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   location: null,
   contactIntro: null,
 };
-
-const fieldPictures: Array<Partial<MinistryItem> & { title: string }> = [
-  { title: 'Field Picture 1', description: 'Ministry in the field', imageUrl: '/hero/prison-ministry-1.jpg' },
-  { title: 'Field Picture 2', description: 'Ministry in the field', imageUrl: '/moments/pm-1.jpg' },
-  { title: 'Field Picture 3', description: 'Ministry in the field', imageUrl: '/moments/pm-2.jpg' },
-  { title: 'Field Picture 4', description: 'Ministry in the field', imageUrl: '/moments/pm-3.jpg' },
-  { title: 'Field Picture 5', description: 'Ministry in the field', imageUrl: '/moments/pm-4.jpg' },
-  { title: 'Field Picture 6', description: 'Ministry in the field', imageUrl: '/moments/pm-5.jpg' },
-];
 
 const pastOutreaches: Array<Partial<MinistryItem> & { title: string }> = [
   {
@@ -89,7 +80,6 @@ export default function PrisonMinistryAdminPage() {
 
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: 'info', label: 'Page Info' },
-    { id: 'field', label: 'Ministry in the Field' },
     { id: 'outreaches', label: 'Past Outreaches' },
   ];
 
@@ -100,7 +90,7 @@ export default function PrisonMinistryAdminPage() {
           <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Admin</p>
           <h1 className="text-3xl font-semibold text-foreground md:text-5xl">Prison Ministry Admin</h1>
           <p className="mt-3 max-w-2xl text-foreground/70">
-            Manage Prison Ministry page content, logo, hero picture, field pictures, and past outreaches.
+            Manage Prison Ministry page content, logo, hero picture, and past outreaches.
           </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
@@ -135,20 +125,6 @@ export default function PrisonMinistryAdminPage() {
           visibleFields={['name', 'motto', 'about', 'logoImageUrl', 'heroImageUrl']}
           fieldLabels={{ about: 'Mandate', logoImageUrl: 'Logo', heroImageUrl: 'Hero Picture' }}
           showExtraSaveButtons={false}
-        />
-      )}
-
-      {activeTab === 'field' && (
-        <MinistryItemsManager
-          token={token}
-          ministryKey="prison-ministry"
-          category="field-picture"
-          title="Ministry in the Field Pictures"
-          description="Manage the pictures shown in the Ministry in the Field section."
-          fallbackItems={fieldPictures}
-          labels={{ title: 'Picture Title', description: 'Caption', image: 'Field Picture', save: 'Save', formTitle: 'Save Field Picture' }}
-          showLabel={false}
-          showSortOrder={false}
         />
       )}
 

@@ -65,28 +65,9 @@ const defaultInfo: MinistryInfo = {
   about: `The Prison Ministry is driven by the compassion of Christ for the forgotten and the marginalized. We believe that no life is beyond the reach of God's grace and that true restoration is possible for everyone.
 
 Our volunteers visit correctional facilities to provide spiritual guidance, counseling, and practical support. We are committed to walking with individuals during their incarceration and assisting them as they transition back into their families and communities.`,
-  heroImageUrl: '/hero/prison-ministry-1.jpg',
+  heroImageUrl: '/ministries/prison/header.jpg',
   logoImageUrl: '/logo.png',
 };
-
-const galleryImages = [
-  '/hero/prison-ministry-1.jpg',
-  '/moments/pm-1.jpg',
-  '/moments/pm-2.jpg',
-  '/moments/pm-3.jpg',
-  '/moments/pm-4.jpg',
-  '/moments/pm-5.jpg',
-];
-
-const defaultFieldPictures: MinistryItem[] = galleryImages.map((image, index) => ({
-  id: `default-field-picture-${index + 1}`,
-  category: 'field-picture',
-  title: `Field Picture ${index + 1}`,
-  description: 'Ministry in the field',
-  label: null,
-  imageUrl: image,
-  sortOrder: index,
-}));
 
 const pastEvents = [
   {
@@ -127,17 +108,10 @@ export default function PrisonMinistryPage() {
   const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
   const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
 
-  const itemGroups = {
-    fieldPictures: ministryItems.filter((item) => item.category === 'field-picture'),
-    outreaches: ministryItems.filter((item) => item.category === 'outreach'),
-  };
-  const fieldPictures = mergeItemsWithFallback(itemGroups.fieldPictures, defaultFieldPictures);
-  const galleryItems = fieldPictures.map((item, index) => ({
-    id: index + 1,
-    src: toAssetUrl(item.imageUrl) || galleryImages[index % galleryImages.length] || '/hero/hero-store.jpg',
-    caption: item.description || item.title,
-  }));
-  const outreachItems = mergeItemsWithFallback(itemGroups.outreaches, defaultOutreaches).map((item, index) => ({
+  const outreachItems = mergeItemsWithFallback(
+    ministryItems.filter((item) => item.category === 'outreach'),
+    defaultOutreaches,
+  ).map((item, index) => ({
     id: index + 1,
     title: item.title,
     date: item.label || 'Past Outreach',
@@ -197,7 +171,7 @@ export default function PrisonMinistryPage() {
         <section
           className="relative z-10 overflow-hidden rounded-b-[36px] bg-[#1E3A5F] pt-28 pb-20 text-white shadow-lg sm:pt-36 sm:pb-28 md:rounded-b-[48px]"
           style={{
-            backgroundImage: `linear-gradient(rgba(30,58,95,0.8), rgba(45,90,140,0.74)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/hero/prison-ministry-1.jpg'})`,
+            backgroundImage: `linear-gradient(rgba(30,58,95,0.8), rgba(45,90,140,0.74)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/ministries/prison/header.jpg'})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -240,32 +214,7 @@ export default function PrisonMinistryPage() {
           </div>
         </section>
 
-        {/* 3. GALLERY SECTION (Soft Blue/Slate) */}
-        <section className="py-20 md:py-28 bg-slate-50 border-y border-black/5 text-black">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Ministry in the Field</h2>
-              <p className="text-black/60 max-w-2xl mx-auto">Moments of impact, service, and connection within the correctional system.</p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-              {galleryItems.map((item) => (
-                <div key={item.id} className="relative h-48 md:h-72 bg-slate-200 rounded-xl overflow-hidden group">
-                  <Image 
-                    src={item.src} 
-                    alt={item.caption || `Prison Ministry Gallery Image ${item.id}`} 
-                    fill 
-                    className="object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out"
-                    onError={swapImage('/hero/hero-store.jpg')} 
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-[#2D5A8C]/10 transition-colors duration-300" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 4. PAST EVENTS CAROUSEL (Light Gray) */}
+        {/* 3. PAST EVENTS CAROUSEL (Light Gray) */}
         <section className="py-20 md:py-28 bg-gray-50 text-black overflow-hidden">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">

@@ -71,26 +71,12 @@ type YouTubePlayerStateChangeEvent = {
   target: YouTubePlayer;
 };
 
-type YouTubeIframeApi = {
-  Player: new (
-    iframe: HTMLIFrameElement,
-    options: {
-      events: {
-        onStateChange: (event: YouTubePlayerStateChangeEvent) => void;
-      };
-    },
-  ) => YouTubePlayer;
-  PlayerState: {
-    PLAYING: number;
-  };
-};
-
-const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
+const CHANNEL_ID = "UC6auo8Q1xb5cgyY_pGJbfdw";
 const YOUTH_CHURCH_CHANNEL_ID = "UC_aXxxQF62jKWRK3xjzOZPg";
 const RELATED_CHANNEL_IDS = [
   "UC8JUC-G4wKhrrPr7xjxYWJw",
   YOUTH_CHURCH_CHANNEL_ID,
-  "UC6auo8Q1xb5cgyY_pGJbfdw",
+  "UC5iA3dWaUBlP_PBlGSQvgNQ",
 ];
 const FALLBACK_HERO_ID = "ydTADwZRquA";
 
@@ -836,9 +822,6 @@ export default function LivestreamPage() {
                       <h3 className="font-bold text-lg text-black mb-2 line-clamp-2">
                         {stream.title}
                       </h3>
-                      <p className="text-sm text-black/70 mb-3 line-clamp-2">
-                        {stream.description}
-                      </p>
                       <div className="space-y-1 text-sm text-black/60 mb-2">
                         <p>{stream.channelTitle}</p>
                         {stream.publishedAt && (
