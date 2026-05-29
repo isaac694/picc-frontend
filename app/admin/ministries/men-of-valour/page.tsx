@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import SiteNewsManager from '@/components/admin/SiteNewsManager';
+import { MEN_OF_VALOUR_NEWS_ITEMS, MEN_OF_VALOUR_NEWS_KEY } from '@/components/menOfValourNews';
 import {
   MinistryInfoManager,
   MinistryItemsManager,
@@ -11,7 +13,7 @@ import {
   type MinistryItem,
 } from '@/components/admin/MinistryContentManagers';
 
-type Tab = 'info' | 'cards' | 'brotherhood' | 'initiatives' | 'events';
+type Tab = 'info' | 'cards' | 'brotherhood' | 'initiatives' | 'events' | 'news';
 
 const menOfValourFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'Men of Valour',
@@ -76,19 +78,19 @@ const events: Array<Partial<MinistryItem> & { title: string }> = [
     title: "Annual Men's Retreat",
     label: 'August 12-14, 2025',
     description: 'A weekend of spiritual renewal, brotherhood, and strategic planning for the year ahead at the lake.',
-    imageUrl: '/hero/hero-1.jpg',
+    imageUrl: '/ministries/mov/event-1.JPG',
   },
   {
     title: 'Leadership Breakfast Seminar',
     label: 'November 5, 2025',
     description: 'Equipping men with the tools to lead effectively in the marketplace and within their homes.',
-    imageUrl: '/hero/hero-2.jpg',
+    imageUrl: '/ministries/mov/event-2.JPG',
   },
   {
     title: 'Community Outreach Drive',
     label: 'December 18, 2025',
     description: 'Men of Valour taking to the streets of Blantyre to distribute resources and pray with the local community.',
-    imageUrl: '/hero/hero-3.jpg',
+    imageUrl: '/ministries/mov/event-1.JPG',
   },
 ];
 
@@ -124,6 +126,7 @@ export default function MenOfValourAdminPage() {
     { id: 'brotherhood', label: 'Brotherhood Pictures' },
     { id: 'initiatives', label: 'Initiatives' },
     { id: 'events', label: 'Events' },
+    { id: 'news', label: 'News' },
   ];
 
   return (
@@ -134,7 +137,7 @@ export default function MenOfValourAdminPage() {
           <h1 className="text-3xl font-semibold text-foreground md:text-5xl">Men of Valour Admin</h1>
           <p className="mt-3 max-w-2xl text-foreground/70">
             Manage logo, motto, hero picture, about text, cards, brotherhood pictures,
-            initiatives, events, membership payment details, phone number, and email.
+            initiatives, events, news, membership payment details, phone number, and email.
           </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
@@ -226,6 +229,18 @@ export default function MenOfValourAdminPage() {
           description="Manage upcoming and past Men of Valour events."
           fallbackItems={events}
           labels={{ title: 'Event Title', description: 'Event Description', label: 'Date / Time', image: 'Event Picture', save: 'Save Event' }}
+        />
+      )}
+
+      {activeTab === 'news' && (
+        <SiteNewsManager
+          token={token}
+          contentKey={MEN_OF_VALOUR_NEWS_KEY}
+          title="Men of Valour News"
+          description="Manage the Latest News section shown on the public Men of Valour page."
+          fallbackItems={MEN_OF_VALOUR_NEWS_ITEMS}
+          imageHelpText="Use the Men of Valour news photos or upload a replacement image."
+          imagePlaceholder="/ministries/mov/news-1.JPG"
         />
       )}
     </div>

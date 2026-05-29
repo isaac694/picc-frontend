@@ -91,12 +91,16 @@ export default function SiteNewsManager({
   title,
   description,
   fallbackItems,
+  imageHelpText = 'Use existing ministry news photos or upload a replacement image.',
+  imagePlaceholder = '/ministries/youth-church/news-1.JPG',
 }: {
   token: string;
   contentKey: string;
   title: string;
   description: string;
   fallbackItems: NewsSectionItem[];
+  imageHelpText?: string;
+  imagePlaceholder?: string;
 }) {
   const fallbackNews = useMemo<EditableNewsItem[]>(
     () =>
@@ -270,7 +274,7 @@ export default function SiteNewsManager({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold text-foreground">{editingId ? 'Edit News Item' : 'Create News Item'}</h3>
-              <p className="text-sm text-foreground/60">Use the Youth Church news photos or upload a replacement image.</p>
+              <p className="text-sm text-foreground/60">{imageHelpText}</p>
             </div>
             {editingId ? (
               <Button variant="outline" onClick={resetDraft}>
@@ -315,7 +319,7 @@ export default function SiteNewsManager({
                 type="text"
                 value={draft.imageUrl}
                 onChange={(event) => setDraft((prev) => ({ ...prev, imageUrl: event.target.value }))}
-                placeholder="/ministries/youth-church/news-1.JPG"
+                placeholder={imagePlaceholder}
                 className="mb-3 w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
               />
               <input
