@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import LiveChat from '@/components/LiveChat';
 import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
-import GiveTool from '@/components/livestream/GiveTool';
+import ICDGiveTool from '@/components/livestream/ICDGiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
 
 // --- TYPES & GLOBALS ---
@@ -113,7 +113,7 @@ const TOOL_TABS: Array<{
   { key: "notepad", label: "Notepad", kind: "component" },
   { key: "bible", label: "Bible", kind: "component" },
   { key: "testimony", label: "Send Testimony", kind: "form" },
-  { key: "give", label: "Give", kind: "form" },
+  { key: "give", label: "Give", kind: "component" },
 ];
 
 const toAssetUrl = (value: string | null | undefined) => {
@@ -149,8 +149,8 @@ By partnering with the ICD Ministry financially, you ensure that we can continue
   ],
   partnershipImageUrl: '/ministries/icd/icd7.jpg',
   phone: '0995652414 / 0992874401',
-  email: 'icd@piccworldwide.org',
-  location: 'Camp of God Cathedral Area 49, Lilongwe Malawi',
+  email: 'icd@piccwordwide.org',
+  location: 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi',
   contactIntro:
     'Whether you need counselling, deliverance, or wish to grow as an active disciple, we are here to walk alongside you.',
 };
@@ -161,7 +161,7 @@ const pastEvents = [
     title: 'Kamuzu Central Hospital Visit',
     date: 'May 3 & 17, 2026',
     description: 'Join us from 8:00 AM at Kamuzu Central Hospital as we visit the sick, pray for healing, and share the love and hope of Christ with Pastor Mrs Loyce Banda.',
-    image: '/hero/hero-icd.jpg',
+    image: '/ministries/icd/background.JPG',
   },
   {
     id: 2,
@@ -297,7 +297,7 @@ export default function IcdMinistryPage() {
   const galleryItems = learningItems.length > 0
     ? learningItems.map((item, index) => ({
         id: index + 1,
-        src: toAssetUrl(item.imageUrl) || highlightGallery[index % highlightGallery.length]?.src || '/hero/hero-icd.jpg',
+        src: toAssetUrl(item.imageUrl) || highlightGallery[index % highlightGallery.length]?.src || '/ministries/icd/background.JPG',
         caption: item.description || item.title,
       }))
     : highlightGallery;
@@ -426,7 +426,7 @@ export default function IcdMinistryPage() {
     title: 'ICD Event',
     date: 'TBA',
     description: 'No event information is currently available.',
-    image: '/hero/hero-icd.jpg',
+    image: '/ministries/icd/background.JPG',
   };
   const remainingEvents = displayedEventItems.filter((_, idx) => idx !== safeCurrentSlide);
 
@@ -484,9 +484,27 @@ export default function IcdMinistryPage() {
         if (!isMounted) return;
 
         if (data?.info) {
+          const info = { ...data.info };
+          // Prevent broken image from overriding the new background
+          if (info.heroImageUrl === '/hero/hero-icd.jpg') {
+            info.heroImageUrl = '/ministries/icd/background.JPG';
+          }
+          // Prevent old location and email from overriding new ones
+          const oldLocations = [
+            'Camp of God Cathedral Area 49, Lilongwe Malawi',
+            'PICC ICD Department\nCamp of God Cathedral',
+            'Camp of God Cathedral Area 49, Lilongwe',
+            'Area 49, Lilongwe'
+          ];
+          if (!info.location || oldLocations.some(loc => info.location?.includes(loc)) || info.location.length < 50) {
+            info.location = 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi';
+          }
+          if (info.email === 'icd@piccworldwide.org' || info.email === 'info@picc.org' || !info.email) {
+            info.email = 'icd@piccwordwide.org';
+          }
           setMinistryInfo({
             ...defaultInfo,
-            ...data.info,
+            ...info,
             partnershipDetails: Array.isArray(data.info.partnershipDetails)
               ? data.info.partnershipDetails
               : defaultInfo.partnershipDetails,
@@ -838,10 +856,7 @@ export default function IcdMinistryPage() {
         )}
       </AnimatePresence>
 
-      <main 
-        className="min-h-screen bg-fixed bg-cover bg-center" 
-        style={{ backgroundImage: "url('/ministries/icd/background.JPG')" }}
-      >
+      <main className="min-h-screen">
         
         {/* 1. HERO SECTION */}
         {!mobilePlayerActive && (
@@ -878,7 +893,7 @@ export default function IcdMinistryPage() {
 
         {/* 2. ABOUT SECTION */}
         {!mobilePlayerActive && (
-          <section className="py-20 md:py-28 bg-white/90 backdrop-blur-sm text-black">
+          <section className="py-20 md:py-28 bg-white text-black">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="max-w-4xl mx-auto text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-6">Intercession, Counselling, and Deliverance (ICD)</h2>
@@ -895,7 +910,7 @@ export default function IcdMinistryPage() {
                 {icdCards.map((card) => {
                   const Icon = card.title.toLowerCase().includes('counsel') ? Ear : card.title.toLowerCase().includes('deliver') ? HandHeart : Shield;
                   return (
-                    <Card key={card.id} className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#045BB4] bg-white/80">
+                    <Card key={card.id} className="p-6 text-center shadow-md hover:shadow-xl transition-shadow border-t-4 border-t-[#045BB4]">
                       <Icon className="w-12 h-12 mx-auto text-[#045BB4] mb-4" />
                       <h3 className="text-xl font-bold mb-2">{card.title}</h3>
                       {card.description ? <p className="text-black/60">{card.description}</p> : null}
@@ -909,7 +924,7 @@ export default function IcdMinistryPage() {
 
         {/* 3. MINISTRY HIGHLIGHTS (6-Grid Gallery with Interactive Captions) */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-blue-50/85 backdrop-blur-sm border-y border-black/5 text-black">
+          <section className="py-20 bg-blue-50 border-y border-black/5 text-black">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">The Learning Experience</h2>
@@ -959,7 +974,7 @@ export default function IcdMinistryPage() {
 
         {/* 4. THE LIVE ALTAR (Livestream Section) */}
         {!mobilePlayerActive && (
-          <section className="py-16 md:py-24 bg-[#021830]/90 backdrop-blur-sm text-white">
+          <section className="py-16 md:py-24 bg-[#021830] text-white">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-10">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">ICD Live Sessions</h2>
@@ -1030,7 +1045,7 @@ export default function IcdMinistryPage() {
                     {activeTool === "chat" && <div className="h-[400px] w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'ICD Live'} /></div>}
                     {activeTool === "notepad" && <NotepadTool />}
                     {activeTool === "testimony" && <div className="px-5 py-6"><TestimonyTool /></div>}
-                    {activeTool === "give" && <div className="px-5 py-6"><GiveTool isMobile={false} /></div>}
+                    {activeTool === "give" && <div className="px-5 py-6"><ICDGiveTool isMobile={false} /></div>}
                   </div>
                 )}
               </div>
@@ -1040,7 +1055,7 @@ export default function IcdMinistryPage() {
 
         {/* 5. MINISTRY PROJECTS & INITIATIVES */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-white/90 backdrop-blur-sm text-black">
+          <section className="py-20 bg-white text-black">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-6">
                 <div>
@@ -1164,7 +1179,7 @@ export default function IcdMinistryPage() {
                 {activeTool === "bible" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><BibleTool /></div>}
                 {activeTool === "notepad" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><NotepadTool /></div>}
                 {activeTool === "testimony" && <div className="px-4 py-5"><TestimonyTool /></div>}
-                {activeTool === "give" && <div className="px-4 py-5"><GiveTool isMobile={true} /></div>}
+                {activeTool === "give" && <div className="px-4 py-5"><ICDGiveTool isMobile={true} /></div>}
               </div>
             </div>
           </section>
@@ -1172,7 +1187,7 @@ export default function IcdMinistryPage() {
 
         {/* 6. EVENTS SECTION */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-gray-50/90 backdrop-blur-sm text-black overflow-hidden border-y border-black/5">
+          <section className="py-20 bg-gray-50 text-black overflow-hidden border-y border-black/5">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-6">
                 <div>
@@ -1289,14 +1304,14 @@ export default function IcdMinistryPage() {
             title="Latest News"
             description="Recent highlights from ICD ministry life, outreach, and gatherings."
             items={icdNewsItems}
-            backgroundClassName="bg-white/90 backdrop-blur-sm text-black border-y border-black/5"
+            backgroundClassName="bg-white text-black border-y border-black/5"
             maxItems={6}
           />
         )}
 
         {/* 7. PARTNER WITH US SECTION (Updated with Banking Details) */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-white/90 backdrop-blur-sm text-black">
+          <section className="py-20 bg-white text-black">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div>
@@ -1308,7 +1323,7 @@ export default function IcdMinistryPage() {
                     </p>
                   ))}
                   
-                  <div className="bg-blue-50/80 p-6 rounded-xl shadow-sm border border-black/5">
+                  <div className="bg-blue-50 p-6 rounded-xl shadow-sm border border-black/5">
                     <h3 className="font-bold text-xl mb-4 text-[#045BB4]">Partnership Details</h3>
                     <div className="space-y-2 text-sm text-black/70">
                       {partnershipDetails.map((detail) => (
@@ -1333,7 +1348,7 @@ export default function IcdMinistryPage() {
 
         {/* 9. CONTACTS SECTION */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-blue-900/90 backdrop-blur-sm text-white">
+          <section className="py-20 bg-blue-900 text-white">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">Get Involved</h2>

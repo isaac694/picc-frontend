@@ -18,7 +18,7 @@ const icdFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   motto: 'Raising leaders and disciples through intentional Christian development.',
   about:
     'ICD is an intercessory and developmental ministry arm of PICC. Our goal is to move believers from being mere spectators to becoming active, effective disciples of Jesus Christ who are capable of leading and guiding others.\n\nWe provide structured modules covering biblical foundations, leadership development, and practical ministry skills. By combining sound doctrine with practical application, ICD ensures that every member is thoroughly equipped for every good work in the Kingdom.',
-  heroImageUrl: '/hero/hero-icd.jpg',
+  heroImageUrl: '/ministries/icd/background.JPG',
   logoImageUrl: '/logos/icd-logo.png',
   liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=Z_HD5WhhxOU',
   partnershipTitle: 'Partner With Us',
@@ -32,8 +32,8 @@ const icdFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   ],
   partnershipImageUrl: '/images/icd/ICD-MAY-26.png',
   phone: 'Check with your local PICC branch for contact details.',
-  email: 'info@picc.org',
-  location: 'PICC ICD Department\nCamp of God Cathedral',
+  email: 'icd@piccwordwide.org',
+  location: 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi',
   contactIntro:
     'Whether you need counselling, deliverance, or wish to grow as an active disciple, we are here to walk alongside you.',
 };
@@ -57,7 +57,7 @@ const icdCards: Array<Partial<MinistryItem> & { title: string }> = [
 ];
 
 const learningPictures: Array<Partial<MinistryItem> & { title: string }> = [
-  { title: 'Learning Experience 1', description: 'Moving believers from spectators to active disciples.', imageUrl: '/hero/hero-icd.jpg' },
+  { title: 'Learning Experience 1', description: 'Moving believers from spectators to active disciples.', imageUrl: '/ministries/icd/background.JPG' },
   { title: 'Learning Experience 2', description: 'Structured modules covering biblical foundations.', imageUrl: '/moments/icd-1.jpg' },
   { title: 'Learning Experience 3', description: 'Leadership development and practical ministry skills.', imageUrl: '/moments/icd-2.jpg' },
   { title: 'Learning Experience 4', description: 'Intercession, Counselling, and Deliverance in action.', imageUrl: '/moments/icd-3.jpg' },
@@ -79,7 +79,7 @@ const events: Array<Partial<MinistryItem> & { title: string }> = [
     label: 'May 3 & 17, 2026',
     description:
       'Join us from 8:00 AM at Kamuzu Central Hospital as we visit the sick, pray for healing, and share the love and hope of Christ with Pastor Mrs Loyce Banda.',
-    imageUrl: '/hero/hero-icd.jpg',
+    imageUrl: '/ministries/icd/background.JPG',
   },
   {
     title: 'Discipleship Intensive',

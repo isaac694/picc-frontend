@@ -20,6 +20,7 @@ import LiveChat from '@/components/LiveChat';
 import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
 import BibleTool from '@/components/livestream/BibleTool';
+import MenOfValourGiveTool from '@/components/livestream/MenOfValourGiveTool';
 
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
 
@@ -129,34 +130,8 @@ const TOOL_TABS: Array<{
   { key: "notepad", label: "Notepad", kind: "component" },
   { key: "bible", label: "Bible", kind: "component" },
   { key: "testimony", label: "Send Testimony", kind: "form" },
-  { key: "give", label: "Give", kind: "form" },
+  { key: "give", label: "Give", kind: "component" },
 ];
-
-function MenOfValourSupportCard() {
-  return (
-    <div className="mx-auto max-w-3xl rounded-2xl border border-[#2D5A8C]/15 bg-white p-6 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#2D5A8C]/70">Support Men of Valour</p>
-      <h3 className="mt-2 text-2xl font-bold text-gray-950">Payment Channels</h3>
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-black/10 bg-slate-50 p-5">
-          <p className="text-sm font-bold text-[#2D5A8C]">First Capital Bank</p>
-          <p className="mt-3 text-sm leading-6 text-gray-700">
-            <span className="font-semibold text-gray-950">Account Name:</span> PICC Men of Valour
-          </p>
-          <p className="text-sm leading-6 text-gray-700">
-            <span className="font-semibold text-gray-950">Account Number:</span> 0004502003491
-          </p>
-        </div>
-        <div className="rounded-xl border border-black/10 bg-slate-50 p-5">
-          <p className="text-sm font-bold text-[#2D5A8C]">Airtel Money</p>
-          <p className="mt-3 text-sm leading-6 text-gray-700">
-            <span className="font-semibold text-gray-950">Agent Code:</span> 776628
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const toAssetUrl = (value: string | null | undefined) => {
   const trimmed = (value || '').trim();
@@ -1132,7 +1107,7 @@ export default function MenOfValourPage() {
                     {activeTool === "chat" && <div className="h-[400px] w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Men of Valour Live'} /></div>}
                     {activeTool === "notepad" && <NotepadTool />}
                     {activeTool === "testimony" && <div className="px-5 py-6"><TestimonyTool /></div>}
-                    {activeTool === "give" && <div className="px-5 py-6"><MenOfValourSupportCard /></div>}
+                    {activeTool === "give" && <div className="px-5 py-6"><MenOfValourGiveTool isMobile={false} /></div>}
                   </div>
                 )}
               </div>
@@ -1270,7 +1245,7 @@ export default function MenOfValourPage() {
                 {activeTool === "bible" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><BibleTool /></div>}
                 {activeTool === "notepad" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><NotepadTool /></div>}
                 {activeTool === "testimony" && <div className="px-4 py-5"><TestimonyTool /></div>}
-                {activeTool === "give" && <div className="px-4 py-5"><MenOfValourSupportCard /></div>}
+                {activeTool === "give" && <div className="px-4 py-5"><MenOfValourGiveTool isMobile={true} /></div>}
               </div>
             </div>
           </section>
