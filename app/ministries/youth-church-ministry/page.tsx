@@ -200,7 +200,10 @@ Our services are packed with high-energy worship, creative expressions, and tran
   partnershipBody: `Equipping the next generation requires resources, dedicated mentors, and community support. You can partner with the Youth Church to fund our outreach programs, retreats, and mentorship camps.
 
 Whether you are investing in the Heritage Kids, Teens, Hope & Beauty, or CTG, your support helps us build strong foundations for tomorrow's leaders.`,
-  partnershipDetails: [],
+  partnershipDetails: [
+    { label: 'National Bank', value: 'PICC Youth Church - 1009799539' },
+    { label: 'Airtel Money', value: '0999291616' },
+  ],
   partnershipImageUrl: '/ministries/youth-church/partner.jpg',
   phone: 'Check with your local PICC branch for youth pastor contacts.',
   email: 'info@picc.org',
