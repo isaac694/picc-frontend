@@ -31,7 +31,7 @@ const wailingWomanFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   ],
   partnershipImageUrl: '/hero/outreach.jpg',
   phone: '+265 995 46 55 40 / +265 999 31 77 81',
-  email: 'wailingwomanprayers@gmail.com',
+  email: 'wailingwoman@piccworldwide.org',
   location: 'P.O Box 31841, Lilongwe, Malawi',
   contactIntro:
     'If you are a mother or guardian ready to contend for your children, contact us to join our WhatsApp forum.',

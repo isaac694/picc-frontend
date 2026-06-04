@@ -1366,12 +1366,12 @@ export default function WomenOfHopePage() {
                   </div>
                 </div>
                 <div className="relative h-[400px] rounded-2xl overflow-hidden shadow-xl">
-                  <Image 
-                    src={toAssetUrl(ministryInfo.partnershipImageUrl) || '/hero/hero-store.jpg'} 
-                    alt={ministryInfo.partnershipTitle || 'Global Vision'} 
-                    fill 
+                  <Image
+                    src={toAssetUrl(ministryInfo.partnershipImageUrl) || '/ministries/woh/global-vision.JPG'}
+                    alt={ministryInfo.partnershipTitle || 'Global Vision'}
+                    fill
                     className="object-cover"
-                    onError={swapImage('/hero/hero-store.jpg')} 
+                    onError={swapImage('/hero/hero-store.jpg')}
                   />
                 </div>
               </div>

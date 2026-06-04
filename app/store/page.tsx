@@ -4,22 +4,18 @@ import { useState, useMemo, type FormEvent, type SyntheticEvent } from 'react';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   ShoppingCart, Search, Plus, Minus, Trash2, X, CheckCircle2, 
-  MessageCircle, ImageIcon, BookOpen, ExternalLink, Building2, Menu
+  MessageCircle, ImageIcon, BookOpen, ExternalLink, Building2, Menu,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { products, categories, bookAuthors, bookGenres, type Product } from '@/components/data/products';
+import { products, type Product } from '@/components/data/products';
 
 export default function StorePage() {
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [activeAuthor, setActiveAuthor] = useState('All');
-  const [activeGenre, setActiveGenre] = useState('All');
   const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [trendingTab, setTrendingTab] = useState<'Featured' | 'New arrivals' | 'Best sellers'>('Featured');
   
   // Selection Modal State
@@ -31,46 +27,7 @@ export default function StorePage() {
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'checkout' | 'success'>('cart');
   const [paymentMethod, setPaymentMethod] = useState('');
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      if (activeCategory !== 'All' && product.category !== activeCategory) return false;
-      if (activeCategory === 'Books') {
-        if (activeAuthor !== 'All' && product.author !== activeAuthor) return false;
-        if (activeGenre !== 'All' && product.genre !== activeGenre) return false;
-      }
-
-      if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        const searchable = [
-          product.name,
-          product.category,
-          product.author || '',
-          product.genre || '',
-        ].join(' ').toLowerCase();
-        if (!searchable.includes(lowerQuery)) return false;
-      }
-
-      return true;
-    });
-  }, [activeCategory, activeAuthor, activeGenre, searchQuery]);
-
-  const trendingProducts = useMemo(() => {
-    const active = filteredProducts.length ? filteredProducts : products;
-
-    if (trendingTab === 'New arrivals') {
-      return [...active].slice(-4).reverse();
-    }
-
-    if (trendingTab === 'Best sellers') {
-      return active.filter((product) => product.price >= 5000).slice(0, 4);
-    }
-
-    return active.slice(0, 4);
-  }, [filteredProducts, trendingTab]);
-
-  const featuredProduct = filteredProducts[0] || products[0];
-  const heroBook = products.find((product) => product.id === 'b2') || featuredProduct;
-  const dealsOfWeek = products.slice(1, 3);
+  const heroBook = products.find((product) => product.id === 'b2') || products[0];
   const bookProductsWithImages = useMemo(
     () => products.filter((product) => product.category === 'Books' && !product.image.includes('placeholder')),
     []
@@ -92,9 +49,39 @@ export default function StorePage() {
     return active.slice(0, 8);
   }, [bookProductsWithImages, trendingTab]);
 
+  const compactProductGroups = useMemo(() => {
+    const findBook = (id: string) => products.find((product) => product.id === id) || bookProductsWithImages[0] || products[0];
+
+    return [
+      {
+        title: 'Night Of Deliverance',
+        products: [findBook('b21'), findBook('b57'), findBook('b14')],
+      },
+      {
+        title: 'On sale',
+        products: [findBook('b88'), findBook('b87'), findBook('b92')],
+        sale: true,
+      },
+      {
+        title: 'Best Seller',
+        products: [findBook('b87'), findBook('b64'), findBook('b15')],
+        sale: true,
+      },
+    ];
+  }, [bookProductsWithImages]);
+
+  const promoCards = useMemo(() => {
+    const findBook = (id: string) => products.find((product) => product.id === id) || bookProductsWithImages[0] || products[0];
+
+    return [
+      { title: 'Spiritual', subtitle: 'Get 45% Off', product: findBook('b21'), color: 'bg-[#63d5bc]' },
+      { title: 'Business', subtitle: 'Get 45% Off', product: findBook('b40'), color: 'bg-[#55ad1d]' },
+      { title: 'Audio Book', subtitle: 'Get 50% Off', product: findBook('b88'), color: 'bg-[#6fa4df]' },
+    ];
+  }, [bookProductsWithImages]);
+
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSearchQuery(searchInput.trim());
   };
 
   const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
@@ -266,9 +253,6 @@ export default function StorePage() {
               <button
                 type="button"
                 onClick={() => {
-                  setActiveCategory('All');
-                  setActiveAuthor('All');
-                  setActiveGenre('All');
                   setTrendingTab('Featured');
                 }}
                 className="inline-flex min-h-14 items-center gap-4 rounded-md bg-[#1688b4] px-7 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-[#0f759c]"
@@ -356,160 +340,35 @@ export default function StorePage() {
           </div>
         </section>
 
-        <section className="bg-white py-14">
+        <section className="bg-[#fbfbff] py-14">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Shop the store</p>
-                <h2 className="mt-3 text-3xl font-semibold text-slate-900">Find what you need quickly</h2>
-              </div>
-              <form onSubmit={handleSearchSubmit} className="flex w-full max-w-xl items-center gap-3">
-                <label htmlFor="store-search" className="sr-only">Search products</label>
-                <div className="flex w-full items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm focus-within:border-[#045BB4]">
-                  <Search className="w-4 h-4 text-slate-500" />
-                  <input
-                    id="store-search"
-                    type="search"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Search products, books, devotionals..."
-                    className="w-full bg-transparent text-sm text-slate-900 outline-none"
-                  />
-                </div>
-                <Button type="submit" className="whitespace-nowrap px-5 py-3">Search</Button>
-              </form>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => {
-                    setActiveCategory(cat);
-                    setActiveAuthor('All');
-                    setActiveGenre('All');
-                    setTrendingTab('Featured');
-                  }}
-                  className={`rounded-full px-5 py-2 text-sm font-medium transition ${activeCategory === cat ? 'bg-[#045BB4] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {activeCategory === 'Books' && (
-              <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">By author</p>
-                  <select
-                    value={activeAuthor}
-                    onChange={(e) => setActiveAuthor(e.target.value)}
-                    className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
-                  >
-                    <option value="All">All authors</option>
-                    {bookAuthors.map((author) => (
-                      <option key={author} value={author}>{author}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="lg:col-span-2">
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">By genre</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {['All', ...bookGenres].map((genre) => (
-                      <button
-                        key={genre}
-                        type="button"
-                        onClick={() => setActiveGenre(genre)}
-                        className={`rounded-full px-4 py-2 text-xs font-medium transition ${activeGenre === genre ? 'bg-[#045BB4] text-white' : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
-                      >
-                        {genre}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="bg-slate-50 py-14">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Trending Products</p>
-                <h2 className="mt-3 text-3xl font-semibold text-slate-900">Selected picks for you</h2>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white p-1 shadow-sm border border-slate-200">
-                {['Featured', 'New arrivals', 'Best sellers'].map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setTrendingTab(tab as 'Featured' | 'New arrivals' | 'Best sellers')}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${trendingTab === tab ? 'bg-[#045BB4] text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-8 grid gap-6 lg:grid-cols-4">
-              {trendingProducts.map((product) => (
-                <ProductCard key={product.id} product={product} onAdd={() => handleProductClick(product)} formatMWK={formatMWK} />
+            <div className="grid gap-10 lg:grid-cols-3">
+              {compactProductGroups.map((group) => (
+                <CompactProductColumn
+                  key={group.title}
+                  title={group.title}
+                  products={group.products}
+                  onSelect={handleProductClick}
+                  formatMWK={formatMWK}
+                  showOriginalPrice={group.sale}
+                />
               ))}
             </div>
           </div>
         </section>
 
-        <section className="bg-white py-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Deals of the week</p>
-              <h2 className="mt-3 text-3xl font-semibold text-slate-900">Deals Of The Week</h2>
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-              {dealsOfWeek.map((deal, index) => (
-                <div key={deal.id} className={`relative overflow-hidden rounded-[32px] text-white shadow-2xl ${index === 0 ? 'bg-[radial-gradient(circle_at_top_left,_rgba(38,191,255,0.18),_transparent_35%)]' : 'bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,0.18),_transparent_35%)]'}`}>
-                  <div className="relative h-96 lg:h-[360px]">
-                    <Image src={deal.image} alt={deal.name} fill className="object-cover opacity-70" onError={swapImage('/images/placeholder.png')} />
-                  </div>
-                  <div className="relative p-8 lg:p-10 bg-slate-950/75">
-                    <p className="text-xs uppercase tracking-[0.3em] text-cyan-200">Shop now</p>
-                    <h3 className="mt-4 text-3xl font-semibold">{deal.name}</h3>
-                    <p className="mt-4 max-w-xl text-sm text-slate-200">Grab this season’s best prophetic resource with a special offer and faster checkout.</p>
-                    <Button onClick={() => addToCart(deal)} className="mt-8 bg-white text-slate-950 px-6 py-3 hover:bg-slate-100">SHOP NOW</Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-slate-50 py-14">
+        <section className="bg-white py-10 lg:py-14">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid gap-6 lg:grid-cols-3">
-              {[
-                { title: 'Spiritual', subtitle: 'Get 45% Off', color: 'bg-cyan-600' },
-                { title: 'Business', subtitle: 'Get 45% Off', color: 'bg-emerald-600' },
-                { title: 'Audio Book', subtitle: 'Get 50% Off', color: 'bg-blue-600' },
-              ].map((card) => (
-                <div key={card.title} className={`group relative overflow-hidden rounded-[32px] ${card.color} p-8 text-white shadow-2xl`}>
-                  <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white/30 via-transparent to-black/10"></div>
-                  <div className="relative z-10 flex h-full flex-col justify-between">
-                    <div>
-                      <p className="text-sm uppercase tracking-[0.3em] text-slate-200">{card.title}</p>
-                      <h3 className="mt-3 text-3xl font-semibold">{card.subtitle}</h3>
-                    </div>
-                    <div className="mt-6 flex items-end justify-between gap-4">
-                      <p className="text-sm text-slate-200">Best discounts on study and ministry resources.</p>
-                      <div className="relative h-28 w-28 overflow-hidden rounded-3xl border border-white/20 bg-white/10">
-                        <Image src={featuredProduct.image} alt={card.title} fill className="object-cover" onError={swapImage('/images/placeholder.png')} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {promoCards.map((card) => (
+                <PromoProductBanner
+                  key={card.title}
+                  title={card.title}
+                  subtitle={card.subtitle}
+                  product={card.product}
+                  color={card.color}
+                  onSelect={() => handleProductClick(card.product)}
+                />
               ))}
             </div>
           </div>
@@ -698,40 +557,125 @@ function ClassicProductTile({
   );
 }
 
-function ProductCard({ product, onAdd, formatMWK }: { product: Product, onAdd: () => void, formatMWK: (a: number) => string }) {
+function CompactProductColumn({
+  title,
+  products,
+  onSelect,
+  formatMWK,
+  showOriginalPrice,
+}: {
+  title: string;
+  products: Product[];
+  onSelect: (product: Product) => void;
+  formatMWK: (a: number) => string;
+  showOriginalPrice?: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+        <h2 className="font-serif text-2xl text-slate-950">{title}</h2>
+        <div className="flex gap-2">
+          {[ChevronLeft, ChevronRight].map((Icon, index) => (
+            <button
+              key={index}
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded bg-[#1688b4] text-white transition hover:bg-[#0f759c]"
+              aria-label={index === 0 ? 'Previous products' : 'Next products'}
+            >
+              <Icon className="h-5 w-5" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-4">
+        {products.map((product) => (
+          <CompactProductItem
+            key={product.id}
+            product={product}
+            onSelect={() => onSelect(product)}
+            formatMWK={formatMWK}
+            showOriginalPrice={showOriginalPrice}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CompactProductItem({
+  product,
+  onSelect,
+  formatMWK,
+  showOriginalPrice,
+}: {
+  product: Product;
+  onSelect: () => void;
+  formatMWK: (a: number) => string;
+  showOriginalPrice?: boolean;
+}) {
   const [imgError, setImgError] = useState(false);
+  const originalPrice = product.price + 2500;
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden border-black/10 hover:shadow-lg transition-shadow">
-      <div className="relative h-64 bg-black/5 flex items-center justify-center">
+    <button type="button" onClick={onSelect} className="grid w-full grid-cols-[120px_1fr] items-center gap-3 text-left">
+      <div className="relative flex h-32 w-32 items-center justify-center border border-slate-200 bg-white p-3">
         {!imgError ? (
-          <Image 
-            src={product.image} 
-            alt={product.name} 
-            fill 
-            className="object-cover" 
-            onError={() => setImgError(true)} 
+          <Image
+            src={product.image}
+            alt={product.name}
+            width={92}
+            height={120}
+            sizes="120px"
+            className="h-full w-auto object-contain"
+            onError={() => setImgError(true)}
           />
         ) : (
-          <div className="flex flex-col items-center opacity-20">
-            <ImageIcon className="w-12 h-12" />
-            <span className="text-[10px] mt-2 font-bold uppercase tracking-widest">Image Coming Soon</span>
+          <div className="flex flex-col items-center text-slate-300">
+            <ImageIcon className="h-8 w-8" />
           </div>
         )}
-        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold uppercase text-black/60 border border-black/5">
-          {product.category}
-        </div>
       </div>
-      <div className="p-5 flex-1 flex flex-col">
-        <h3 className="font-semibold text-lg leading-tight mb-1">{product.name}</h3>
-        {product.author && <p className="text-sm text-black/50 mb-4">{product.author}</p>}
-        <div className="mt-auto pt-4 flex items-center justify-between">
-          <span className="font-bold">{formatMWK(product.price)}</span>
-          <Button size="sm" onClick={onAdd} className="rounded-full px-5">
-            {product.category === 'Books' ? 'View Options' : 'Add'}
-          </Button>
-        </div>
+      <div className="min-w-0 font-serif">
+        <h3 className="truncate text-base text-slate-950">{product.name}</h3>
+        {showOriginalPrice && <p className="mt-2 text-sm text-slate-400 line-through">{formatMWK(originalPrice)}</p>}
+        <p className="mt-1 text-base text-slate-950">{formatMWK(product.price)}</p>
       </div>
-    </Card>
+    </button>
+  );
+}
+
+function PromoProductBanner({
+  title,
+  subtitle,
+  product,
+  color,
+  onSelect,
+}: {
+  title: string;
+  subtitle: string;
+  product: Product;
+  color: string;
+  onSelect: () => void;
+}) {
+  return (
+    <div className={`relative min-h-64 overflow-hidden ${color}`}>
+      <div className="absolute inset-y-0 left-0 w-[48%]">
+        <Image
+          src={product.image}
+          alt={product.name}
+          fill
+          sizes="(min-width: 1024px) 200px, 48vw"
+          className="object-contain object-center p-5 drop-shadow-[0_18px_16px_rgba(15,23,42,0.28)]"
+        />
+      </div>
+      <div className="relative ml-auto flex min-h-64 w-[58%] flex-col items-end justify-center px-5 py-8 text-right font-serif text-slate-900">
+        <h2 className="text-3xl font-bold leading-tight">{title}</h2>
+        <p className="mt-3 text-base">{subtitle}</p>
+        <Button onClick={onSelect} className="mt-5 rounded bg-[#1688b4] px-7 font-serif text-sm uppercase tracking-wide text-white hover:bg-[#0f759c]">
+          Buy Now
+        </Button>
+      </div>
+    </div>
   );
 }

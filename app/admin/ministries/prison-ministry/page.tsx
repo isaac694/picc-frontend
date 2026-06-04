@@ -15,9 +15,9 @@ type Tab = 'info' | 'outreaches';
 
 const prisonFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'Prison Ministry',
-  motto: 'Sharing hope and restoration with those behind bars.',
+  motto: 'From Prison to Purpose in Christ! ',
   about:
-    "The Prison Ministry is driven by the compassion of Christ for the forgotten and the marginalized. We believe that no life is beyond the reach of God's grace and that true restoration is possible for everyone.\n\nOur volunteers visit correctional facilities to provide spiritual guidance, counseling, and practical support. We are committed to walking with individuals during their incarceration and assisting them as they transition back into their families and communities.",
+    "To fulfill PICC’s mission of bringing hope to the hopeless, life to the dying, and helping them become true disciples of Jesus Christ through sharing the gospel of Jesus Christ with incarcerated people, restoring lives through discipleship, and supporting successful re entry so they flourish as followers of Jesus Christ. Matthew 25:36 ",
   heroImageUrl: '/hero/prison-ministry-1.jpg',
   logoImageUrl: '/logo.png',
   liveSessionYoutubeUrl: null,

@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import LiveChat from '@/components/LiveChat';
 import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
-import GiveTool from '@/components/livestream/GiveTool';
+import YouthChurchGiveTool from '@/components/livestream/YouthChurchGiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
 
 // --- TYPES & GLOBALS ---
@@ -1459,7 +1459,7 @@ export default function YouthChurchMinistryPage() {
                     {activeTool === "chat" && <div className="h-100 w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Youth Church Live'} /></div>}
                     {activeTool === "notepad" && <NotepadTool />}
                     {activeTool === "testimony" && <div className="px-5 py-6"><TestimonyTool /></div>}
-                    {activeTool === "give" && <div className="px-5 py-6"><GiveTool isMobile={false} /></div>}
+                    {activeTool === "give" && <div className="px-5 py-6"><YouthChurchGiveTool isMobile={false} /></div>}
                   </div>
                 )}
               </div>
@@ -1714,7 +1714,7 @@ export default function YouthChurchMinistryPage() {
                 {activeTool === "bible" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><BibleTool /></div>}
                 {activeTool === "notepad" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><NotepadTool /></div>}
                 {activeTool === "testimony" && <div className="px-4 py-5"><TestimonyTool /></div>}
-                {activeTool === "give" && <div className="px-4 py-5"><GiveTool isMobile={true} /></div>}
+                {activeTool === "give" && <div className="px-4 py-5"><YouthChurchGiveTool isMobile={true} /></div>}
               </div>
             </div>
           </section>
