@@ -336,7 +336,7 @@ export default function MenOfValourPage() {
   const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
   // --- LIVESTREAM CONSTANTS ---
-  const PASTOR_ESAU_BANDA_CHANNEL_ID = "UC-v_ov21EZf8f";
+  const PASTOR_ESAU_BANDA_CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
   const FALLBACK_HERO_ID = videoIdFromUrl(ministryInfo.liveSessionYoutubeUrl) || "ydTADwZRquA";
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 

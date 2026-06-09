@@ -26,12 +26,12 @@ const rohFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
     'Taking the Gospel to the masses through open-air crusades and equipping international leaders requires significant resources and dedication.\n\nWhen you partner with Rivers of Hope Crusades, you are directly contributing to soul-winning, community transformation, and raising up the next generation of spiritual leaders on campuses and in high schools.',
   partnershipDetails: [
     { label: 'Email', value: 'roh@piccworldwide.org' },
-    { label: 'Office', value: 'Rivers of Hope Desk, PICC Worldwide' },
+    { label: 'Office', value: 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi' },
   ],
   partnershipImageUrl: '/hero/hero-1.jpg',
   phone: 'Check with your local PICC branch for contact details.',
   email: 'roh@piccworldwide.org',
-  location: 'PICC Worldwide\nRivers of Hope Desk',
+  location: 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi',
   contactIntro:
     'For crusade invitations, conference details, or partnership inquiries, please contact our ministry desk.',
 };

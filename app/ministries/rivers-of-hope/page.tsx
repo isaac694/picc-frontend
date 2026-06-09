@@ -148,12 +148,12 @@ const defaultInfo: MinistryInfo = {
     'Taking the Gospel to the masses through open-air crusades and equipping international leaders requires significant resources and dedication.\n\nWhen you partner with Rivers of Hope Crusades, you are directly contributing to soul-winning, community transformation, and raising up the next generation of spiritual leaders on campuses and in high schools.',
   partnershipDetails: [
     { label: 'Email', value: 'roh@piccworldwide.org' },
-    { label: 'Office', value: 'Rivers of Hope Desk, PICC Worldwide' },
+    { label: 'Office', value: 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi' },
   ],
   partnershipImageUrl: '/hero/hero-1.jpg',
   phone: 'Check with your local PICC branch for contact details.',
   email: 'roh@piccworldwide.org',
-  location: 'PICC Worldwide\nRivers of Hope Desk',
+  location: 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi',
   contactIntro:
     'For crusade invitations, conference details, or partnership inquiries, please contact our ministry desk.',
 };
@@ -663,16 +663,17 @@ export default function RiversOfHopePage() {
 
   useEffect(() => {
     if (!ytReady || typeof window === "undefined" || !window.YT?.Player) return;
+    const yt = window.YT;
     const players = playersRef.current;
     const iframes = Array.from(document.querySelectorAll<HTMLIFrameElement>("[data-yt-id]"));
 
     iframes.forEach((iframe) => {
       const videoId = iframe.dataset.ytId;
       if (!videoId || players.has(videoId)) return;
-      const player = new window.YT.Player(iframe, {
+      const player = new yt.Player(iframe, {
         events: {
           onStateChange: (event: any) => {
-            if (event.data === window.YT.PlayerState.PLAYING) {
+            if (event.data === yt.PlayerState.PLAYING) {
               players.forEach((p) => {
                 if (p !== event.target) p.pauseVideo();
               });
@@ -685,7 +686,7 @@ export default function RiversOfHopePage() {
   }, [ytReady, activeTool]);
 
   const mobilePlayerActive = isMobileViewport && activeTool;
-  const activeEmbedTool = TOOL_TABS.find(t => t.key === activeTool && t.kind === "embed") as { url: string; label: string } | undefined;
+  const activeEmbedTool = TOOL_TABS.find(t => t.key === activeTool && t.kind === "embed") as any;
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -1163,7 +1164,7 @@ export default function RiversOfHopePage() {
                 <div className="grid gap-6">
                   {[
                     { icon: <Mail className="w-6 h-6" />, label: "Email Address", value: ministryInfo.email || "roh@piccworldwide.org" },
-                    { icon: <MapPin className="w-6 h-6" />, label: "Location", value: ministryInfo.location?.replace('\n', ', ') || "Rivers of Hope Desk, PICC Worldwide" },
+                    { icon: <MapPin className="w-6 h-6" />, label: "Location", value: ministryInfo.location?.replace('\n', ', ') || "Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi" },
                     { icon: <HeartHandshake className="w-6 h-6" />, label: "What we receive", value: "Prayer support, financial partnership, media and volunteer requests, and crusade invitations." }
                   ].map((item, i) => (
                     <motion.div 
@@ -1432,7 +1433,7 @@ export default function RiversOfHopePage() {
                 <Card className="bg-white/10 border-0 text-white p-8 text-center backdrop-blur-sm">
                   <Globe className="w-10 h-10 mx-auto text-red-400 mb-4" />
                   <h3 className="font-bold text-xl mb-2">Ministry Office</h3>
-                  {(ministryInfo.location || 'PICC Worldwide\nRivers of Hope Desk').split('\n').map((line) => (
+                  {(ministryInfo.location || 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi').split('\n').map((line) => (
                     <p key={line} className="text-white/70">{line}</p>
                   ))}
                 </Card>

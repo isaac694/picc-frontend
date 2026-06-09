@@ -19,13 +19,11 @@ import PrayerRequestTool from '@/components/livestream/PrayerRequestTool';
 import WailingWomanGiveTool from '@/components/livestream/WailingWomanGiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
 
-// --- TYPES & GLOBALS ---
-declare global {
-  interface Window {
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
+// --- NEWS COMPONENTS ---
+import NewsSection from '@/components/NewsSection';
+import { WAILING_WOMAN_NEWS_ITEMS } from '@/components/wailingWomanNews';
 
+// --- TYPES & GLOBALS ---
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "prayer" | "give" | null;
 
 type YouTubeVideo = {
@@ -282,62 +280,29 @@ export default function WailingWomenPage() {
       };
     };
 
-    const toVideoFromPlaylist = (item: YouTubePlaylistItem | undefined): YouTubeVideo | null => {
-      const videoId = item?.contentDetails?.videoId;
-      if (!videoId) return null;
-      const snippet = item.snippet || {};
-      return {
-        videoId,
-        title: snippet.title || "",
-        publishedAt: snippet.publishedAt || "",
-        updatedAt: snippet.publishedAt || "",
-        channelTitle: snippet.channelTitle || "",
-        description: snippet.description || "",
-        thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || "",
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        embedUrl: `https://www.youtube.com/embed/${videoId}`,
-        isLive: false,
-      };
-    };
-
     const fetchJson = async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to load videos");
       return response.json();
     };
 
-    const fetchLatestUpload = async () => {
-      const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
-      channelUrl.searchParams.set("part", "contentDetails");
-      channelUrl.searchParams.set("id", PASTOR_ESAU_BANDA_CHANNEL_ID);
-      channelUrl.searchParams.set("key", YOUTUBE_API_KEY);
-
-      const channelData = await fetchJson(channelUrl.toString());
-      const uploadsPlaylistId = channelData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
-      if (!uploadsPlaylistId) return null;
-
-      const uploadsUrl = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
-      uploadsUrl.searchParams.set("part", "snippet,contentDetails");
-      uploadsUrl.searchParams.set("playlistId", uploadsPlaylistId);
-      uploadsUrl.searchParams.set("maxResults", "1");
-      uploadsUrl.searchParams.set("key", YOUTUBE_API_KEY);
-
-      const uploadsData = await fetchJson(uploadsUrl.toString());
-      return Array.isArray(uploadsData?.items) ? toVideoFromPlaylist(uploadsData.items[0]) : null;
-    };
-
-    const fetchLatestEmbeddableVideo = async () => {
+    const fetchLatestWailingWomanVideos = async (channelId: string) => {
       const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
       searchUrl.searchParams.set("part", "snippet");
-      searchUrl.searchParams.set("channelId", PASTOR_ESAU_BANDA_CHANNEL_ID);
+      searchUrl.searchParams.set("channelId", channelId);
       searchUrl.searchParams.set("type", "video");
       searchUrl.searchParams.set("order", "date");
+      searchUrl.searchParams.set("q", "Wailing Woman");
       searchUrl.searchParams.set("videoEmbeddable", "true");
-      searchUrl.searchParams.set("maxResults", "1");
+      searchUrl.searchParams.set("maxResults", "10");
       searchUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
       const searchData = await fetchJson(searchUrl.toString());
-      return Array.isArray(searchData?.items) ? toVideoFromSearch(searchData.items[0]) : null;
+      return Array.isArray(searchData?.items)
+        ? searchData.items.map(toVideoFromSearch).filter((v): v is YouTubeVideo => 
+            v !== null && v.title.toLowerCase().includes("wailing woman")
+          )
+        : [];
     };
 
     const fetchVideos = async () => {
@@ -349,28 +314,43 @@ export default function WailingWomenPage() {
         liveUrl.searchParams.set("channelId", PASTOR_ESAU_BANDA_CHANNEL_ID);
         liveUrl.searchParams.set("eventType", "live");
         liveUrl.searchParams.set("type", "video");
+        liveUrl.searchParams.set("q", "Wailing Woman");
+        liveUrl.searchParams.set("videoEmbeddable", "true");
         liveUrl.searchParams.set("maxResults", "1");
         liveUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
-        const [liveData, embeddableVideo, latestUpload] = await Promise.all([
+        const [liveData, wwVideos] = await Promise.all([
           fetchJson(liveUrl.toString()),
-          fetchLatestEmbeddableVideo(),
-          fetchLatestUpload(),
+          fetchLatestWailingWomanVideos(PASTOR_ESAU_BANDA_CHANNEL_ID),
         ]);
+
         const liveVideo = Array.isArray(liveData?.items) ? toVideoFromSearch(liveData.items[0]) : null;
+        
+        let finalVideos: YouTubeVideo[] = [];
+        if (liveVideo && liveVideo.title.toLowerCase().includes("wailing woman")) {
+          finalVideos.push(liveVideo);
+        }
+        finalVideos = [...finalVideos, ...wwVideos];
+        
+        // Remove duplicates if any
+        const seen = new Set();
+        const uniqueVideos = finalVideos.filter(v => {
+          if (seen.has(v.videoId)) return false;
+          seen.add(v.videoId);
+          return true;
+        });
 
         if (isMounted) {
-          const pastorVideo = liveVideo || embeddableVideo || latestUpload;
-          if (pastorVideo) {
-            setVideos([pastorVideo]);
+          if (uniqueVideos.length > 0) {
+            setVideos(uniqueVideos);
           } else {
             setVideos([{
               videoId: FALLBACK_HERO_ID,
-              title: "Pastor Esau Banda",
+              title: "Wailing Woman Live Prayers",
               publishedAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              channelTitle: "Pastor Esau Banda",
-              description: "Latest ministry broadcast from Pastor Esau Banda.",
+              channelTitle: "Wailing Woman",
+              description: "Midnight warfare prayers and prophetic declarations for the destinies of our children.",
               thumbnail: "",
               url: `https://www.youtube.com/watch?v=${FALLBACK_HERO_ID}`,
               embedUrl: `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`,
@@ -1269,7 +1249,19 @@ export default function WailingWomenPage() {
           </section>
         )}
 
-        {/* 7. SUPPORT THE MINISTRY SECTOR */}
+        {/* 7. NEWS SECTION */}
+        {!mobilePlayerActive && (
+          <NewsSection
+            kicker="Wailing Woman updates"
+            title="Latest News"
+            description="Stay updated with the latest stories, testimonies, and announcements from the Wailing Woman global network."
+            items={WAILING_WOMAN_NEWS_ITEMS}
+            backgroundClassName="bg-slate-50 text-black border-y border-black/5"
+            maxItems={6}
+          />
+        )}
+
+        {/* 8. SUPPORT THE MINISTRY SECTOR */}
         {!mobilePlayerActive && (
           <section className="py-16 bg-[linear-gradient(135deg,#6B21A8_0%,#4C1D95_100%)] text-white text-center relative overflow-hidden">
             <div className="max-w-4xl mx-auto px-4 relative z-10">

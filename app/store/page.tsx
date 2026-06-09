@@ -202,7 +202,7 @@ export default function StorePage() {
                         height={48}
                         className="h-12 w-12 rounded-full border border-slate-200 object-cover"
                       />
-                      <p className="text-sm font-semibold text-slate-950">{selectedBook.author || 'PICC Store'}</p>
+                      <p className="text-sm font-semibold text-slate-950">{selectedBook.author || 'Hope Stores'}</p>
                     </div>
                   </div>
                 </aside>
@@ -213,7 +213,7 @@ export default function StorePage() {
                       {selectedBook.name}
                     </h2>
                     <p className="mt-3 text-base text-slate-600">
-                      by <span className="font-semibold text-[#1688b4]">{selectedBook.author || 'PICC Store'}</span>
+                      by <span className="font-semibold text-[#1688b4]">{selectedBook.author || 'Hope Stores'}</span>
                       <span className="mx-3 text-slate-300">|</span>
                       Format: Hard Copy
                     </p>
@@ -244,7 +244,7 @@ export default function StorePage() {
                   </div>
 
                   <p className="mt-5 text-sm leading-6 text-slate-600">
-                    Hard copy purchases are paid through bank transfer or mobile money. After payment, send proof of payment to the PICC Store team and they will organize collection.
+                    Hard copy purchases are paid through bank transfer or mobile money. After payment, send proof of payment to the Hope Stores team and they will organize collection.
                   </p>
                 </section>
 
@@ -325,13 +325,18 @@ export default function StorePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="grid gap-6 lg:grid-cols-[260px_minmax(320px,1fr)_220px] lg:items-center">
               <div className="flex items-center gap-3">
-                <div className="relative flex h-14 w-14 items-center justify-center">
-                  <ShoppingCart className="h-12 w-12 text-slate-950" strokeWidth={1.5} />
-                  <span className="absolute bottom-2 right-1 rounded bg-white px-1 text-[10px] font-black text-[#d71920]">S</span>
+                <div className="relative h-16 w-16 overflow-hidden rounded-full border border-slate-200 bg-white">
+                  <Image
+                    src="/store/logo.jpeg"
+                    alt="Hope Stores logo"
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
                 </div>
                 <div className="leading-none">
-                  <p className="text-2xl font-black tracking-tight">Prophetic</p>
-                  <p className="-mt-1 text-2xl font-black tracking-tight text-[#d71920]">Store</p>
+                  <p className="text-2xl font-black tracking-tight">Hope</p>
+                  <p className="-mt-1 text-2xl font-black tracking-tight text-[#d71920]">Stores</p>
                 </div>
               </div>
 
@@ -593,7 +598,7 @@ export default function StorePage() {
                       <p className="text-sm font-medium text-center px-4">
                         Once paid, send your <span className="font-bold underline">proof of payment</span> and <span className="font-bold underline">full name</span> to our team on WhatsApp:
                       </p>
-                      <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#25D366]/90 border-0 py-6" onClick={() => window.open(`https://wa.me/265888000000?text=Hello, I have made a payment for my PICC Store order. Name: `, '_blank')}>
+                      <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#25D366]/90 border-0 py-6" onClick={() => window.open(`https://wa.me/265888000000?text=Hello, I have made a payment for my Hope Stores order. Name: `, '_blank')}>
                         <MessageCircle className="w-5 h-5" /> Send Proof on WhatsApp
                       </Button>
                       <p className="text-xs text-black/40 text-center">We will then contact you to organize collection.</p>
@@ -613,7 +618,7 @@ export default function StorePage() {
                   </div>
                 )}
                 {checkoutStep === 'success' && (
-                  <Button className="w-full" variant="outline" onClick={() => { setIsCartOpen(false); setCart([]); setCheckoutStep('cart'); }}>Back to Store</Button>
+                  <Button className="w-full" variant="outline" onClick={() => { setIsCartOpen(false); setCart([]); setCheckoutStep('cart'); }}>Back to Hope Stores</Button>
                 )}
               </div>
             </motion.div>
