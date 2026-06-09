@@ -121,58 +121,175 @@ export default function StorePage() {
   const cartTotal = cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
   const cartCount = cart.reduce((count, item) => count + item.quantity, 0);
   const formatMWK = (amount: number) => `MWK ${amount.toLocaleString()}`;
+  const getBookOverview = (book: Product) => {
+    const genreIntro: Record<string, string> = {
+      Spiritual: 'This book is a faith-building resource written to strengthen your walk with God, sharpen your spiritual appetite, and help you live with conviction.',
+      Marital: 'This book gives practical biblical wisdom for relationships, marriage, preparation, communication, and building a home that honors God.',
+      Youth: 'This book speaks to young people with practical guidance for purpose, discipline, purity, excellence, and making choices that shape a meaningful future.',
+      Prayer: 'This book is a prayer resource for believers who want to grow in spiritual discipline, intercession, and confidence before God.',
+      Leadership: 'This book equips leaders and servants with biblical principles for responsibility, character, excellence, and effective ministry.',
+      Success: 'This book explores biblical wisdom for progress, diligence, impact, and rising into the life God has prepared for you.',
+      Men: 'This book offers biblical insight for men who want to grow in responsibility, purpose, discipline, and spiritual strength.',
+      Women: 'This book encourages women to walk in wisdom, strength, distinction, and God-given purpose.',
+    };
+
+    return [
+      genreIntro[book.genre || ''] || 'This book is a practical Christian resource designed to encourage, equip, and strengthen readers in their daily walk with God.',
+      `${book.name} brings together biblical teaching and practical instruction so readers can understand the subject clearly and apply it with faith, discipline, and confidence.`,
+      'Review the details below, then choose the hard copy option to add it to your cart or use the soft copy option to purchase the digital edition on Amazon.',
+    ];
+  };
+  const getEstimatedPages = (book: Product) => {
+    const numericId = Number(book.id.replace(/\D/g, '')) || book.name.length;
+    return 88 + (numericId % 42);
+  };
 
   return (
     <>
       <Navigation />
       
-      {/* Selection Modal for Books */}
+      {/* Book overview modal */}
       <AnimatePresence>
         {selectedBook && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedBook(null)} className="fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white z-[70] rounded-2xl shadow-2xl p-6 overflow-hidden">
-              <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-black/5 rounded-xl mx-auto mb-4 flex items-center justify-center">
-                  <BookOpen className="w-10 h-10 text-black/20" />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedBook(null)}
+              className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 18 }}
+              className="fixed left-1/2 top-1/2 z-[70] max-h-[92vh] w-[min(1180px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg bg-white shadow-2xl"
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-5 py-4 backdrop-blur">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1688b4]">Book Overview</p>
+                  <p className="truncate text-sm text-slate-500">Review before adding to cart</p>
                 </div>
-                <h3 className="text-xl font-bold">{selectedBook.name}</h3>
-                <p className="text-sm text-black/50">Choose how you want to purchase this book</p>
-              </div>
-
-              <div className="grid gap-4">
-                <button 
-                  onClick={() => addToCart(selectedBook)}
-                  className="group relative flex items-center gap-4 p-4 border rounded-xl hover:border-black transition-all text-left"
+                <button
+                  type="button"
+                  onClick={() => setSelectedBook(null)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-slate-400 hover:text-slate-950"
+                  aria-label="Close book overview"
                 >
-                  <div className="p-3 bg-black text-white rounded-lg group-hover:scale-110 transition-transform">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold">Hard Copy</p>
-                    <p className="text-xs text-black/50">Pay via Bank/Mobile Money & collect in person.</p>
-                  </div>
+                  <X className="h-5 w-5" />
                 </button>
-
-                <a 
-                  href="https://www.amazon.com/stores/author/B0198LK6E6"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative flex items-center gap-4 p-4 border rounded-xl hover:border-black transition-all text-left"
-                >
-                  <div className="p-3 bg-[#FF9900] text-white rounded-lg group-hover:scale-110 transition-transform">
-                    <ExternalLink className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold">Soft Copy</p>
-                    <p className="text-xs text-black/50">Purchase the digital version on Amazon.</p>
-                  </div>
-                </a>
               </div>
 
-              <button onClick={() => setSelectedBook(null)} className="mt-6 w-full py-2 text-sm text-black/40 hover:text-black font-medium transition-colors">
-                Cancel
-              </button>
+              <div className="grid gap-8 p-5 md:p-7 lg:grid-cols-[300px_minmax(0,1fr)_300px]">
+                <aside className="space-y-5">
+                  <div className="relative mx-auto aspect-[0.72] w-full max-w-[280px] overflow-hidden border border-slate-200 bg-slate-50 shadow-[0_18px_34px_rgba(15,23,42,0.18)]">
+                    <Image
+                      src={selectedBook.image}
+                      alt={selectedBook.name}
+                      fill
+                      sizes="(min-width: 1024px) 280px, 70vw"
+                      className="object-cover"
+                      onError={swapImage('/store/items/placeholder.png')}
+                    />
+                  </div>
+                  <div className="mx-auto max-w-[280px] border-t border-slate-200 pt-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Author</p>
+                    <div className="mt-3 flex items-center gap-3">
+                      <Image
+                        src="/store/esau-banda.JPG"
+                        alt={selectedBook.author || 'Author'}
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 rounded-full border border-slate-200 object-cover"
+                      />
+                      <p className="text-sm font-semibold text-slate-950">{selectedBook.author || 'PICC Store'}</p>
+                    </div>
+                  </div>
+                </aside>
+
+                <section className="min-w-0">
+                  <div className="border-b border-slate-200 pb-5">
+                    <h2 className="font-serif text-3xl font-semibold leading-tight text-slate-950 md:text-5xl">
+                      {selectedBook.name}
+                    </h2>
+                    <p className="mt-3 text-base text-slate-600">
+                      by <span className="font-semibold text-[#1688b4]">{selectedBook.author || 'PICC Store'}</span>
+                      <span className="mx-3 text-slate-300">|</span>
+                      Format: Hard Copy
+                    </p>
+                  </div>
+
+                  <div className="space-y-5 py-6 text-base leading-8 text-slate-900">
+                    {getBookOverview(selectedBook).map((paragraph) => (
+                      <p key={paragraph}>{paragraph}</p>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-4 border-y border-slate-200 py-5 sm:grid-cols-3">
+                    <div className="text-center">
+                      <BookOpen className="mx-auto h-7 w-7 text-slate-500" />
+                      <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Print length</p>
+                      <p className="mt-1 text-sm font-semibold text-[#1688b4]">{getEstimatedPages(selectedBook)} pages</p>
+                    </div>
+                    <div className="text-center">
+                      <Building2 className="mx-auto h-7 w-7 text-slate-500" />
+                      <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Category</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-950">{selectedBook.genre || selectedBook.category}</p>
+                    </div>
+                    <div className="text-center">
+                      <CheckCircle2 className="mx-auto h-7 w-7 text-slate-500" />
+                      <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Language</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-950">English</p>
+                    </div>
+                  </div>
+
+                  <p className="mt-5 text-sm leading-6 text-slate-600">
+                    Hard copy purchases are paid through bank transfer or mobile money. After payment, send proof of payment to the PICC Store team and they will organize collection.
+                  </p>
+                </section>
+
+                <aside className="space-y-5">
+                  <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="rounded-md border-2 border-[#1688b4] bg-[#e9f6fb] p-4">
+                      <p className="font-bold text-slate-950">Hard Copy</p>
+                      <p className="mt-1 text-xl font-bold text-slate-950">{formatMWK(selectedBook.price)}</p>
+                      <p className="mt-1 text-sm text-slate-700">Available for collection</p>
+                    </div>
+
+                    <div className="mt-5">
+                      <p className="text-4xl font-light text-slate-950">
+                        <span className="text-base align-top">MWK</span>{' '}
+                        {selectedBook.price.toLocaleString()}
+                      </p>
+                      <Button
+                        onClick={() => addToCart(selectedBook)}
+                        className="mt-5 w-full rounded-full bg-[#f59e0b] py-6 text-base font-semibold text-slate-950 hover:bg-[#e58f00]"
+                      >
+                        Add hard copy to cart
+                      </Button>
+                      <p className="mt-4 text-sm leading-6 text-slate-600">
+                        You can review your cart and payment details before confirming your order.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-5">
+                    <p className="text-lg font-semibold text-slate-950">Soft Copy</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Purchase the digital edition from the author page on Amazon.
+                    </p>
+                    <a
+                      href="https://www.amazon.com/stores/author/B0198LK6E6"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-300 px-5 text-sm font-semibold text-slate-950 transition hover:border-slate-950"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View on Amazon
+                    </a>
+                  </div>
+                </aside>
+              </div>
             </motion.div>
           </>
         )}
@@ -195,7 +312,6 @@ export default function StorePage() {
         <section className="bg-white text-slate-950">
           <div className="bg-slate-50 border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-700">
-              <p>Support: support@propheticstore.com</p>
               <div className="flex flex-wrap items-center gap-4">
                 <button type="button" className="hover:text-slate-950">Account</button>
                 <span className="h-4 w-px bg-slate-300" />

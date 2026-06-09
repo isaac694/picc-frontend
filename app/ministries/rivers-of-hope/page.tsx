@@ -12,7 +12,7 @@ import {
   MapPin, Phone, Mail, CalendarClock, Globe, 
   MessageSquareText, BookOpenText, StickyNote, 
   Flame, Users, GraduationCap, Tent, BookOpen, 
-  XIcon, Facebook, Twitter, Instagram
+  XIcon, Facebook, Twitter, Instagram, HeartHandshake, Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -355,8 +355,9 @@ export default function RiversOfHopePage() {
     .filter(Boolean)
     .join(', ');
 
-  const handleRohFormChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type, checked } = event.target;
+  const handleRohFormChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = event.target;
+    const checked = (event.target as HTMLInputElement).checked;
 
     if (name.startsWith('programs.')) {
       const key = name.replace('programs.', '') as keyof typeof rohFormData.programs;
@@ -1122,160 +1123,214 @@ export default function RiversOfHopePage() {
           </section>
         )}
 
-        <section className="py-20 bg-white text-black">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid gap-10 lg:grid-cols-[1.2fr_0.95fr] items-start">
-              <div>
-                <span className="inline-flex items-center rounded-full bg-red-100 px-4 py-1 text-sm font-semibold uppercase tracking-[0.32em] text-red-800 mb-4">
-                  Rivers of Hope Partnership
-                </span>
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Request Support or Join the Rivers of Hope Movement</h2>
-                <p className="text-black/70 mb-6">Complete the form to share your details with the Rivers of Hope desk. Your request will be saved in the database and delivered to <strong>roh@piccworldwide.org</strong>.</p>
-                <div className="grid gap-4 text-sm text-black/75">
-                  <div className="rounded-3xl bg-red-50 p-5">
-                    <p className="font-semibold text-black mb-1">Email</p>
-                    <p>roh@piccworldwide.org</p>
-                  </div>
-                  <div className="rounded-3xl bg-red-50 p-5">
-                    <p className="font-semibold text-black mb-1">Location</p>
-                    <p>Rivers of Hope Desk, PICC Worldwide</p>
-                  </div>
-                  <div className="rounded-3xl bg-red-50 p-5">
-                    <p className="font-semibold text-black mb-1">What we receive</p>
-                    <p>Prayer support, financial partnership, media and volunteer requests, and crusade invitations.</p>
-                  </div>
+        <section className="relative py-24 bg-slate-50 overflow-hidden">
+          {/* Subtle background decoration */}
+          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-96 h-96 bg-red-100/30 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-96 h-96 bg-red-100/20 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="grid gap-16 lg:grid-cols-[1.1fr_1fr] items-start">
+              <div className="space-y-8">
+                <div>
+                  <motion.span 
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="inline-flex items-center rounded-full bg-red-100 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-red-800 mb-6 border border-red-200"
+                  >
+                    Rivers of Hope Partnership
+                  </motion.span>
+                  <motion.h2 
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.1 }}
+                    className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight mb-6"
+                  >
+                    Request Support or Join the <span className="text-red-700">Movement</span>
+                  </motion.h2>
+                  <motion.p 
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 }}
+                    className="text-lg text-slate-600 leading-relaxed max-w-xl"
+                  >
+                    Complete the form to share your details with the Rivers of Hope desk. Your request will be securely processed and delivered to our dedicated team.
+                  </motion.p>
+                </div>
+
+                <div className="grid gap-6">
+                  {[
+                    { icon: <Mail className="w-6 h-6" />, label: "Email Address", value: ministryInfo.email || "roh@piccworldwide.org" },
+                    { icon: <MapPin className="w-6 h-6" />, label: "Location", value: ministryInfo.location?.replace('\n', ', ') || "Rivers of Hope Desk, PICC Worldwide" },
+                    { icon: <HeartHandshake className="w-6 h-6" />, label: "What we receive", value: "Prayer support, financial partnership, media and volunteer requests, and crusade invitations." }
+                  ].map((item, i) => (
+                    <motion.div 
+                      key={i}
+                      initial={{ opacity: 0, x: -20 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.3 + i * 0.1 }}
+                      className="group flex items-start gap-5 p-6 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all hover:border-red-200"
+                    >
+                      <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-red-50 text-red-700 flex items-center justify-center group-hover:bg-red-700 group-hover:text-white transition-colors">
+                        {item.icon}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 mb-1">{item.label}</p>
+                        <p className="text-slate-600 leading-snug">{item.value}</p>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
 
-              <form onSubmit={handleRohFormSubmit} className="rounded-3xl border border-black/10 bg-slate-50 p-8 shadow-sm">
-                <div className="grid gap-4">
-                  <label className="space-y-2 text-sm font-medium text-black">
-                    <span>Full Name</span>
-                    <input
-                      name="fullName"
-                      value={rohFormData.fullName}
-                      onChange={handleRohFormChange}
-                      required
-                      className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-black outline-none focus:border-red-800 focus:ring-2 focus:ring-red-100"
-                      placeholder="Your full name"
-                    />
-                  </label>
-
-                  <label className="space-y-2 text-sm font-medium text-black">
-                    <span>Email Address</span>
-                    <input
-                      name="email"
-                      type="email"
-                      value={rohFormData.email}
-                      onChange={handleRohFormChange}
-                      required
-                      className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-black outline-none focus:border-red-800 focus:ring-2 focus:ring-red-100"
-                      placeholder="you@example.com"
-                    />
-                  </label>
-
-                  <label className="space-y-2 text-sm font-medium text-black">
-                    <span>Phone Number</span>
-                    <input
-                      name="phone"
-                      value={rohFormData.phone}
-                      onChange={handleRohFormChange}
-                      className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-black outline-none focus:border-red-800 focus:ring-2 focus:ring-red-100"
-                      placeholder="+265 88 123 4567"
-                    />
-                  </label>
-
-                  <label className="space-y-2 text-sm font-medium text-black">
-                    <span>Location</span>
-                    <input
-                      name="location"
-                      value={rohFormData.location}
-                      onChange={handleRohFormChange}
-                      className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-black outline-none focus:border-red-800 focus:ring-2 focus:ring-red-100"
-                      placeholder="Your city or branch"
-                    />
-                  </label>
-
-                  <div className="space-y-3 rounded-3xl border border-black/10 bg-white p-4">
-                    <p className="text-sm font-semibold text-black">Partnership Program (select all that apply)</p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {ROH_PROGRAM_OPTIONS.map((option) => (
-                        <label key={option.key} className="inline-flex items-center gap-3 rounded-2xl border border-black/10 bg-slate-50 px-4 py-3 text-sm text-black cursor-pointer">
-                          <input
-                            type="checkbox"
-                            name={`programs.${option.key}`}
-                            checked={rohFormData.programs[option.key]}
-                            onChange={handleRohFormChange}
-                            className="h-4 w-4 rounded border-gray-300 text-red-800 focus:ring-red-800"
-                          />
-                          <span>{option.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <p className="text-xs text-black/60">Selected: {selectedProgramLabels || 'None'}</p>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="relative"
+              >
+                <div className="absolute -inset-4 bg-gradient-to-tr from-red-600/10 to-orange-600/10 rounded-[2.5rem] blur-2xl" />
+                <form onSubmit={handleRohFormSubmit} className="relative bg-white rounded-[2rem] border border-slate-200 p-8 md:p-10 shadow-xl shadow-slate-200/50">
+                  <div className="mb-8">
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Partner with Us</h3>
+                    <p className="text-slate-500 text-sm">Please fill in the information below to get started.</p>
                   </div>
+                  
+                  <div className="grid gap-5">
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <label className="space-y-2 text-sm font-semibold text-slate-900">
+                        <span>Full Name</span>
+                        <input
+                          name="fullName"
+                          value={rohFormData.fullName}
+                          onChange={handleRohFormChange}
+                          required
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
+                          placeholder="Your full name"
+                        />
+                      </label>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="space-y-2 text-sm font-medium text-black">
-                      <span>Amount</span>
-                      <input
-                        name="amount"
-                        value={rohFormData.amount}
+                      <label className="space-y-2 text-sm font-semibold text-slate-900">
+                        <span>Email Address</span>
+                        <input
+                          name="email"
+                          type="email"
+                          value={rohFormData.email}
+                          onChange={handleRohFormChange}
+                          required
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
+                          placeholder="you@example.com"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <label className="space-y-2 text-sm font-semibold text-slate-900">
+                        <span>Phone Number</span>
+                        <input
+                          name="phone"
+                          value={rohFormData.phone}
+                          onChange={handleRohFormChange}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
+                          placeholder="+265 88 123 4567"
+                        />
+                      </label>
+
+                      <label className="space-y-2 text-sm font-semibold text-slate-900">
+                        <span>Location</span>
+                        <input
+                          name="location"
+                          value={rohFormData.location}
+                          onChange={handleRohFormChange}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
+                          placeholder="Your city or branch"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+                      <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                        <Info className="w-4 h-4 text-red-600" />
+                        <span>Partnership Program</span>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {ROH_PROGRAM_OPTIONS.map((option) => (
+                          <label key={option.key} className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm cursor-pointer transition-all ${rohFormData.programs[option.key] ? 'border-red-200 bg-red-50 text-red-900 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                            <input
+                              type="checkbox"
+                              name={`programs.${option.key}`}
+                              checked={rohFormData.programs[option.key]}
+                              onChange={handleRohFormChange}
+                              className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="font-medium">{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <label className="space-y-2 text-sm font-semibold text-slate-900">
+                        <span>Commitment Amount</span>
+                        <input
+                          name="amount"
+                          value={rohFormData.amount}
+                          onChange={handleRohFormChange}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
+                          placeholder="e.g. K 50,000"
+                        />
+                      </label>
+
+                      <label className="space-y-2 text-sm font-semibold text-slate-900">
+                        <span>Frequency</span>
+                        <select
+                          name="frequency"
+                          value={rohFormData.frequency}
+                          onChange={handleRohFormChange}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 appearance-none"
+                        >
+                          <option>Monthly</option>
+                          <option>Quarterly</option>
+                          <option>Biannually</option>
+                          <option>Annually</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <label className="space-y-2 text-sm font-semibold text-slate-900">
+                      <span>Volunteer Area / Special Request</span>
+                      <textarea
+                        name="volunteerArea"
+                        value={rohFormData.volunteerArea}
                         onChange={handleRohFormChange}
-                        className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-black outline-none focus:border-red-800 focus:ring-2 focus:ring-red-100"
-                        placeholder="K 0.00"
+                        rows={3}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 resize-none"
+                        placeholder="How would you like to serve?"
                       />
                     </label>
-
-                    <label className="space-y-2 text-sm font-medium text-black">
-                      <span>Frequency</span>
-                      <select
-                        name="frequency"
-                        value={rohFormData.frequency}
-                        onChange={handleRohFormChange}
-                        className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-black outline-none focus:border-red-800 focus:ring-2 focus:ring-red-100"
-                      >
-                        <option>Monthly</option>
-                        <option>Quarterly</option>
-                        <option>Biannually</option>
-                        <option>Annually</option>
-                      </select>
-                    </label>
                   </div>
 
-                  <label className="space-y-2 text-sm font-medium text-black">
-                    <span>Volunteer Area / Notes</span>
-                    <textarea
-                      name="volunteerArea"
-                      value={rohFormData.volunteerArea}
-                      onChange={handleRohFormChange}
-                      rows={4}
-                      className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-black outline-none focus:border-red-800 focus:ring-2 focus:ring-red-100"
-                      placeholder="Share how you want to serve or any special request"
-                    />
-                  </label>
-
-                  <label className="space-y-2 text-sm font-medium text-black">
-                    <span>Additional Notes</span>
-                    <textarea
-                      name="notes"
-                      value={rohFormData.notes}
-                      onChange={handleRohFormChange}
-                      rows={4}
-                      className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-black outline-none focus:border-red-800 focus:ring-2 focus:ring-red-100"
-                      placeholder="Any extra information for the ROH team"
-                    />
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isRohSubmitting}
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-red-800 px-6 py-4 text-sm font-semibold text-white shadow-lg shadow-red-200/40 transition hover:bg-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isRohSubmitting ? 'Sending...' : 'Submit Inquiry'}
-                </button>
-              </form>
+                  <button
+                    type="submit"
+                    disabled={isRohSubmitting}
+                    className="mt-8 flex w-full items-center justify-center rounded-xl bg-red-700 px-6 py-4 text-base font-bold text-white shadow-lg shadow-red-200 transition hover:bg-red-800 hover:shadow-red-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    {isRohSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                      </span>
+                    ) : 'Submit Partnership Inquiry'}
+                  </button>
+                </form>
+              </motion.div>
             </div>
           </div>
         </section>

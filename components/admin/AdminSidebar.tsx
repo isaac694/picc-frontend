@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Moon, Sun, Users } from 'lucide-react';
 import { useMemo } from 'react';
-import { ADMIN_PAGE, canAccessAdminPage } from '@/lib/admin-pages';
+import { ADMIN_PAGE, canAccessAdminPage, canAccessMinistry } from '@/lib/admin-pages';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useAdminTheme } from '@/hooks/use-admin-theme';
 import type { AdminPageKey } from '@/lib/admin-pages';
@@ -42,15 +42,15 @@ const SITE_PAGE_ITEMS: NavItem[] = [
   { label: 'Church Locations', href: '/admin/locations', pageKey: ADMIN_PAGE.LOCATIONS_PAGE },
 ];
 
-const MINISTRIES_ITEMS: NavItem[] = [
-  { label: 'ICD', href: '/admin/ministries/icd', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Men of Valour', href: '/admin/ministries/men-of-valour', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Prison Ministry', href: '/admin/ministries/prison-ministry', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Youth Church', href: '/admin/ministries/youth-church', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Women of Hope', href: '/admin/ministries/women-of-hope', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Rivers of Hope', href: '/admin/ministries/rivers-of-hope', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Heritage', href: '/admin/ministries/heritage', pageKey: ADMIN_PAGE.MINISTRIES },
+const MINISTRIES_ITEMS: Array<NavItem & { ministryKey: string }> = [
+  { label: 'ICD', href: '/admin/ministries/icd', ministryKey: 'icd' },
+  { label: 'Men of Valour', href: '/admin/ministries/men-of-valour', ministryKey: 'men-of-valour' },
+  { label: 'Prison Ministry', href: '/admin/ministries/prison-ministry', ministryKey: 'prison-ministry' },
+  { label: 'Youth Church', href: '/admin/ministries/youth-church', ministryKey: 'youth-church' },
+  { label: 'Women of Hope', href: '/admin/ministries/women-of-hope', ministryKey: 'women-of-hope' },
+  { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman', ministryKey: 'wailing-woman' },
+  { label: 'Rivers of Hope', href: '/admin/ministries/rivers-of-hope', ministryKey: 'rivers-of-hope' },
+  { label: 'Heritage', href: '/admin/ministries/heritage', ministryKey: 'heritage' },
 ];
 
 const ARCHIVE_ITEMS: NavItem[] = [
@@ -98,7 +98,7 @@ export default function AdminSidebar() {
       nav,
       site,
       usersItem,
-      ministries: MINISTRIES_ITEMS.filter(canSee),
+      ministries: MINISTRIES_ITEMS.filter((item) => canAccessMinistry(user, item.ministryKey)),
       showArchives: isSuperAdmin,
     };
   }, [user]);

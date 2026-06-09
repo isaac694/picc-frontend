@@ -326,22 +326,22 @@ export default function IcdMinistryPage() {
     {
       title: 'ICD Connections Conference',
       date: 'Saturday, June 15, 2024',
-      description: 'Join us for an inspiring day of teaching, worship, and fellowship as we connect deeper in faith and community.',
+      description: 'Join us for an inspiring day under the theme "Restoring Lives through Discipleship" with Pastor Esau Banda. Sessions run from 8:00 AM to 12:00 PM.',
     },
     {
       title: 'Leadership Summit 2024',
-      date: 'Friday, July 12 - Saturday, July 13, 2024',
-      description: 'A two-day intensive conference for ministry leaders covering biblical leadership, vision casting, and team development.',
+      date: 'July 12 - 13, 2024',
+      description: 'A two-day intensive summit on "Equipping Leaders for Global Impact." Join us Friday at 5:00 PM and Saturday at 8:00 AM for strategic ministry training.',
     },
     {
       title: 'Prayer & Fasting Week',
-      date: 'Monday, August 5 - Friday, August 9, 2024',
-      description: 'A dedicated week for seeking God\'s direction through prayer, fasting, and intercession for our ministries and community.',
+      date: 'August 5 - 9, 2024',
+      description: 'A dedicated week of "Seeking God\'s Direction." Join our daily sessions at 5:30 PM across all PICC branches as we focus on Matthew 6:33.',
     },
     {
       title: 'ICD Year-End Celebration',
       date: 'Saturday, December 7, 2024',
-      description: 'A joyful gathering celebrating God\'s faithfulness, ministry milestones, and testimonies of transformation throughout the year.',
+      description: 'Celebrating "A Journey of Faithfulness" from 2:00 PM to 5:00 PM. An afternoon of powerful testimonies, worship, and ministry milestones.',
     },
   ];
 

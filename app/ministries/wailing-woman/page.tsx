@@ -75,8 +75,15 @@ type YouTubeSearchItem = {
   snippet?: YouTubeSnippet;
 };
 
-const CHANNEL_ID = "UC8JUC-G4wKhrrPr7xjxYWJw";
-const FALLBACK_HERO_ID = "Z_HD5WhhxOU";
+type YouTubePlaylistItem = {
+  contentDetails?: {
+    videoId?: string;
+  };
+  snippet?: YouTubeSearchItem['snippet'];
+};
+
+const PASTOR_ESAU_BANDA_CHANNEL_ID = "UC-v_ov21EZf8f";
+const FALLBACK_HERO_ID = "ydTADwZRquA";
 
 const TOOL_TABS: Array<{
   key: ToolKey;
@@ -275,16 +282,54 @@ export default function WailingWomenPage() {
       };
     };
 
+    const toVideoFromPlaylist = (item: YouTubePlaylistItem | undefined): YouTubeVideo | null => {
+      const videoId = item?.contentDetails?.videoId;
+      if (!videoId) return null;
+      const snippet = item.snippet || {};
+      return {
+        videoId,
+        title: snippet.title || "",
+        publishedAt: snippet.publishedAt || "",
+        updatedAt: snippet.publishedAt || "",
+        channelTitle: snippet.channelTitle || "",
+        description: snippet.description || "",
+        thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || "",
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        embedUrl: `https://www.youtube.com/embed/${videoId}`,
+        isLive: false,
+      };
+    };
+
     const fetchJson = async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to load videos");
       return response.json();
     };
 
-    const fetchLatestEmbeddableVideo = async (channelId: string) => {
+    const fetchLatestUpload = async () => {
+      const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
+      channelUrl.searchParams.set("part", "contentDetails");
+      channelUrl.searchParams.set("id", PASTOR_ESAU_BANDA_CHANNEL_ID);
+      channelUrl.searchParams.set("key", YOUTUBE_API_KEY);
+
+      const channelData = await fetchJson(channelUrl.toString());
+      const uploadsPlaylistId = channelData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+      if (!uploadsPlaylistId) return null;
+
+      const uploadsUrl = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
+      uploadsUrl.searchParams.set("part", "snippet,contentDetails");
+      uploadsUrl.searchParams.set("playlistId", uploadsPlaylistId);
+      uploadsUrl.searchParams.set("maxResults", "1");
+      uploadsUrl.searchParams.set("key", YOUTUBE_API_KEY);
+
+      const uploadsData = await fetchJson(uploadsUrl.toString());
+      return Array.isArray(uploadsData?.items) ? toVideoFromPlaylist(uploadsData.items[0]) : null;
+    };
+
+    const fetchLatestEmbeddableVideo = async () => {
       const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
       searchUrl.searchParams.set("part", "snippet");
-      searchUrl.searchParams.set("channelId", channelId);
+      searchUrl.searchParams.set("channelId", PASTOR_ESAU_BANDA_CHANNEL_ID);
       searchUrl.searchParams.set("type", "video");
       searchUrl.searchParams.set("order", "date");
       searchUrl.searchParams.set("videoEmbeddable", "true");
@@ -292,9 +337,7 @@ export default function WailingWomenPage() {
       searchUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
       const searchData = await fetchJson(searchUrl.toString());
-      return Array.isArray(searchData?.items)
-        ? toVideoFromSearch(searchData.items[0])
-        : null;
+      return Array.isArray(searchData?.items) ? toVideoFromSearch(searchData.items[0]) : null;
     };
 
     const fetchVideos = async () => {
@@ -303,32 +346,31 @@ export default function WailingWomenPage() {
 
         const liveUrl = new URL("https://www.googleapis.com/youtube/v3/search");
         liveUrl.searchParams.set("part", "snippet");
-        liveUrl.searchParams.set("channelId", CHANNEL_ID);
+        liveUrl.searchParams.set("channelId", PASTOR_ESAU_BANDA_CHANNEL_ID);
         liveUrl.searchParams.set("eventType", "live");
         liveUrl.searchParams.set("type", "video");
-        liveUrl.searchParams.set("videoEmbeddable", "true");
         liveUrl.searchParams.set("maxResults", "1");
         liveUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
-        const [liveData, latestEmbeddableVideo] = await Promise.all([
+        const [liveData, embeddableVideo, latestUpload] = await Promise.all([
           fetchJson(liveUrl.toString()),
-          fetchLatestEmbeddableVideo(CHANNEL_ID),
+          fetchLatestEmbeddableVideo(),
+          fetchLatestUpload(),
         ]);
-
         const liveVideo = Array.isArray(liveData?.items) ? toVideoFromSearch(liveData.items[0]) : null;
-        const finalVideo = liveVideo || latestEmbeddableVideo;
 
         if (isMounted) {
-          if (finalVideo) {
-            setVideos([finalVideo]);
+          const pastorVideo = liveVideo || embeddableVideo || latestUpload;
+          if (pastorVideo) {
+            setVideos([pastorVideo]);
           } else {
             setVideos([{
               videoId: FALLBACK_HERO_ID,
-              title: "Wailing Woman Live Prayers",
+              title: "Pastor Esau Banda",
               publishedAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              channelTitle: "Wailing Woman",
-              description: "Midnight warfare prayers and prophetic declarations for the destinies of our children.",
+              channelTitle: "Pastor Esau Banda",
+              description: "Latest ministry broadcast from Pastor Esau Banda.",
               thumbnail: "",
               url: `https://www.youtube.com/watch?v=${FALLBACK_HERO_ID}`,
               embedUrl: `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`,
@@ -903,6 +945,63 @@ export default function WailingWomenPage() {
                     {activeTool === "give" && <div className="px-5 py-6"><WailingWomanGiveTool isMobile={false} /></div>}
                   </div>
                 )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* RECENT PRAYERS SECTION */}
+        {!mobilePlayerActive && videos.length > 1 && (
+          <section className="py-20 bg-white text-black border-b border-black/5">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">Recent Midnight Prayers</h2>
+                  <p className="text-gray-500 mt-2">Catch up on previous warfare intercessions and prophetic sessions.</p>
+                </div>
+                <a 
+                  href={`https://www.youtube.com/channel/${PASTOR_ESAU_BANDA_CHANNEL_ID}`} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="hidden sm:flex items-center gap-2 text-purple-600 font-bold hover:text-purple-800 transition-colors"
+                >
+                  View All on YouTube <Search className="w-4 h-4" />
+                </a>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {videos.slice(1, 7).map((video) => (
+                  <motion.div 
+                    key={video.videoId}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="group"
+                  >
+                    <a href={video.url} target="_blank" rel="noreferrer" className="block">
+                      <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 shadow-md group-hover:shadow-xl transition-shadow">
+                        <Image 
+                          src={video.thumbnail} 
+                          alt={video.title} 
+                          fill 
+                          className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                        />
+                        <div className="absolute inset-0 bg-purple-900/0 group-hover:bg-purple-900/20 transition-colors duration-300 flex items-center justify-center">
+                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center scale-0 group-hover:scale-100 transition-transform duration-300 shadow-lg">
+                             <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[12px] border-l-purple-600 border-b-[8px] border-b-transparent ml-1" />
+                          </div>
+                        </div>
+                      </div>
+                      <h4 className="font-bold text-gray-900 leading-tight line-clamp-2 group-hover:text-purple-700 transition-colors">
+                        {video.title}
+                      </h4>
+                      <p className="text-sm text-gray-500 mt-2 flex items-center gap-2">
+                        <CalendarClock className="w-4 h-4" />
+                        {formatDate(video.publishedAt)}
+                      </p>
+                    </a>
+                  </motion.div>
+                ))}
               </div>
             </div>
           </section>

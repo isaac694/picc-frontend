@@ -7,92 +7,17 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import ChurchNewsSection from '@/components/ChurchNewsSection';
 import { apiFetch, apiUrl } from '@/lib/api';
-
-const CAMPUS_NEWS = [
-  {
-    badge: 'Community',
-    date: 'March 2026',
-    title: 'Easter Celebrations & Community Outreach',
-    description:
-      'A look at how our church came together this Easter season to serve families across the community.',
-    image: '/hero/hero-4.JPG',
-  },
-  {
-    badge: 'Youth',
-    date: 'March 2026',
-    title: 'Youth Revival Week Highlights',
-    description:
-      'Our youth ministry hosted an incredible week of worship, fellowship, and spiritual growth.',
-    image: '/hero/hero-10.JPG',
-  },
-  {
-    badge: 'Updates',
-    date: 'February 2026',
-    title: 'New Building Expansion Update',
-    description:
-      'Construction progress on our new fellowship hall — see the latest milestones and timeline.',
-    image: '/hero/hero-8.JPG',
-  },
-  {
-    badge: 'Worship',
-    date: 'February 2026',
-    title: 'Night of Praise Recap',
-    description:
-      'A beautiful night of worship, prayer, and testimonies that lifted hearts across the campus.',
-    image: '/hero/hero-7.png',
-  },
-  {
-    badge: 'Outreach',
-    date: 'January 2026',
-    title: 'Campus Volunteer Drive',
-    description:
-      'Members gathered to serve, share resources, and pray with families in the neighborhood.',
-    image: '/hero/hero-5.png',
-  },
-  {
-    badge: 'Ministry',
-    date: 'January 2026',
-    title: 'Women of Hope Gathering',
-    description:
-      'A powerful gathering featuring teaching, fellowship, and encouragement for every season.',
-    image: '/hero/hero-3.JPG',
-  },
-];
-
-import { MapPin, Phone, Mail, CalendarClock, Globe, X } from 'lucide-react';
-
-type MediaNewsItem = {
-  id: string;
-  badge: string;
-  date: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-};
-
-type MediaGalleryItem = {
-  id: string;
-  title: string;
-  category: string;
-  imageUrl: string;
-};
-
-type MediaBookItem = {
-  id: string;
-  title: string;
-  author: string;
-  description: string;
-  imageUrl: string;
-  fileUrl: string;
-};
-
-type MediaMagazineItem = {
-  id: string;
-  title: string;
-  issue: string;
-  fileUrl: string;
-  imageUrl: string;
-};
+import {
+  DEFAULT_MEDIA_BOOKS,
+  DEFAULT_MEDIA_GALLERY,
+  DEFAULT_MEDIA_MAGAZINES,
+  DEFAULT_MEDIA_NEWS,
+  type MediaBookItem,
+  type MediaGalleryItem,
+  type MediaMagazineItem,
+  type MediaNewsItem,
+} from '@/lib/mediaDefaults';
+import { X } from 'lucide-react';
 
 type NewsItem = {
   badge: string;
@@ -164,56 +89,34 @@ async function fetchSiteList<T>(key: string): Promise<T[] | null> {
   }
 }
 
-const BOOKS: BookItem[] = [
-  {
-    title: 'Fire on the Altar Volume 3',
-    author: 'PICC Publishing',
-    description: 'A focused teaching on prayer, consecration, and spiritual hunger.',
-    cover: '/fire_altar/fire-on-altar-cover.jpg',
-    file: '/fire_altar/FIRE%20ON%20THE%20ALTAR%20Vol%203.24.pdf',
-  },
-  {
-    title: 'Fire on the Altar Volume 2',
-    author: 'PICC Publishing',
-    description: 'A focused teaching on prayer, consecration, and spiritual hunger.',
-    cover: '/fire_altar/fire-on-altar-cover.jpg',
-  },
-  {
-    title: 'Fire on the Altar Volume 1',
-    author: 'PICC Publishing',
-    description: 'A focused teaching on prayer, consecration, and spiritual hunger.',
-    cover: '/fire_altar/fire-on-altar-cover.jpg',
-  },
-];
+const CAMPUS_NEWS: NewsItem[] = DEFAULT_MEDIA_NEWS.map((item) => ({
+  badge: item.badge,
+  date: item.date,
+  title: item.title,
+  description: item.description,
+  image: item.imageUrl,
+}));
 
-const MAGAZINES: MagazineItem[] = [
-  {
-    title: 'Church Magazine Issue 1',
-    issue: 'Issue 1',
-    cover: '/magazine/magazine-1.jpeg',
-  },
-  {
-    title: 'Church Magazine Issue 2',
-    issue: 'Issue 2',
-    cover: '/magazine/magazine-2.JPG',
-  },
-  {
-    title: 'Church Magazine Issue 3',
-    issue: 'Issue 3',
-    cover: '/magazine/magazine-3.jpeg',
-  },
-];
+const EVENT_GALLERY: GalleryItem[] = DEFAULT_MEDIA_GALLERY.map((item) => ({
+  title: item.title,
+  category: item.category,
+  image: item.imageUrl,
+}));
 
-const EVENT_GALLERY: GalleryItem[] = [
-  { title: 'Worship Service', category: 'Worship', image: '/hero/hero-10.JPG' },
-  { title: 'Community Outreach', category: 'Outreach', image: '/hero/hero-8.JPG' },
-  { title: 'Youth Gathering', category: 'Youth', image: '/hero/hero-9.JPG' },
-  { title: 'Night of Praise', category: 'Music', image: '/hero/hero-5.png' },
-  { title: 'Celebration Sunday', category: 'Celebration', image: '/hero/hero-6.jpg' },
-  { title: 'Morning Prayer', category: 'Prayer', image: '/hero/hero-4.JPG' },
-  { title: 'Midweek Worship', category: 'Worship', image: '/hero/hero-2.jpg' },
-  { title: 'Campus Fellowship', category: 'Youth', image: '/hero/hero-3.JPG' },
-];
+const BOOKS: BookItem[] = DEFAULT_MEDIA_BOOKS.map((item) => ({
+  title: item.title,
+  author: item.author,
+  description: item.description,
+  cover: item.imageUrl,
+  file: item.fileUrl || undefined,
+}));
+
+const MAGAZINES: MagazineItem[] = DEFAULT_MEDIA_MAGAZINES.map((item) => ({
+  title: item.title,
+  issue: item.issue,
+  cover: item.imageUrl,
+  file: item.fileUrl || undefined,
+}));
 
 export default function MediaPage() {
   const [galleryFilter, setGalleryFilter] = useState('All');
@@ -272,49 +175,69 @@ export default function MediaPage() {
 
       if (!alive) return;
 
-      if (Array.isArray(newsItems) && newsItems.length > 0) {
-        setNews(
-          newsItems.slice(0, CAMPUS_NEWS.length).map((item) => ({
-            badge: item.badge || 'Updates',
-            date: item.date || '',
-            title: item.title || '',
-            description: item.description || '',
-            image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
-          }))
+      if (Array.isArray(newsItems)) {
+        const adminNews = newsItems.map((item) => ({
+          badge: item.badge || 'Updates',
+          date: item.date || '',
+          title: item.title || '',
+          description: item.description || '',
+          image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
+        }));
+        const overriddenIndexes = new Set(
+          newsItems
+            .map((item) => item.fallbackIndex)
+            .filter((value): value is number => typeof value === 'number'),
         );
+        const remainingFallback = CAMPUS_NEWS.filter((_, index) => !overriddenIndexes.has(index));
+        setNews(adminNews.length > 0 ? [...adminNews, ...remainingFallback] : CAMPUS_NEWS);
       }
 
-      if (Array.isArray(galleryItems) && galleryItems.length > 0) {
-        setGallery(
-          galleryItems.map((item) => ({
-            title: item.title || 'Gallery Item',
-            category: item.category || 'Gallery',
-            image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
-          }))
+      if (Array.isArray(galleryItems)) {
+        const adminGallery = galleryItems.map((item) => ({
+          title: item.title || 'Gallery Item',
+          category: item.category || 'gallery',
+          image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
+        }));
+        const overriddenIndexes = new Set(
+          galleryItems
+            .map((item) => item.fallbackIndex)
+            .filter((value): value is number => typeof value === 'number'),
         );
+        const remainingFallback = EVENT_GALLERY.filter((_, index) => !overriddenIndexes.has(index));
+        setGallery(adminGallery.length > 0 ? [...adminGallery, ...remainingFallback] : EVENT_GALLERY);
       }
 
-      if (Array.isArray(bookItems) && bookItems.length > 0) {
-        setBooks(
-          bookItems.map((item) => ({
-            title: item.title || '',
-            author: item.author || '',
-            description: item.description || '',
-            cover: normalizeAssetUrl(item.imageUrl) || '/fire_altar/fire-on-altar-cover.jpg',
-            file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
-          }))
+      if (Array.isArray(bookItems)) {
+        const adminBooks = bookItems.map((item) => ({
+          title: item.title || '',
+          author: item.author || '',
+          description: item.description || '',
+          cover: normalizeAssetUrl(item.imageUrl) || '/fire_altar/fire-on-altar-cover.jpg',
+          file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
+        }));
+        const overriddenIndexes = new Set(
+          bookItems
+            .map((item) => item.fallbackIndex)
+            .filter((value): value is number => typeof value === 'number'),
         );
+        const remainingFallback = BOOKS.filter((_, index) => !overriddenIndexes.has(index));
+        setBooks(adminBooks.length > 0 ? [...adminBooks, ...remainingFallback] : BOOKS);
       }
 
-      if (Array.isArray(magazineItems) && magazineItems.length > 0) {
-        setMagazines(
-          magazineItems.map((item) => ({
-            title: item.title || '',
-            issue: item.issue || '',
-            cover: normalizeAssetUrl(item.imageUrl) || '/magazine/magazine-1.jpeg',
-            file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
-          }))
+      if (Array.isArray(magazineItems)) {
+        const adminMagazines = magazineItems.map((item) => ({
+          title: item.title || '',
+          issue: item.issue || '',
+          cover: normalizeAssetUrl(item.imageUrl) || '/magazine/magazine-1.jpeg',
+          file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
+        }));
+        const overriddenIndexes = new Set(
+          magazineItems
+            .map((item) => item.fallbackIndex)
+            .filter((value): value is number => typeof value === 'number'),
         );
+        const remainingFallback = MAGAZINES.filter((_, index) => !overriddenIndexes.has(index));
+        setMagazines(adminMagazines.length > 0 ? [...adminMagazines, ...remainingFallback] : MAGAZINES);
       }
     };
 
@@ -326,7 +249,7 @@ export default function MediaPage() {
 
   const galleryItems = useMemo(() => {
     const baseGallery = gallery.map(item => {
-      if (item.category === 'Music' && musicVideos.length > 0) {
+      if (item.category === 'music' && musicVideos.length > 0) {
         return {
           ...item,
           image: musicVideos[0].thumbnail,
@@ -340,10 +263,10 @@ export default function MediaPage() {
     });
 
     if (galleryFilter === 'All') return baseGallery;
-    if (galleryFilter === 'Music' && musicVideos.length > 0) {
+    if (galleryFilter === 'music' && musicVideos.length > 0) {
       return musicVideos.map(v => ({
         title: v.title,
-        category: 'Music',
+        category: 'music',
         image: v.thumbnail,
         isVideo: true,
         videoId: v.videoId,
@@ -393,7 +316,7 @@ export default function MediaPage() {
             </div>
 
             <div className="flex flex-wrap justify-center gap-3 mb-10 px-4 sm:px-6 lg:px-10">
-              {galleryFilters.map((label) => (
+                  {galleryFilters.map((label) => (
                 <button
                   key={label}
                   type="button"
@@ -404,7 +327,7 @@ export default function MediaPage() {
                       : 'bg-primary/10 text-primary hover:bg-primary/20'
                   }`}
                 >
-                  {label}
+                  {label === 'All' ? label : label.charAt(0).toUpperCase() + label.slice(1)}
                 </button>
               ))}
             </div>
@@ -445,7 +368,7 @@ export default function MediaPage() {
                   </div>
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors pointer-events-none" />
                   <div className="absolute bottom-4 left-4 rounded-full bg-primary/90 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-primary-foreground">
-                    {(item as any).isVideo ? 'Music Video' : item.category}
+                    {(item as any).isVideo ? 'Music Video' : item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                   </div>
                   {!(item as any).isVideo && (
                     <div className="absolute right-4 bottom-4 opacity-0 translate-y-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0" onClick={(e) => e.stopPropagation()}>

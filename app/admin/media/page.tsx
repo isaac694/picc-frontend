@@ -6,6 +6,21 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { Trash2 } from 'lucide-react';
+import {
+  buildFallbackItems,
+  DEFAULT_MEDIA_BOOKS,
+  DEFAULT_MEDIA_GALLERY,
+  DEFAULT_MEDIA_MAGAZINES,
+  DEFAULT_MEDIA_NEWS,
+  MEDIA_NEWS_MAX_ITEMS,
+  mergeMediaItemsWithFallback,
+  normalizeLoadedMediaItems,
+  type MediaBookItem,
+  type MediaGalleryItem,
+  type MediaMagazineItem,
+  type MediaNewsItem,
+} from '@/lib/mediaDefaults';
 
 const SECTION_KEYS = {
   news: 'media-news',
@@ -27,40 +42,16 @@ const MONTHS = [
 ];
 
 const GALLERY_CATEGORIES = ['worship', 'outreach', 'youth', 'music', 'celebration', 'prayer'];
-const MEDIA_NEWS_MAX_ITEMS = 6;
 
-type NewsItem = {
-  id: string;
-  badge: string;
-  date: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-};
+const NEWS_FALLBACKS = buildFallbackItems<MediaNewsItem>('news', DEFAULT_MEDIA_NEWS);
+const GALLERY_FALLBACKS = buildFallbackItems<MediaGalleryItem>('gallery', DEFAULT_MEDIA_GALLERY);
+const BOOK_FALLBACKS = buildFallbackItems<MediaBookItem>('books', DEFAULT_MEDIA_BOOKS);
+const MAGAZINE_FALLBACKS = buildFallbackItems<MediaMagazineItem>('magazines', DEFAULT_MEDIA_MAGAZINES);
 
-type GalleryItem = {
-  id: string;
-  title: string;
-  category: string;
-  imageUrl: string;
-};
-
-type BookItem = {
-  id: string;
-  title: string;
-  author: string;
-  description: string;
-  imageUrl: string;
-  fileUrl: string;
-};
-
-type MagazineItem = {
-  id: string;
-  title: string;
-  issue: string;
-  fileUrl: string;
-  imageUrl: string;
-};
+type NewsItem = MediaNewsItem;
+type GalleryItem = MediaGalleryItem;
+type BookItem = MediaBookItem;
+type MagazineItem = MediaMagazineItem;
 
 type SectionId = keyof typeof SECTION_KEYS;
 
@@ -139,6 +130,17 @@ const parseJson = (value: unknown) => {
 };
 
 const sectionCardClassName = 'rounded-3xl border border-border/60 bg-card p-6 shadow-sm';
+
+const ItemSourceBadge = ({ isFallback }: { isFallback?: boolean }) =>
+  isFallback ? (
+    <span className="rounded bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/60">
+      Built-in
+    </span>
+  ) : (
+    <span className="rounded bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+      Saved
+    </span>
+  );
 
 export default function AdminMediaPage() {
   const {
@@ -256,16 +258,20 @@ export default function AdminMediaPage() {
     }
   };
 
-  const fetchSection = async <T,>(key: string, setState: (value: T[]) => void) => {
+  const fetchSection = async <T extends NewsItem | GalleryItem | BookItem | MagazineItem>(
+    key: string,
+    fallbacks: T[],
+    setState: (value: T[]) => void,
+  ) => {
     try {
       const response = await apiFetch(`/api/site-content/${key}`);
       if (!response.ok && response.status !== 404) {
-        setState([]);
+        setState(fallbacks);
         return;
       }
 
       if (response.status === 404) {
-        setState([]);
+        setState(fallbacks);
         return;
       }
 
@@ -279,17 +285,10 @@ export default function AdminMediaPage() {
             ? parsed.items
             : [];
 
-      const normalized = items
-        .filter(isRecord)
-        .map((item) => ({
-          ...item,
-          imageUrl: item.imageUrl ? String(item.imageUrl) : '',
-          fileUrl: item.fileUrl ? String(item.fileUrl) : '',
-        })) as T[];
-
-      setState(normalized);
+      const normalized = normalizeLoadedMediaItems<T>(items);
+      setState(mergeMediaItemsWithFallback(normalized, fallbacks));
     } catch {
-      setState([]);
+      setState(fallbacks);
     }
   };
 
@@ -311,11 +310,26 @@ export default function AdminMediaPage() {
   useEffect(() => {
     if (!token) return;
 
-    fetchSection<NewsItem>(SECTION_KEYS.news, setNewsItems);
-    fetchSection<GalleryItem>(SECTION_KEYS.gallery, setGalleryItems);
-    fetchSection<BookItem>(SECTION_KEYS.books, setBookItems);
-    fetchSection<MagazineItem>(SECTION_KEYS.magazines, setMagazineItems);
+    fetchSection(SECTION_KEYS.news, NEWS_FALLBACKS, setNewsItems);
+    fetchSection(SECTION_KEYS.gallery, GALLERY_FALLBACKS, setGalleryItems);
+    fetchSection(SECTION_KEYS.books, BOOK_FALLBACKS, setBookItems);
+    fetchSection(SECTION_KEYS.magazines, MAGAZINE_FALLBACKS, setMagazineItems);
   }, [token]);
+
+  const getFallbacksForSection = (section: SectionId) => {
+    if (section === 'news') return NEWS_FALLBACKS;
+    if (section === 'gallery') return GALLERY_FALLBACKS;
+    if (section === 'books') return BOOK_FALLBACKS;
+    return MAGAZINE_FALLBACKS;
+  };
+
+  const persistedNewsCount = newsItems.filter((item) => !item.isFallback).length;
+  const editingNewsItem = editingIds.news ? newsItems.find((item) => item.id === editingIds.news) : null;
+  const editingGalleryItem = editingIds.gallery ? galleryItems.find((item) => item.id === editingIds.gallery) : null;
+  const editingBookItem = editingIds.books ? bookItems.find((item) => item.id === editingIds.books) : null;
+  const editingMagazineItem = editingIds.magazines
+    ? magazineItems.find((item) => item.id === editingIds.magazines)
+    : null;
 
   const handleSaveItem = async <S extends SectionId>(
     section: S,
@@ -326,8 +340,13 @@ export default function AdminMediaPage() {
   ) => {
     if (!token) return;
 
-    if (section === 'news' && !editingId && items.length >= MEDIA_NEWS_MAX_ITEMS) {
-      setStatus(`Only ${MEDIA_NEWS_MAX_ITEMS} news items can be shown on the media page. Delete one before adding another.`);
+    const fallbacks = getFallbacksForSection(section);
+    const persistedItems = items.filter((item) => !item.isFallback) as SectionItems[S][];
+    const editingItem = editingId ? items.find((item) => item.id === editingId) : null;
+    const isFallbackEdit = Boolean(editingItem?.isFallback);
+
+    if (section === 'news' && !isFallbackEdit && !editingId && persistedItems.length >= MEDIA_NEWS_MAX_ITEMS) {
+      setStatus(`Only ${MEDIA_NEWS_MAX_ITEMS} saved news items can be stored in the dashboard. Delete one before adding another.`);
       return;
     }
 
@@ -339,21 +358,40 @@ export default function AdminMediaPage() {
     setStatus('');
 
     try {
-      const nextItems = editingId
-        ? items.map((existing) =>
-            existing.id === editingId ? ({ ...draft, id: editingId } as SectionItems[S]) : existing
-          )
-        : ([...items, { ...draft, id: newId() }] as SectionItems[S][]);
+      let nextPersisted: SectionItems[S][];
 
-      const ok = await saveSection(SECTION_KEYS[section], nextItems);
+      if (editingId && !isFallbackEdit) {
+        nextPersisted = persistedItems.map((existing) =>
+          existing.id === editingId
+            ? ({ ...draft, id: editingId, fallbackIndex: existing.fallbackIndex } as SectionItems[S])
+            : existing,
+        );
+      } else {
+        nextPersisted = [
+          ...persistedItems,
+          {
+            ...draft,
+            id: newId(),
+            fallbackIndex: isFallbackEdit ? editingItem?.fallbackIndex : undefined,
+          } as SectionItems[S],
+        ];
+      }
+
+      const ok = await saveSection(SECTION_KEYS[section], nextPersisted);
       if (!ok) {
         setStatus(editingId ? 'Unable to update item.' : 'Unable to add item to the media section.');
         return;
       }
 
-      setItems(nextItems);
+      setItems(mergeMediaItemsWithFallback(nextPersisted, fallbacks as SectionItems[S][]));
       resetSectionEditor(section);
-      setStatus(editingId ? 'Item updated.' : 'Item added.');
+      setStatus(
+        isFallbackEdit
+          ? 'Built-in item customized and saved.'
+          : editingId
+            ? 'Item updated.'
+            : 'Item added.',
+      );
     } catch {
       setStatus(editingId ? 'Unable to update item.' : 'Unable to add item to the media section.');
     }
@@ -367,17 +405,24 @@ export default function AdminMediaPage() {
   ) => {
     if (!token) return;
 
+    const target = items.find((item) => item.id === itemId);
+    if (target?.isFallback) {
+      setStatus('Built-in items cannot be deleted. Edit and save them if you want to customize the content.');
+      return;
+    }
+
     setStatus('');
 
     try {
-      const nextItems = items.filter((item) => item.id !== itemId);
-      const ok = await saveSection(SECTION_KEYS[section], nextItems);
+      const fallbacks = getFallbacksForSection(section);
+      const nextPersisted = items.filter((item) => !item.isFallback && item.id !== itemId);
+      const ok = await saveSection(SECTION_KEYS[section], nextPersisted);
       if (!ok) {
         setStatus('Unable to delete item.');
         return;
       }
 
-      setItems(nextItems);
+      setItems(mergeMediaItemsWithFallback(nextPersisted, fallbacks as SectionItems[S][]));
       if (editingIds[section] === itemId) {
         resetSectionEditor(section);
       }
@@ -424,7 +469,7 @@ export default function AdminMediaPage() {
             Media Page Editor
           </h1>
           <p className="mt-3 max-w-2xl text-foreground/70">
-            Manage church news, gallery items, Fire on the Altar books, and magazines with a cleaner editor and separate review panels.
+            Manage church news, gallery items, Fire on the Altar books, and magazines. Built-in content appears alongside saved dashboard items, just like the ministry pages.
           </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
@@ -453,12 +498,12 @@ export default function AdminMediaPage() {
                   <p className="text-sm text-foreground/60">
                     The editor stays right after the sidebar, just like the devotions flow.
                   </p>
-                  <p className={`mt-2 text-xs font-semibold ${newsItems.length >= MEDIA_NEWS_MAX_ITEMS ? 'text-destructive' : 'text-primary'}`}>
-                    {Math.min(newsItems.length, MEDIA_NEWS_MAX_ITEMS)} / {MEDIA_NEWS_MAX_ITEMS} news items used. {newsItems.length >= MEDIA_NEWS_MAX_ITEMS ? 'Delete one before adding another.' : `Up to ${MEDIA_NEWS_MAX_ITEMS} news items can be shown.`}
+                  <p className={`mt-2 text-xs font-semibold ${persistedNewsCount >= MEDIA_NEWS_MAX_ITEMS ? 'text-destructive' : 'text-primary'}`}>
+                    {persistedNewsCount} / {MEDIA_NEWS_MAX_ITEMS} saved news items. Built-in news also appears on the public page and in the list below.
                   </p>
                 </div>
                 {editingIds.news && (
-                  <Button variant="outline" onClick={() => resetSectionEditor('news')} disabled={newsItems.length >= MEDIA_NEWS_MAX_ITEMS}>
+                  <Button variant="outline" onClick={() => resetSectionEditor('news')}>
                     New Item
                   </Button>
                 )}
@@ -551,13 +596,22 @@ export default function AdminMediaPage() {
               <div className="flex flex-wrap gap-3">
                 <Button
                   onClick={() => handleSaveItem('news', draftNews, editingIds.news, newsItems, setNewsItems)}
-                  disabled={!editingIds.news && newsItems.length >= MEDIA_NEWS_MAX_ITEMS}
+                  disabled={!editingIds.news && persistedNewsCount >= MEDIA_NEWS_MAX_ITEMS}
                 >
                   {editingIds.news ? 'Save News Item' : 'Add News Item'}
                 </Button>
                 <Button variant="outline" onClick={() => resetSectionEditor('news')}>
                   Clear
                 </Button>
+                {editingNewsItem && !editingNewsItem.isFallback && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => requestDeleteItem('news', editingNewsItem, newsItems, setNewsItems)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -576,9 +630,12 @@ export default function AdminMediaPage() {
                           : 'border-border/60 bg-background'
                       }`}
                     >
-                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                        {[item.badge, item.date].filter(Boolean).join(' - ') || 'News Item'}
-                      </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                          {[item.badge, item.date].filter(Boolean).join(' - ') || 'News Item'}
+                        </p>
+                        <ItemSourceBadge isFallback={item.isFallback} />
+                      </div>
                       <p className="mt-2 text-sm font-semibold text-foreground">
                         {item.title || 'Untitled news item'}
                       </p>
@@ -589,9 +646,12 @@ export default function AdminMediaPage() {
                         <Button variant="outline" onClick={() => startEditingNews(item)}>
                           {editingIds.news === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        <Button variant="outline" onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)}>
-                          Delete
-                        </Button>
+                        {!item.isFallback && (
+                          <Button variant="outline" onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)} className="gap-2">
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -680,6 +740,15 @@ export default function AdminMediaPage() {
                 <Button variant="outline" onClick={() => resetSectionEditor('gallery')}>
                   Clear
                 </Button>
+                {editingGalleryItem && !editingGalleryItem.isFallback && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => requestDeleteItem('gallery', editingGalleryItem, galleryItems, setGalleryItems)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -701,19 +770,24 @@ export default function AdminMediaPage() {
                       <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
                         {item.category || 'Gallery'}
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-foreground">
-                        {item.title || 'Untitled gallery item'}
-                      </p>
+                      <div className="mt-2 flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-foreground">
+                          {item.title || 'Untitled gallery item'}
+                        </p>
+                        <ItemSourceBadge isFallback={item.isFallback} />
+                      </div>
                       <div className="mt-4 flex flex-wrap gap-3">
                         <Button variant="outline" onClick={() => startEditingGallery(item)}>
                           {editingIds.gallery === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => requestDeleteItem('gallery', item, galleryItems, setGalleryItems)}
-                        >
-                          Delete
-                        </Button>
+                        {!item.isFallback && (
+                          <Button
+                            variant="outline"
+                            onClick={() => requestDeleteItem('gallery', item, galleryItems, setGalleryItems)}
+                          >
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -804,6 +878,15 @@ export default function AdminMediaPage() {
                 <Button variant="outline" onClick={() => resetSectionEditor('books')}>
                   Clear
                 </Button>
+                {editingBookItem && !editingBookItem.isFallback && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => requestDeleteItem('books', editingBookItem, bookItems, setBookItems)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -825,9 +908,12 @@ export default function AdminMediaPage() {
                       <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
                         {item.author || 'Book'}
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-foreground">
-                        {item.title || 'Untitled book'}
-                      </p>
+                      <div className="mt-2 flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-foreground">
+                          {item.title || 'Untitled book'}
+                        </p>
+                        <ItemSourceBadge isFallback={item.isFallback} />
+                      </div>
                       {item.description && (
                         <p className="mt-2 text-sm text-foreground/70">{item.description}</p>
                       )}
@@ -835,9 +921,11 @@ export default function AdminMediaPage() {
                         <Button variant="outline" onClick={() => startEditingBook(item)}>
                           {editingIds.books === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        <Button variant="outline" onClick={() => requestDeleteItem('books', item, bookItems, setBookItems)}>
-                          Delete
-                        </Button>
+                        {!item.isFallback && (
+                          <Button variant="outline" onClick={() => requestDeleteItem('books', item, bookItems, setBookItems)}>
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -929,6 +1017,15 @@ export default function AdminMediaPage() {
                 <Button variant="outline" onClick={() => resetSectionEditor('magazines')}>
                   Clear
                 </Button>
+                {editingMagazineItem && !editingMagazineItem.isFallback && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => requestDeleteItem('magazines', editingMagazineItem, magazineItems, setMagazineItems)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -950,19 +1047,24 @@ export default function AdminMediaPage() {
                       <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
                         {item.issue || 'Magazine'}
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-foreground">
-                        {item.title || 'Untitled magazine'}
-                      </p>
+                      <div className="mt-2 flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-foreground">
+                          {item.title || 'Untitled magazine'}
+                        </p>
+                        <ItemSourceBadge isFallback={item.isFallback} />
+                      </div>
                       <div className="mt-4 flex flex-wrap gap-3">
                         <Button variant="outline" onClick={() => startEditingMagazine(item)}>
                           {editingIds.magazines === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => requestDeleteItem('magazines', item, magazineItems, setMagazineItems)}
-                        >
-                          Delete
-                        </Button>
+                        {!item.isFallback && (
+                          <Button
+                            variant="outline"
+                            onClick={() => requestDeleteItem('magazines', item, magazineItems, setMagazineItems)}
+                          >
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

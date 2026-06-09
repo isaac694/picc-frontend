@@ -623,12 +623,12 @@ export default function PrisonMinistryPage() {
           </div>
         </section>
 
-        {/* 3. PAST OUTREACHES SECTION (Light Gray) */}
+        {/* 3. OUTREACHES SECTION (Light Gray) */}
         <section className="py-20 md:py-28 bg-gray-50 text-black overflow-hidden border-y border-black/5">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between mb-12">
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Past Outreaches</h2>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">Outreaches</h2>
                 <p className="text-black/60 max-w-xl">A look back at our efforts to bring light, hope, and the Gospel into dark places.</p>
               </div>
               <div className="flex flex-col items-start gap-2 md:items-end">
