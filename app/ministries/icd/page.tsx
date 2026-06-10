@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, type SyntheticEvent, type FormEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
@@ -1145,6 +1146,15 @@ export default function IcdMinistryPage() {
                   No ICD initiatives found for this search.
                 </div>
               )}
+
+              <div className="mt-12 text-center">
+                <Link
+                  href="/ministries/icd/archive"
+                  className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#045BB4] transition hover:bg-slate-50 hover:border-black/20"
+                >
+                  View Archive <Search className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
           </section>
         )}
@@ -1307,6 +1317,17 @@ export default function IcdMinistryPage() {
             backgroundClassName="bg-white text-black border-y border-black/5"
             maxItems={6}
           />
+        )}
+
+        {!mobilePlayerActive && (
+          <div className="bg-white pb-16 text-center">
+            <Link
+              href="/ministries/icd/archive"
+              className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#045BB4] transition hover:bg-slate-50 hover:border-black/20"
+            >
+              View News Archive <Search className="w-4 h-4" />
+            </Link>
+          </div>
         )}
 
         {/* 7. PARTNER WITH US SECTION (Updated with Banking Details) */}

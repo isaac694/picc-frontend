@@ -7,6 +7,7 @@ export type MediaNewsItem = {
   imageUrl: string;
   isFallback?: boolean;
   fallbackIndex?: number;
+  isDeleted?: boolean;
 };
 
 export type MediaGalleryItem = {
@@ -16,6 +17,7 @@ export type MediaGalleryItem = {
   imageUrl: string;
   isFallback?: boolean;
   fallbackIndex?: number;
+  isDeleted?: boolean;
 };
 
 export type MediaBookItem = {
@@ -27,6 +29,7 @@ export type MediaBookItem = {
   fileUrl: string;
   isFallback?: boolean;
   fallbackIndex?: number;
+  isDeleted?: boolean;
 };
 
 export type MediaMagazineItem = {
@@ -37,6 +40,7 @@ export type MediaMagazineItem = {
   imageUrl: string;
   isFallback?: boolean;
   fallbackIndex?: number;
+  isDeleted?: boolean;
 };
 
 export const MEDIA_NEWS_MAX_ITEMS = 6;
@@ -152,6 +156,7 @@ type MergeableMediaItem = {
   id: string;
   isFallback?: boolean;
   fallbackIndex?: number;
+  isDeleted?: boolean;
 };
 
 export function buildFallbackItems<T extends MergeableMediaItem>(
@@ -173,7 +178,7 @@ export function mergeMediaItemsWithFallback<T extends MergeableMediaItem>(loaded
       !loaded.some((loadedItem) => loadedItem.fallbackIndex === fallbackItem.fallbackIndex),
   );
 
-  return [...loaded, ...remainingFallbacks].sort((first, second) => {
+  return [...loaded.filter((item) => !item.isDeleted), ...remainingFallbacks].sort((first, second) => {
     if (first.isFallback !== second.isFallback) return first.isFallback ? 1 : -1;
     const firstIndex = first.fallbackIndex ?? Number.MAX_SAFE_INTEGER;
     const secondIndex = second.fallbackIndex ?? Number.MAX_SAFE_INTEGER;

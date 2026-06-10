@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, type FormEvent, type SyntheticEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
@@ -1680,6 +1681,15 @@ export default function YouthChurchMinistryPage() {
                   No Youth Church initiatives found for this search.
                 </div>
               )}
+
+              <div className="mt-12 text-center">
+                <Link 
+                  href="/ministries/youth-church-ministry/archive"
+                  className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#2D5A8C] transition hover:bg-slate-50 hover:border-black/20 shadow-sm"
+                >
+                  View Archive <Search className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
           </section>
         )}
@@ -1772,6 +1782,15 @@ export default function YouthChurchMinistryPage() {
             maxItems={9}
           />
         )}
+
+        <div className="bg-white pb-16 text-center">
+          <Link 
+            href="/ministries/youth-church-ministry/archive"
+            className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#2D5A8C] transition hover:bg-slate-50 hover:border-black/20 shadow-sm"
+          >
+            View News Archive <Search className="w-4 h-4" />
+          </Link>
+        </div>
 
         {/* 10. CONTACTS SECTION */}
         {!mobilePlayerActive && (

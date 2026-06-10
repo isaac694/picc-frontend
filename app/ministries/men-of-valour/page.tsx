@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, type FormEvent, type SyntheticEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
@@ -1207,13 +1208,22 @@ export default function MenOfValourPage() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-[#2D5A8C]/25 bg-gray-50 p-8 text-center text-sm text-black/55">
+                <div className="rounded-2xl border border-dashed border-red-200 bg-white p-8 text-center text-sm text-slate-500">
                   No Men of Valour initiatives found for this search.
                 </div>
-              )}
-            </div>
-          </section>
-        )}
+                )}
+
+                <div className="mt-12 text-center">
+                <Link 
+                  href="/ministries/men-of-valour/archive"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-red-700 transition hover:bg-slate-50 hover:border-red-200 shadow-sm"
+                >
+                  View Archive <Search className="w-4 h-4" />
+                </Link>
+                </div>
+                </div>
+                </section>
+                )}
 
         {/* MOBILE FULLSCREEN PLAYER OVERRIDE */}
         {mobilePlayerActive && (
@@ -1414,10 +1424,19 @@ export default function MenOfValourPage() {
             items={newsItems}
             backgroundClassName="bg-slate-50 text-black border-y border-black/5"
             maxItems={6}
-          />
-        )}
+            />
+            )}
 
-        {/* 9. CONTACTS SECTION */}
+            <div className="bg-slate-50 pb-16 text-center">
+            <Link 
+            href="/ministries/men-of-valour/archive"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-red-700 transition hover:bg-slate-50 hover:border-red-200 shadow-sm"
+            >
+            View News Archive <Search className="w-4 h-4" />
+            </Link>
+            </div>
+
+            {/* 10. SUPPORT THE MINISTRY SECTOR */}
         {!mobilePlayerActive && (
           <section className="py-20 bg-slate-900 text-white">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

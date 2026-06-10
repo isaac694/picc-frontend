@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type SyntheticEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
@@ -234,21 +235,25 @@ export default function PrisonMinistryPage() {
   const handleOutreachSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setOutreachSearchQuery(outreachSearchInput.trim());
+    setFeaturedOutreachIndex(0);
   };
 
   const clearOutreachSearch = () => {
     setOutreachSearchInput('');
     setOutreachSearchQuery('');
+    setFeaturedOutreachIndex(0);
   };
 
   const handleEventSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setEventSearchQuery(eventSearchInput.trim());
+    setFeaturedEventIndex(0);
   };
 
   const clearEventSearch = () => {
     setEventSearchInput('');
     setEventSearchQuery('');
+    setFeaturedEventIndex(0);
   };
 
   // Cycling effect for featured outreach
@@ -260,10 +265,6 @@ export default function PrisonMinistryPage() {
     return () => clearInterval(timer);
   }, [displayedOutreachItems.length]);
 
-  useEffect(() => {
-    setFeaturedOutreachIndex(0);
-  }, [outreachSearchQuery]);
-
   // Cycling effect for featured event
   useEffect(() => {
     if (!displayedEventItems.length) return;
@@ -272,10 +273,6 @@ export default function PrisonMinistryPage() {
     }, 5000);
     return () => clearInterval(timer);
   }, [displayedEventItems.length]);
-
-  useEffect(() => {
-    setFeaturedEventIndex(0);
-  }, [eventSearchQuery]);
 
   const fallbackGridEvent: PrisonEvent = {
     id: 0,
@@ -733,6 +730,15 @@ export default function PrisonMinistryPage() {
                 No prison outreaches found for this search.
               </div>
             )}
+
+            <div className="mt-12 text-center">
+              <Link
+                href="/ministries/prison-ministry/archive"
+                className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#2D5A8C] transition hover:bg-slate-50 hover:border-black/20"
+              >
+                View Archive <Search className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -858,6 +864,15 @@ export default function PrisonMinistryPage() {
           backgroundClassName="bg-white text-black border-t border-black/5"
           maxItems={3}
         />
+
+        <div className="bg-white pb-16 text-center">
+          <Link
+            href="/ministries/prison-ministry/archive"
+            className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#2D5A8C] transition hover:bg-slate-50 hover:border-black/20"
+          >
+            View News Archive <Search className="w-4 h-4" />
+          </Link>
+        </div>
 
         {/* 4. CONTACTS SECTION */}
         <section className="py-20 bg-slate-900 text-white">

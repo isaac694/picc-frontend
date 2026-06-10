@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, type SyntheticEvent, type FormEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import LiveChat from '@/components/LiveChat';
 import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
 import BibleTool from '@/components/livestream/BibleTool';
+import PrayerRequestTool from '@/components/livestream/PrayerRequestTool';
 import WomenOfHopeGiveTool from '@/components/livestream/WomenOfHopeGiveTool';
 
 // --- TYPES & GLOBALS ---
@@ -162,7 +164,7 @@ const defaultInfo: MinistryInfo = {
   partnershipBody:
     'You can support our ongoing "500+ mattress" procurement, skills training, or borehole planting initiatives.\n\nContact the national office for official banking and mobile money details.',
   partnershipDetails: [],
-  partnershipImageUrl: '/hero/hero-store.jpg',
+  partnershipImageUrl: '/ministries/woh/global-vision.JPG',
   phone: 'Check with your local PICC branch for contact details.',
   email: 'info@picc.org',
   location: 'PICC Women of Hope\nCamp of God Cathedral',
@@ -1047,6 +1049,9 @@ export default function WomenOfHopePage() {
                       <button onClick={() => setActiveTool(activeTool === "testimony" ? null : "testimony")} className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-900 hover:bg-green-200 transition-colors">
                         Send Testimony
                       </button>
+                      <button onClick={() => setActiveTool(activeTool === "prayer" ? null : "prayer")} className="inline-flex items-center gap-2 rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-900 hover:bg-purple-200 transition-colors">
+                        Prayer
+                      </button>
                       <button onClick={() => setActiveTool(activeTool === "give" ? null : "give")} className="inline-flex items-center gap-2 rounded-full bg-[#029EFB] px-4 py-1 text-xs font-semibold text-white hover:bg-[#0178C0] transition-colors shadow-sm">
                         Give
                       </button>
@@ -1072,6 +1077,7 @@ export default function WomenOfHopePage() {
                     {activeTool === "chat" && <div className="h-[400px] w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Women of Hope Live'} /></div>}
                     {activeTool === "notepad" && <NotepadTool />}
                     {activeTool === "testimony" && <div className="px-5 py-6"><TestimonyTool /></div>}
+                    {activeTool === "prayer" && <div className="px-5 py-6"><PrayerRequestTool ministryKey="women-of-hope" /></div>}
                     {activeTool === "give" && <div className="px-5 py-6"><WomenOfHopeGiveTool isMobile={false} /></div>}
                   </div>
                 )}
@@ -1178,6 +1184,15 @@ export default function WomenOfHopePage() {
                   No Women of Hope projects found for this search.
                 </div>
               )}
+
+              <div className="mt-12 text-center">
+                <Link
+                  href="/ministries/women-of-hope/archive"
+                  className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#029EFB] transition hover:bg-slate-50 hover:border-black/20"
+                >
+                  View Archive <Search className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
           </section>
         )}
@@ -1213,6 +1228,7 @@ export default function WomenOfHopePage() {
                 {activeTool === "bible" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><BibleTool /></div>}
                 {activeTool === "notepad" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><NotepadTool /></div>}
                 {activeTool === "testimony" && <div className="px-4 py-5"><TestimonyTool /></div>}
+                {activeTool === "prayer" && <div className="px-4 py-5"><PrayerRequestTool ministryKey="women-of-hope" /></div>}
                 {activeTool === "give" && <div className="px-4 py-5"><WomenOfHopeGiveTool isMobile={true} /></div>}
               </div>
             </div>
@@ -1389,6 +1405,17 @@ export default function WomenOfHopePage() {
             backgroundClassName="bg-gray-50 text-black border-y border-black/5"
             maxItems={6}
           />
+        )}
+
+        {!mobilePlayerActive && (
+          <div className="bg-gray-50 pb-16 text-center">
+            <Link
+              href="/ministries/women-of-hope/archive"
+              className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#029EFB] transition hover:bg-slate-50 hover:border-black/20"
+            >
+              View News Archive <Search className="w-4 h-4" />
+            </Link>
+          </div>
         )}
 
         {/* 9. CONTACTS SECTION */}

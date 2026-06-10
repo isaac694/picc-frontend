@@ -12,7 +12,7 @@ import {
   MapPin, Phone, Mail, CalendarClock, Globe, 
   MessageSquareText, BookOpenText, StickyNote, 
   Flame, Users, GraduationCap, Tent, BookOpen, 
-  XIcon, Facebook, Twitter, Instagram, HeartHandshake, Info
+  XIcon, Facebook, Twitter, Instagram, HeartHandshake, Info, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -22,6 +22,8 @@ import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
 import GiveTool from '@/components/livestream/GiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
+import NewsSection from '@/components/NewsSection';
+import { RIVERS_OF_HOPE_NEWS_ITEMS } from '@/components/riversOfHopeNews';
 
 // --- TYPES & GLOBALS ---
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
@@ -324,6 +326,7 @@ export default function RiversOfHopePage() {
     amount: '',
     frequency: 'Monthly',
     volunteerArea: '',
+    otherVolunteerArea: '',
     notes: '',
     programs: {
       prayer: false,
@@ -332,6 +335,17 @@ export default function RiversOfHopePage() {
       volunteer: false,
     },
   });
+
+  const VOLUNTEER_AREAS = [
+    "organizing events",
+    "counselling services",
+    "distribution of promotion materials",
+    "traffic control",
+    "security services",
+    "protocol",
+    "ushering services",
+    "Other"
+  ];
 
   const ROH_PROGRAM_OPTIONS = [
     { key: 'prayer', label: 'Prayer' },
@@ -393,7 +407,7 @@ export default function RiversOfHopePage() {
           programs: ROH_PROGRAM_OPTIONS.filter((option) => rohFormData.programs[option.key]).map((option) => option.label),
           amount: rohFormData.amount.trim(),
           frequency: rohFormData.frequency,
-          volunteerArea: rohFormData.volunteerArea.trim(),
+          volunteerArea: rohFormData.volunteerArea === 'Other' ? rohFormData.otherVolunteerArea.trim() : rohFormData.volunteerArea.trim(),
           notes: rohFormData.notes.trim(),
         }),
       });
@@ -421,6 +435,7 @@ export default function RiversOfHopePage() {
         amount: '',
         frequency: 'Monthly',
         volunteerArea: '',
+        otherVolunteerArea: '',
         notes: '',
         programs: {
           prayer: false,
@@ -935,6 +950,14 @@ export default function RiversOfHopePage() {
                 ))}
               </div>
               <p className="text-center text-black/50 text-sm mt-6 italic">Click or tap any image to view details.</p>
+              <div className="mt-10 text-center">
+                <Link
+                  href="/ministries/rivers-of-hope/archive"
+                  className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-red-700 transition hover:bg-slate-50 hover:border-black/20"
+                >
+                  View Archive <Search className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
           </section>
         )}
@@ -1124,6 +1147,16 @@ export default function RiversOfHopePage() {
           </section>
         )}
 
+        {/* 7. NEWS SECTION */}
+        {!mobilePlayerActive && (
+          <NewsSection 
+            title="Latest Crusade News"
+            description="Stay updated with the latest happenings, testimonies, and reports from the Rivers of Hope team."
+            items={RIVERS_OF_HOPE_NEWS_ITEMS}
+            backgroundClassName="bg-white"
+          />
+        )}
+
         <section className="relative py-24 bg-slate-50 overflow-hidden">
           {/* Subtle background decoration */}
           <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-96 h-96 bg-red-100/30 rounded-full blur-3xl pointer-events-none" />
@@ -1303,16 +1336,33 @@ export default function RiversOfHopePage() {
                     </div>
 
                     <label className="space-y-2 text-sm font-semibold text-slate-900">
-                      <span>Volunteer Area / Special Request</span>
-                      <textarea
+                      <span>Volunteer Area</span>
+                      <select
                         name="volunteerArea"
                         value={rohFormData.volunteerArea}
                         onChange={handleRohFormChange}
-                        rows={3}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 resize-none"
-                        placeholder="How would you like to serve?"
-                      />
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 appearance-none"
+                      >
+                        <option value="">Select an area of service</option>
+                        {VOLUNTEER_AREAS.map(area => (
+                          <option key={area} value={area}>{area}</option>
+                        ))}
+                      </select>
                     </label>
+
+                    {rohFormData.volunteerArea === 'Other' && (
+                      <label className="space-y-2 text-sm font-semibold text-slate-900">
+                        <span>Please specify what you have to offer</span>
+                        <textarea
+                          name="otherVolunteerArea"
+                          value={rohFormData.otherVolunteerArea}
+                          onChange={handleRohFormChange}
+                          rows={3}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 resize-none"
+                          placeholder="How would you like to serve?"
+                        />
+                      </label>
+                    )}
                   </div>
 
                   <button

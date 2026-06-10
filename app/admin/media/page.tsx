@@ -105,6 +105,13 @@ const EMPTY_EDITING_IDS: Record<SectionId, string | null> = {
   magazines: null,
 };
 
+const EMPTY_DELETED_FALLBACK_INDEXES: Record<SectionId, number[]> = {
+  news: [],
+  gallery: [],
+  books: [],
+  magazines: [],
+};
+
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 13 }, (_, index) => (currentYear - 2 + index).toString());
 
@@ -164,6 +171,7 @@ export default function AdminMediaPage() {
   const [draftBook, setDraftBook] = useState(DEFAULT_BOOK_ITEM);
   const [draftMagazine, setDraftMagazine] = useState(DEFAULT_MAGAZINE_ITEM);
   const [editingIds, setEditingIds] = useState<Record<SectionId, string | null>>(EMPTY_EDITING_IDS);
+  const [deletedFallbackIndexes, setDeletedFallbackIndexes] = useState<Record<SectionId, number[]>>(EMPTY_DELETED_FALLBACK_INDEXES);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
 
   const updateUploadName = (key: string, name: string) => {
@@ -258,10 +266,11 @@ export default function AdminMediaPage() {
     }
   };
 
-  const fetchSection = async <T extends NewsItem | GalleryItem | BookItem | MagazineItem>(
+  const fetchSection = async <S extends SectionId>(
+    section: S,
     key: string,
-    fallbacks: T[],
-    setState: (value: T[]) => void,
+    fallbacks: SectionItems[S][],
+    setState: (value: SectionItems[S][]) => void,
   ) => {
     try {
       const response = await apiFetch(`/api/site-content/${key}`);
@@ -278,6 +287,10 @@ export default function AdminMediaPage() {
       const record = (await response.json().catch(() => null)) as unknown;
       const body = isRecord(record) ? record.body : null;
       const parsed = parseJson(body);
+      const deletedIndexes =
+        isRecord(parsed) && Array.isArray(parsed.deletedFallbackIndexes)
+          ? parsed.deletedFallbackIndexes.filter((value): value is number => typeof value === 'number')
+          : [];
       const items =
         Array.isArray(parsed)
           ? parsed
@@ -285,14 +298,23 @@ export default function AdminMediaPage() {
             ? parsed.items
             : [];
 
-      const normalized = normalizeLoadedMediaItems<T>(items);
-      setState(mergeMediaItemsWithFallback(normalized, fallbacks));
+      const normalized = normalizeLoadedMediaItems<SectionItems[S]>(items)
+        .filter((item) => !item.isDeleted);
+      const deletedFromLegacyTombstones = normalizeLoadedMediaItems<SectionItems[S]>(items)
+        .filter((item) => item.isDeleted && typeof item.fallbackIndex === 'number')
+        .map((item) => item.fallbackIndex as number);
+      const nextDeletedIndexes = Array.from(new Set([...deletedIndexes, ...deletedFromLegacyTombstones]));
+      const visibleFallbacks = fallbacks.filter(
+        (item) => typeof item.fallbackIndex !== 'number' || !nextDeletedIndexes.includes(item.fallbackIndex),
+      );
+      setDeletedFallbackIndexes((prev) => ({ ...prev, [section]: nextDeletedIndexes }));
+      setState(mergeMediaItemsWithFallback(normalized, visibleFallbacks));
     } catch {
       setState(fallbacks);
     }
   };
 
-  const saveSection = async (key: string, items: unknown[]) => {
+  const saveSection = async (key: string, items: unknown[], nextDeletedFallbackIndexes: number[] = []) => {
     if (!token) return false;
 
     const response = await apiFetch(`/api/site-content/${key}`, {
@@ -301,7 +323,7 @@ export default function AdminMediaPage() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ body: JSON.stringify({ items }) }),
+      body: JSON.stringify({ body: JSON.stringify({ items, deletedFallbackIndexes: nextDeletedFallbackIndexes }) }),
     });
 
     return response.ok;
@@ -310,10 +332,13 @@ export default function AdminMediaPage() {
   useEffect(() => {
     if (!token) return;
 
-    fetchSection(SECTION_KEYS.news, NEWS_FALLBACKS, setNewsItems);
-    fetchSection(SECTION_KEYS.gallery, GALLERY_FALLBACKS, setGalleryItems);
-    fetchSection(SECTION_KEYS.books, BOOK_FALLBACKS, setBookItems);
-    fetchSection(SECTION_KEYS.magazines, MAGAZINE_FALLBACKS, setMagazineItems);
+    void Promise.all([
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchSection('news', SECTION_KEYS.news, NEWS_FALLBACKS, setNewsItems),
+      fetchSection('gallery', SECTION_KEYS.gallery, GALLERY_FALLBACKS, setGalleryItems),
+      fetchSection('books', SECTION_KEYS.books, BOOK_FALLBACKS, setBookItems),
+      fetchSection('magazines', SECTION_KEYS.magazines, MAGAZINE_FALLBACKS, setMagazineItems),
+    ]);
   }, [token]);
 
   const getFallbacksForSection = (section: SectionId) => {
@@ -377,13 +402,16 @@ export default function AdminMediaPage() {
         ];
       }
 
-      const ok = await saveSection(SECTION_KEYS[section], nextPersisted);
+      const visibleFallbacks = (fallbacks as SectionItems[S][]).filter(
+        (item) => typeof item.fallbackIndex !== 'number' || !deletedFallbackIndexes[section].includes(item.fallbackIndex),
+      );
+      const ok = await saveSection(SECTION_KEYS[section], nextPersisted, deletedFallbackIndexes[section]);
       if (!ok) {
         setStatus(editingId ? 'Unable to update item.' : 'Unable to add item to the media section.');
         return;
       }
 
-      setItems(mergeMediaItemsWithFallback(nextPersisted, fallbacks as SectionItems[S][]));
+      setItems(mergeMediaItemsWithFallback(nextPersisted, visibleFallbacks));
       resetSectionEditor(section);
       setStatus(
         isFallbackEdit
@@ -406,23 +434,31 @@ export default function AdminMediaPage() {
     if (!token) return;
 
     const target = items.find((item) => item.id === itemId);
-    if (target?.isFallback) {
-      setStatus('Built-in items cannot be deleted. Edit and save them if you want to customize the content.');
-      return;
-    }
+    if (!target) return;
 
     setStatus('');
 
     try {
       const fallbacks = getFallbacksForSection(section);
-      const nextPersisted = items.filter((item) => !item.isFallback && item.id !== itemId);
-      const ok = await saveSection(SECTION_KEYS[section], nextPersisted);
+      const persistedItems = items.filter((item) => !item.isFallback) as SectionItems[S][];
+      const nextDeletedIndexes =
+        target.isFallback && typeof target.fallbackIndex === 'number'
+          ? Array.from(new Set([...deletedFallbackIndexes[section], target.fallbackIndex]))
+          : deletedFallbackIndexes[section];
+      const nextPersisted = target.isFallback
+        ? persistedItems
+        : persistedItems.filter((item) => item.id !== itemId);
+      const ok = await saveSection(SECTION_KEYS[section], nextPersisted, nextDeletedIndexes);
       if (!ok) {
         setStatus('Unable to delete item.');
         return;
       }
 
-      setItems(mergeMediaItemsWithFallback(nextPersisted, fallbacks as SectionItems[S][]));
+      const visibleFallbacks = (fallbacks as SectionItems[S][]).filter(
+        (item) => typeof item.fallbackIndex !== 'number' || !nextDeletedIndexes.includes(item.fallbackIndex),
+      );
+      setDeletedFallbackIndexes((prev) => ({ ...prev, [section]: nextDeletedIndexes }));
+      setItems(mergeMediaItemsWithFallback(nextPersisted, visibleFallbacks));
       if (editingIds[section] === itemId) {
         resetSectionEditor(section);
       }
@@ -603,7 +639,7 @@ export default function AdminMediaPage() {
                 <Button variant="outline" onClick={() => resetSectionEditor('news')}>
                   Clear
                 </Button>
-                {editingNewsItem && !editingNewsItem.isFallback && (
+                {editingNewsItem && (
                   <Button
                     variant="destructive"
                     onClick={() => requestDeleteItem('news', editingNewsItem, newsItems, setNewsItems)}
@@ -646,12 +682,10 @@ export default function AdminMediaPage() {
                         <Button variant="outline" onClick={() => startEditingNews(item)}>
                           {editingIds.news === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        {!item.isFallback && (
-                          <Button variant="outline" onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)} className="gap-2">
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </Button>
-                        )}
+                        <Button variant="outline" onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)} className="gap-2">
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -740,7 +774,7 @@ export default function AdminMediaPage() {
                 <Button variant="outline" onClick={() => resetSectionEditor('gallery')}>
                   Clear
                 </Button>
-                {editingGalleryItem && !editingGalleryItem.isFallback && (
+                {editingGalleryItem && (
                   <Button
                     variant="destructive"
                     onClick={() => requestDeleteItem('gallery', editingGalleryItem, galleryItems, setGalleryItems)}
@@ -780,14 +814,12 @@ export default function AdminMediaPage() {
                         <Button variant="outline" onClick={() => startEditingGallery(item)}>
                           {editingIds.gallery === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        {!item.isFallback && (
-                          <Button
-                            variant="outline"
-                            onClick={() => requestDeleteItem('gallery', item, galleryItems, setGalleryItems)}
-                          >
-                            Delete
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          onClick={() => requestDeleteItem('gallery', item, galleryItems, setGalleryItems)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -878,7 +910,7 @@ export default function AdminMediaPage() {
                 <Button variant="outline" onClick={() => resetSectionEditor('books')}>
                   Clear
                 </Button>
-                {editingBookItem && !editingBookItem.isFallback && (
+                {editingBookItem && (
                   <Button
                     variant="destructive"
                     onClick={() => requestDeleteItem('books', editingBookItem, bookItems, setBookItems)}
@@ -921,11 +953,9 @@ export default function AdminMediaPage() {
                         <Button variant="outline" onClick={() => startEditingBook(item)}>
                           {editingIds.books === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        {!item.isFallback && (
-                          <Button variant="outline" onClick={() => requestDeleteItem('books', item, bookItems, setBookItems)}>
-                            Delete
-                          </Button>
-                        )}
+                        <Button variant="outline" onClick={() => requestDeleteItem('books', item, bookItems, setBookItems)}>
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1017,7 +1047,7 @@ export default function AdminMediaPage() {
                 <Button variant="outline" onClick={() => resetSectionEditor('magazines')}>
                   Clear
                 </Button>
-                {editingMagazineItem && !editingMagazineItem.isFallback && (
+                {editingMagazineItem && (
                   <Button
                     variant="destructive"
                     onClick={() => requestDeleteItem('magazines', editingMagazineItem, magazineItems, setMagazineItems)}
@@ -1057,14 +1087,12 @@ export default function AdminMediaPage() {
                         <Button variant="outline" onClick={() => startEditingMagazine(item)}>
                           {editingIds.magazines === item.id ? 'Editing' : 'Edit'}
                         </Button>
-                        {!item.isFallback && (
-                          <Button
-                            variant="outline"
-                            onClick={() => requestDeleteItem('magazines', item, magazineItems, setMagazineItems)}
-                          >
-                            Delete
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          onClick={() => requestDeleteItem('magazines', item, magazineItems, setMagazineItems)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   ))}

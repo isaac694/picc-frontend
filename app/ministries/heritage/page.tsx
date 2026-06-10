@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type FormEvent, type SyntheticEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
@@ -923,6 +924,15 @@ export default function HeritageMinistryPage() {
             ) : (
               <div className="rounded-2xl border border-dashed border-[#045BB4]/25 bg-white p-8 text-center text-sm text-black/55">No outreaches match your search.</div>
             )}
+
+            <div className="mt-12 text-center">
+              <Link
+                href="/ministries/heritage/archive"
+                className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#045BB4] transition hover:bg-slate-50 hover:border-black/20"
+              >
+                View Archive <Search className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -935,6 +945,15 @@ export default function HeritageMinistryPage() {
           backgroundClassName="bg-white text-black border-b border-black/5"
           maxItems={6}
         />
+
+        <div className="bg-white pb-16 text-center">
+          <Link
+            href="/ministries/heritage/archive"
+            className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#045BB4] transition hover:bg-slate-50 hover:border-black/20"
+          >
+            View News Archive <Search className="w-4 h-4" />
+          </Link>
+        </div>
 
         {/* 7. CONTACTS SECTION */}
         <section className="py-20 bg-sky-600 text-white">
