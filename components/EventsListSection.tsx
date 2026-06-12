@@ -362,7 +362,7 @@ export default function EventsListSection({
 
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    return events
+    const results = events
       .map((event) => ({ ...event, dateObj: parseDateOnly(event.startDate) }))
       .filter((event) =>
         rangeEnd ? event.dateObj >= rangeStart && event.dateObj <= rangeEnd : event.dateObj >= rangeStart,
@@ -375,6 +375,20 @@ export default function EventsListSection({
         );
       })
       .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+
+    // If no upcoming events found and we are on the default 'today' view, 
+    // show the most recent past event instead of an empty state.
+    if (results.length === 0 && filter === 'today' && !selectedDate && !searchTerm && events.length > 0) {
+      const allEventsWithDates = events
+        .map((event) => ({ ...event, dateObj: parseDateOnly(event.startDate) }))
+        .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime()); // Newest first
+
+      if (allEventsWithDates.length > 0) {
+        return [allEventsWithDates[0]];
+      }
+    }
+
+    return results;
   }, [events, filter, searchTerm, selectedDate]);
 
   const pagedEvents = useMemo(() => {
@@ -390,8 +404,17 @@ export default function EventsListSection({
 
   const groupedEvents = useMemo(() => {
     const groups: { label: string; items: typeof filteredEvents }[] = [];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     pagedEvents.items.forEach((event) => {
-      const label = event.dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      let label = event.dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      
+      // If we are showing a past event as a fallback, label it accordingly
+      if (event.dateObj < todayStart && filter === 'today' && !selectedDate && !searchTerm) {
+        label = `Recent Event - ${label}`;
+      }
+
       const last = groups[groups.length - 1];
       if (!last || last.label !== label) {
         groups.push({ label, items: [event] });
@@ -400,7 +423,7 @@ export default function EventsListSection({
       }
     });
     return groups;
-  }, [pagedEvents.items]);
+  }, [pagedEvents.items, filter, selectedDate, searchTerm]);
 
   const formattedToday = useMemo(() => {
     const date = new Date();

@@ -166,7 +166,7 @@ export default function MediaPage() {
         url.searchParams.set("channelId", MUSIC_CHANNEL_ID);
         url.searchParams.set("order", "date");
         url.searchParams.set("type", "video");
-        url.searchParams.set("maxResults", "8");
+        url.searchParams.set("maxResults", "50");
         url.searchParams.set("key", YOUTUBE_API_KEY);
 
         const response = await fetch(url.toString());
@@ -282,32 +282,25 @@ export default function MediaPage() {
   }, []);
 
   const galleryItems = useMemo(() => {
-    const baseGallery = gallery.map(item => {
-      if (item.category === 'music' && musicVideos.length > 0) {
-        return {
-          ...item,
-          image: musicVideos[0].thumbnail,
-          title: musicVideos[0].title,
-          isVideo: true,
-          videoId: musicVideos[0].videoId,
-          videoUrl: musicVideos[0].url
-        };
-      }
-      return item;
-    });
+    const nonMusicItems = gallery.filter(item => item.category !== 'music');
+    const formattedMusicVideos = musicVideos.map(v => ({
+      title: v.title,
+      category: 'music',
+      image: v.thumbnail,
+      isVideo: true,
+      videoId: v.videoId,
+      videoUrl: v.url
+    }));
 
-    if (galleryFilter === 'All') return baseGallery;
-    if (galleryFilter === 'music' && musicVideos.length > 0) {
-      return musicVideos.map(v => ({
-        title: v.title,
-        category: 'music',
-        image: v.thumbnail,
-        isVideo: true,
-        videoId: v.videoId,
-        videoUrl: v.url
-      }));
+    if (galleryFilter === 'All') {
+      return [...nonMusicItems, ...formattedMusicVideos];
     }
-    return baseGallery.filter((item) => item.category === galleryFilter);
+    
+    if (galleryFilter === 'music') {
+      return formattedMusicVideos;
+    }
+    
+    return nonMusicItems.filter((item) => item.category === galleryFilter);
   }, [galleryFilter, gallery, musicVideos]);
 
   const galleryFilters = useMemo(() => {

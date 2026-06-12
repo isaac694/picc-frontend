@@ -13,7 +13,7 @@ import PrayerRequestTool from '@/components/livestream/PrayerRequestTool';
 import BibleTool from '@/components/livestream/BibleTool';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpenText, HandHeart, MessageSquareText, StickyNote } from 'lucide-react';
+import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
 
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "prayer" | "give" | null;
 
@@ -112,13 +112,13 @@ const TOOL_TABS: Array<{
 export default function LivestreamPage() {
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
+  const [activeCardTool, setActiveCardTool] = useState<ToolKey>(null);
+  const [activeCardVideoId, setActiveCardVideoId] = useState<string | null>(null);
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
-  const [bottomGiveOpen, setBottomGiveOpen] = useState(false);
-  const bottomGiveRef = useRef<HTMLDivElement | null>(null);
   const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
@@ -137,7 +137,9 @@ export default function LivestreamPage() {
     embedUrl: "",
     canEmbed: false,
   }));
-  const displayGridVideos = gridVideos.length > 0 ? gridVideos : fallbackGridVideos;
+  const displayGridVideos = (
+    gridVideos.length > 0 ? gridVideos : fallbackGridVideos
+  ).filter((_, index) => index !== 1);
 
   const formatDate = (value: string) => {
     if (!value) return "";
@@ -452,15 +454,6 @@ export default function LivestreamPage() {
   const mobileVideoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
   const mobileVideoStart = mobileResumeAt && mobileResumeAt > 0 ? `&start=${mobileResumeAt}` : '';
 
-  const openBottomGiveTool = () => {
-    setBottomGiveOpen(true);
-    window.requestAnimationFrame(() => {
-      bottomGiveRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  };
 
   return (
     <>
@@ -580,6 +573,13 @@ export default function LivestreamPage() {
                         {tool.label}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTool(null)}
+                      className="ml-auto rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-700 hover:bg-red-200 transition-colors"
+                    >
+                      Close Tools
+                    </button>
                   </div>
                   {activeTool === "bible" && <BibleTool />}
                   {activeTool === "chat" && (
@@ -817,7 +817,7 @@ export default function LivestreamPage() {
                   {loadError} Showing direct channel links instead.
                 </p>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                 {displayGridVideos.map((stream) => (
                   <Card
                     key={stream.videoId}
@@ -871,56 +871,84 @@ export default function LivestreamPage() {
                           <p>{formatDate(stream.publishedAt)}</p>
                         )}
                       </div>
-                      {stream.url && (
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            asChild
-                            className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
-                          >
-                            <Link
-                              href={stream.url}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Watch
-                            </Link>
-                          </Button>
-                          <Button
+                      <div className="flex flex-wrap gap-2">
+                        {TOOL_TABS.map((tool) => (
+                          <button
+                            key={`${stream.videoId}-${tool.key}`}
                             type="button"
-                            onClick={openBottomGiveTool}
-                            className="w-full bg-[#39D98A] text-black hover:bg-[#2FC77C]"
+                            onClick={() => {
+                              if (
+                                activeCardVideoId === stream.videoId &&
+                                activeCardTool === tool.key
+                              ) {
+                                setActiveCardVideoId(null);
+                                setActiveCardTool(null);
+                              } else {
+                                setActiveCardVideoId(stream.videoId);
+                                setActiveCardTool(tool.key);
+                              }
+                            }}
+                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                              activeCardVideoId === stream.videoId &&
+                              activeCardTool === tool.key
+                                ? 'bg-black text-white'
+                                : 'bg-slate-900/10 text-slate-900 hover:bg-slate-900/20'
+                            }`}
                           >
-                            <HandHeart size={16} />
-                            {bottomGiveOpen ? "Giving" : "Give"}
-                          </Button>
+                            {tool.label}
+                          </button>
+                        ))}
+                      </div>
+                      {activeCardVideoId === stream.videoId && activeCardTool && (
+                        <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white/5">
+                          <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 bg-slate-950/10">
+                            <div className="text-sm font-semibold text-slate-950">
+                              {TOOL_TABS.find((tool) => tool.key === activeCardTool)?.label}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveCardVideoId(null);
+                                setActiveCardTool(null);
+                              }}
+                              className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white hover:bg-slate-800 transition-colors"
+                            >
+                              Close Tools
+                            </button>
+                          </div>
+                          <div className="p-4">
+                            {activeCardTool === 'chat' && (
+                              <div className="h-[300px] w-full bg-black">
+                                <LiveChat
+                                  videoId={stream.videoId}
+                                  videoTitle={stream.title}
+                                />
+                              </div>
+                            )}
+                            {activeCardTool === 'bible' && <BibleTool />}
+                            {activeCardTool === 'notepad' && <NotepadTool />}
+                            {activeCardTool === 'testimony' && (
+                              <div className="px-4 py-5 text-white">
+                                <TestimonyTool />
+                              </div>
+                            )}
+                            {activeCardTool === 'prayer' && (
+                              <div className="px-4 py-5 text-white">
+                                <PrayerRequestTool />
+                              </div>
+                            )}
+                            {activeCardTool === 'give' && (
+                              <div className="px-4 py-5 text-white">
+                                <GiveTool isMobile={isMobileViewport} />
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
                   </Card>
                 ))}
               </div>
-              {bottomGiveOpen && (
-                <div
-                  ref={bottomGiveRef}
-                  className="mt-8 overflow-hidden rounded-2xl border border-white/15 bg-white/5"
-                >
-                  <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
-                      Giving Form
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setBottomGiveOpen(false)}
-                      className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20"
-                    >
-                      Close
-                    </button>
-                  </div>
-                  <div className="px-4 py-5 text-white md:px-5 md:py-6">
-                    <GiveTool isMobile={isMobileViewport} />
-                  </div>
-                </div>
-              )}
               </>
             )}
           </div>
