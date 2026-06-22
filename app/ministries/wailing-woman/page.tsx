@@ -24,10 +24,6 @@ import BibleTool from '@/components/livestream/BibleTool';
 import NewsSection from '@/components/NewsSection';
 import { WAILING_WOMAN_NEWS_ITEMS } from '@/components/wailingWomanNews';
 
-// --- NEWS COMPONENTS ---
-import NewsSection from '@/components/NewsSection';
-import { WAILING_WOMAN_NEWS_ITEMS } from '@/components/wailingWomanNews';
-
 // --- TYPES & GLOBALS ---
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "prayer" | "give" | null;
 
