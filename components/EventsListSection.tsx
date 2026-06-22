@@ -195,6 +195,31 @@ const DEFAULT_EVENTS: Event[] = [
   },
 ];
 
+const HARDCODED_EVENTS: Event[] = [
+  {
+    id: 'mega-sunday-service-2026-06-28',
+    title: 'MEGA SUNDAY SERVICE',
+    startDate: '2026-06-28',
+    endDate: '2026-06-28',
+    time: '7:00 AM - 1:00 PM',
+    image: '/events/mega.jpeg',
+    location: 'Camp of God Cathedral, Area 49, Lilongwe',
+    description:
+      'Invitation is extended to you all for this Mega Sunday Service taking place on Sunday, June 28, 2026 at the Camp of God Cathedral in Area 49, Lilongwe. Time is 7:00am to 1:00pm. Tell your friend to tell their friends #THOG',
+    requiresRegistration: false,
+    registrationEmail: null,
+    acceptsOnlinePayment: false,
+    paymentAmount: null,
+    paymentCurrency: 'MWK',
+  },
+];
+
+const mergeHardcodedEvents = (incoming: Event[]) => {
+  const incomingIds = new Set(incoming.map((event) => String(event.id)));
+  const extraEvents = HARDCODED_EVENTS.filter((event) => !incomingIds.has(String(event.id)));
+  return [...extraEvents, ...incoming];
+};
+
 export default function EventsListSection({
   apiPath = '/api/events',
   layout = 'expanded',
@@ -294,12 +319,12 @@ export default function EventsListSection({
               scope: typeof event.scope === 'string' ? event.scope : null,
             }))
             .filter((event) => Boolean(event.title) && Boolean(event.startDate));
-          setEvents(normalized.length > 0 ? normalized : DEFAULT_EVENTS);
+          setEvents(mergeHardcodedEvents(normalized.length > 0 ? normalized : DEFAULT_EVENTS));
         } else {
-          setEvents(DEFAULT_EVENTS);
+          setEvents(mergeHardcodedEvents(DEFAULT_EVENTS));
         }
       } catch {
-        setEvents(DEFAULT_EVENTS);
+        setEvents(mergeHardcodedEvents(DEFAULT_EVENTS));
       } finally {
         setEventsLoading(false);
       }

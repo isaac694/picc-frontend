@@ -1,18 +1,40 @@
 'use client';
 
-import { useState, useMemo, type FormEvent, type SyntheticEvent } from 'react';
+import { useCallback, useEffect, useState, useMemo, type FormEvent, type SyntheticEvent } from 'react';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { 
   ShoppingCart, Search, Plus, Minus, Trash2, X, CheckCircle2, 
-  MessageCircle, ImageIcon, BookOpen, ExternalLink, Building2, Menu,
-  ChevronLeft, ChevronRight
+  MessageCircle, ImageIcon, BookOpen, Building2, Menu,
+  ChevronLeft, ChevronRight, User, LogIn, Library, Download, ShieldCheck, Eye, EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { products, type Product } from '@/components/data/products';
+import { apiFetch } from '@/lib/api';
+
+type StoreUser = {
+  id: string;
+  email: string;
+  name: string;
+  role?: string;
+};
+
+type AuthMode = 'signin' | 'signup';
+
+type DigitalPurchase = {
+  id: string;
+  product: Product;
+  price: number;
+  status: 'pending' | 'available' | 'cancelled';
+  purchasedAt: string;
+  downloadUrl?: string | null;
+};
+
+const STORE_TOKEN_KEY = 'store_token';
+const STORE_USER_KEY = 'store_user';
 
 export default function StorePage() {
   const [searchInput, setSearchInput] = useState('');
@@ -20,21 +42,39 @@ export default function StorePage() {
   
   // Selection Modal State
   const [selectedBook, setSelectedBook] = useState<Product | null>(null);
+  const [pendingSoftCopyBook, setPendingSoftCopyBook] = useState<Product | null>(null);
 
   // Cart & Checkout State
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
+  const [digitalCart, setDigitalCart] = useState<{ product: Product; quantity: number }[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'checkout' | 'success'>('cart');
+  const [cartMode, setCartMode] = useState<'hard' | 'soft'>('hard');
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [storeToken, setStoreToken] = useState<string | null>(null);
+  const [storeUser, setStoreUser] = useState<StoreUser | null>(null);
+  const [authMode, setAuthMode] = useState<AuthMode>('signin');
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authName, setAuthName] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+  const [digitalLibrary, setDigitalLibrary] = useState<DigitalPurchase[]>([]);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+  const [isDigitalCheckoutSubmitting, setIsDigitalCheckoutSubmitting] = useState(false);
+  const [storeProducts, setStoreProducts] = useState<Product[]>(products);
 
-  const heroBook = products.find((product) => product.id === 'b2') || products[0];
+  const heroBook = storeProducts.find((product) => product.id === 'b2') || storeProducts.find((product) => product.category === 'Books') || storeProducts[0];
   const bookProductsWithImages = useMemo(
-    () => products.filter((product) => product.category === 'Books' && !product.image.includes('placeholder')),
-    []
+    () => storeProducts.filter((product) => product.category === 'Books' && !product.image.includes('placeholder')),
+    [storeProducts]
   );
 
   const classicTrendingProducts = useMemo(() => {
-    const active = bookProductsWithImages.length ? bookProductsWithImages : products.filter((product) => product.category === 'Books');
+    const active = bookProductsWithImages.length ? bookProductsWithImages : storeProducts.filter((product) => product.category === 'Books');
 
     if (trendingTab === 'New arrivals') {
       return [...active].slice(-8).reverse();
@@ -47,10 +87,10 @@ export default function StorePage() {
     }
 
     return active.slice(0, 8);
-  }, [bookProductsWithImages, trendingTab]);
+  }, [bookProductsWithImages, storeProducts, trendingTab]);
 
   const compactProductGroups = useMemo(() => {
-    const findBook = (id: string) => products.find((product) => product.id === id) || bookProductsWithImages[0] || products[0];
+    const findBook = (id: string) => storeProducts.find((product) => product.id === id) || bookProductsWithImages[0] || storeProducts[0];
 
     return [
       {
@@ -68,17 +108,17 @@ export default function StorePage() {
         sale: true,
       },
     ];
-  }, [bookProductsWithImages]);
+  }, [bookProductsWithImages, storeProducts]);
 
   const promoCards = useMemo(() => {
-    const findBook = (id: string) => products.find((product) => product.id === id) || bookProductsWithImages[0] || products[0];
+    const findBook = (id: string) => storeProducts.find((product) => product.id === id) || bookProductsWithImages[0] || storeProducts[0];
 
     return [
       { title: 'Spiritual', subtitle: 'Get 45% Off', product: findBook('b21'), color: 'bg-[#63d5bc]' },
       { title: 'Business', subtitle: 'Get 45% Off', product: findBook('b40'), color: 'bg-[#55ad1d]' },
       { title: 'Audio Book', subtitle: 'Get 50% Off', product: findBook('b88'), color: 'bg-[#6fa4df]' },
     ];
-  }, [bookProductsWithImages]);
+  }, [bookProductsWithImages, storeProducts]);
 
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -87,6 +127,71 @@ export default function StorePage() {
   const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
     event.currentTarget.src = fallback;
   };
+
+  const mapManagedBook = (book: {
+    productId?: string;
+    id?: string;
+    name?: string;
+    title?: string;
+    hardCopyPrice?: number;
+    price?: number;
+    softCopyPrice?: number | null;
+    category?: string;
+    image?: string | null;
+    coverImageUrl?: string | null;
+    author?: string | null;
+    genre?: string | null;
+    description?: string | null;
+    hardCopyEnabled?: boolean;
+    softCopyEnabled?: boolean;
+    downloadUrl?: string | null;
+    sortOrder?: number;
+    isActive?: boolean;
+  }): Product => ({
+    id: String(book.productId || book.id || ''),
+    name: String(book.name || book.title || ''),
+    price: Number(book.hardCopyPrice ?? book.price ?? 0),
+    hardCopyPrice: Number(book.hardCopyPrice ?? book.price ?? 0),
+    softCopyPrice: book.softCopyPrice == null ? null : Number(book.softCopyPrice),
+    category: 'Books',
+    image: String(book.image || book.coverImageUrl || '/store/books/placeholder.jpg'),
+    author: book.author || undefined,
+    genre: book.genre || undefined,
+    description: book.description || undefined,
+    hardCopyEnabled: book.hardCopyEnabled !== false,
+    softCopyEnabled: book.softCopyEnabled !== false,
+    downloadUrl: book.downloadUrl || null,
+    sortOrder: Number(book.sortOrder || 0),
+    isActive: book.isActive !== false,
+  });
+
+  const mapStorePurchase = (purchase: {
+    id: string;
+    productId: string;
+    title: string;
+    author?: string | null;
+    genre?: string | null;
+    imageUrl?: string | null;
+    price: number;
+    status: DigitalPurchase['status'];
+    downloadUrl?: string | null;
+    createdAt: string;
+  }): DigitalPurchase => ({
+    id: purchase.id,
+    product: {
+      id: purchase.productId,
+      name: purchase.title,
+      price: purchase.price,
+      category: 'Books',
+      author: purchase.author || undefined,
+      genre: purchase.genre || undefined,
+      image: purchase.imageUrl || '/store/books/placeholder.jpg',
+    },
+    price: purchase.price,
+    status: purchase.status,
+    downloadUrl: purchase.downloadUrl || null,
+    purchasedAt: purchase.createdAt,
+  });
 
   const handleProductClick = (product: Product) => {
     if (product.category === 'Books') {
@@ -108,6 +213,101 @@ export default function StorePage() {
     setSelectedBook(null);
   };
 
+  useEffect(() => {
+    let cancelled = false;
+
+    apiFetch('/api/store/books')
+      .then(async (response) => {
+        if (!response.ok || cancelled) return;
+        const data = await response.json();
+        const managedBooks = Array.isArray(data?.books) ? data.books.map(mapManagedBook) : [];
+        if (managedBooks.length === 0) return;
+
+        const managedIds = new Set(managedBooks.map((book) => book.id));
+        const remainingBuiltIns = products.filter((product) => product.category === 'Books' && !managedIds.has(product.id));
+        const nonBooks = products.filter((product) => product.category !== 'Books');
+        setStoreProducts([...managedBooks, ...remainingBuiltIns, ...nonBooks]);
+      })
+      .catch(() => {
+        // Keep built-in products if the managed catalog is unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const addSoftCopyToCart = useCallback((product: Product) => {
+    setDigitalCart((prev) => {
+      const existing = prev.find((item) => item.product.id === product.id);
+      if (existing) {
+        return prev.map((item) => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { product, quantity: 1 }];
+    });
+    setCartMode('soft');
+    setCheckoutStep('cart');
+    setCheckoutError('');
+    setIsCartOpen(true);
+    setSelectedBook(null);
+    setPendingSoftCopyBook(null);
+  }, []);
+
+  const handleSoftCopySelect = (product: Product) => {
+    if (!storeToken || !storeUser) {
+      setPendingSoftCopyBook(product);
+      setAuthMode('signin');
+      setAuthError('');
+      setIsAuthOpen(true);
+      return;
+    }
+
+    addSoftCopyToCart(product);
+  };
+
+  const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAuthError('');
+    setIsAuthSubmitting(true);
+
+    try {
+      const response = await apiFetch(authMode === 'signup' ? '/api/auth/register' : '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: authName,
+          email: authEmail,
+          password: authPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        if (authMode === 'signup' && response.status === 409) {
+          setAuthMode('signin');
+          setAuthError('That email already has an account. Sign in to continue.');
+          return;
+        }
+
+        setAuthError(authMode === 'signup' ? 'We could not create that account.' : 'Invalid email or password.');
+        return;
+      }
+
+      const data = await response.json();
+      persistStoreSession(data.token, data.user);
+      setAuthPassword('');
+      setAuthName('');
+      setIsAuthOpen(false);
+
+      if (pendingSoftCopyBook) {
+        addSoftCopyToCart(pendingSoftCopyBook);
+      }
+    } catch {
+      setAuthError('Unable to connect right now. Please try again.');
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  };
+
   const updateQuantity = (id: string, delta: number) => {
     setCart((prev) => prev.map((item) => {
       if (item.product.id === id) {
@@ -118,9 +318,158 @@ export default function StorePage() {
     }).filter((item) => item.quantity > 0));
   };
 
+  const updateDigitalQuantity = (id: string, delta: number) => {
+    setDigitalCart((prev) => prev.map((item) => {
+      if (item.product.id === id) {
+        const newQty = Math.max(0, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }).filter((item) => item.quantity > 0));
+  };
+
+  const completeDigitalCheckout = async () => {
+    if (!storeToken || !storeUser) {
+      setPendingSoftCopyBook(digitalCart[0]?.product || null);
+      setAuthMode('signin');
+      setIsAuthOpen(true);
+      return;
+    }
+
+    setCheckoutError('');
+    setIsDigitalCheckoutSubmitting(true);
+
+    try {
+      const response = await apiFetch('/api/store/purchases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${storeToken}`,
+        },
+        body: JSON.stringify({
+          paymentMethod,
+          items: digitalCart.map((item) => ({
+            product: item.product,
+            quantity: item.quantity,
+            price: getSoftCopyPrice(item.product),
+            currency: 'MWK',
+          })),
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setCheckoutError(data?.error || 'Unable to save this digital order.');
+        return;
+      }
+
+      const purchases = Array.isArray(data?.purchases) ? data.purchases.map(mapStorePurchase) : [];
+      setDigitalLibrary((prev) => [...purchases, ...prev]);
+      setCheckoutStep('success');
+    } catch {
+      setCheckoutError('Unable to connect to the store library right now.');
+    } finally {
+      setIsDigitalCheckoutSubmitting(false);
+    }
+  };
+
   const cartTotal = cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
   const cartCount = cart.reduce((count, item) => count + item.quantity, 0);
+  const digitalCartTotal = digitalCart.reduce((total, item) => total + (getSoftCopyPrice(item.product) * item.quantity), 0);
+  const digitalCartCount = digitalCart.reduce((count, item) => count + item.quantity, 0);
+  const activeCart = cartMode === 'soft' ? digitalCart : cart;
+  const activeCartTotal = cartMode === 'soft' ? digitalCartTotal : cartTotal;
+  const activeCartLabel = cartMode === 'soft' ? 'Soft Copy' : 'Hard Copy';
+  const isSoftCopyCart = cartMode === 'soft';
   const formatMWK = (amount: number) => `MWK ${amount.toLocaleString()}`;
+  function getSoftCopyPrice(book: Product) {
+    if (typeof book.softCopyPrice === 'number') return book.softCopyPrice;
+    return Math.max(1000, Math.round(book.price * 0.7));
+  }
+
+  const persistStoreSession = useCallback((token: string, user: StoreUser) => {
+    localStorage.setItem(STORE_TOKEN_KEY, token);
+    localStorage.setItem(STORE_USER_KEY, JSON.stringify(user));
+    setStoreToken(token);
+    setStoreUser(user);
+  }, []);
+
+  const clearStoreSession = useCallback(() => {
+    localStorage.removeItem(STORE_TOKEN_KEY);
+    localStorage.removeItem(STORE_USER_KEY);
+    setStoreToken(null);
+    setStoreUser(null);
+    setDigitalCart([]);
+    setDigitalLibrary([]);
+  }, []);
+
+  const fetchDigitalLibrary = useCallback(async (token: string) => {
+    try {
+      const response = await apiFetch('/api/store/library', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          clearStoreSession();
+        }
+        return;
+      }
+
+      const data = await response.json();
+      const purchases = Array.isArray(data?.purchases) ? data.purchases.map(mapStorePurchase) : [];
+      setDigitalLibrary(purchases);
+    } catch {
+      // Keep the current view if the library request is temporarily unavailable.
+    }
+  }, [clearStoreSession]);
+
+  useEffect(() => {
+    const token = localStorage.getItem(STORE_TOKEN_KEY);
+    const storedUser = localStorage.getItem(STORE_USER_KEY);
+
+    if (!token || !storedUser) return;
+
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      setStoreToken(token);
+      setStoreUser(parsedUser);
+    } catch {
+      clearStoreSession();
+    }
+  }, [clearStoreSession]);
+
+  useEffect(() => {
+    if (!storeToken || !storeUser) return;
+    fetchDigitalLibrary(storeToken);
+  }, [fetchDigitalLibrary, storeToken, storeUser]);
+
+  useEffect(() => {
+    if (!storeToken) return;
+
+    let cancelled = false;
+    apiFetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${storeToken}` },
+    })
+      .then(async (response) => {
+        if (cancelled) return;
+        if (!response.ok) {
+          clearStoreSession();
+          return;
+        }
+        const user = await response.json();
+        localStorage.setItem(STORE_USER_KEY, JSON.stringify(user));
+        setStoreUser(user);
+      })
+      .catch(() => {
+        // Keep the current browser session if the API is temporarily unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearStoreSession, storeToken]);
   const getBookOverview = (book: Product) => {
     const genreIntro: Record<string, string> = {
       Spiritual: 'This book is a faith-building resource written to strengthen your walk with God, sharpen your spiritual appetite, and help you live with conviction.',
@@ -136,7 +485,7 @@ export default function StorePage() {
     return [
       genreIntro[book.genre || ''] || 'This book is a practical Christian resource designed to encourage, equip, and strengthen readers in their daily walk with God.',
       `${book.name} brings together biblical teaching and practical instruction so readers can understand the subject clearly and apply it with faith, discipline, and confidence.`,
-      'Review the details below, then choose the hard copy option to add it to your cart or use the soft copy option to purchase the digital edition on Amazon.',
+      'Review the details below, then choose a hard copy for collection or a soft copy for your personal digital library.',
     ];
   };
   const getEstimatedPages = (book: Product) => {
@@ -215,7 +564,7 @@ export default function StorePage() {
                     <p className="mt-3 text-base text-slate-600">
                       by <span className="font-semibold text-[#1688b4]">{selectedBook.author || 'Hope Stores'}</span>
                       <span className="mx-3 text-slate-300">|</span>
-                      Format: Hard Copy
+                      Format: Hard Copy or Soft Copy
                     </p>
                   </div>
 
@@ -263,9 +612,10 @@ export default function StorePage() {
                       </p>
                       <Button
                         onClick={() => addToCart(selectedBook)}
+                        disabled={selectedBook.hardCopyEnabled === false}
                         className="mt-5 w-full rounded-full bg-[#f59e0b] py-6 text-base font-semibold text-slate-950 hover:bg-[#e58f00]"
                       >
-                        Add hard copy to cart
+                        {selectedBook.hardCopyEnabled === false ? 'Hard copy unavailable' : 'Add hard copy to cart'}
                       </Button>
                       <p className="mt-4 text-sm leading-6 text-slate-600">
                         You can review your cart and payment details before confirming your order.
@@ -276,17 +626,21 @@ export default function StorePage() {
                   <div className="rounded-lg border border-slate-200 bg-white p-5">
                     <p className="text-lg font-semibold text-slate-950">Soft Copy</p>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Purchase the digital edition from the author page on Amazon.
+                      Sign in or create an account to buy the digital edition. After payment confirmation, it will stay in My Books for reading or download.
                     </p>
-                    <a
-                      href="https://www.amazon.com/stores/author/B0198LK6E6"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <p className="mt-4 text-2xl font-light text-slate-950">
+                      <span className="text-base align-top">MWK</span>{' '}
+                      {getSoftCopyPrice(selectedBook).toLocaleString()}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleSoftCopySelect(selectedBook)}
+                      disabled={selectedBook.softCopyEnabled === false}
                       className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-300 px-5 text-sm font-semibold text-slate-950 transition hover:border-slate-950"
                     >
-                      <ExternalLink className="h-4 w-4" />
-                      View on Amazon
-                    </a>
+                      <Download className="h-4 w-4" />
+                      {selectedBook.softCopyEnabled === false ? 'Soft copy unavailable' : 'Buy soft copy'}
+                    </button>
                   </div>
                 </aside>
               </div>
@@ -296,14 +650,14 @@ export default function StorePage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {!isCartOpen && cartCount > 0 && (
+        {!isCartOpen && cartCount + digitalCartCount > 0 && (
           <motion.button
             initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
             onClick={() => setIsCartOpen(true)}
             className="fixed bottom-8 right-8 z-40 bg-black text-white p-4 rounded-full shadow-2xl hover:scale-105 transition-transform flex items-center justify-center gap-2"
           >
             <ShoppingCart className="w-6 h-6" />
-            <span className="font-bold">{cartCount}</span>
+            <span className="font-bold">{cartCount + digitalCartCount}</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -313,11 +667,42 @@ export default function StorePage() {
           <div className="bg-slate-50 border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-700">
               <div className="flex flex-wrap items-center gap-4">
-                <button type="button" className="hover:text-slate-950">Account</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (storeUser) {
+                      setIsLibraryOpen(true);
+                      return;
+                    }
+                    setAuthMode('signin');
+                    setIsAuthOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 hover:text-slate-950"
+                >
+                  <User className="h-4 w-4" />
+                  {storeUser ? storeUser.name : 'Account'}
+                </button>
+                <span className="h-4 w-px bg-slate-300" />
+                <button
+                  type="button"
+                  onClick={() => setIsLibraryOpen(true)}
+                  className="inline-flex items-center gap-2 hover:text-slate-950"
+                >
+                  <Library className="h-4 w-4" />
+                  My Books ({digitalLibrary.length})
+                </button>
                 <span className="h-4 w-px bg-slate-300" />
                 <span>MWK MK</span>
                 <span className="h-4 w-px bg-slate-300" />
                 <button type="button" className="hover:text-slate-950">English</button>
+                {storeUser && (
+                  <>
+                    <span className="h-4 w-px bg-slate-300" />
+                    <button type="button" onClick={clearStoreSession} className="hover:text-slate-950">
+                      Sign out
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -357,13 +742,16 @@ export default function StorePage() {
 
               <button
                 type="button"
-                onClick={() => setIsCartOpen(true)}
+                onClick={() => {
+                  setCartMode(cartCount > 0 ? 'hard' : 'soft');
+                  setIsCartOpen(true);
+                }}
                 className="inline-flex items-center justify-start gap-3 text-left lg:justify-center"
               >
                 <ShoppingCart className="h-7 w-7 text-slate-950" />
                 <span>
                   <span className="block font-serif text-base">Shopping Cart</span>
-                  <span className="block text-xs text-slate-500">{cartCount} item{cartCount === 1 ? '' : 's'}</span>
+                  <span className="block text-xs text-slate-500">{cartCount + digitalCartCount} item{cartCount + digitalCartCount === 1 ? '' : 's'}</span>
                 </span>
               </button>
             </div>
@@ -499,45 +887,233 @@ export default function StorePage() {
       <Footer />
 
       <AnimatePresence>
+        {isAuthOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAuthOpen(false)} className="fixed inset-0 z-[80] bg-slate-950/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.96, y: 18 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 18 }} className="fixed left-1/2 top-1/2 z-[90] w-[min(460px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1688b4]">Hope Stores Account</p>
+                  <h2 className="mt-2 text-2xl font-bold text-slate-950">{authMode === 'signin' ? 'Sign in to continue' : 'Create your account'}</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Soft copies are saved to your personal My Books library after payment.
+                  </p>
+                </div>
+                <button type="button" onClick={() => setIsAuthOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:text-slate-950" aria-label="Close account dialog">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+                <button type="button" onClick={() => { setAuthMode('signin'); setAuthError(''); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${authMode === 'signin' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>
+                  Sign in
+                </button>
+                <button type="button" onClick={() => { setAuthMode('signup'); setAuthError(''); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${authMode === 'signup' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>
+                  Sign up
+                </button>
+              </div>
+
+              <form onSubmit={handleAuthSubmit} className="mt-5 space-y-4">
+                {authMode === 'signup' && (
+                  <div>
+                    <label htmlFor="store-auth-name" className="text-sm font-semibold text-slate-700">Full name</label>
+                    <input id="store-auth-name" value={authName} onChange={(event) => setAuthName(event.target.value)} required className="mt-2 h-12 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-[#1688b4]" />
+                  </div>
+                )}
+                <div>
+                  <label htmlFor="store-auth-email" className="text-sm font-semibold text-slate-700">Email</label>
+                  <input id="store-auth-email" type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} required className="mt-2 h-12 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-[#1688b4]" />
+                </div>
+                <div>
+                  <label htmlFor="store-auth-password" className="text-sm font-semibold text-slate-700">Password</label>
+                  <div className="relative mt-2">
+                    <input
+                      id="store-auth-password"
+                      type={showAuthPassword ? 'text' : 'password'}
+                      value={authPassword}
+                      onChange={(event) => setAuthPassword(event.target.value)}
+                      required
+                      minLength={6}
+                      className="h-12 w-full rounded-md border border-slate-200 px-3 pr-12 outline-none focus:border-[#1688b4]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAuthPassword((value) => !value)}
+                      className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-950"
+                      aria-label={showAuthPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showAuthPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                {authError && (
+                  <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{authError}</p>
+                )}
+                <Button type="submit" disabled={isAuthSubmitting} className="w-full gap-2 rounded-full bg-[#1688b4] py-6 text-white hover:bg-[#0f759c]">
+                  <LogIn className="h-4 w-4" />
+                  {isAuthSubmitting ? 'Please wait...' : authMode === 'signin' ? 'Sign in' : 'Create account'}
+                </Button>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isLibraryOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsLibraryOpen(false)} className="fixed inset-0 z-[80] bg-slate-950/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.96, y: 18 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 18 }} className="fixed left-1/2 top-1/2 z-[90] max-h-[88vh] w-[min(760px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg bg-white shadow-2xl">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1688b4]">Digital Library</p>
+                  <h2 className="text-2xl font-bold text-slate-950">My Books</h2>
+                </div>
+                <button type="button" onClick={() => setIsLibraryOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:text-slate-950" aria-label="Close library">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {!storeUser ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center">
+                    <Library className="mx-auto h-10 w-10 text-slate-300" />
+                    <h3 className="mt-4 text-lg font-bold text-slate-950">Sign in to view your books</h3>
+                    <p className="mt-2 text-sm text-slate-600">Your digital purchases are tied to your store account.</p>
+                    <Button onClick={() => { setIsLibraryOpen(false); setAuthMode('signin'); setIsAuthOpen(true); }} className="mt-5 rounded-full bg-[#1688b4] px-6 text-white hover:bg-[#0f759c]">
+                      Sign in
+                    </Button>
+                  </div>
+                ) : digitalLibrary.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center">
+                    <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
+                    <h3 className="mt-4 text-lg font-bold text-slate-950">No soft copies yet</h3>
+                    <p className="mt-2 text-sm text-slate-600">Books you buy in soft-copy format will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {digitalLibrary.map((purchase) => (
+                      <div key={purchase.id} className="rounded-lg border border-slate-200 p-4">
+                        <div className="flex gap-4">
+                          <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-md bg-slate-100">
+                            <Image src={purchase.product.image} alt={purchase.product.name} fill sizes="80px" className="object-cover" onError={swapImage('/store/books/placeholder.jpg')} />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="line-clamp-2 font-semibold leading-tight text-slate-950">{purchase.product.name}</h3>
+                            <p className="mt-1 text-xs text-slate-500">{formatMWK(purchase.price)} - Soft Copy</p>
+                            <span className={`mt-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${purchase.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                              <ShieldCheck className="h-3 w-3" />
+                              {purchase.status === 'available' ? 'Available' : 'Pending payment'}
+                            </span>
+                          </div>
+                        </div>
+                        <Button disabled={purchase.status !== 'available'} variant="outline" className="mt-4 w-full gap-2 rounded-full">
+                          <Download className="h-4 w-4" />
+                          {purchase.status === 'available' ? 'Download book' : 'Awaiting confirmation'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {isCartOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsCartOpen(false)} className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm" />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col">
-              <div className="p-6 border-b flex items-center justify-between">
-                <h2 className="text-xl font-bold">{checkoutStep === 'success' ? 'Payment Details' : checkoutStep === 'checkout' ? 'Order Confirmation' : 'Your Cart'}</h2>
+            <motion.div
+              initial={isSoftCopyCart ? { opacity: 0, scale: 0.96, y: 18 } : { x: '100%' }}
+              animate={isSoftCopyCart ? { opacity: 1, scale: 1, y: 0 } : { x: 0 }}
+              exit={isSoftCopyCart ? { opacity: 0, scale: 0.96, y: 18 } : { x: '100%' }}
+              className={
+                isSoftCopyCart
+                  ? 'fixed left-1/2 top-1/2 z-50 flex max-h-[88vh] w-[min(760px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-white shadow-2xl'
+                  : 'fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col'
+              }
+            >
+              <div className={`${isSoftCopyCart ? 'px-7 py-6 text-center' : 'p-6'} border-b flex items-center justify-between gap-4`}>
+                {isSoftCopyCart && <span className="h-9 w-9" aria-hidden="true" />}
+                <div className={isSoftCopyCart ? 'min-w-0 flex-1' : 'min-w-0'}>
+                  {isSoftCopyCart && (
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1688b4]">Digital checkout</p>
+                  )}
+                  <h2 className={`${isSoftCopyCart ? 'mt-1 text-2xl' : 'text-xl'} font-bold`}>
+                    {checkoutStep === 'success' ? 'Payment Details' : checkoutStep === 'checkout' ? 'Order Confirmation' : `Your ${activeCartLabel} Cart`}
+                  </h2>
+                  {isSoftCopyCart && checkoutStep !== 'success' && (
+                    <p className="mt-2 text-sm text-black/55">Review your digital book before moving to payment.</p>
+                  )}
+                </div>
                 <button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-black/5 rounded-full"><X className="w-5 h-5" /></button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className={`flex-1 overflow-y-auto ${isSoftCopyCart ? 'px-7 py-6' : 'p-6'}`}>
                 {checkoutStep === 'cart' && (
-                  <div className="space-y-6">
-                    {cart.map(item => (
-                      <div key={item.product.id} className="flex gap-4">
-                        <div className="relative w-20 h-20 bg-black/5 rounded-md overflow-hidden">
-                           <Image src={item.product.image} alt={item.product.name} fill className="object-cover" onError={swapImage('/images/placeholder.png')} />
+                  <div className={`${isSoftCopyCart ? 'mx-auto max-w-xl' : ''} space-y-6`}>
+                    {(cartCount > 0 || digitalCartCount > 0) && (
+                      <div className="grid grid-cols-2 gap-2 rounded-lg bg-black/5 p-1">
+                        <button
+                          type="button"
+                          onClick={() => setCartMode('hard')}
+                          className={`rounded-md px-3 py-2 text-sm font-semibold transition ${cartMode === 'hard' ? 'bg-white shadow-sm' : 'text-black/60 hover:text-black'}`}
+                        >
+                          Hard Copy ({cartCount})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCartMode('soft')}
+                          className={`rounded-md px-3 py-2 text-sm font-semibold transition ${cartMode === 'soft' ? 'bg-white shadow-sm' : 'text-black/60 hover:text-black'}`}
+                        >
+                          Soft Copy ({digitalCartCount})
+                        </button>
+                      </div>
+                    )}
+
+                    {activeCart.length === 0 && (
+                      <div className="rounded-xl border border-dashed border-black/15 p-6 text-center">
+                        <ShoppingCart className="mx-auto h-8 w-8 text-black/30" />
+                        <p className="mt-3 text-sm font-semibold">No {activeCartLabel.toLowerCase()} books yet.</p>
+                      </div>
+                    )}
+
+                    {activeCart.map(item => (
+                      <div key={item.product.id} className={`${isSoftCopyCart ? 'items-center rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm sm:grid sm:grid-cols-[104px_1fr_auto]' : 'flex'} gap-4`}>
+                        <div className={`${isSoftCopyCart ? 'mx-auto h-32 w-24 sm:mx-0' : 'w-20 h-20'} relative bg-black/5 rounded-md overflow-hidden`}>
+                           <Image src={item.product.image} alt={item.product.name} fill className={isSoftCopyCart ? 'object-cover' : 'object-cover'} onError={swapImage('/images/placeholder.png')} />
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-sm leading-tight">{item.product.name}</h4>
-                          <p className="text-xs text-black/50 mt-1">{formatMWK(item.product.price)}</p>
-                          <div className="flex items-center gap-3 mt-3">
+                        <div className={`${isSoftCopyCart ? 'mt-4 text-center sm:mt-0 sm:text-left' : ''} flex-1`}>
+                          <h4 className={`${isSoftCopyCart ? 'text-lg' : 'text-sm'} font-semibold leading-tight`}>{item.product.name}</h4>
+                          <p className="text-xs text-black/50 mt-1">{formatMWK(cartMode === 'soft' ? getSoftCopyPrice(item.product) : item.product.price)} - {activeCartLabel}</p>
+                          <div className={`${isSoftCopyCart ? 'justify-center sm:justify-start' : ''} flex items-center gap-3 mt-3`}>
                             <div className="flex items-center border rounded-md">
-                              <button onClick={() => updateQuantity(item.product.id, -1)} className="p-1 hover:bg-black/5"><Minus className="w-3 h-3" /></button>
+                              <button onClick={() => cartMode === 'soft' ? updateDigitalQuantity(item.product.id, -1) : updateQuantity(item.product.id, -1)} className="p-1 hover:bg-black/5"><Minus className="w-3 h-3" /></button>
                               <span className="w-8 text-center text-xs">{item.quantity}</span>
-                              <button onClick={() => updateQuantity(item.product.id, 1)} className="p-1 hover:bg-black/5"><Plus className="w-3 h-3" /></button>
+                              <button onClick={() => cartMode === 'soft' ? updateDigitalQuantity(item.product.id, 1) : updateQuantity(item.product.id, 1)} className="p-1 hover:bg-black/5"><Plus className="w-3 h-3" /></button>
                             </div>
-                            <button onClick={() => updateQuantity(item.product.id, -item.quantity)} className="text-black/30 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => cartMode === 'soft' ? updateDigitalQuantity(item.product.id, -item.quantity) : updateQuantity(item.product.id, -item.quantity)} className="text-black/30 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </div>
+                        {isSoftCopyCart && (
+                          <div className="mt-4 rounded-md bg-white px-4 py-3 text-center shadow-sm sm:mt-0">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40">Total</p>
+                            <p className="mt-1 font-bold text-slate-950">{formatMWK(getSoftCopyPrice(item.product) * item.quantity)}</p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
                 {checkoutStep === 'checkout' && (
-                  <div className="space-y-6">
+                  <div className={`${isSoftCopyCart ? 'mx-auto max-w-xl' : ''} space-y-6`}>
                     <div className="bg-black/5 p-4 rounded-lg">
                       <p className="text-sm text-black/50 mb-1">Total to Pay</p>
-                      <p className="text-2xl font-bold">{formatMWK(cartTotal)}</p>
+                      <p className="text-2xl font-bold">{formatMWK(activeCartTotal)}</p>
+                      <p className="mt-1 text-xs text-black/50">{activeCartLabel} order</p>
                     </div>
                     
                     <div className="p-4 border border-black/10 rounded-xl space-y-3">
@@ -555,6 +1131,18 @@ export default function StorePage() {
                       </p>
                     </div>
 
+                    {cartMode === 'soft' && (
+                      <div className="rounded-xl border border-[#1688b4]/25 bg-[#e9f6fb] p-4 text-sm leading-6 text-slate-800">
+                        <p className="font-bold text-slate-950">Digital delivery</p>
+                        <p className="mt-1">
+                          Your soft copy will appear in My Books after payment confirmation. Keep this account signed in so the book stays tied to your email.
+                        </p>
+                      </div>
+                    )}
+                    {checkoutError && (
+                      <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{checkoutError}</p>
+                    )}
+
                     <div>
                       <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-black/40">Select Payment Method</h3>
                       <div className="space-y-2">
@@ -570,11 +1158,15 @@ export default function StorePage() {
                 )}
 
                 {checkoutStep === 'success' && (
-                  <div className="h-full flex flex-col animate-in fade-in duration-500">
+                  <div className={`${isSoftCopyCart ? 'mx-auto max-w-xl' : 'h-full'} flex flex-col animate-in fade-in duration-500`}>
                     <div className="text-center mb-8">
                       <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
                       <h3 className="text-xl font-bold mb-2">Order Submitted!</h3>
-                      <p className="text-sm text-black/60">Please complete your payment to the details below.</p>
+                      <p className="text-sm text-black/60">
+                        {cartMode === 'soft'
+                          ? 'Please complete your payment, then send proof so your soft copy can be released in My Books.'
+                          : 'Please complete your payment to the details below.'}
+                      </p>
                     </div>
 
                     <div className="bg-black p-6 rounded-2xl text-white space-y-4 mb-8">
@@ -598,27 +1190,42 @@ export default function StorePage() {
                       <p className="text-sm font-medium text-center px-4">
                         Once paid, send your <span className="font-bold underline">proof of payment</span> and <span className="font-bold underline">full name</span> to our team on WhatsApp:
                       </p>
-                      <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#25D366]/90 border-0 py-6" onClick={() => window.open(`https://wa.me/265888000000?text=Hello, I have made a payment for my Hope Stores order. Name: `, '_blank')}>
+                      <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#25D366]/90 border-0 py-6" onClick={() => window.open(`https://wa.me/265888000000?text=Hello, I have made a payment for my Hope Stores ${cartMode === 'soft' ? 'soft copy' : 'hard copy'} order. Name: `, '_blank')}>
                         <MessageCircle className="w-5 h-5" /> Send Proof on WhatsApp
                       </Button>
-                      <p className="text-xs text-black/40 text-center">We will then contact you to organize collection.</p>
+                      <p className="text-xs text-black/40 text-center">
+                        {cartMode === 'soft'
+                          ? 'Your book is saved as pending in My Books until the team confirms payment.'
+                          : 'We will then contact you to organize collection.'}
+                      </p>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="p-6 border-t bg-gray-50">
-                {checkoutStep === 'cart' && cart.length > 0 && (
-                  <Button className="w-full py-6 text-lg" onClick={() => setCheckoutStep('checkout')}>Next: Payment Information</Button>
+              <div className={`${isSoftCopyCart ? 'px-7 py-5' : 'p-6'} border-t bg-gray-50`}>
+                {checkoutStep === 'cart' && activeCart.length > 0 && (
+                  <Button className={`${isSoftCopyCart ? 'mx-auto max-w-xl' : ''} w-full py-6 text-lg`} onClick={() => setCheckoutStep('checkout')}>Next: Payment Information</Button>
                 )}
                 {checkoutStep === 'checkout' && (
-                  <div className="flex gap-2">
+                  <div className={`${isSoftCopyCart ? 'mx-auto max-w-xl' : ''} flex gap-2`}>
                     <Button variant="outline" onClick={() => setCheckoutStep('cart')}>Back</Button>
-                    <Button className="flex-1" disabled={!paymentMethod} onClick={() => setCheckoutStep('success')}>Confirm & View Details</Button>
+                    <Button className="flex-1" disabled={!paymentMethod || isDigitalCheckoutSubmitting} onClick={() => cartMode === 'soft' ? completeDigitalCheckout() : setCheckoutStep('success')}>
+                      {isDigitalCheckoutSubmitting ? 'Saving...' : 'Confirm & View Details'}
+                    </Button>
                   </div>
                 )}
                 {checkoutStep === 'success' && (
-                  <Button className="w-full" variant="outline" onClick={() => { setIsCartOpen(false); setCart([]); setCheckoutStep('cart'); }}>Back to Hope Stores</Button>
+                  <Button className="w-full" variant="outline" onClick={() => {
+                    setIsCartOpen(false);
+                    if (cartMode === 'soft') {
+                      setDigitalCart([]);
+                      setIsLibraryOpen(true);
+                    } else {
+                      setCart([]);
+                    }
+                    setCheckoutStep('cart');
+                  }}>{cartMode === 'soft' ? 'Open My Books' : 'Back to Hope Stores'}</Button>
                 )}
               </div>
             </motion.div>

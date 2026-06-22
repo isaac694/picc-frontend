@@ -8,6 +8,14 @@ export type Product = {
   image: string;
   author?: string;
   genre?: string;
+  description?: string;
+  hardCopyPrice?: number;
+  softCopyPrice?: number | null;
+  hardCopyEnabled?: boolean;
+  softCopyEnabled?: boolean;
+  downloadUrl?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
 };
 
 export const categories = [

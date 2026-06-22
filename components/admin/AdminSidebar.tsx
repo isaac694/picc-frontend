@@ -36,6 +36,7 @@ const SITE_PAGE_ITEMS: NavItem[] = [
   { label: 'About Page', href: '/admin/about-page', pageKey: ADMIN_PAGE.ABOUT_PAGE },
   { label: 'Contact Page', href: '/admin/contact', pageKey: ADMIN_PAGE.CONTACT_PAGE },
   { label: 'Media Page', href: '/admin/media', pageKey: ADMIN_PAGE.MEDIA_PAGE },
+  { label: 'Store Page', href: '/admin/store', pageKey: ADMIN_PAGE.STORE_PAGE },
   { label: 'Forms Page', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE },
   { label: 'Sermons Page', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE },
   { label: 'Give Page', href: '/admin/give', pageKey: ADMIN_PAGE.GIVE_PAGE },
