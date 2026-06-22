@@ -1,33 +1,25 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, type FormEvent, type SyntheticEvent } from 'react';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  ShoppingCart, Plus, Minus, Trash2, X, CheckCircle2, 
-  Download, Printer, Mail, MessageCircle, ImageIcon,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  BookOpen, ExternalLink, Building2
+  ShoppingCart, Search, Plus, Minus, Trash2, X, CheckCircle2, 
+  MessageCircle, ImageIcon, BookOpen, ExternalLink, Building2, Menu,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { products, categories, bookAuthors, bookGenres, type Product } from '@/components/data/products';
+import { products, type Product } from '@/components/data/products';
 
 export default function StorePage() {
-  const [mounted, setMounted] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [activeAuthor, setActiveAuthor] = useState('All');
-  const [activeGenre, setActiveGenre] = useState('All');
+  const [searchInput, setSearchInput] = useState('');
+  const [trendingTab, setTrendingTab] = useState<'Featured' | 'New arrivals' | 'Best sellers'>('Featured');
   
   // Selection Modal State
   const [selectedBook, setSelectedBook] = useState<Product | null>(null);
-
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
 
   // Cart & Checkout State
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
@@ -35,34 +27,65 @@ export default function StorePage() {
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'checkout' | 'success'>('cart');
   const [paymentMethod, setPaymentMethod] = useState('');
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const heroBook = products.find((product) => product.id === 'b2') || products[0];
+  const bookProductsWithImages = useMemo(
+    () => products.filter((product) => product.category === 'Books' && !product.image.includes('placeholder')),
+    []
+  );
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeCategory, activeAuthor, activeGenre]);
+  const classicTrendingProducts = useMemo(() => {
+    const active = bookProductsWithImages.length ? bookProductsWithImages : products.filter((product) => product.category === 'Books');
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      if (activeCategory !== 'All' && product.category !== activeCategory) return false;
-      if (activeCategory === 'Books') {
-        if (activeAuthor !== 'All' && product.author !== activeAuthor) return false;
-        if (activeGenre !== 'All' && product.genre !== activeGenre) return false;
-      }
-      return true;
-    });
-  }, [activeCategory, activeAuthor, activeGenre]);
+    if (trendingTab === 'New arrivals') {
+      return [...active].slice(-8).reverse();
+    }
 
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredProducts, currentPage]);
+    if (trendingTab === 'Best sellers') {
+      return [...active]
+        .sort((a, b) => b.price - a.price)
+        .slice(0, 8);
+    }
 
-  const goToPage = (page: number) => {
-    setCurrentPage(Math.min(Math.max(1, page), totalPages));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return active.slice(0, 8);
+  }, [bookProductsWithImages, trendingTab]);
+
+  const compactProductGroups = useMemo(() => {
+    const findBook = (id: string) => products.find((product) => product.id === id) || bookProductsWithImages[0] || products[0];
+
+    return [
+      {
+        title: 'Night Of Deliverance',
+        products: [findBook('b21'), findBook('b57'), findBook('b14')],
+      },
+      {
+        title: 'On sale',
+        products: [findBook('b88'), findBook('b87'), findBook('b92')],
+        sale: true,
+      },
+      {
+        title: 'Best Seller',
+        products: [findBook('b87'), findBook('b64'), findBook('b15')],
+        sale: true,
+      },
+    ];
+  }, [bookProductsWithImages]);
+
+  const promoCards = useMemo(() => {
+    const findBook = (id: string) => products.find((product) => product.id === id) || bookProductsWithImages[0] || products[0];
+
+    return [
+      { title: 'Spiritual', subtitle: 'Get 45% Off', product: findBook('b21'), color: 'bg-[#63d5bc]' },
+      { title: 'Business', subtitle: 'Get 45% Off', product: findBook('b40'), color: 'bg-[#55ad1d]' },
+      { title: 'Audio Book', subtitle: 'Get 50% Off', product: findBook('b88'), color: 'bg-[#6fa4df]' },
+    ];
+  }, [bookProductsWithImages]);
+
+  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+  };
+
+  const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
+    event.currentTarget.src = fallback;
   };
 
   const handleProductClick = (product: Product) => {
@@ -98,60 +121,175 @@ export default function StorePage() {
   const cartTotal = cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
   const cartCount = cart.reduce((count, item) => count + item.quantity, 0);
   const formatMWK = (amount: number) => `MWK ${amount.toLocaleString()}`;
+  const getBookOverview = (book: Product) => {
+    const genreIntro: Record<string, string> = {
+      Spiritual: 'This book is a faith-building resource written to strengthen your walk with God, sharpen your spiritual appetite, and help you live with conviction.',
+      Marital: 'This book gives practical biblical wisdom for relationships, marriage, preparation, communication, and building a home that honors God.',
+      Youth: 'This book speaks to young people with practical guidance for purpose, discipline, purity, excellence, and making choices that shape a meaningful future.',
+      Prayer: 'This book is a prayer resource for believers who want to grow in spiritual discipline, intercession, and confidence before God.',
+      Leadership: 'This book equips leaders and servants with biblical principles for responsibility, character, excellence, and effective ministry.',
+      Success: 'This book explores biblical wisdom for progress, diligence, impact, and rising into the life God has prepared for you.',
+      Men: 'This book offers biblical insight for men who want to grow in responsibility, purpose, discipline, and spiritual strength.',
+      Women: 'This book encourages women to walk in wisdom, strength, distinction, and God-given purpose.',
+    };
 
-  if (!mounted) return null;
+    return [
+      genreIntro[book.genre || ''] || 'This book is a practical Christian resource designed to encourage, equip, and strengthen readers in their daily walk with God.',
+      `${book.name} brings together biblical teaching and practical instruction so readers can understand the subject clearly and apply it with faith, discipline, and confidence.`,
+      'Review the details below, then choose the hard copy option to add it to your cart or use the soft copy option to purchase the digital edition on Amazon.',
+    ];
+  };
+  const getEstimatedPages = (book: Product) => {
+    const numericId = Number(book.id.replace(/\D/g, '')) || book.name.length;
+    return 88 + (numericId % 42);
+  };
 
   return (
     <>
       <Navigation />
       
-      {/* Selection Modal for Books */}
+      {/* Book overview modal */}
       <AnimatePresence>
         {selectedBook && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedBook(null)} className="fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white z-[70] rounded-2xl shadow-2xl p-6 overflow-hidden">
-              <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-black/5 rounded-xl mx-auto mb-4 flex items-center justify-center">
-                  <BookOpen className="w-10 h-10 text-black/20" />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedBook(null)}
+              className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 18 }}
+              className="fixed left-1/2 top-1/2 z-[70] max-h-[92vh] w-[min(1180px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg bg-white shadow-2xl"
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-5 py-4 backdrop-blur">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1688b4]">Book Overview</p>
+                  <p className="truncate text-sm text-slate-500">Review before adding to cart</p>
                 </div>
-                <h3 className="text-xl font-bold">{selectedBook.name}</h3>
-                <p className="text-sm text-black/50">Choose how you want to purchase this book</p>
-              </div>
-
-              <div className="grid gap-4">
-                <button 
-                  onClick={() => addToCart(selectedBook)}
-                  className="group relative flex items-center gap-4 p-4 border rounded-xl hover:border-black transition-all text-left"
+                <button
+                  type="button"
+                  onClick={() => setSelectedBook(null)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-slate-400 hover:text-slate-950"
+                  aria-label="Close book overview"
                 >
-                  <div className="p-3 bg-black text-white rounded-lg group-hover:scale-110 transition-transform">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold">Hard Copy</p>
-                    <p className="text-xs text-black/50">Pay via Bank/Mobile Money & collect in person.</p>
-                  </div>
+                  <X className="h-5 w-5" />
                 </button>
-
-                <a 
-                  href="https://www.amazon.com/stores/author/B0198LK6E6"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative flex items-center gap-4 p-4 border rounded-xl hover:border-black transition-all text-left"
-                >
-                  <div className="p-3 bg-[#FF9900] text-white rounded-lg group-hover:scale-110 transition-transform">
-                    <ExternalLink className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold">Soft Copy</p>
-                    <p className="text-xs text-black/50">Purchase the digital version on Amazon.</p>
-                  </div>
-                </a>
               </div>
 
-              <button onClick={() => setSelectedBook(null)} className="mt-6 w-full py-2 text-sm text-black/40 hover:text-black font-medium transition-colors">
-                Cancel
-              </button>
+              <div className="grid gap-8 p-5 md:p-7 lg:grid-cols-[300px_minmax(0,1fr)_300px]">
+                <aside className="space-y-5">
+                  <div className="relative mx-auto aspect-[0.72] w-full max-w-[280px] overflow-hidden border border-slate-200 bg-slate-50 shadow-[0_18px_34px_rgba(15,23,42,0.18)]">
+                    <Image
+                      src={selectedBook.image}
+                      alt={selectedBook.name}
+                      fill
+                      sizes="(min-width: 1024px) 280px, 70vw"
+                      className="object-cover"
+                      onError={swapImage('/store/items/placeholder.png')}
+                    />
+                  </div>
+                  <div className="mx-auto max-w-[280px] border-t border-slate-200 pt-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Author</p>
+                    <div className="mt-3 flex items-center gap-3">
+                      <Image
+                        src="/store/esau-banda.JPG"
+                        alt={selectedBook.author || 'Author'}
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 rounded-full border border-slate-200 object-cover"
+                      />
+                      <p className="text-sm font-semibold text-slate-950">{selectedBook.author || 'Hope Stores'}</p>
+                    </div>
+                  </div>
+                </aside>
+
+                <section className="min-w-0">
+                  <div className="border-b border-slate-200 pb-5">
+                    <h2 className="font-serif text-3xl font-semibold leading-tight text-slate-950 md:text-5xl">
+                      {selectedBook.name}
+                    </h2>
+                    <p className="mt-3 text-base text-slate-600">
+                      by <span className="font-semibold text-[#1688b4]">{selectedBook.author || 'Hope Stores'}</span>
+                      <span className="mx-3 text-slate-300">|</span>
+                      Format: Hard Copy
+                    </p>
+                  </div>
+
+                  <div className="space-y-5 py-6 text-base leading-8 text-slate-900">
+                    {getBookOverview(selectedBook).map((paragraph) => (
+                      <p key={paragraph}>{paragraph}</p>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-4 border-y border-slate-200 py-5 sm:grid-cols-3">
+                    <div className="text-center">
+                      <BookOpen className="mx-auto h-7 w-7 text-slate-500" />
+                      <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Print length</p>
+                      <p className="mt-1 text-sm font-semibold text-[#1688b4]">{getEstimatedPages(selectedBook)} pages</p>
+                    </div>
+                    <div className="text-center">
+                      <Building2 className="mx-auto h-7 w-7 text-slate-500" />
+                      <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Category</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-950">{selectedBook.genre || selectedBook.category}</p>
+                    </div>
+                    <div className="text-center">
+                      <CheckCircle2 className="mx-auto h-7 w-7 text-slate-500" />
+                      <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Language</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-950">English</p>
+                    </div>
+                  </div>
+
+                  <p className="mt-5 text-sm leading-6 text-slate-600">
+                    Hard copy purchases are paid through bank transfer or mobile money. After payment, send proof of payment to the Hope Stores team and they will organize collection.
+                  </p>
+                </section>
+
+                <aside className="space-y-5">
+                  <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="rounded-md border-2 border-[#1688b4] bg-[#e9f6fb] p-4">
+                      <p className="font-bold text-slate-950">Hard Copy</p>
+                      <p className="mt-1 text-xl font-bold text-slate-950">{formatMWK(selectedBook.price)}</p>
+                      <p className="mt-1 text-sm text-slate-700">Available for collection</p>
+                    </div>
+
+                    <div className="mt-5">
+                      <p className="text-4xl font-light text-slate-950">
+                        <span className="text-base align-top">MWK</span>{' '}
+                        {selectedBook.price.toLocaleString()}
+                      </p>
+                      <Button
+                        onClick={() => addToCart(selectedBook)}
+                        className="mt-5 w-full rounded-full bg-[#f59e0b] py-6 text-base font-semibold text-slate-950 hover:bg-[#e58f00]"
+                      >
+                        Add hard copy to cart
+                      </Button>
+                      <p className="mt-4 text-sm leading-6 text-slate-600">
+                        You can review your cart and payment details before confirming your order.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-5">
+                    <p className="text-lg font-semibold text-slate-950">Soft Copy</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Purchase the digital edition from the author page on Amazon.
+                    </p>
+                    <a
+                      href="https://www.amazon.com/stores/author/B0198LK6E6"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-300 px-5 text-sm font-semibold text-slate-950 transition hover:border-slate-950"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View on Amazon
+                    </a>
+                  </div>
+                </aside>
+              </div>
             </motion.div>
           </>
         )}
@@ -170,107 +308,189 @@ export default function StorePage() {
         )}
       </AnimatePresence>
 
-      <main className="min-h-screen bg-white text-black">
-        <section className="relative overflow-hidden py-24 md:py-36 text-white rounded-b-[36px] md:rounded-b-[48px]">
-          <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('/hero/hero-store.jpg')] bg-cover bg-center" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
+      <main className="min-h-screen bg-white text-slate-900">
+        <section className="bg-white text-slate-950">
+          <div className="bg-slate-50 border-b border-slate-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-700">
+              <div className="flex flex-wrap items-center gap-4">
+                <button type="button" className="hover:text-slate-950">Account</button>
+                <span className="h-4 w-px bg-slate-300" />
+                <span>MWK MK</span>
+                <span className="h-4 w-px bg-slate-300" />
+                <button type="button" className="hover:text-slate-950">English</button>
+              </div>
+            </div>
           </div>
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mt-20">
-              <h1 className="text-4xl md:text-6xl font-semibold mb-4">PICC Store</h1>
-              <p className="text-lg text-white/80">Resources and items to empower your spiritual journey.</p>
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="grid gap-6 lg:grid-cols-[260px_minmax(320px,1fr)_220px] lg:items-center">
+              <div className="flex items-center gap-3">
+                <div className="relative h-16 w-16 overflow-hidden rounded-full border border-slate-200 bg-white">
+                  <Image
+                    src="/store/logo.jpeg"
+                    alt="Hope Stores logo"
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="leading-none">
+                  <p className="text-2xl font-black tracking-tight">Hope</p>
+                  <p className="-mt-1 text-2xl font-black tracking-tight text-[#d71920]">Stores</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSearchSubmit} className="flex w-full items-stretch">
+                <label htmlFor="store-search-top" className="sr-only">Search</label>
+                <input
+                  id="store-search-top"
+                  type="search"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Search"
+                  className="min-h-14 flex-1 border-2 border-r-0 border-slate-950 bg-white px-5 text-base text-slate-950 outline-none placeholder:text-slate-500"
+                />
+                <button type="submit" className="min-h-14 w-16 bg-[#1688b4] text-white hover:bg-[#0f759c]" aria-label="Search products">
+                  <Search className="mx-auto h-5 w-5" />
+                </button>
+              </form>
+
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                className="inline-flex items-center justify-start gap-3 text-left lg:justify-center"
+              >
+                <ShoppingCart className="h-7 w-7 text-slate-950" />
+                <span>
+                  <span className="block font-serif text-base">Shopping Cart</span>
+                  <span className="block text-xs text-slate-500">{cartCount} item{cartCount === 1 ? '' : 's'}</span>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="border-y border-slate-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTrendingTab('Featured');
+                }}
+                className="inline-flex min-h-14 items-center gap-4 rounded-md bg-[#1688b4] px-7 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-[#0f759c]"
+              >
+                <Menu className="h-6 w-6" />
+                All Categories
+              </button>
             </div>
           </div>
         </section>
 
-        <section className="py-12 md:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row gap-12">
-            <aside className="w-full lg:w-64 flex-shrink-0 space-y-8">
-              <div>
-                <h3 className="font-semibold text-lg mb-4">Categories</h3>
-                <div className="space-y-1">
-                  {categories.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => { setActiveCategory(cat); setActiveAuthor('All'); setActiveGenre('All'); }}
-                      className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${activeCategory === cat ? 'bg-black text-white' : 'hover:bg-black/5 text-black/70'}`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+        <section className="relative overflow-hidden bg-[#142458] text-white">
+          <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.16)_0,transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.08)_50%,rgba(255,255,255,0.08)_75%,transparent_75%,transparent)] [background-size:900px_600px,18px_18px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_left_center,rgba(37,99,235,0.28),transparent_38%),linear-gradient(90deg,rgba(7,22,71,0.2),rgba(7,22,71,0.7))]" />
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20">
+            <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] items-center">
+              <div className="relative mx-auto w-[min(76vw,390px)] aspect-[0.72] [perspective:1200px]">
+                <div className="absolute -bottom-9 left-8 right-1 h-12 rounded-[50%] bg-black/45 blur-2xl" />
+                <div className="relative h-full w-full origin-left [transform:rotateY(-7deg)]">
+                  <div className="absolute -right-3 top-4 z-0 h-[calc(100%-32px)] w-4 skew-y-2 bg-gradient-to-r from-[#3b2018] to-[#160d0a] shadow-xl" />
+                  <div className="absolute left-0 top-0 z-20 h-full w-[7%] bg-gradient-to-r from-black/35 via-white/14 to-transparent" />
+                  <Image
+                    src={heroBook.image}
+                    alt={heroBook.name}
+                    fill
+                    priority
+                    sizes="(min-width: 1024px) 390px, 76vw"
+                    className="z-10 object-cover shadow-[22px_28px_48px_rgba(0,0,0,0.45)]"
+                    onError={swapImage('/store/books/placeholder.png')}
+                  />
                 </div>
               </div>
 
-              {activeCategory === 'Books' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-6 pt-4 border-t border-black/10">
-                  <div>
-                    <p className="text-xs font-bold uppercase text-black/40 mb-3">By Author</p>
-                    <select value={activeAuthor} onChange={(e) => setActiveAuthor(e.target.value)} className="w-full p-2 border border-black/10 rounded-md text-sm outline-none">
-                      <option value="All">All Authors</option>
-                      {bookAuthors.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase text-black/40 mb-3">By Genre</p>
-                    <div className="flex flex-wrap gap-2">
-                      {['All', ...bookGenres].map(g => (
-                        <button key={g} onClick={() => setActiveGenre(g)} className={`px-3 py-1 rounded-full text-xs border ${activeGenre === g ? 'bg-black text-white border-black' : 'border-black/10 text-black/60 hover:border-black/30'}`}>
-                          {g}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </aside>
+              <div className="mx-auto max-w-2xl text-center">
+                <p className="font-serif text-3xl md:text-4xl text-white">Now Available</p>
+                <h1 className="mt-5 font-serif text-5xl md:text-7xl font-semibold leading-tight tracking-wide uppercase">
+                  {heroBook.name}
+                </h1>
+                <p className="mx-auto mt-7 max-w-2xl font-serif text-lg leading-8 text-white">
+                  A prophetic resource to strengthen your faith, sharpen your focus, and help you contend for the breakthroughs God has prepared for you.
+                </p>
+                <div className="mt-10">
+                  <Button
+                    onClick={() => handleProductClick(heroBook)}
+                    className="rounded-md bg-[#1688b4] px-8 py-6 font-serif text-base font-bold uppercase tracking-wide text-white hover:bg-[#0f759c]"
+                  >
+                    Shop Now
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-            <div className="flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
-                {paginatedProducts.map(product => (
-                  <ProductCard key={product.id} product={product} onAdd={() => handleProductClick(product)} formatMWK={formatMWK} />
+        <section className="bg-[#fbfbff] py-16 lg:py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <h2 className="font-serif text-4xl font-semibold text-slate-950 md:text-5xl">Trending Products</h2>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                {['Featured', 'New arrivals', 'Best sellers'].map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setTrendingTab(tab as 'Featured' | 'New arrivals' | 'Best sellers')}
+                    className={`min-h-12 rounded-md border px-8 font-serif text-base transition ${trendingTab === tab ? 'border-[#1688b4] bg-[#1688b4] text-white' : 'border-slate-200 bg-white text-slate-950 hover:border-[#1688b4]'}`}
+                  >
+                    {tab === 'New arrivals' ? 'New Arrivals' : tab === 'Best sellers' ? 'Best Sellers' : tab}
+                  </button>
                 ))}
               </div>
+            </div>
 
-              {totalPages > 1 && (
-                <div className="flex flex-col items-center gap-4 py-8 border-t border-black/5">
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="icon" onClick={() => goToPage(1)} disabled={currentPage === 1} className="hidden sm:flex">
-                      <ChevronsLeft className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
+            <div className="mt-10 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+              {classicTrendingProducts.map((product, index) => (
+                <ClassicProductTile
+                  key={product.id}
+                  product={product}
+                  onSelect={() => handleProductClick(product)}
+                  formatMWK={formatMWK}
+                  showSaleBadge={index === 3 || index === 4 || index === 5}
+                  originalPrice={index === 3 || index === 5 ? product.price + 2500 : undefined}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
 
-                    <div className="flex items-center gap-1 mx-2">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1)
-                        .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
-                        .map((page, index, array) => (
-                          <div key={page} className="flex items-center">
-                            {index > 0 && array[index - 1] !== page - 1 && (
-                              <span className="px-2 text-black/30">...</span>
-                            )}
-                            <Button
-                              variant={currentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => goToPage(page)}
-                              className="w-10"
-                            >
-                              {page}
-                            </Button>
-                          </div>
-                        ))}
-                    </div>
+        <section className="bg-[#fbfbff] py-14">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-10 lg:grid-cols-3">
+              {compactProductGroups.map((group) => (
+                <CompactProductColumn
+                  key={group.title}
+                  title={group.title}
+                  products={group.products}
+                  onSelect={handleProductClick}
+                  formatMWK={formatMWK}
+                  showOriginalPrice={group.sale}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
 
-                    <Button variant="outline" size="icon" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages} className="hidden sm:flex">
-                      <ChevronsRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+        <section className="bg-white py-10 lg:py-14">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-6 lg:grid-cols-3">
+              {promoCards.map((card) => (
+                <PromoProductBanner
+                  key={card.title}
+                  title={card.title}
+                  subtitle={card.subtitle}
+                  product={card.product}
+                  color={card.color}
+                  onSelect={() => handleProductClick(card.product)}
+                />
+              ))}
             </div>
           </div>
         </section>
@@ -294,7 +514,7 @@ export default function StorePage() {
                     {cart.map(item => (
                       <div key={item.product.id} className="flex gap-4">
                         <div className="relative w-20 h-20 bg-black/5 rounded-md overflow-hidden">
-                           <Image src={item.product.image} alt={item.product.name} fill className="object-cover" onError={(e:any) => e.target.src='/images/placeholder.png'} />
+                           <Image src={item.product.image} alt={item.product.name} fill className="object-cover" onError={swapImage('/images/placeholder.png')} />
                         </div>
                         <div className="flex-1">
                           <h4 className="font-semibold text-sm leading-tight">{item.product.name}</h4>
@@ -378,7 +598,7 @@ export default function StorePage() {
                       <p className="text-sm font-medium text-center px-4">
                         Once paid, send your <span className="font-bold underline">proof of payment</span> and <span className="font-bold underline">full name</span> to our team on WhatsApp:
                       </p>
-                      <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#25D366]/90 border-0 py-6" onClick={() => window.open(`https://wa.me/265888000000?text=Hello, I have made a payment for my PICC Store order. Name: `, '_blank')}>
+                      <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#25D366]/90 border-0 py-6" onClick={() => window.open(`https://wa.me/265888000000?text=Hello, I have made a payment for my Hope Stores order. Name: `, '_blank')}>
                         <MessageCircle className="w-5 h-5" /> Send Proof on WhatsApp
                       </Button>
                       <p className="text-xs text-black/40 text-center">We will then contact you to organize collection.</p>
@@ -398,7 +618,7 @@ export default function StorePage() {
                   </div>
                 )}
                 {checkoutStep === 'success' && (
-                  <Button className="w-full" variant="outline" onClick={() => { setIsCartOpen(false); setCart([]); setCheckoutStep('cart'); }}>Back to Store</Button>
+                  <Button className="w-full" variant="outline" onClick={() => { setIsCartOpen(false); setCart([]); setCheckoutStep('cart'); }}>Back to Hope Stores</Button>
                 )}
               </div>
             </motion.div>
@@ -409,40 +629,174 @@ export default function StorePage() {
   );
 }
 
-function ProductCard({ product, onAdd, formatMWK }: { product: Product, onAdd: () => void, formatMWK: (a: number) => string }) {
+function ClassicProductTile({
+  product,
+  onSelect,
+  formatMWK,
+  showSaleBadge,
+  originalPrice,
+}: {
+  product: Product;
+  onSelect: () => void;
+  formatMWK: (a: number) => string;
+  showSaleBadge?: boolean;
+  originalPrice?: number;
+}) {
   const [imgError, setImgError] = useState(false);
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden border-black/10 hover:shadow-lg transition-shadow">
-      <div className="relative h-64 bg-black/5 flex items-center justify-center">
+    <button type="button" onClick={onSelect} className="group text-center">
+      <div className="relative flex aspect-square items-center justify-center border border-slate-200 bg-white p-7 transition group-hover:border-slate-300 group-hover:shadow-lg">
+        {showSaleBadge && (
+          <span className="absolute left-4 top-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+            Sale
+          </span>
+        )}
         {!imgError ? (
-          <Image 
-            src={product.image} 
-            alt={product.name} 
-            fill 
-            className="object-cover" 
-            onError={() => setImgError(true)} 
+          <Image
+            src={product.image}
+            alt={product.name}
+            width={260}
+            height={360}
+            sizes="(min-width: 1024px) 260px, (min-width: 640px) 35vw, 70vw"
+            className="h-full w-auto object-contain drop-shadow-[0_16px_18px_rgba(15,23,42,0.18)] transition duration-300 group-hover:scale-105"
+            onError={() => setImgError(true)}
           />
         ) : (
-          <div className="flex flex-col items-center opacity-20">
-            <ImageIcon className="w-12 h-12" />
-            <span className="text-[10px] mt-2 font-bold uppercase tracking-widest">Image Coming Soon</span>
+          <div className="flex flex-col items-center text-slate-300">
+            <ImageIcon className="h-12 w-12" />
+            <span className="mt-2 text-[10px] font-bold uppercase tracking-widest">Image Coming Soon</span>
           </div>
         )}
-        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold uppercase text-black/60 border border-black/5">
-          {product.category}
+      </div>
+      <h3 className="mt-5 min-h-12 font-serif text-lg leading-6 text-slate-950">{product.name}</h3>
+      <p className="mt-1 font-serif text-base text-slate-950">
+        {originalPrice && <span className="mr-2 text-slate-400 line-through">{formatMWK(originalPrice)}</span>}
+        <span>{formatMWK(product.price)}</span>
+      </p>
+    </button>
+  );
+}
+
+function CompactProductColumn({
+  title,
+  products,
+  onSelect,
+  formatMWK,
+  showOriginalPrice,
+}: {
+  title: string;
+  products: Product[];
+  onSelect: (product: Product) => void;
+  formatMWK: (a: number) => string;
+  showOriginalPrice?: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+        <h2 className="font-serif text-2xl text-slate-950">{title}</h2>
+        <div className="flex gap-2">
+          {[ChevronLeft, ChevronRight].map((Icon, index) => (
+            <button
+              key={index}
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded bg-[#1688b4] text-white transition hover:bg-[#0f759c]"
+              aria-label={index === 0 ? 'Previous products' : 'Next products'}
+            >
+              <Icon className="h-5 w-5" />
+            </button>
+          ))}
         </div>
       </div>
-      <div className="p-5 flex-1 flex flex-col">
-        <h3 className="font-semibold text-lg leading-tight mb-1">{product.name}</h3>
-        {product.author && <p className="text-sm text-black/50 mb-4">{product.author}</p>}
-        <div className="mt-auto pt-4 flex items-center justify-between">
-          <span className="font-bold">{formatMWK(product.price)}</span>
-          <Button size="sm" onClick={onAdd} className="rounded-full px-5">
-            {product.category === 'Books' ? 'View Options' : 'Add'}
-          </Button>
-        </div>
+
+      <div className="mt-4 space-y-4">
+        {products.map((product) => (
+          <CompactProductItem
+            key={product.id}
+            product={product}
+            onSelect={() => onSelect(product)}
+            formatMWK={formatMWK}
+            showOriginalPrice={showOriginalPrice}
+          />
+        ))}
       </div>
-    </Card>
+    </div>
+  );
+}
+
+function CompactProductItem({
+  product,
+  onSelect,
+  formatMWK,
+  showOriginalPrice,
+}: {
+  product: Product;
+  onSelect: () => void;
+  formatMWK: (a: number) => string;
+  showOriginalPrice?: boolean;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const originalPrice = product.price + 2500;
+
+  return (
+    <button type="button" onClick={onSelect} className="grid w-full grid-cols-[120px_1fr] items-center gap-3 text-left">
+      <div className="relative flex h-32 w-32 items-center justify-center border border-slate-200 bg-white p-3">
+        {!imgError ? (
+          <Image
+            src={product.image}
+            alt={product.name}
+            width={92}
+            height={120}
+            sizes="120px"
+            className="h-full w-auto object-contain"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="flex flex-col items-center text-slate-300">
+            <ImageIcon className="h-8 w-8" />
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 font-serif">
+        <h3 className="truncate text-base text-slate-950">{product.name}</h3>
+        {showOriginalPrice && <p className="mt-2 text-sm text-slate-400 line-through">{formatMWK(originalPrice)}</p>}
+        <p className="mt-1 text-base text-slate-950">{formatMWK(product.price)}</p>
+      </div>
+    </button>
+  );
+}
+
+function PromoProductBanner({
+  title,
+  subtitle,
+  product,
+  color,
+  onSelect,
+}: {
+  title: string;
+  subtitle: string;
+  product: Product;
+  color: string;
+  onSelect: () => void;
+}) {
+  return (
+    <div className={`relative min-h-64 overflow-hidden ${color}`}>
+      <div className="absolute inset-y-0 left-0 w-[48%]">
+        <Image
+          src={product.image}
+          alt={product.name}
+          fill
+          sizes="(min-width: 1024px) 200px, 48vw"
+          className="object-contain object-center p-5 drop-shadow-[0_18px_16px_rgba(15,23,42,0.28)]"
+        />
+      </div>
+      <div className="relative ml-auto flex min-h-64 w-[58%] flex-col items-end justify-center px-5 py-8 text-right font-serif text-slate-900">
+        <h2 className="text-3xl font-bold leading-tight">{title}</h2>
+        <p className="mt-3 text-base">{subtitle}</p>
+        <Button onClick={onSelect} className="mt-5 rounded bg-[#1688b4] px-7 font-serif text-sm uppercase tracking-wide text-white hover:bg-[#0f759c]">
+          Buy Now
+        </Button>
+      </div>
+    </div>
   );
 }

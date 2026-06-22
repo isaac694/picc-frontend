@@ -1,7 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { useTestimonyForm } from '@/hooks/useLivestreamTools';
 
-export default function TestimonyTool() {
+type TestimonyToolProps = {
+  churchEmail?: string;
+};
+
+export default function TestimonyTool({ churchEmail }: TestimonyToolProps) {
   const {
     testimonyForm,
     handleTestimonyChange,
@@ -9,7 +13,7 @@ export default function TestimonyTool() {
     isSubmitting,
     formError,
     formSuccess,
-  } = useTestimonyForm();
+  } = useTestimonyForm(churchEmail);
 
   return (
     <div className="text-white">

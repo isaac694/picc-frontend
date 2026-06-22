@@ -25,6 +25,7 @@ type ServiceRecord = {
 export default function ContactPage() {
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
   const familySlides = [
     ['/moments/1.jpg', '/moments/2.jpg', '/moments/3.jpg'],
     ['/moments/4.jpg', '/moments/5.jpg', '/moments/6.jpg'],
@@ -80,6 +81,8 @@ export default function ContactPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadServices = async () => {
       try {
         const response = await apiFetch('/api/services');
@@ -93,13 +96,23 @@ export default function ContactPage() {
               : service.startTime
             : service.time || '',
         }));
+        if (cancelled) return;
         setServices(normalized);
       } catch {
+        if (cancelled) return;
         setServices([]);
+      } finally {
+        if (!cancelled) {
+          setServicesLoading(false);
+        }
       }
     };
 
     loadServices();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const resolveImage = (key: string, fallback: string) => pageImages[key] || fallback;
@@ -116,17 +129,22 @@ export default function ContactPage() {
     'Every Thursday - Special Word Encounter - 6:00 PM - 8:00 PM',
   ];
 
-  const serviceLines = services.length
-    ? services
-      .map((service) => {
+  const loadedServiceLines = services
+    .map((service) => {
         const title = String(service.title || '').trim();
         const day = String(service.dayOfWeek || '').trim();
         const time = String(service.time || '').trim();
         const lineTitle = day ? `${day} - ${title || 'Service'}` : title || 'Service';
         return time ? `${lineTitle} - ${time}` : lineTitle;
       })
-      .filter(Boolean)
-    : DEFAULT_SERVICE_LINES;
+    .filter(Boolean);
+
+  const serviceLines = servicesLoading
+    ? []
+    : [...loadedServiceLines, ...DEFAULT_SERVICE_LINES].filter((line, index, lines) => {
+      const normalized = line.toLowerCase().replace(/\s+/g, ' ').trim();
+      return lines.findIndex((item) => item.toLowerCase().replace(/\s+/g, ' ').trim() === normalized) === index;
+    });
 
   const serviceLineItems = serviceLines.map((line, index) => ({
     id: `service-line-${index}`,
@@ -212,61 +230,24 @@ export default function ContactPage() {
         </section>
 
         {/* Let's Talk + Map Section */}
-        <section className="py-16 md:py-20 bg-background">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-8 items-stretch">
-              <div className="rounded-2xl p-6 md:p-8">
-                <h2 className="text-3xl md:text-4xl font-bold text-primary mb-4">Let&apos;s Talk</h2>
-                <p className="text-foreground/70 mb-6">
-                  We&apos;re here to help. Reach out anytime and we&apos;ll respond as soon as we can.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm">
-                  <div>
-                    <p className="font-semibold text-foreground">ADDRESS:</p>
-                    <p className="text-foreground/80 leading-relaxed">
-                      Malawi, Lilongwe, Area 49, Baghdad
-                    </p>
-                    <p className="text-foreground/80 leading-relaxed">
-                      PICC Headquarters
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">SERVICE TIMES:</p>
-                    <ul className="space-y-2 text-foreground/80">
-                      <li>Sunday - 7:00 AM - 12:00 PM</li>
-                      <li>Tuesday - 5:30 AM - 7:30 PM</li>
-                      <li>Wednesday - 9:00 AM - 12:00 PM</li>
-                      <li>Thursday - 6:00 PM - 8:00 PM</li>
-                      <li>Saturday - 8:30 AM - 11:00 AM</li>
-                    </ul>
-                  </div>
-                </div>
-                <div className="mt-8 text-sm text-foreground/80">
-                  <p>
-                    <span className="font-semibold text-foreground">EMAIL:</span>{' '}
-                    <a href="mailto:info@piccworldwide.org" className="underline underline-offset-4">
-                      info@piccworldwide.org
-                    </a>
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground">PHONE:</span>{' '}
-                    <a href="tel:+265992433333" className="underline underline-offset-4">
-                      +265 992 433 333
-                    </a>
-                  </p>
-                </div>
-              </div>
+        <section className="py-16 sm:py-20 md:py-24 bg-background">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl md:text-4xl font-semibold text-center text-foreground mb-4">
+              Let&apos;s Talk
+            </h2>
+            <p className="text-foreground/70 text-center mb-10 max-w-2xl mx-auto">
+              We&apos;re here to help. Reach out anytime and we&apos;ll respond as soon as we can.
+            </p>
 
-              <div className="rounded-2xl overflow-hidden border border-border min-h-[360px] bg-muted">
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3086.6576842444136!2d33.7453956!3d-13.9240918!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1921d5bac6745c93%3A0x8c408a3504600518!2sPICC%20Headquarters!5e0!3m2!1sen!2sus!4v1730985600000!5m2!1sen!2sus"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen={true}
-                  loading="lazy"
-                ></iframe>
-              </div>
+            <div className="relative w-full max-w-4xl mx-auto aspect-[16/9] rounded-3xl overflow-hidden shadow-xl">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3086.6576842444136!2d33.7453956!3d-13.9240918!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1921d5bac6745c93%3A0x8c408a3504600518!2sPICC%20Headquarters!5e0!3m2!1sen!2sus!4v1730985600000!5m2!1sen!2sus"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen={true}
+                loading="lazy"
+              ></iframe>
             </div>
           </div>
         </section>
@@ -298,38 +279,46 @@ export default function ContactPage() {
                     Address:
                   </p>
                   <p className="text-foreground/80 leading-relaxed">
-                    Malawi, Lilongwe, Area 49, Baghdad
+                    Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi
                   </p>
                   <p className="text-foreground/80 leading-relaxed">
                     The Camp of God Cathedral 
                   </p>
-                  <div className="mt-4 text-sm text-foreground">
-                    <a
-                      href="https://www.google.com/maps/place/PICC+Headquarters/@-13.9240918,33.745401,17z/data=!3m1!4b1!4m6!3m5!1s0x1921d5bac6745c93:0x8c408a3504600518!8m2!3d-13.9240918!4d33.7479759!16s%2Fg%2F11ghzntzhp?entry=ttu&g_ep=EgoyMDI2MDMxNS4wIKXMDSoASAFQAw%3D%3D"
-                      className="underline underline-offset-4"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Get Directions
+                <div className="mt-8 text-sm text-foreground/80">
+                  <p>
+                    <span className="font-semibold text-foreground">EMAIL:</span>{' '}
+                    <a href="mailto:info@piccworldwide.org" className="underline underline-offset-4">
+                      info@piccworldwide.org
                     </a>
-                  </div>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-foreground">PHONE:</span>{' '}
+                    <a href="tel:+265992433333" className="underline underline-offset-4">
+                      +265 992 433 333
+                    </a>
+                  </p>
+                </div>
                 </div>
                 <div>
                   <p className="text-[11px] tracking-[0.24em] uppercase text-foreground/60 font-bold mb-3">
                     Service Times:
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-foreground/80">
-                    <div className="space-y-2">
-                      {leftServiceLines.map((item) => (
-                        <p key={item.id}>{item.line}</p>
-                      ))}
+                  {servicesLoading ? (
+                    <p className="text-foreground/60">Loading service times...</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-foreground/80">
+                      <div className="space-y-2">
+                        {leftServiceLines.map((item) => (
+                          <p key={item.id}>{item.line}</p>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        {rightServiceLines.map((item) => (
+                          <p key={item.id}>{item.line}</p>
+                        ))}
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      {rightServiceLines.map((item) => (
-                        <p key={item.id}>{item.line}</p>
-                      ))}
-                    </div>
-                  </div>
+                  )}
                   <div className="mt-4">
                     <Link href="/locations" className="underline underline-offset-4 text-foreground">
                       Locate A Branch Near You

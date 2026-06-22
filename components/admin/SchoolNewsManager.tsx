@@ -5,6 +5,7 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import Image from 'next/image';
+import { toast } from 'sonner';
 
 type NewsItem = {
   id: string;
@@ -232,7 +233,6 @@ export default function SchoolNewsManager({
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this news item?')) return;
     setStatus('');
     try {
       const response = await apiFetch(`${baseUrl}/${encodeURIComponent(id)}`, {
@@ -253,6 +253,24 @@ export default function SchoolNewsManager({
     } catch {
       setStatus('Unable to delete news.');
     }
+  };
+
+  const requestRemove = (item: NewsItem) => {
+    const toastId = toast('Delete this news item?', {
+      description: item.title,
+      duration: Infinity,
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          toast.dismiss(toastId);
+          void remove(item.id);
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => toast.dismiss(toastId),
+      },
+    });
   };
 
   const filteredNews = useMemo(() => {
@@ -409,7 +427,7 @@ export default function SchoolNewsManager({
                 {isPersistedEdit ? 'Update News' : isFallbackSelection ? 'Create News' : 'Add News'}
               </Button>
               {isPersistedEdit && editingItem && (
-                <Button variant="destructive" onClick={() => remove(editingItem.id)} className="gap-2">
+                <Button variant="destructive" onClick={() => requestRemove(editingItem)} className="gap-2">
                   <Trash2 className="h-4 w-4" />
                   Delete
                 </Button>

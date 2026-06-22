@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { BookOpen, ImageIcon, RefreshCw, Search, Trash2 } from 'lucide-react';
 
 const IMAGE_SECTIONS = [
   {
@@ -41,9 +42,28 @@ const IMAGE_SECTIONS = [
 ];
 
 const HOME_VERSE_KEY = 'home-verse';
+const REMOVED_IMAGE_VALUE = '__removed__';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+const getImageSearchText = (item: { key: string; label: string }, section: { title: string; description: string }) => {
+  const aliases = [
+    item.key.includes('hero') ? 'hero banner top slideshow welcome' : '',
+    item.key.includes('mission') ? 'mission our mission' : '',
+    item.key.includes('grow-card') ? 'grow card faith walk quick links discover attend connect give' : '',
+    item.key.includes('pastors') ? 'pastors pastor esau loyce' : '',
+    item.key.includes('listen-now') ? 'listen now spotify audio messages' : '',
+    item.key.includes('ministry-card') ? 'ministry outreach you were made for this' : '',
+    item.key.includes('livestream') ? 'video declarations listen god word background livestream' : '',
+  ];
+
+  return [section.title, section.description, item.label, item.key, ...aliases]
+    .join(' ')
+    .toLowerCase();
+};
+
+const getDisplayImageLabel = (label: string) => label.replace('Hero Image', 'Hero Banner');
 
 export default function PageImagesAdminPage() {
   const {
@@ -61,6 +81,9 @@ export default function PageImagesAdminPage() {
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [savingImages, setSavingImages] = useState(false);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
+  const [removingImageKey, setRemovingImageKey] = useState<string | null>(null);
+  const [imageSearch, setImageSearch] = useState('');
+  const [activeImageSearch, setActiveImageSearch] = useState('');
   const [verseText, setVerseText] = useState('');
   const [verseReference, setVerseReference] = useState('');
   const [savingVerse, setSavingVerse] = useState(false);
@@ -72,6 +95,25 @@ export default function PageImagesAdminPage() {
   const updateUploadName = (key: string, name: string) => {
     setUploadNames((prev) => ({ ...prev, [key]: name }));
   };
+
+  const filteredImageSections = useMemo(() => {
+    const query = activeImageSearch.trim().toLowerCase();
+    if (!query) return IMAGE_SECTIONS;
+
+    return IMAGE_SECTIONS
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          getImageSearchText(item, section).includes(query),
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [activeImageSearch]);
+
+  const visibleImageCount = filteredImageSections.reduce(
+    (total, section) => total + section.items.length,
+    0,
+  );
 
   const uploadImage = async (file: File) => {
     if (!token) return null;
@@ -200,6 +242,37 @@ export default function PageImagesAdminPage() {
     }
   };
 
+  const removePageImage = async (key: string) => {
+    if (!token) return;
+
+    setRemovingImageKey(key);
+    setStatus('');
+    updatePageImage(key, REMOVED_IMAGE_VALUE);
+    updateUploadName(`page-${key}`, '');
+
+    try {
+      const response = await apiFetch(`/api/site-content/${key}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ imageUrl: REMOVED_IMAGE_VALUE }),
+      });
+
+      if (!response.ok) {
+        setStatus('Unable to remove image.');
+        return;
+      }
+
+      setStatus('Image removed.');
+    } catch {
+      setStatus('Unable to remove image.');
+    } finally {
+      setRemovingImageKey(null);
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
 
@@ -215,7 +288,9 @@ export default function PageImagesAdminPage() {
               return [key, ''] as const;
             }
             const data = await response.json();
-            const imageUrl = data.imageUrl
+            const imageUrl = data.imageUrl === REMOVED_IMAGE_VALUE
+              ? REMOVED_IMAGE_VALUE
+              : data.imageUrl
               ? data.imageUrl.startsWith('http')
                 ? data.imageUrl
                 : apiUrl(data.imageUrl)
@@ -268,76 +343,153 @@ export default function PageImagesAdminPage() {
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
 
-      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="rounded-[24px] border border-border/60 bg-card p-6 shadow-sm md:p-8">
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.7fr_0.8fr]">
+          <div className="space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <BookOpen className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Homepage Verse</h2>
+                <p className="mt-1 text-sm text-foreground/60">
+                  Update the scripture verse shown near the top of the home page.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[0.9fr_1.4fr]">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-foreground">Reference</span>
+                <input
+                  type="text"
+                  value={verseReference}
+                  onChange={(event) => setVerseReference(event.target.value)}
+                  placeholder="Reference (e.g. Genesis 2:10)"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-foreground">Verse text</span>
+                <textarea
+                  value={verseText}
+                  onChange={(event) => setVerseText(event.target.value)}
+                  placeholder="Verse text"
+                  rows={4}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() => saveHomeVerse(verseText, verseReference)}
+                disabled={savingVerse}
+              >
+                {savingVerse ? 'Saving...' : 'Save Verse'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setVerseText('');
+                  setVerseReference('');
+                  void saveHomeVerse('', '');
+                }}
+                disabled={savingVerse}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+
           <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
-              Homepage Verse
-            </p>
-            <p className="text-sm text-foreground/60">
-              Update the scripture verse shown near the top of the home page.
-            </p>
+            <p className="mb-3 text-sm font-medium text-foreground/70">Preview</p>
+            <div className="min-h-[170px] rounded-2xl border border-border/60 bg-background p-6 shadow-sm">
+              <p className="text-4xl font-serif leading-none text-foreground/20">&ldquo;</p>
+              <p className="mt-3 text-sm leading-relaxed text-foreground/70">
+                {verseText || 'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.'}
+              </p>
+              <p className="mt-5 text-sm font-semibold text-foreground">
+                {verseReference || 'John 3:16'}
+              </p>
+            </div>
           </div>
-          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-foreground/40">
-            {savingVerse ? 'Saving...' : 'Verse'}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input
-            type="text"
-            value={verseReference}
-            onChange={(event) => setVerseReference(event.target.value)}
-            placeholder="Reference (e.g. Genesis 2:10)"
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-          />
-          <textarea
-            value={verseText}
-            onChange={(event) => setVerseText(event.target.value)}
-            placeholder="Verse text"
-            rows={3}
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={() => saveHomeVerse(verseText, verseReference)}
-            disabled={savingVerse}
-          >
-            Save Verse
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setVerseText('');
-              setVerseReference('');
-              void saveHomeVerse('', '');
-            }}
-            disabled={savingVerse}
-          >
-            Clear Verse
-          </Button>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">Homepage Images</h2>
-            <p className="text-sm text-foreground/60">
-              Upload new images for the homepage.
-            </p>
+      <div className="rounded-[24px] border border-border/60 bg-card p-6 shadow-sm md:p-8">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <ImageIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Homepage Images</h2>
+              <p className="mt-1 text-sm text-foreground/60">
+                Upload new images for the homepage.
+              </p>
+            </div>
           </div>
-          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-foreground/40">
-            {savingImages ? 'Saving...' : 'Images'}
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-xs uppercase tracking-[0.25em] text-foreground/50">
+            {savingImages ? 'Saving...' : `${visibleImageCount} Images`}
           </div>
         </div>
 
+        <div className="mb-6 rounded-2xl border border-border/60 bg-background p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="flex-1">
+              <label className="mb-2 block text-sm font-medium text-foreground">
+                Search image section
+              </label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
+                <input
+                  type="search"
+                  value={imageSearch}
+                  onChange={(event) => setImageSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      setActiveImageSearch(imageSearch);
+                    }
+                  }}
+                  placeholder="Search hero, mission, grow, pastors, listen, ministry..."
+                  className="w-full rounded-xl border border-border bg-card py-3 pl-11 pr-4 text-foreground placeholder:text-foreground/40"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => setActiveImageSearch(imageSearch)}>
+                Search
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setImageSearch('');
+                  setActiveImageSearch('');
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-foreground/60">
+            {activeImageSearch.trim()
+              ? `${visibleImageCount} image slot${visibleImageCount === 1 ? '' : 's'} found for "${activeImageSearch.trim()}".`
+              : 'Search by homepage section name, image label, or image key.'}
+          </p>
+        </div>
+
         <div className="space-y-10">
-          {IMAGE_SECTIONS.map((section) => (
+          {filteredImageSections.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-background p-8 text-center">
+              <h3 className="text-lg font-semibold text-foreground">No matching image sections</h3>
+              <p className="mt-2 text-sm text-foreground/60">
+                Try searching for hero, mission, grow, pastors, listen, ministry, or another image label.
+              </p>
+            </div>
+          ) : filteredImageSections.map((section) => (
             <div key={section.id} className="rounded-2xl border border-border/60 bg-background p-5">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+              <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
                     {section.title}
@@ -353,48 +505,67 @@ export default function PageImagesAdminPage() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {section.items.map((item) => {
                   const currentUrl = pageImages[item.key] || '';
-                  const previewUrl = currentUrl || item.fallback;
+                  const isRemoved = currentUrl === REMOVED_IMAGE_VALUE;
+                  const previewUrl = isRemoved ? '' : currentUrl || item.fallback;
+                  const uploadInputId = `page-image-upload-${item.key}`;
                   return (
-                    <div key={item.key} className="rounded-2xl border border-border/60 bg-card p-4">
-                      <div className="flex items-center justify-between gap-3 mb-3">
+                    <div key={item.key} className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+                      <div className="mb-3 flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                          <p className="text-[11px] text-foreground/50">{item.key}</p>
+                          <p className="text-sm font-semibold text-foreground">{getDisplayImageLabel(item.label)}</p>
+                          <p className="mt-1 text-[11px] text-foreground/50">Homepage visual</p>
                         </div>
                         <span className="text-[10px] uppercase tracking-[0.2em] text-foreground/40">
-                          {currentUrl ? 'Custom' : 'Default'}
+                          {isRemoved ? 'Removed' : currentUrl ? 'Custom' : 'Default'}
                         </span>
                       </div>
-                      <div
-                        className="h-40 rounded-xl border border-border/60 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${previewUrl})` }}
-                      />
-                      <div className="mt-4 space-y-3">
+                      {previewUrl ? (
+                        <div
+                          className="h-40 rounded-xl border border-border/60 bg-cover bg-center"
+                          style={{ backgroundImage: `url(${previewUrl})` }}
+                        />
+                      ) : (
+                        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border/80 bg-background text-sm text-foreground/50">
+                          Image removed
+                        </div>
+                      )}
+                      <div className="mt-4 grid grid-cols-2 gap-3">
                         <input
+                          id={uploadInputId}
                           type="file"
                           accept="image/*,.heic,.heif,.avif"
                           onChange={async (event) => {
                             const file = event.target.files?.[0];
+                            event.currentTarget.value = '';
                             if (!file) return;
                             const url = await uploadImage(file);
                             if (!url) return;
                             updatePageImage(item.key, url);
                             updateUploadName(`page-${item.key}`, file.name);
                           }}
-                          className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+                          className="sr-only"
                         />
+                        <label
+                          htmlFor={uploadInputId}
+                          className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-primary transition hover:bg-primary/5"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Replace
+                        </label>
                         <Button
                           variant="outline"
-                          onClick={() => {
-                            updatePageImage(item.key, '');
-                            updateUploadName(`page-${item.key}`, '');
-                          }}
+                          className="h-10 gap-2 text-destructive hover:text-destructive"
+                          onClick={() => void removePageImage(item.key)}
+                          disabled={removingImageKey === item.key}
                         >
-                          Remove Image
+                          <Trash2 className="h-4 w-4" />
+                          {removingImageKey === item.key ? 'Removing...' : 'Remove'}
                         </Button>
+                      </div>
+                      <div className="mt-3 min-h-4">
                         {uploadNames[`page-${item.key}`] && (
                           <p className="text-xs text-foreground/60">
                             Selected: {uploadNames[`page-${item.key}`]}

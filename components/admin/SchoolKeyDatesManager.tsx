@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 type KeyDateRecord = {
   id: string;
@@ -246,7 +247,6 @@ export default function SchoolKeyDatesManager({
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this key date?')) return;
     setStatus('');
     try {
       const response = await apiFetch(`${baseUrl}/${encodeURIComponent(id)}`, {
@@ -267,6 +267,24 @@ export default function SchoolKeyDatesManager({
     } catch {
       setStatus('Unable to delete key date.');
     }
+  };
+
+  const requestRemove = (item: KeyDateRecord) => {
+    const toastId = toast('Delete this key date?', {
+      description: item.label,
+      duration: Infinity,
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          toast.dismiss(toastId);
+          void remove(item.id);
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => toast.dismiss(toastId),
+      },
+    });
   };
 
   const filteredDates = useMemo(() => {
@@ -387,7 +405,7 @@ export default function SchoolKeyDatesManager({
                 {editingItem ? 'Update Key Date' : 'Add Key Date'}
               </Button>
               {editingItem && (
-                <Button variant="destructive" onClick={() => remove(editingItem.id)} className="gap-2">
+                <Button variant="destructive" onClick={() => requestRemove(editingItem)} className="gap-2">
                   <Trash2 className="h-4 w-4" />
                   Delete
                 </Button>

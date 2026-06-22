@@ -255,9 +255,9 @@ export default function LiveChatAdminPage() {
   };
 
   const requestDeleteMessage = (messageId: string, videoId: string) => {
-    let toastId: string | number;
-    toastId = toast('Delete this message?', {
+    const toastId = toast('Delete this message?', {
       description: 'This action cannot be undone.',
+      duration: Infinity,
       action: {
         label: 'Delete',
         onClick: () => {

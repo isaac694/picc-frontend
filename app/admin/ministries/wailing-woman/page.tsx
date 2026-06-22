@@ -31,7 +31,7 @@ const wailingWomanFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   ],
   partnershipImageUrl: '/hero/outreach.jpg',
   phone: '+265 995 46 55 40 / +265 999 31 77 81',
-  email: 'wailingwomanprayers@gmail.com',
+  email: 'wailingwoman@piccworldwide.org',
   location: 'P.O Box 31841, Lilongwe, Malawi',
   contactIntro:
     'If you are a mother or guardian ready to contend for your children, contact us to join our WhatsApp forum.',
@@ -128,7 +128,7 @@ export default function WailingWomanAdminPage() {
           <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Admin</p>
           <h1 className="text-3xl font-semibold text-foreground md:text-5xl">Wailing Woman Admin</h1>
           <p className="mt-3 max-w-2xl text-foreground/70">
-            Manage logo, motto, hero picture, about text, prosperity arrows, weekly devotionals, highlights gallery, live YouTube link,
+            Manage logo, motto, hero picture, about text, prosperity arrows, weekly devotionals, highlights gallery,
             events, partnership details, phone number, and email.
           </p>
         </div>
@@ -190,6 +190,7 @@ export default function WailingWomanAdminPage() {
           labels={{ title: 'Picture Title', description: 'Caption', image: 'Gallery Picture', save: 'Save Picture', formTitle: 'Save Highlight' }}
           showLabel={false}
           showSortOrder={false}
+          maxItems={6}
         />
       )}
 

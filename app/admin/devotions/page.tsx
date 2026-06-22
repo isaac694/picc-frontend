@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import {
   getDateTimeInputValueInMalawi,
   getTomorrowDateInputValueInMalawi,
@@ -68,9 +69,6 @@ export default function DevotionsAdminPage() {
   const [pendingPublishAt, setPendingPublishAt] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<string | null>(null);
   const [pendingTime, setPendingTime] = useState<string | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null);
 
   const hasExistingDevotion = Boolean(devotionId);
 
@@ -204,20 +202,19 @@ export default function DevotionsAdminPage() {
 
   const requestDeleteConfirmation = () => {
     if (!devotionId) return;
-    setPendingDeleteId(devotionId);
-    setPendingDeleteDate(date);
-    setDeleteConfirmOpen(true);
+    confirmDeleteToast({
+      title: 'Delete this devotion?',
+      description: date ? `Devotion for ${date}` : 'This devotion will be permanently removed.',
+      onConfirm: () => handleConfirmDelete(devotionId),
+    });
   };
 
-  const handleConfirmDelete = async () => {
-    if (!pendingDeleteId) return;
-
+  const handleConfirmDelete = async (deleteId: string) => {
     setStatus('');
     setLoading(true);
-    setDeleteConfirmOpen(false);
 
     try {
-      const response = await apiFetch(`/api/devotions/${pendingDeleteId}`, {
+      const response = await apiFetch(`/api/devotions/${deleteId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -426,31 +423,6 @@ export default function DevotionsAdminPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={deleteConfirmOpen}
-        onOpenChange={(open) => {
-          setDeleteConfirmOpen(open);
-          if (!open) {
-            setPendingDeleteId(null);
-            setPendingDeleteDate(null);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Devotion Delete</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this devotion{pendingDeleteDate ? ` for ${pendingDeleteDate}` : ''}?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} disabled={loading}>
-              {loading ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

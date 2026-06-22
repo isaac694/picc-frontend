@@ -10,6 +10,7 @@ import QuoteSection from '@/components/QuoteSection';
 import MomentsSection from '@/components/MomentsSection';
 import SpotifyFollowDialog from '@/components/SpotifyFollowDialog';
 import DevotionReadMore from '@/components/DevotionReadMore';
+import VideoDeclarationCard, { type VideoDeclarationCardContent } from '@/components/VideoDeclarationCard';
 import { apiFetch, apiUrl } from '@/lib/api';
 
 const HOME_HERO_SLOTS = [
@@ -62,7 +63,7 @@ const MINISTRY_CARDS = [
   { title: 'Prison Ministry', key: 'home-ministry-card-4', fallback: '/hero/hero-14.jpg', href: '/ministries/prison-ministry' },
   { title: 'Youth Church Ministry', key: 'home-ministry-card-5', fallback: '/hero/hero-10-yc.jpg', href: '/ministries/youth-church-ministry' },
   { title: 'Hope and Beauty', key: 'home-ministry-card-6', fallback: '/hero/hero-13-hb.jpg', href: '/ministries/hope-and-beauty' },
-  { title: 'Heritage Ministry', key: 'home-ministry-card-7', fallback: '/hero/hero-12-heritage.jpg', href: '/ministries/heritage-ministry' },
+  { title: 'Heritage Ministry', key: 'home-ministry-card-7', fallback: '/hero/hero-12-heritage.jpg', href: '/ministries/heritage' },
 ];
 
 const DEFAULT_SEE_YOU_SERVICES = [
@@ -122,6 +123,13 @@ type SeeYouContent = {
   imageUrl?: string | null;
 };
 
+type VideoDeclaration = VideoDeclarationCardContent;
+
+const VIDEO_DECLARATION_KEY = 'home-video-declaration';
+const VIDEO_DECLARATION_FALLBACK_TITLE = "Listen to God's Word for You.";
+const VIDEO_DECLARATION_FALLBACK_SUBTITLE = 'Video Declaration';
+const REMOVED_IMAGE_VALUE = '__removed__';
+
 function parseSeeYouServices(body?: string | null): ServiceLike[] {
   if (!body) return DEFAULT_SEE_YOU_SERVICES;
 
@@ -177,7 +185,7 @@ async function getDailyDevotion() {
 async function getDailyConfession() {
   try {
     const response = await apiFetch('/api/confessions/latest', {
-      next: { revalidate: 300 },
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -197,6 +205,40 @@ async function getSeeYouInChurch(): Promise<SeeYouContent | null> {
     });
     if (!response.ok) return null;
     return response.json();
+  } catch {
+    return null;
+  }
+}
+
+async function getVideoDeclaration(): Promise<VideoDeclaration | null> {
+  try {
+    const response = await apiFetch(`/api/site-content/${VIDEO_DECLARATION_KEY}`, {
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const body = typeof data?.body === 'string' ? data.body : '';
+    if (!body) return null;
+
+    const parsed = JSON.parse(body);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    const mediaUrl = normalizeImageUrl(typeof parsed.mediaUrl === 'string' ? parsed.mediaUrl : '');
+    if (!mediaUrl) return null;
+
+    return {
+      source: parsed.source === 'upload' ? 'upload' : 'youtube',
+      title:
+        typeof parsed.title === 'string' && parsed.title.trim()
+          ? parsed.title.trim()
+          : VIDEO_DECLARATION_FALLBACK_TITLE,
+      subtitle:
+        typeof parsed.subtitle === 'string' && parsed.subtitle.trim()
+          ? parsed.subtitle.trim()
+          : VIDEO_DECLARATION_FALLBACK_SUBTITLE,
+      mediaUrl,
+      mediaKind: parsed.mediaKind === 'audio' ? 'audio' : 'video',
+    };
   } catch {
     return null;
   }
@@ -266,10 +308,16 @@ async function getHomeVerse() {
 function normalizeImageUrl(url?: string | null) {
   const trimmed = url?.trim();
   if (!trimmed) return null;
+  if (trimmed === REMOVED_IMAGE_VALUE) return null;
   if (trimmed.startsWith('http')) return trimmed;
   if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
   if (trimmed === '/home/see-you-in-church.jpg') return '/home/see-you-in-church.JPG';
   return trimmed;
+}
+
+function resolveSiteImage(url: string | null | undefined, fallback: string) {
+  if (url === REMOVED_IMAGE_VALUE) return null;
+  return normalizeImageUrl(url) || fallback;
 }
 
 function isLocalUpstreamImage(url?: string | null) {
@@ -288,13 +336,14 @@ export default async function HomePage() {
     'home-livestream-bg',
   ];
 
-  const [devotion, confession, seeYouInChurch, quoteOfMonth, siteImages, homeVerse] = await Promise.all([
+  const [devotion, confession, seeYouInChurch, quoteOfMonth, siteImages, homeVerse, videoDeclaration] = await Promise.all([
     getDailyDevotion(),
     getDailyConfession(),
     getSeeYouInChurch(),
     getQuoteOfMonth(),
     getSiteImages(imageKeys),
     getHomeVerse(),
+    getVideoDeclaration(),
   ]);
 
   const seeYouBg =
@@ -322,20 +371,20 @@ export default async function HomePage() {
   const quoteImageUrl = normalizeImageUrl(quoteOfMonth?.imageUrl);
   const heroImages = HOME_HERO_SLOTS.map((slot) => ({
     ...slot,
-    src: normalizeImageUrl(siteImages[slot.key]) || slot.fallback,
+    src: resolveSiteImage(siteImages[slot.key], slot.fallback),
   }));
-  const missionImage = normalizeImageUrl(siteImages['home-mission-image']) || '/images/pastor-preaching-bw.jpeg';
+  const missionImage = resolveSiteImage(siteImages['home-mission-image'], '/images/pastor-preaching-bw.jpeg');
   const growCards = GROW_CARD_SLOTS.map((slot) => ({
     ...slot,
-    image: normalizeImageUrl(siteImages[slot.key]) || slot.fallback,
+    image: resolveSiteImage(siteImages[slot.key], slot.fallback),
   }));
-  const pastorsImage = normalizeImageUrl(siteImages['home-pastors-image']) || '/images/pastor-preaching-bw.jpeg';
-  const listenNowImage = normalizeImageUrl(siteImages['home-listen-now-bg']) || '/pastor/pastor-photo.jpg';
+  const pastorsImage = resolveSiteImage(siteImages['home-pastors-image'], '/images/pastor-preaching-bw.jpeg');
+  const listenNowImage = resolveSiteImage(siteImages['home-listen-now-bg'], '/pastor/pastor-photo.jpg');
   const ministryCards = MINISTRY_CARDS.map((slot) => ({
     ...slot,
-    image: normalizeImageUrl(siteImages[slot.key]) || slot.fallback,
+    image: resolveSiteImage(siteImages[slot.key], slot.fallback),
   }));
-  const livestreamImage = normalizeImageUrl(siteImages['home-livestream-bg']) || '/hero/hero-15.png';
+  const livestreamImage = resolveSiteImage(siteImages['home-livestream-bg'], '/hero/hero-15.png');
   const fallbackDevotion = {
     title: 'God Is Good',
     content: [
@@ -379,16 +428,20 @@ export default async function HomePage() {
           <div className="absolute inset-0 hero-collage p-2 sm:p-3 md:p-4" aria-hidden="true">
             <div className="grid h-full w-full grid-cols-2 md:grid-cols-6 grid-rows-3 md:grid-rows-3 gap-2 sm:gap-3 md:gap-4">
               {heroImages.map((item, index) => (
-                <div key={item.src} className={`${item.className} relative overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]`}>
-                  <Image
-                    src={item.src}
-                    alt={`PICC hero background ${index + 1}`}
-                    fill
-                    sizes="(max-width: 768px) 50vw, 33vw"
-                    priority={index < 2}
-                    className="object-cover"
-                    unoptimized={isLocalUpstreamImage(item.src)}
-                  />
+                <div key={item.key} className={`${item.className} relative overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]`}>
+                  {item.src ? (
+                    <Image
+                      src={item.src}
+                      alt={`PICC hero background ${index + 1}`}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 33vw"
+                      priority={index < 2}
+                      className="object-cover"
+                      unoptimized={isLocalUpstreamImage(item.src)}
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-primary/20" />
+                  )}
                 </div>
               ))}
             </div>
@@ -502,14 +555,18 @@ export default async function HomePage() {
                 <Link key={card.href} href={card.href}>
                   <div className="group block rounded-2xl overflow-hidden relative h-56 sm:h-64 md:h-72 lg:h-80 cursor-pointer">
                     <div className="absolute inset-0">
-                      <Image
-                        src={card.image}
-                        alt={card.title}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-105"
-                        unoptimized={isLocalUpstreamImage(card.image)}
-                      />
+                        {card.image ? (
+                          <Image
+                            src={card.image}
+                            alt={card.title}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                            className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-105"
+                            unoptimized={isLocalUpstreamImage(card.image)}
+                          />
+                        ) : (
+                          <div className="h-full w-full bg-primary/20" />
+                        )}
                     </div>
 
                     {/* dim overlay */}
@@ -547,10 +604,10 @@ export default async function HomePage() {
               <div className="space-y-5">
                 <p className="text-xs uppercase tracking-[0.35em] text-white/70">Our Pastors</p>
                 <h2 className="text-3xl md:text-5xl font-semibold leading-tight">
-                  Pastor Esau Banda &amp; Pastor Loyce Banda
+                  Pastor Esau Banda &amp; Pastor (Mrs.) Loyce Banda
                 </h2>
                 <p className="text-white/80 text-lg leading-relaxed">
-                  Pastor Esau Banda and Pastor Loyce Banda serve with passion, vision, and a deep love for God&apos;s people.
+                  Pastor Esau Banda and Pastor (Mrs.) Loyce Banda serve with passion, vision, and a deep love for God&apos;s people.
                   Together, they lead PICC with a heart for discipleship, prayer, and transforming lives through the Gospel.
                 </p>
                 <p className="text-white/70">
@@ -558,14 +615,18 @@ export default async function HomePage() {
                 </p>
               </div>
               <div className="relative aspect-[4/3] rounded-[28px] overflow-hidden shadow-2xl bg-white/5">
-                <Image
-                  src={pastorsImage}
-                  alt="Pastor Esau Banda and Pastor Loyce Banda"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover object-top"
-                  unoptimized={isLocalUpstreamImage(pastorsImage)}
-                />
+                {pastorsImage ? (
+                  <Image
+                    src={pastorsImage}
+                    alt="Pastor Esau Banda and Pastor Loyce Banda"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover object-top"
+                    unoptimized={isLocalUpstreamImage(pastorsImage)}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-white/10 text-white/60">Image removed</div>
+                )}
               </div>
             </div>
           </div>
@@ -576,14 +637,18 @@ export default async function HomePage() {
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[28px] group">
               <div className="absolute inset-0">
-                <Image
-                  src={listenNowImage}
-                  alt="Listen now background"
-                  fill
-                  sizes="100vw"
-                  className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                  unoptimized={isLocalUpstreamImage(listenNowImage)}
-                />
+                {listenNowImage ? (
+                  <Image
+                    src={listenNowImage}
+                    alt="Listen now background"
+                    fill
+                    sizes="100vw"
+                    className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                    unoptimized={isLocalUpstreamImage(listenNowImage)}
+                  />
+                ) : (
+                  <div className="h-full w-full bg-primary/20" />
+                )}
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
 
@@ -665,13 +730,17 @@ export default async function HomePage() {
                   className="block relative min-w-[70vw] w-[70vw] sm:min-w-[44vw] sm:w-[44vw] md:min-w-[320px] md:w-[320px] lg:min-w-[340px] lg:w-[340px] h-[200px] sm:h-[240px] md:h-[300px] rounded-2xl overflow-hidden shadow-xl"
                   aria-label={item.title}
                 >
-                  <Image
-                    src={item.image}
-                    alt={item.title}
-                    fill
-                    sizes="(max-width: 640px) 70vw, (max-width: 1024px) 44vw, 340px"
-                    className="object-cover"
-                  />
+                  {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      sizes="(max-width: 640px) 70vw, (max-width: 1024px) 44vw, 340px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-primary/20" />
+                  )}
                   <div className="absolute inset-0 bg-black/35" />
                   <div className="absolute inset-0 p-5 flex flex-col justify-end">
                     <p className="text-white text-base sm:text-lg md:text-xl font-semibold">{item.title}</p>
@@ -682,35 +751,28 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Latest Livestreams Section */}
+        {/* Video Declarations Section */}
         <section className="py-16 sm:py-16 sm:py-24 md:py-32 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="relative overflow-hidden rounded-[28px] shadow-2xl max-w-5xl mx-auto min-h-[360px] sm:min-h-[440px] md:min-h-[560px] flex items-center">
-              <div className="absolute inset-0">
-                <Image
-                  src={livestreamImage}
-                  alt="Latest livestream"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 80vw"
-                  className="object-cover"
-                />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/20" />
-
-              <div className="relative p-8 md:p-12 lg:p-14 text-white">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">Livestream</p>
-                <h2 className="text-3xl md:text-5xl font-semibold leading-tight mb-6 max-w-2xl">
-                  Listen to God&apos;s Word for You.
-                </h2>
-
-                <div className="flex flex-wrap gap-4">
-                  <Link href="/livestream">
-                    <Button className="bg-red-600 text-white hover:bg-red-700 rounded-full px-6 py-3">
-                      View Livestream
-                    </Button>
-                  </Link>
-                </div>
-              </div>
+            <div className="mb-8 text-center text-white">
+              <h2 className="text-3xl font-semibold md:text-5xl">
+                Video Declarations
+              </h2>
+            </div>
+            <VideoDeclarationCard
+              key={videoDeclaration?.mediaUrl || 'fallback-video-declaration'}
+              declaration={videoDeclaration}
+              fallbackImage={livestreamImage || '/hero/hero-15.png'}
+              fallbackTitle={VIDEO_DECLARATION_FALLBACK_TITLE}
+              fallbackSubtitle={VIDEO_DECLARATION_FALLBACK_SUBTITLE}
+            />
+            <div className="mt-8 text-center">
+              <Link
+                href="/video-declarations"
+                className="inline-flex items-center justify-center rounded-full border border-white/40 bg-white px-6 py-3 text-sm font-semibold text-primary shadow-lg transition hover:bg-white/90"
+              >
+                View Video Declarations Archive
+              </Link>
             </div>
           </div>
         </section>

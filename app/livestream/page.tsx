@@ -15,14 +15,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
 
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    YT: any;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "prayer" | "give" | null;
 
 type YouTubeVideo = {
@@ -79,27 +71,29 @@ type YouTubePlayerStateChangeEvent = {
   target: YouTubePlayer;
 };
 
-type YouTubeIframeApi = {
-  Player: new (
-    iframe: HTMLIFrameElement,
-    options: {
-      events: {
-        onStateChange: (event: YouTubePlayerStateChangeEvent) => void;
-      };
-    },
-  ) => YouTubePlayer;
-  PlayerState: {
-    PLAYING: number;
-  };
-};
-
-const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
+const CHANNEL_ID = "UC6auo8Q1xb5cgyY_pGJbfdw";
 const YOUTH_CHURCH_CHANNEL_ID = "UC_aXxxQF62jKWRK3xjzOZPg";
-const RELATED_CHANNEL_IDS = [
-  "UC8JUC-G4wKhrrPr7xjxYWJw",
-  YOUTH_CHURCH_CHANNEL_ID,
-  "UC6auo8Q1xb5cgyY_pGJbfdw",
+const RELATED_CHANNELS = [
+  {
+    channelId: "UC8JUC-G4wKhrrPr7xjxYWJw",
+    title: "Watch on YouTube",
+    channelTitle: "PICC Ministry Channel",
+    url: "https://www.youtube.com/channel/UC8JUC-G4wKhrrPr7xjxYWJw",
+  },
+  {
+    channelId: YOUTH_CHURCH_CHANNEL_ID,
+    title: "Watch on YouTube",
+    channelTitle: "PICC Youth Church",
+    url: `https://www.youtube.com/channel/${YOUTH_CHURCH_CHANNEL_ID}`,
+  },
+  {
+    channelId: "UC5iA3dWaUBlP_PBlGSQvgNQ",
+    title: "Watch on YouTube",
+    channelTitle: "PICC Worldwide",
+    url: "https://www.youtube.com/channel/UC5iA3dWaUBlP_PBlGSQvgNQ",
+  },
 ];
+const RELATED_CHANNEL_IDS = RELATED_CHANNELS.map((channel) => channel.channelId);
 const FALLBACK_HERO_ID = "ydTADwZRquA";
 
 const TOOL_TABS: Array<{
@@ -118,6 +112,8 @@ const TOOL_TABS: Array<{
 export default function LivestreamPage() {
   const [ytReady, setYtReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
+  const [activeCardTool, setActiveCardTool] = useState<ToolKey>(null);
+  const [activeCardVideoId, setActiveCardVideoId] = useState<string | null>(null);
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -129,6 +125,21 @@ export default function LivestreamPage() {
 
   const featuredVideo = videos[0] || null;
   const gridVideos = videos.slice(1, 4);
+  const fallbackGridVideos: YouTubeVideo[] = RELATED_CHANNELS.map((channel) => ({
+    videoId: channel.channelId,
+    title: channel.title,
+    publishedAt: "",
+    updatedAt: "",
+    channelTitle: channel.channelTitle,
+    description: "",
+    thumbnail: "",
+    url: channel.url,
+    embedUrl: "",
+    canEmbed: false,
+  }));
+  const displayGridVideos = (
+    gridVideos.length > 0 ? gridVideos : fallbackGridVideos
+  ).filter((_, index) => index !== 1);
 
   const formatDate = (value: string) => {
     if (!value) return "";
@@ -443,6 +454,7 @@ export default function LivestreamPage() {
   const mobileVideoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
   const mobileVideoStart = mobileResumeAt && mobileResumeAt > 0 ? `&start=${mobileResumeAt}` : '';
 
+
   return (
     <>
       <Navigation />
@@ -561,6 +573,13 @@ export default function LivestreamPage() {
                         {tool.label}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTool(null)}
+                      className="ml-auto rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-700 hover:bg-red-200 transition-colors"
+                    >
+                      Close Tools
+                    </button>
                   </div>
                   {activeTool === "bible" && <BibleTool />}
                   {activeTool === "chat" && (
@@ -791,13 +810,15 @@ export default function LivestreamPage() {
                   Loading videos from other channels...
                 </p>
               </div>
-            ) : loadError ? (
-              <div className="text-center py-12">
-                <p className="text-lg text-white/70">{loadError}</p>
-              </div>
-            ) : gridVideos.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {gridVideos.map((stream) => (
+            ) : (
+              <>
+              {loadError && (
+                <p className="mb-6 text-center text-sm text-white/60">
+                  {loadError} Showing direct channel links instead.
+                </p>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                {displayGridVideos.map((stream) => (
                   <Card
                     key={stream.videoId}
                     className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white border-black/10 text-black"
@@ -844,39 +865,91 @@ export default function LivestreamPage() {
                       <h3 className="font-bold text-lg text-black mb-2 line-clamp-2">
                         {stream.title}
                       </h3>
-                      <p className="text-sm text-black/70 mb-3 line-clamp-2">
-                        {stream.description}
-                      </p>
                       <div className="space-y-1 text-sm text-black/60 mb-2">
                         <p>{stream.channelTitle}</p>
                         {stream.publishedAt && (
                           <p>{formatDate(stream.publishedAt)}</p>
                         )}
                       </div>
-                      {stream.url && (
-                        <Button
-                          asChild
-                          className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
-                        >
-                          <Link
-                            href={stream.url}
-                            target="_blank"
-                            rel="noreferrer"
+                      <div className="flex flex-wrap gap-2">
+                        {TOOL_TABS.map((tool) => (
+                          <button
+                            key={`${stream.videoId}-${tool.key}`}
+                            type="button"
+                            onClick={() => {
+                              if (
+                                activeCardVideoId === stream.videoId &&
+                                activeCardTool === tool.key
+                              ) {
+                                setActiveCardVideoId(null);
+                                setActiveCardTool(null);
+                              } else {
+                                setActiveCardVideoId(stream.videoId);
+                                setActiveCardTool(tool.key);
+                              }
+                            }}
+                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                              activeCardVideoId === stream.videoId &&
+                              activeCardTool === tool.key
+                                ? 'bg-black text-white'
+                                : 'bg-slate-900/10 text-slate-900 hover:bg-slate-900/20'
+                            }`}
                           >
-                            Watch on YouTube
-                          </Link>
-                        </Button>
+                            {tool.label}
+                          </button>
+                        ))}
+                      </div>
+                      {activeCardVideoId === stream.videoId && activeCardTool && (
+                        <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white/5">
+                          <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 bg-slate-950/10">
+                            <div className="text-sm font-semibold text-slate-950">
+                              {TOOL_TABS.find((tool) => tool.key === activeCardTool)?.label}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveCardVideoId(null);
+                                setActiveCardTool(null);
+                              }}
+                              className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white hover:bg-slate-800 transition-colors"
+                            >
+                              Close Tools
+                            </button>
+                          </div>
+                          <div className="p-4">
+                            {activeCardTool === 'chat' && (
+                              <div className="h-[300px] w-full bg-black">
+                                <LiveChat
+                                  videoId={stream.videoId}
+                                  videoTitle={stream.title}
+                                />
+                              </div>
+                            )}
+                            {activeCardTool === 'bible' && <BibleTool />}
+                            {activeCardTool === 'notepad' && <NotepadTool />}
+                            {activeCardTool === 'testimony' && (
+                              <div className="px-4 py-5 text-white">
+                                <TestimonyTool />
+                              </div>
+                            )}
+                            {activeCardTool === 'prayer' && (
+                              <div className="px-4 py-5 text-white">
+                                <PrayerRequestTool />
+                              </div>
+                            )}
+                            {activeCardTool === 'give' && (
+                              <div className="px-4 py-5 text-white">
+                                <GiveTool isMobile={isMobileViewport} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </Card>
                 ))}
               </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-lg text-white/70">
-                  No recent videos available yet.
-                </p>
-              </div>
+              </>
             )}
           </div>
         </section>

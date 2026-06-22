@@ -8,18 +8,8 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Trash2, Edit, Plus } from 'lucide-react';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { Plus } from 'lucide-react';
 
 type Branch = {
   id: string;
@@ -97,7 +87,6 @@ export default function LocationsAdminPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [locationSearch, setLocationSearch] = useState('');
 
   // Form state for editing/adding
@@ -198,7 +187,7 @@ export default function LocationsAdminPage() {
       });
       setBranches(updatedBranches);
       setStatus('Locations updated successfully.');
-    } catch (error) {
+    } catch {
       setStatus('Failed to save locations.');
     }
   };
@@ -289,7 +278,14 @@ export default function LocationsAdminPage() {
   const handleDeleteBranch = async (branchId: string) => {
     const updatedBranches = branches.filter(b => b.id !== branchId);
     await saveBranches(updatedBranches);
-    setDeleteConfirm(null);
+  };
+
+  const requestDeleteBranch = (branch: Branch) => {
+    confirmDeleteToast({
+      title: 'Delete this branch?',
+      description: branch.name || 'This branch will be permanently removed.',
+      onConfirm: () => handleDeleteBranch(branch.id),
+    });
   };
 
   const handleCancelEdit = () => {
@@ -501,7 +497,7 @@ export default function LocationsAdminPage() {
             {editingBranch && (
               <Button
                 variant='destructive'
-                onClick={() => setDeleteConfirm(editingBranch.id)}
+                onClick={() => requestDeleteBranch(editingBranch)}
               >
                 Delete
               </Button>
@@ -574,27 +570,6 @@ export default function LocationsAdminPage() {
           })()}
         </div>
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Branch</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to permanently delete this branch? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteConfirm && handleDeleteBranch(deleteConfirm)}
-              className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

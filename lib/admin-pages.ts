@@ -6,6 +6,7 @@ export const ADMIN_PAGE = {
   EVENTS: 'EVENTS',
   QUOTE_OF_MONTH: 'QUOTE_OF_MONTH',
   PAGE_IMAGES: 'PAGE_IMAGES',
+  VIDEO_DECLARATIONS: 'VIDEO_DECLARATIONS',
   LIVECHAT: 'LIVECHAT',
   ABOUT_PAGE: 'ABOUT_PAGE',
   CONTACT_PAGE: 'CONTACT_PAGE',
@@ -39,6 +40,7 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.EVENTS, label: 'Events' },
   { key: ADMIN_PAGE.QUOTE_OF_MONTH, label: 'Qoutes' },
   { key: ADMIN_PAGE.PAGE_IMAGES, label: 'Homepage Images' },
+  { key: ADMIN_PAGE.VIDEO_DECLARATIONS, label: 'Video Declarations' },
   { key: ADMIN_PAGE.LIVECHAT, label: 'Live Chat Archive' },
   { key: ADMIN_PAGE.ABOUT_PAGE, label: 'About Page' },
   { key: ADMIN_PAGE.CONTACT_PAGE, label: 'Contact Page' },
@@ -49,8 +51,38 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.LOCATIONS_PAGE, label: 'Church Locations' },
   { key: ADMIN_PAGE.FAQS, label: 'FAQ (Footer)' },
   { key: ADMIN_PAGE.SCHOOLS_ENROLLMENT, label: 'Schools Enrollment' },
-  { key: ADMIN_PAGE.MINISTRIES, label: 'Ministries' },
 ];
+
+export const MINISTRY_ADMIN_OPTIONS = [
+  { key: 'icd', label: 'ICD' },
+  { key: 'men-of-valour', label: 'Men of Valour' },
+  { key: 'prison-ministry', label: 'Prison Ministry' },
+  { key: 'youth-church', label: 'Youth Church' },
+  { key: 'women-of-hope', label: 'Women of Hope' },
+  { key: 'wailing-woman', label: 'Wailing Woman' },
+  { key: 'rivers-of-hope', label: 'Rivers of Hope' },
+  { key: 'heritage', label: 'Heritage' },
+] as const;
+
+export type MinistryAdminKey = (typeof MINISTRY_ADMIN_OPTIONS)[number]['key'];
+
+export const ministryAdminAccessKey = (ministryKey: string) => `MINISTRY:${ministryKey}`;
+
+export function ministryKeyFromAdminPath(pathname: string | null): string | null {
+  const match = (pathname || '').match(/^\/admin\/ministries\/([^/]+)/);
+  return match ? match[1] : null;
+}
+
+export function canAccessMinistry(user: AdminUser | null, ministryKey: string): boolean {
+  if (!user) return false;
+  if (user.role === 'SUPER_ADMIN') return true;
+  if (user.role !== 'ADMIN') return false;
+  if (user.adminAccessAll) return true;
+
+  const list = Array.isArray(user.adminPageAccess) ? user.adminPageAccess : [];
+  if (list.includes(ADMIN_PAGE.MINISTRIES)) return true;
+  return list.includes(ministryAdminAccessKey(ministryKey));
+}
 
 export function canAccessAdminPage(user: AdminUser | null, page: AdminPageKey): boolean {
   // Before login we don't have a profile; keep the sidebar usable.

@@ -1,96 +1,24 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import ChurchNewsSection from '@/components/ChurchNewsSection';
 import { apiFetch, apiUrl } from '@/lib/api';
-
-const CAMPUS_NEWS = [
-  {
-    badge: 'Community',
-    date: 'March 2026',
-    title: 'Easter Celebrations & Community Outreach',
-    description:
-      'A look at how our church came together this Easter season to serve families across the community.',
-    image: '/hero/hero-4.JPG',
-  },
-  {
-    badge: 'Youth',
-    date: 'March 2026',
-    title: 'Youth Revival Week Highlights',
-    description:
-      'Our youth ministry hosted an incredible week of worship, fellowship, and spiritual growth.',
-    image: '/hero/hero-10.JPG',
-  },
-  {
-    badge: 'Updates',
-    date: 'February 2026',
-    title: 'New Building Expansion Update',
-    description:
-      'Construction progress on our new fellowship hall — see the latest milestones and timeline.',
-    image: '/hero/hero-8.JPG',
-  },
-  {
-    badge: 'Worship',
-    date: 'February 2026',
-    title: 'Night of Praise Recap',
-    description:
-      'A beautiful night of worship, prayer, and testimonies that lifted hearts across the campus.',
-    image: '/hero/hero-7.png',
-  },
-  {
-    badge: 'Outreach',
-    date: 'January 2026',
-    title: 'Campus Volunteer Drive',
-    description:
-      'Members gathered to serve, share resources, and pray with families in the neighborhood.',
-    image: '/hero/hero-5.png',
-  },
-  {
-    badge: 'Ministry',
-    date: 'January 2026',
-    title: 'Women of Hope Gathering',
-    description:
-      'A powerful gathering featuring teaching, fellowship, and encouragement for every season.',
-    image: '/hero/hero-3.JPG',
-  },
-];
-
-type MediaNewsItem = {
-  id: string;
-  badge: string;
-  date: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-};
-
-type MediaGalleryItem = {
-  id: string;
-  title: string;
-  category: string;
-  imageUrl: string;
-};
-
-type MediaBookItem = {
-  id: string;
-  title: string;
-  author: string;
-  description: string;
-  imageUrl: string;
-  fileUrl: string;
-};
-
-type MediaMagazineItem = {
-  id: string;
-  title: string;
-  issue: string;
-  fileUrl: string;
-  imageUrl: string;
-};
+import {
+  DEFAULT_MEDIA_BOOKS,
+  DEFAULT_MEDIA_GALLERY,
+  DEFAULT_MEDIA_MAGAZINES,
+  DEFAULT_MEDIA_NEWS,
+  type MediaBookItem,
+  type MediaGalleryItem,
+  type MediaMagazineItem,
+  type MediaNewsItem,
+} from '@/lib/mediaDefaults';
+import { X } from 'lucide-react';
 
 type NewsItem = {
   badge: string;
@@ -121,12 +49,29 @@ type MagazineItem = {
   file?: string;
 };
 
+type YouTubeVideo = {
+  videoId: string;
+  title: string;
+  thumbnail: string;
+  url: string;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 const normalizeAssetUrl = (value?: string | null) => {
   if (!value) return '';
   return value.startsWith('http') ? value : apiUrl(value);
+};
+
+const parseJson = (value: unknown): unknown => {
+  if (typeof value !== 'string') return null;
+
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
 };
 
 const parseListBody = (body: unknown): unknown[] => {
@@ -141,70 +86,63 @@ const parseListBody = (body: unknown): unknown[] => {
   }
 };
 
-async function fetchSiteList<T>(key: string): Promise<T[] | null> {
+async function fetchSiteList<T>(key: string): Promise<{ items: T[]; deletedFallbackIndexes: number[] }> {
   try {
     const response = await apiFetch(`/api/site-content/${key}`);
-    if (response.status === 404) return [];
-    if (!response.ok) return null;
+    if (response.status === 404) return { items: [], deletedFallbackIndexes: [] };
+    if (!response.ok) return { items: [], deletedFallbackIndexes: [] };
+
     const record = (await response.json().catch(() => null)) as unknown;
     const body = isRecord(record) ? record.body : null;
-    const items = parseListBody(body);
-    return items.filter(isRecord) as T[];
+    const parsed = parseJson(body);
+
+    if (Array.isArray(parsed)) {
+      return { items: parsed.filter(isRecord) as T[], deletedFallbackIndexes: [] };
+    }
+
+    if (isRecord(parsed)) {
+      return {
+        items: Array.isArray(parsed.items) ? parsed.items.filter(isRecord) as T[] : [],
+        deletedFallbackIndexes: Array.isArray(parsed.deletedFallbackIndexes)
+          ? parsed.deletedFallbackIndexes.filter((value): value is number => typeof value === 'number')
+          : [],
+      };
+    }
+
+    return { items: [], deletedFallbackIndexes: [] };
   } catch {
-    return null;
+    return { items: [], deletedFallbackIndexes: [] };
   }
 }
 
-const BOOKS: BookItem[] = [
-  {
-    title: 'Fire on the Altar Volume 3',
-    author: 'PICC Publishing',
-    description: 'A focused teaching on prayer, consecration, and spiritual hunger.',
-    cover: '/fire_altar/fire-on-altar-cover.jpg',
-    file: '/fire_altar/FIRE%20ON%20THE%20ALTAR%20Vol%203.24.pdf',
-  },
-  {
-    title: 'Fire on the Altar Volume 2',
-    author: 'PICC Publishing',
-    description: 'A focused teaching on prayer, consecration, and spiritual hunger.',
-    cover: '/fire_altar/fire-on-altar-cover.jpg',
-  },
-  {
-    title: 'Fire on the Altar Volume 1',
-    author: 'PICC Publishing',
-    description: 'A focused teaching on prayer, consecration, and spiritual hunger.',
-    cover: '/fire_altar/fire-on-altar-cover.jpg',
-  },
-];
+const CAMPUS_NEWS: NewsItem[] = DEFAULT_MEDIA_NEWS.map((item) => ({
+  badge: item.badge,
+  date: item.date,
+  title: item.title,
+  description: item.description,
+  image: item.imageUrl,
+}));
 
-const MAGAZINES: MagazineItem[] = [
-  {
-    title: 'Church Magazine Issue 1',
-    issue: 'Issue 1',
-    cover: '/magazine/magazine-1.jpeg',
-  },
-  {
-    title: 'Church Magazine Issue 2',
-    issue: 'Issue 2',
-    cover: '/magazine/magazine-2.JPG',
-  },
-  {
-    title: 'Church Magazine Issue 3',
-    issue: 'Issue 3',
-    cover: '/magazine/magazine-3.jpeg',
-  },
-];
+const EVENT_GALLERY: GalleryItem[] = DEFAULT_MEDIA_GALLERY.map((item) => ({
+  title: item.title,
+  category: item.category,
+  image: item.imageUrl,
+}));
 
-const EVENT_GALLERY: GalleryItem[] = [
-  { title: 'Worship Service', category: 'Worship', image: '/hero/hero-10.JPG' },
-  { title: 'Community Outreach', category: 'Outreach', image: '/hero/hero-8.JPG' },
-  { title: 'Youth Gathering', category: 'Youth', image: '/hero/hero-9.JPG' },
-  { title: 'Night of Praise', category: 'Music', image: '/hero/hero-5.png' },
-  { title: 'Celebration Sunday', category: 'Celebration', image: '/hero/hero-6.jpg' },
-  { title: 'Morning Prayer', category: 'Prayer', image: '/hero/hero-4.JPG' },
-  { title: 'Midweek Worship', category: 'Worship', image: '/hero/hero-2.jpg' },
-  { title: 'Campus Fellowship', category: 'Youth', image: '/hero/hero-3.JPG' },
-];
+const BOOKS: BookItem[] = DEFAULT_MEDIA_BOOKS.map((item) => ({
+  title: item.title,
+  author: item.author,
+  description: item.description,
+  cover: item.imageUrl,
+  file: item.fileUrl || undefined,
+}));
+
+const MAGAZINES: MagazineItem[] = DEFAULT_MEDIA_MAGAZINES.map((item) => ({
+  title: item.title,
+  issue: item.issue,
+  cover: item.imageUrl,
+  file: item.fileUrl || undefined,
+}));
 
 export default function MediaPage() {
   const [galleryFilter, setGalleryFilter] = useState('All');
@@ -212,12 +150,49 @@ export default function MediaPage() {
   const [gallery, setGallery] = useState<GalleryItem[]>(EVENT_GALLERY);
   const [books, setBooks] = useState<BookItem[]>(BOOKS);
   const [magazines, setMagazines] = useState<MagazineItem[]>(MAGAZINES);
+  const [musicVideos, setMusicVideos] = useState<YouTubeVideo[]>([]);
+  const [activeVideo, setActiveVideo] = useState<YouTubeVideo | null>(null);
+
+  const MUSIC_CHANNEL_ID = "UCsrF1bC3s230vmduZSjEsBQ";
+  const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
+
+  useEffect(() => {
+    if (!YOUTUBE_API_KEY) return;
+
+    const fetchMusicVideos = async () => {
+      try {
+        const url = new URL("https://www.googleapis.com/youtube/v3/search");
+        url.searchParams.set("part", "snippet");
+        url.searchParams.set("channelId", MUSIC_CHANNEL_ID);
+        url.searchParams.set("order", "date");
+        url.searchParams.set("type", "video");
+        url.searchParams.set("maxResults", "50");
+        url.searchParams.set("key", YOUTUBE_API_KEY);
+
+        const response = await fetch(url.toString());
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        const videos = (data.items || []).map((item: any) => ({
+          videoId: item.id.videoId,
+          title: item.snippet.title,
+          thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url,
+          url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+        }));
+        setMusicVideos(videos);
+      } catch (error) {
+        console.error("Error fetching music videos:", error);
+      }
+    };
+
+    void fetchMusicVideos();
+  }, [YOUTUBE_API_KEY]);
 
   useEffect(() => {
     let alive = true;
 
     const load = async () => {
-      const [newsItems, galleryItems, bookItems, magazineItems] = await Promise.all([
+      const [newsResult, galleryResult, bookResult, magazineResult] = await Promise.all([
         fetchSiteList<MediaNewsItem>('media-news'),
         fetchSiteList<MediaGalleryItem>('media-gallery'),
         fetchSiteList<MediaBookItem>('media-books'),
@@ -226,50 +201,78 @@ export default function MediaPage() {
 
       if (!alive) return;
 
-      if (Array.isArray(newsItems) && newsItems.length > 0) {
-        setNews(
-          newsItems.map((item) => ({
-            badge: item.badge || 'Updates',
-            date: item.date || '',
-            title: item.title || '',
-            description: item.description || '',
-            image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
-          }))
-        );
-      }
+      const newsItems = newsResult.items;
+      const newsDeletedIndexes = newsResult.deletedFallbackIndexes;
+      const adminNews = newsItems.map((item) => ({
+        badge: item.badge || 'Updates',
+        date: item.date || '',
+        title: item.title || '',
+        description: item.description || '',
+        image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
+      }));
+      const overriddenNewsIndexes = new Set(
+        newsItems
+          .map((item) => item.fallbackIndex)
+          .filter((value): value is number => typeof value === 'number'),
+      );
+      const remainingNewsFallback = CAMPUS_NEWS.filter(
+        (_, index) => !overriddenNewsIndexes.has(index) && !newsDeletedIndexes.includes(index),
+      );
+      setNews(adminNews.length > 0 || newsDeletedIndexes.length > 0 ? [...adminNews, ...remainingNewsFallback] : CAMPUS_NEWS);
 
-      if (Array.isArray(galleryItems) && galleryItems.length > 0) {
-        setGallery(
-          galleryItems.map((item) => ({
-            title: item.title || 'Gallery Item',
-            category: item.category || 'Gallery',
-            image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
-          }))
-        );
-      }
+      const galleryItems = galleryResult.items;
+      const galleryDeletedIndexes = galleryResult.deletedFallbackIndexes;
+      const adminGallery = galleryItems.map((item) => ({
+        title: item.title || 'Gallery Item',
+        category: item.category || 'gallery',
+        image: normalizeAssetUrl(item.imageUrl) || '/hero/hero-4.JPG',
+      }));
+      const overriddenGalleryIndexes = new Set(
+        galleryItems
+          .map((item) => item.fallbackIndex)
+          .filter((value): value is number => typeof value === 'number'),
+      );
+      const remainingGalleryFallback = EVENT_GALLERY.filter(
+        (_, index) => !overriddenGalleryIndexes.has(index) && !galleryDeletedIndexes.includes(index),
+      );
+      setGallery(adminGallery.length > 0 || galleryDeletedIndexes.length > 0 ? [...adminGallery, ...remainingGalleryFallback] : EVENT_GALLERY);
 
-      if (Array.isArray(bookItems) && bookItems.length > 0) {
-        setBooks(
-          bookItems.map((item) => ({
-            title: item.title || '',
-            author: item.author || '',
-            description: item.description || '',
-            cover: normalizeAssetUrl(item.imageUrl) || '/fire_altar/fire-on-altar-cover.jpg',
-            file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
-          }))
-        );
-      }
+      const bookItems = bookResult.items;
+      const bookDeletedIndexes = bookResult.deletedFallbackIndexes;
+      const adminBooks = bookItems.map((item) => ({
+        title: item.title || '',
+        author: item.author || '',
+        description: item.description || '',
+        cover: normalizeAssetUrl(item.imageUrl) || '/fire_altar/fire-on-altar-cover.jpg',
+        file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
+      }));
+      const overriddenBookIndexes = new Set(
+        bookItems
+          .map((item) => item.fallbackIndex)
+          .filter((value): value is number => typeof value === 'number'),
+      );
+      const remainingBookFallback = BOOKS.filter(
+        (_, index) => !overriddenBookIndexes.has(index) && !bookDeletedIndexes.includes(index),
+      );
+      setBooks(adminBooks.length > 0 || bookDeletedIndexes.length > 0 ? [...adminBooks, ...remainingBookFallback] : BOOKS);
 
-      if (Array.isArray(magazineItems) && magazineItems.length > 0) {
-        setMagazines(
-          magazineItems.map((item) => ({
-            title: item.title || '',
-            issue: item.issue || '',
-            cover: normalizeAssetUrl(item.imageUrl) || '/magazine/magazine-1.jpeg',
-            file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
-          }))
-        );
-      }
+      const magazineItems = magazineResult.items;
+      const magazineDeletedIndexes = magazineResult.deletedFallbackIndexes;
+      const adminMagazines = magazineItems.map((item) => ({
+        title: item.title || '',
+        issue: item.issue || '',
+        cover: normalizeAssetUrl(item.imageUrl) || '/magazine/magazine-1.jpeg',
+        file: item.fileUrl ? normalizeAssetUrl(item.fileUrl) : undefined,
+      }));
+      const overriddenMagazineIndexes = new Set(
+        magazineItems
+          .map((item) => item.fallbackIndex)
+          .filter((value): value is number => typeof value === 'number'),
+      );
+      const remainingMagazineFallback = MAGAZINES.filter(
+        (_, index) => !overriddenMagazineIndexes.has(index) && !magazineDeletedIndexes.includes(index),
+      );
+      setMagazines(adminMagazines.length > 0 || magazineDeletedIndexes.length > 0 ? [...adminMagazines, ...remainingMagazineFallback] : MAGAZINES);
     };
 
     void load();
@@ -279,9 +282,26 @@ export default function MediaPage() {
   }, []);
 
   const galleryItems = useMemo(() => {
-    if (galleryFilter === 'All') return gallery;
-    return gallery.filter((item) => item.category === galleryFilter);
-  }, [galleryFilter, gallery]);
+    const nonMusicItems = gallery.filter(item => item.category !== 'music');
+    const formattedMusicVideos = musicVideos.map(v => ({
+      title: v.title,
+      category: 'music',
+      image: v.thumbnail,
+      isVideo: true,
+      videoId: v.videoId,
+      videoUrl: v.url
+    }));
+
+    if (galleryFilter === 'All') {
+      return [...nonMusicItems, ...formattedMusicVideos];
+    }
+    
+    if (galleryFilter === 'music') {
+      return formattedMusicVideos;
+    }
+    
+    return nonMusicItems.filter((item) => item.category === galleryFilter);
+  }, [galleryFilter, gallery, musicVideos]);
 
   const galleryFilters = useMemo(() => {
     const categories = Array.from(new Set(gallery.map((item) => item.category).filter(Boolean)));
@@ -309,6 +329,14 @@ export default function MediaPage() {
         </section>
 
         <ChurchNewsSection items={news} />
+        
+        <div className="bg-background pb-16 text-center">
+          <Link href="/media/archive">
+            <Button variant="outline" className="rounded-xl px-8 py-6 h-auto border-primary/20 hover:bg-primary/5 gap-2 text-sm font-bold uppercase tracking-widest text-primary transition-all">
+              View News Archive
+            </Button>
+          </Link>
+        </div>
 
         <section className="py-16 sm:py-20 md:py-24 bg-background">
           <div className="w-full px-0">
@@ -323,7 +351,7 @@ export default function MediaPage() {
             </div>
 
             <div className="flex flex-wrap justify-center gap-3 mb-10 px-4 sm:px-6 lg:px-10">
-              {galleryFilters.map((label) => (
+                  {galleryFilters.map((label) => (
                 <button
                   key={label}
                   type="button"
@@ -334,16 +362,26 @@ export default function MediaPage() {
                       : 'bg-primary/10 text-primary hover:bg-primary/20'
                   }`}
                 >
-                  {label}
+                  {label === 'All' ? label : label.charAt(0).toUpperCase() + label.slice(1)}
                 </button>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {galleryItems.map((item) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4 sm:px-6 lg:px-10">
+              {galleryItems.map((item, idx) => (
                 <div
-                  key={item.title}
-                  className="group relative overflow-hidden rounded-2xl shadow-md"
+                  key={`${item.title}-${idx}`}
+                  className="group relative overflow-hidden rounded-2xl shadow-md cursor-pointer"
+                  onClick={() => {
+                    if ((item as any).isVideo) {
+                      setActiveVideo({
+                        videoId: (item as any).videoId,
+                        title: item.title,
+                        thumbnail: item.image,
+                        url: (item as any).videoUrl
+                      });
+                    }
+                  }}
                 >
                   <div className="relative h-56 sm:h-64">
                     <Image
@@ -353,21 +391,59 @@ export default function MediaPage() {
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     />
+                    {(item as any).isVideo && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/30 transition-colors">
+                        <div className="h-12 w-12 rounded-full bg-red-600/90 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
+                          <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors pointer-events-none" />
                   <div className="absolute bottom-4 left-4 rounded-full bg-primary/90 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-primary-foreground">
-                    {item.category}
+                    {(item as any).isVideo ? 'Music Video' : item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                   </div>
-                  <div className="absolute right-4 bottom-4 opacity-0 translate-y-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
-                    <a href={item.image} download>
-                      <Button variant="outline" className="rounded-full px-4 py-2 text-[11px]">
-                        Download Photo
-                      </Button>
-                    </a>
-                  </div>
+                  {!(item as any).isVideo && (
+                    <div className="absolute right-4 bottom-4 opacity-0 translate-y-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0" onClick={(e) => e.stopPropagation()}>
+                      <a href={item.image} download>
+                        <Button variant="outline" className="rounded-full px-4 py-2 text-[11px]">
+                          Download Photo
+                        </Button>
+                      </a>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+
+            {/* Video Modal */}
+            {activeVideo && (
+              <div 
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+                onClick={() => setActiveVideo(null)}
+              >
+                <div 
+                  className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button 
+                    onClick={() => setActiveVideo(null)}
+                    className="absolute top-4 right-4 z-[110] p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                  <iframe
+                    src={`https://www.youtube.com/embed/${activeVideo.videoId}?autoplay=1`}
+                    title={activeVideo.title}
+                    className="w-full h-full border-none"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -448,6 +524,13 @@ export default function MediaPage() {
                 <p className="text-foreground/70 mt-4 max-w-xl">
                   Explore recent church magazine covers. Full issues will be available soon.
                 </p>
+              </div>
+              <div className="lg:text-right">
+                <Link href="/media/archive">
+                  <Button variant="outline" className="rounded-xl px-8 py-4 h-auto border-primary/20 hover:bg-primary/5 gap-2 text-sm font-bold uppercase tracking-widest text-primary transition-all">
+                    View All Magazines
+                  </Button>
+                </Link>
               </div>
             </div>
 

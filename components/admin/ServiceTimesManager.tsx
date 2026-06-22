@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 
 export type ServiceRecord = {
   id: string;
@@ -47,6 +48,7 @@ export default function ServiceTimesManager({
     location: '',
     description: '',
   });
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
 
   const refreshServices = async () => {
     try {
@@ -89,16 +91,40 @@ export default function ServiceTimesManager({
     };
   }, [token]);
 
-  const handleAddService = async () => {
+  const resetDraft = () => {
+    setServiceDraft({
+      title: '',
+      dayOfWeek: '',
+      time: '',
+      location: '',
+      description: '',
+    });
+    setEditingServiceId(null);
+  };
+
+  const startEditingService = (service: ServiceRecord) => {
+    setEditingServiceId(service.id);
+    setServiceDraft({
+      title: service.title || '',
+      dayOfWeek: service.dayOfWeek || '',
+      time: service.time || service.startTime || '',
+      location: service.location || '',
+      description: service.description || '',
+    });
+    setStatus('');
+  };
+
+  const handleSaveService = async () => {
     if (!serviceDraft.title || !serviceDraft.dayOfWeek || !serviceDraft.time) {
       setStatus('Please fill service title, day, and time.');
       return;
     }
 
     setStatus('');
+    const isEditing = Boolean(editingServiceId);
     try {
-      const response = await apiFetch('/api/services', {
-        method: 'POST',
+      const response = await apiFetch(editingServiceId ? `/api/services/${editingServiceId}` : '/api/services', {
+        method: editingServiceId ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -113,49 +139,15 @@ export default function ServiceTimesManager({
       });
 
       if (!response.ok) {
-        setStatus('Unable to add service.');
+        setStatus(isEditing ? 'Unable to update service.' : 'Unable to add service.');
         return;
       }
 
-      setServiceDraft({
-        title: '',
-        dayOfWeek: '',
-        time: '',
-        location: '',
-        description: '',
-      });
+      resetDraft();
       await refreshServices();
-      setStatus('Service added.');
+      setStatus(isEditing ? 'Service updated.' : 'Service added.');
     } catch {
-      setStatus('Unable to add service.');
-    }
-  };
-
-  const handleUpdateService = async (service: ServiceRecord) => {
-    setStatus('');
-    try {
-      const response = await apiFetch(`/api/services/${service.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: service.title,
-          dayOfWeek: service.dayOfWeek,
-          time: service.time || service.startTime,
-          location: service.location,
-          description: service.description,
-        }),
-      });
-      if (!response.ok) {
-        setStatus('Unable to update service.');
-        return;
-      }
-      await refreshServices();
-      setStatus('Service updated.');
-    } catch {
-      setStatus('Unable to update service.');
+      setStatus(isEditing ? 'Unable to update service.' : 'Unable to add service.');
     }
   };
 
@@ -173,10 +165,21 @@ export default function ServiceTimesManager({
         return;
       }
       await refreshServices();
+      if (editingServiceId === serviceId) {
+        resetDraft();
+      }
       setStatus('Service deleted.');
     } catch {
       setStatus('Unable to delete service.');
     }
+  };
+
+  const requestDeleteService = (service: ServiceRecord) => {
+    confirmDeleteToast({
+      title: 'Delete this service?',
+      description: service.title || service.dayOfWeek || 'This service time will be permanently removed.',
+      onConfirm: () => handleDeleteService(service.id),
+    });
   };
 
   return (
@@ -186,7 +189,7 @@ export default function ServiceTimesManager({
       <div className={compact ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 xl:grid-cols-[1.1fr_1fr] gap-6'}>
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
           <h2 className="text-lg font-semibold text-foreground">
-            Add a Service
+            {editingServiceId ? 'Edit Service' : 'Add a Service'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
@@ -237,7 +240,16 @@ export default function ServiceTimesManager({
             rows={3}
             className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
           />
-          <Button onClick={handleAddService}>Add Service</Button>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={handleSaveService}>
+              {editingServiceId ? 'Save Service' : 'Add Service'}
+            </Button>
+            {editingServiceId && (
+              <Button variant="outline" onClick={resetDraft}>
+                Cancel Edit
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
@@ -254,74 +266,29 @@ export default function ServiceTimesManager({
                   className="rounded-xl border border-border/60 bg-background p-4 space-y-3"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      value={service.title || ''}
-                      onChange={(event) =>
-                        setServices((prev) =>
-                          prev.map((item) =>
-                            item.id === service.id ? { ...item, title: event.target.value } : item,
-                          ),
-                        )
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                    />
-                    <input
-                      type="text"
-                      value={service.dayOfWeek || ''}
-                      onChange={(event) =>
-                        setServices((prev) =>
-                          prev.map((item) =>
-                            item.id === service.id ? { ...item, dayOfWeek: event.target.value } : item,
-                          ),
-                        )
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                    />
+                    <div className="rounded-xl border border-border bg-background px-4 py-3 text-foreground">
+                      {service.title || 'Untitled service'}
+                    </div>
+                    <div className="rounded-xl border border-border bg-background px-4 py-3 text-foreground">
+                      {service.dayOfWeek || 'No day set'}
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      value={service.time || ''}
-                      onChange={(event) =>
-                        setServices((prev) =>
-                          prev.map((item) =>
-                            item.id === service.id ? { ...item, time: event.target.value } : item,
-                          ),
-                        )
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                    />
-                    <input
-                      type="text"
-                      value={service.location || ''}
-                      onChange={(event) =>
-                        setServices((prev) =>
-                          prev.map((item) =>
-                            item.id === service.id ? { ...item, location: event.target.value } : item,
-                          ),
-                        )
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                    />
+                    <div className="rounded-xl border border-border bg-background px-4 py-3 text-foreground">
+                      {service.time || 'No time set'}
+                    </div>
+                    <div className="rounded-xl border border-border bg-background px-4 py-3 text-foreground">
+                      {service.location || 'No location set'}
+                    </div>
                   </div>
-                  <textarea
-                    value={service.description || ''}
-                    onChange={(event) =>
-                      setServices((prev) =>
-                        prev.map((item) =>
-                          item.id === service.id ? { ...item, description: event.target.value } : item,
-                        ),
-                      )
-                    }
-                    rows={3}
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                  />
+                  <p className="rounded-xl border border-border bg-background px-4 py-3 text-foreground whitespace-pre-wrap">
+                    {service.description || 'No description set.'}
+                  </p>
                   <div className="flex flex-wrap gap-3">
-                    <Button onClick={() => handleUpdateService(service)}>Update</Button>
+                    <Button onClick={() => startEditingService(service)}>Edit</Button>
                     <Button
                       variant="outline"
-                      onClick={() => handleDeleteService(service.id)}
+                      onClick={() => requestDeleteService(service)}
                     >
                       Delete
                     </Button>

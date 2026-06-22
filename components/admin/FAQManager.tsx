@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export type FAQRecord = {
   id: number;
@@ -117,8 +118,6 @@ export default function FAQManager({
   };
 
   const handleDeleteFaq = async (faqId: number) => {
-    if (!confirm('Are you sure you want to delete this FAQ?')) return;
-
     setStatus('');
     setDeletingFaqId(faqId);
 
@@ -145,6 +144,24 @@ export default function FAQManager({
     } finally {
       setDeletingFaqId(null);
     }
+  };
+
+  const requestDeleteFaq = (faq: FAQRecord) => {
+    const toastId = toast('Delete this FAQ?', {
+      description: faq.question,
+      duration: Infinity,
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          toast.dismiss(toastId);
+          void handleDeleteFaq(faq.id);
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => toast.dismiss(toastId),
+      },
+    });
   };
 
   if (isLoading) {
@@ -290,7 +307,7 @@ export default function FAQManager({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleDeleteFaq(faq.id)}
+                      onClick={() => requestDeleteFaq(faq)}
                       disabled={deletingFaqId === faq.id}
                       className="gap-1 text-destructive hover:text-destructive"
                     >

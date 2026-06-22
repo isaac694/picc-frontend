@@ -27,9 +27,20 @@ interface Event {
   description: string;
   requiresRegistration: boolean;
   registrationEmail: string | null;
+  acceptsOnlinePayment: boolean;
+  paymentAmount: number | null;
+  paymentCurrency: string;
+  paymentAccount?: string | null;
   imageUrl?: string | null;
   scope?: string | null;
 }
+
+type BankTransferDetails = {
+  bank_name?: string;
+  account_number?: string;
+  account_name?: string;
+  account_expiration_timestamp?: number;
+};
 
 const isValidDate = (value: Date) => !Number.isNaN(value.getTime());
 
@@ -178,6 +189,9 @@ const DEFAULT_EVENTS: Event[] = [
       'PICC Teens Ministry presents 2026 Chatroom. Registration fee MK18,000 (includes snacks and lunch). Age group 12–19 years. With Pastor Loyce Banda.',
     requiresRegistration: true,
     registrationEmail: 'info@piccworldwide.org',
+    acceptsOnlinePayment: false,
+    paymentAmount: null,
+    paymentCurrency: 'MWK',
   },
 ];
 
@@ -209,6 +223,19 @@ export default function EventsListSection({
   const [registerSubmitting, setRegisterSubmitting] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [paymentEvent, setPaymentEvent] = useState<Event | null>(null);
+  const [paymentForm, setPaymentForm] = useState({
+    fullName: '',
+    phone: '',
+    phoneCountry: '+265',
+    email: '',
+    paymentMethod: 'airtel',
+  });
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
+  const [bankTransferDetails, setBankTransferDetails] = useState<BankTransferDetails | null>(null);
   const pageSize = 3;
 
   useEffect(() => {
@@ -254,6 +281,15 @@ export default function EventsListSection({
               description: typeof event.description === 'string' ? event.description : '',
               requiresRegistration: Boolean(event.requiresRegistration),
               registrationEmail: typeof event.registrationEmail === 'string' ? event.registrationEmail : null,
+              acceptsOnlinePayment: Boolean(event.acceptsOnlinePayment),
+              paymentAmount:
+                typeof event.paymentAmount === 'number'
+                  ? event.paymentAmount
+                  : typeof event.paymentAmount === 'string'
+                    ? Number(event.paymentAmount)
+                    : null,
+              paymentCurrency: typeof event.paymentCurrency === 'string' ? event.paymentCurrency : 'MWK',
+              paymentAccount: typeof event.paymentAccount === 'string' ? event.paymentAccount : null,
               imageUrl: typeof event.imageUrl === 'string' ? event.imageUrl : null,
               scope: typeof event.scope === 'string' ? event.scope : null,
             }))
@@ -326,7 +362,7 @@ export default function EventsListSection({
 
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    return events
+    const results = events
       .map((event) => ({ ...event, dateObj: parseDateOnly(event.startDate) }))
       .filter((event) =>
         rangeEnd ? event.dateObj >= rangeStart && event.dateObj <= rangeEnd : event.dateObj >= rangeStart,
@@ -339,6 +375,20 @@ export default function EventsListSection({
         );
       })
       .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+
+    // If no upcoming events found and we are on the default 'today' view, 
+    // show the most recent past event instead of an empty state.
+    if (results.length === 0 && filter === 'today' && !selectedDate && !searchTerm && events.length > 0) {
+      const allEventsWithDates = events
+        .map((event) => ({ ...event, dateObj: parseDateOnly(event.startDate) }))
+        .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime()); // Newest first
+
+      if (allEventsWithDates.length > 0) {
+        return [allEventsWithDates[0]];
+      }
+    }
+
+    return results;
   }, [events, filter, searchTerm, selectedDate]);
 
   const pagedEvents = useMemo(() => {
@@ -354,8 +404,17 @@ export default function EventsListSection({
 
   const groupedEvents = useMemo(() => {
     const groups: { label: string; items: typeof filteredEvents }[] = [];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     pagedEvents.items.forEach((event) => {
-      const label = event.dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      let label = event.dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      
+      // If we are showing a past event as a fallback, label it accordingly
+      if (event.dateObj < todayStart && filter === 'today' && !selectedDate && !searchTerm) {
+        label = `Recent Event - ${label}`;
+      }
+
       const last = groups[groups.length - 1];
       if (!last || last.label !== label) {
         groups.push({ label, items: [event] });
@@ -364,7 +423,7 @@ export default function EventsListSection({
       }
     });
     return groups;
-  }, [pagedEvents.items]);
+  }, [pagedEvents.items, filter, selectedDate, searchTerm]);
 
   const formattedToday = useMemo(() => {
     const date = new Date();
@@ -423,6 +482,118 @@ export default function EventsListSection({
     setIsRegisterOpen(true);
     setRegisterError(null);
     setRegisterSuccess(null);
+  };
+
+  const normalizePaychanguPhone = (countryCode: string, rawPhone: string) => {
+    const digits = rawPhone.replace(/\D/g, '');
+    if (countryCode === '+265') {
+      return digits.replace(/^0+/, '');
+    }
+    return `${countryCode}${digits}`;
+  };
+
+  const formatPaymentAmount = (event: Event) =>
+    `${event.paymentCurrency || 'MWK'} ${Number(event.paymentAmount || 0).toLocaleString('en-US')}`;
+
+  const openPayment = (event: Event) => {
+    if (!event.acceptsOnlinePayment || !event.paymentAmount) return;
+    setPaymentEvent(event);
+    setPaymentError(null);
+    setPaymentSuccess(null);
+    setBankTransferDetails(null);
+    setIsPaymentOpen(true);
+  };
+
+  const submitPayment = async () => {
+    if (!paymentEvent) return;
+    setPaymentError(null);
+    setPaymentSuccess(null);
+    setBankTransferDetails(null);
+
+    if (!paymentForm.fullName || !paymentForm.phone || !paymentForm.email) {
+      setPaymentError('Please enter your name, phone number, and email.');
+      return;
+    }
+
+    const nameParts = paymentForm.fullName.trim().split(/\s+/).filter(Boolean);
+    if (nameParts.length < 2) {
+      setPaymentError('Please enter your full name (first and last).');
+      return;
+    }
+
+    const normalizedPhone = normalizePaychanguPhone(paymentForm.phoneCountry, paymentForm.phone);
+    if (paymentForm.phoneCountry === '+265' && normalizedPhone.length !== 9) {
+      setPaymentError('Please enter a valid Malawi mobile number with 9 digits.');
+      return;
+    }
+
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
+    const amount = Number(paymentEvent.paymentAmount || 0);
+    const currency = paymentEvent.paymentCurrency || 'MWK';
+    const reason = `Event: ${paymentEvent.title}`;
+    const paymentAccount = paymentEvent.paymentAccount || (paymentEvent.scope === 'youth-church' ? 'youth' : 'main');
+
+    setPaymentSubmitting(true);
+    try {
+      const givingResponse = await apiFetch('/api/giving', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          currency,
+          fullName: paymentForm.fullName,
+          email: paymentForm.email,
+          phone: normalizedPhone,
+          phoneCountry: paymentForm.phoneCountry,
+          paymentMethod: paymentForm.paymentMethod,
+          givingType: 'Event Payment',
+          reason,
+          paymentAccount,
+        }),
+      });
+      const givingData = await givingResponse.json().catch(() => null);
+      if (!givingResponse.ok) {
+        throw new Error(givingData?.error || 'Failed to save payment record.');
+      }
+
+      const paymentResponse = await fetch('/api/paychangu/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          currency,
+          email: paymentForm.email,
+          firstName,
+          lastName,
+          phone: normalizedPhone,
+          paymentMethod: paymentForm.paymentMethod,
+          reason,
+          givingId: givingData.id,
+          account: paymentAccount,
+        }),
+      });
+      const paymentData = await paymentResponse.json().catch(() => null);
+      if (!paymentResponse.ok) {
+        throw new Error(paymentData?.error || paymentData?.message || 'Payment initialization failed.');
+      }
+
+      if (paymentForm.paymentMethod === 'card' && paymentData?.checkoutUrl) {
+        window.location.href = paymentData.checkoutUrl;
+        return;
+      }
+
+      if (paymentForm.paymentMethod === 'bank') {
+        setBankTransferDetails(paymentData?.bankTransfer || null);
+        setPaymentSuccess('Your bank transfer account has been generated. Use the details below to complete payment.');
+      } else {
+        setPaymentSuccess('Payment request sent. Please follow the mobile prompt to complete payment.');
+      }
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Failed to initialize payment.');
+    } finally {
+      setPaymentSubmitting(false);
+    }
   };
 
   const submitRegistration = async () => {
@@ -595,6 +766,14 @@ export default function EventsListSection({
                                     >
                                       {event.requiresRegistration ? 'Register for Event' : 'Registration Not Required'}
                                     </Button>
+                                    {event.acceptsOnlinePayment && event.paymentAmount ? (
+                                      <Button
+                                        className="ml-0 mt-3 rounded-full px-5 text-sm md:ml-3 md:mt-0"
+                                        onClick={() => openPayment(event)}
+                                      >
+                                        Pay {formatPaymentAmount(event)}
+                                      </Button>
+                                    ) : null}
                                   </div>
                                 </div>
                                 <div className="relative aspect-video max-w-[320px] w-full justify-self-center md:justify-self-end overflow-hidden rounded-xl border border-border/40 bg-white shadow-sm">
@@ -659,10 +838,20 @@ export default function EventsListSection({
                                       >
                                         {event.requiresRegistration ? 'Register for Event' : 'Registration Not Required'}
                                       </Button>
+                                      {event.acceptsOnlinePayment && event.paymentAmount ? (
+                                        <Button
+                                          className="rounded-full px-5 text-sm"
+                                          onClick={() => openPayment(event)}
+                                        >
+                                          Pay {formatPaymentAmount(event)}
+                                        </Button>
+                                      ) : null}
                                       <span className="rounded-full bg-primary/8 px-3 py-1 text-xs font-medium text-primary">
-                                        {event.requiresRegistration
-                                          ? 'Registration is enabled for this event'
-                                          : 'No registration required'}
+                                        {event.acceptsOnlinePayment
+                                          ? `Online payment enabled: ${formatPaymentAmount(event)}`
+                                          : event.requiresRegistration
+                                            ? 'Registration is enabled for this event'
+                                            : 'No registration required'}
                                       </span>
                                     </div>
                                   </div>
@@ -870,6 +1059,129 @@ export default function EventsListSection({
               disabled={!activeEvent || registerSubmitting}
             >
               {registerSubmitting ? 'Sending...' : 'Register'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isPaymentOpen}
+        onOpenChange={(open) => {
+          setIsPaymentOpen(open);
+          if (!open) {
+            setPaymentEvent(null);
+            setPaymentError(null);
+            setPaymentSuccess(null);
+            setBankTransferDetails(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Pay for Event</DialogTitle>
+            <DialogDescription>
+              {paymentEvent ? `${paymentEvent.title} - ${formatPaymentAmount(paymentEvent)}` : 'Event payment'}
+            </DialogDescription>
+          </DialogHeader>
+          {paymentError && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600">
+              {paymentError}
+            </div>
+          )}
+          {paymentSuccess && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+              {paymentSuccess}
+            </div>
+          )}
+          <div className="grid gap-3 text-sm">
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Full name</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={paymentForm.fullName}
+                onChange={(event) => setPaymentForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                type="text"
+                placeholder="First and last name"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Email address</span>
+              <input
+                className="rounded-md border border-border px-3 py-2 text-sm"
+                value={paymentForm.email}
+                onChange={(event) => setPaymentForm((prev) => ({ ...prev, email: event.target.value }))}
+                type="email"
+                placeholder="Email address"
+              />
+            </label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[116px_minmax(0,1fr)]">
+              <label className="grid min-w-0 gap-1">
+                <span className="text-foreground/80">Country</span>
+                <select
+                  className="w-full min-w-0 rounded-md border border-border px-3 py-2 text-sm"
+                  value={paymentForm.phoneCountry}
+                  onChange={(event) => setPaymentForm((prev) => ({ ...prev, phoneCountry: event.target.value }))}
+                >
+                  <option value="+265">MW (+265)</option>
+                  <option value="+233">GH (+233)</option>
+                  <option value="+234">NG (+234)</option>
+                  <option value="+254">KE (+254)</option>
+                  <option value="+255">TZ (+255)</option>
+                  <option value="+260">ZM (+260)</option>
+                  <option value="+27">ZA (+27)</option>
+                  <option value="+44">UK (+44)</option>
+                  <option value="+1">US (+1)</option>
+                </select>
+              </label>
+              <label className="grid min-w-0 gap-1">
+                <span className="text-foreground/80">Phone number</span>
+                <input
+                  className="rounded-md border border-border px-3 py-2 text-sm"
+                  value={paymentForm.phone}
+                  onChange={(event) => setPaymentForm((prev) => ({ ...prev, phone: event.target.value }))}
+                  type="tel"
+                  placeholder="Phone number"
+                />
+              </label>
+            </div>
+            <div className="grid gap-2">
+              <span className="text-foreground/80">Payment method</span>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {[
+                  ['airtel', 'Airtel Money'],
+                  ['mpamba', 'Mpamba'],
+                  ['bank', 'Bank Transfer'],
+                  ['card', 'Card Payment'],
+                ].map(([value, label]) => (
+                  <label key={value} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+                    <input
+                      type="radio"
+                      name="eventPaymentMethod"
+                      value={value}
+                      checked={paymentForm.paymentMethod === value}
+                      onChange={(event) => setPaymentForm((prev) => ({ ...prev, paymentMethod: event.target.value }))}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          {bankTransferDetails && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+              <p className="font-semibold">Bank transfer details</p>
+              <p className="mt-2">Bank: {bankTransferDetails.bank_name || 'N/A'}</p>
+              <p>Account Name: {bankTransferDetails.account_name || 'N/A'}</p>
+              <p>Account Number: {bankTransferDetails.account_number || 'N/A'}</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              className="rounded-full px-5"
+              onClick={submitPayment}
+              disabled={!paymentEvent || paymentSubmitting}
+            >
+              {paymentSubmitting ? 'Processing...' : 'Pay Now'}
             </Button>
           </DialogFooter>
         </DialogContent>

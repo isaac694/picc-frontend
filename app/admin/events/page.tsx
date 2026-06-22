@@ -5,6 +5,7 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { Search } from 'lucide-react';
 import Image from 'next/image';
 
@@ -21,6 +22,9 @@ type AdminEvent = {
   image: string;
   requiresRegistration: boolean;
   registrationEmail: string;
+  acceptsOnlinePayment: boolean;
+  paymentAmount: string;
+  paymentCurrency: string;
   scope: EventScope;
 };
 
@@ -37,6 +41,9 @@ const DEFAULT_EVENT_DRAFT = {
   image: '',
   requiresRegistration: false,
   registrationEmail: '',
+  acceptsOnlinePayment: false,
+  paymentAmount: '',
+  paymentCurrency: 'MWK',
   scope: 'general' as EventScope,
 };
 
@@ -197,6 +204,14 @@ export default function EventsAdminPage() {
             image: normalizeEventImageUrl(rawImage),
             requiresRegistration: Boolean(event.requiresRegistration),
             registrationEmail: typeof event.registrationEmail === 'string' ? event.registrationEmail : '',
+            acceptsOnlinePayment: Boolean(event.acceptsOnlinePayment),
+            paymentAmount:
+              typeof event.paymentAmount === 'number'
+                ? String(event.paymentAmount)
+                : typeof event.paymentAmount === 'string'
+                  ? event.paymentAmount
+                  : '',
+            paymentCurrency: typeof event.paymentCurrency === 'string' ? event.paymentCurrency : 'MWK',
             scope: normalizeScope(event.scope),
           };
         })
@@ -228,6 +243,9 @@ export default function EventsAdminPage() {
       image: event.image,
       requiresRegistration: event.requiresRegistration,
       registrationEmail: event.registrationEmail,
+      acceptsOnlinePayment: event.acceptsOnlinePayment,
+      paymentAmount: event.paymentAmount,
+      paymentCurrency: event.paymentCurrency,
       scope: event.scope,
     });
     updateUploadName('event-draft', '');
@@ -256,6 +274,10 @@ export default function EventsAdminPage() {
       setStatus('Please enter the registration email for events that require registration.');
       return;
     }
+    if (eventDraft.acceptsOnlinePayment && (!Number(eventDraft.paymentAmount) || Number(eventDraft.paymentAmount) <= 0)) {
+      setStatus('Please enter the event payment amount.');
+      return;
+    }
     setStatus('');
     try {
       const response = await apiFetch('/api/events', {
@@ -276,6 +298,9 @@ export default function EventsAdminPage() {
           imageUrl: eventDraft.image,
           requiresRegistration: eventDraft.requiresRegistration,
           registrationEmail: eventDraft.requiresRegistration ? eventDraft.registrationEmail.trim() : null,
+          acceptsOnlinePayment: eventDraft.acceptsOnlinePayment,
+          paymentAmount: eventDraft.acceptsOnlinePayment ? Number(eventDraft.paymentAmount) : null,
+          paymentCurrency: eventDraft.acceptsOnlinePayment ? eventDraft.paymentCurrency : 'MWK',
           scope: eventDraft.scope,
         }),
       });
@@ -314,6 +339,15 @@ export default function EventsAdminPage() {
     } catch {
       setStatus('Unable to delete event.');
     }
+  };
+
+  const requestDeleteEvent = (eventId: string) => {
+    const eventTitle = events.find((event) => event.id === eventId)?.title || eventDraft.title;
+    confirmDeleteToast({
+      title: 'Delete this event?',
+      description: eventTitle || 'This event will be permanently removed.',
+      onConfirm: () => handleDeleteEvent(eventId),
+    });
   };
 
   if (!token) {
@@ -505,6 +539,44 @@ export default function EventsAdminPage() {
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
             />
           ) : null}
+          <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={eventDraft.acceptsOnlinePayment}
+              onChange={(event) =>
+                setEventDraft((prev) => ({
+                  ...prev,
+                  acceptsOnlinePayment: event.target.checked,
+                  paymentAmount: event.target.checked ? prev.paymentAmount : '',
+                  paymentCurrency: event.target.checked ? prev.paymentCurrency : 'MWK',
+                }))
+              }
+              className="h-4 w-4"
+            />
+            <span>Allow users to pay for this event on the website</span>
+          </label>
+          {eventDraft.acceptsOnlinePayment ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr]">
+              <select
+                value={eventDraft.paymentCurrency}
+                onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentCurrency: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                aria-label="Event payment currency"
+              >
+                <option value="MWK">MWK</option>
+                <option value="USD">USD</option>
+              </select>
+              <input
+                type="number"
+                min="1"
+                step="any"
+                placeholder="Event payment amount"
+                value={eventDraft.paymentAmount}
+                onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentAmount: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-3">
             <Button onClick={handleSaveEvent}>
               {selectedEventId ? 'Save Event' : 'Add Event'}
@@ -515,7 +587,7 @@ export default function EventsAdminPage() {
               </Button>
             )}
             {selectedEventId && (
-              <Button variant="destructive" onClick={() => handleDeleteEvent(selectedEventId)}>
+              <Button variant="destructive" onClick={() => requestDeleteEvent(selectedEventId)}>
                 Delete Event
               </Button>
             )}

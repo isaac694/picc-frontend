@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export type PartnershipDetail = {
   label: string;
@@ -40,6 +41,10 @@ export type MinistryItem = {
   imageUrl: string | null;
   sortOrder: number;
   isPublished: boolean;
+  acceptsOnlinePayment?: boolean;
+  paymentAmount?: number | null;
+  paymentCurrency?: string | null;
+  paymentAccount?: string | null;
   createdAt: string;
   isFallback?: boolean;
 };
@@ -53,6 +58,10 @@ type MinistryItemDraft = {
   imageUrl: string;
   sortOrder: string;
   isPublished: boolean;
+  acceptsOnlinePayment: boolean;
+  paymentAmount: string;
+  paymentCurrency: string;
+  paymentAccount: string;
 };
 
 const toInput = (value: string | null | undefined) => value || '';
@@ -125,7 +134,9 @@ async function uploadMinistryImage(token: string, file: File, setStatus: (value:
     });
 
     if (!response.ok) {
-      setStatus('Image upload failed.');
+      const data = await response.json().catch(() => null);
+      const message = typeof data?.error === 'string' ? data.error : 'Image upload failed.';
+      setStatus(message);
       return null;
     }
 
@@ -269,7 +280,6 @@ export function MinistryInfoManager({
         { field: 'about' as const, label: fieldLabels.about || 'About Text', kind: 'textarea' as const, rows: 8 },
         { field: 'logoImageUrl' as const, label: fieldLabels.logoImageUrl || 'Logo', kind: 'image' as const },
         { field: 'heroImageUrl' as const, label: fieldLabels.heroImageUrl || 'Hero Picture', kind: 'image' as const },
-        { field: 'liveSessionYoutubeUrl' as const, label: fieldLabels.liveSessionYoutubeUrl || 'Live Session YouTube Link', kind: 'text' as const, placeholder: 'https://www.youtube.com/watch?v=...' },
         { field: 'partnershipTitle' as const, label: fieldLabels.partnershipTitle || 'Partnership Title', kind: 'text' as const, placeholder: 'Partner With Us' },
         { field: 'partnershipBody' as const, label: fieldLabels.partnershipBody || 'Partnership Text', kind: 'textarea' as const, rows: 6 },
         { field: 'partnershipDetails' as const, label: fieldLabels.partnershipDetails || 'Partnership Details', kind: 'details' as const },
@@ -524,6 +534,9 @@ export function MinistryItemsManager({
   showLabel = true,
   showSortOrder = true,
   showImage = true,
+  showPaymentFields = false,
+  defaultPaymentAccount = 'main',
+  maxItems,
 }: {
   token: string;
   ministryKey: string;
@@ -542,10 +555,24 @@ export function MinistryItemsManager({
   showLabel?: boolean;
   showSortOrder?: boolean;
   showImage?: boolean;
+  showPaymentFields?: boolean;
+  defaultPaymentAccount?: 'main' | 'youth';
+  maxItems?: number;
 }) {
   const [items, setItems] = useState<MinistryItem[]>([]);
   const [editingItem, setEditingItem] = useState<MinistryItem | null>(null);
-  const [draft, setDraft] = useState<MinistryItemDraft>({ title: '', description: '', label: '', imageUrl: '', sortOrder: '0', isPublished: true });
+  const [draft, setDraft] = useState<MinistryItemDraft>({
+    title: '',
+    description: '',
+    label: '',
+    imageUrl: '',
+    sortOrder: '0',
+    isPublished: true,
+    acceptsOnlinePayment: false,
+    paymentAmount: '',
+    paymentCurrency: 'MWK',
+    paymentAccount: defaultPaymentAccount,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
@@ -563,10 +590,14 @@ export function MinistryItemsManager({
         imageUrl: item.imageUrl ?? null,
         sortOrder: item.sortOrder ?? index,
         isPublished: item.isPublished ?? true,
+        acceptsOnlinePayment: item.acceptsOnlinePayment ?? false,
+        paymentAmount: item.paymentAmount ?? null,
+        paymentCurrency: item.paymentCurrency ?? 'MWK',
+        paymentAccount: item.paymentAccount ?? defaultPaymentAccount,
         createdAt: new Date().toISOString(),
         isFallback: true,
       })),
-    [category, fallbackItems, ministryKey],
+    [category, defaultPaymentAccount, fallbackItems, ministryKey],
   );
 
   const refresh = async () => {
@@ -606,17 +637,49 @@ export function MinistryItemsManager({
       imageUrl: item.imageUrl || '',
       sortOrder: String(item.sortOrder ?? 0),
       isPublished: item.isPublished,
+      acceptsOnlinePayment: Boolean(item.acceptsOnlinePayment),
+      paymentAmount:
+        typeof item.paymentAmount === 'number'
+          ? String(item.paymentAmount)
+          : item.paymentAmount
+            ? String(item.paymentAmount)
+            : '',
+      paymentCurrency: item.paymentCurrency || 'MWK',
+      paymentAccount: item.paymentAccount || defaultPaymentAccount,
     });
   };
 
   const addNew = () => {
+    if (typeof maxItems === 'number' && items.length >= maxItems) {
+      setStatus(`Only ${maxItems} ${title.toLowerCase()} can be shown on the page. Delete one before adding another.`);
+      return;
+    }
     setEditingItem(null);
-    setDraft({ title: '', description: '', label: '', imageUrl: '', sortOrder: String(items.length), isPublished: true });
+    setDraft({
+      title: '',
+      description: '',
+      label: '',
+      imageUrl: '',
+      sortOrder: String(items.length),
+      isPublished: true,
+      acceptsOnlinePayment: false,
+      paymentAmount: '',
+      paymentCurrency: 'MWK',
+      paymentAccount: defaultPaymentAccount,
+    });
   };
 
   const save = async () => {
+    if (!editingItem && typeof maxItems === 'number' && items.length >= maxItems) {
+      setStatus(`Only ${maxItems} ${title.toLowerCase()} can be shown on the page. Delete one before adding another.`);
+      return;
+    }
     if (!draft.title.trim()) {
       setStatus('Please enter a title.');
+      return;
+    }
+    if (showPaymentFields && draft.acceptsOnlinePayment && (!Number(draft.paymentAmount) || Number(draft.paymentAmount) <= 0)) {
+      setStatus('Please enter the event payment amount.');
       return;
     }
 
@@ -640,11 +703,17 @@ export function MinistryItemsManager({
           imageUrl: draft.imageUrl.trim() || null,
           sortOrder,
           isPublished: draft.isPublished,
+          acceptsOnlinePayment: showPaymentFields ? draft.acceptsOnlinePayment : undefined,
+          paymentAmount: showPaymentFields && draft.acceptsOnlinePayment ? Number(draft.paymentAmount) : null,
+          paymentCurrency: showPaymentFields && draft.acceptsOnlinePayment ? draft.paymentCurrency : 'MWK',
+          paymentAccount: showPaymentFields && draft.acceptsOnlinePayment ? draft.paymentAccount : defaultPaymentAccount,
         }),
       });
 
       if (!response.ok) {
-        setStatus(`Unable to ${isPersisted ? 'update' : 'add'} item.`);
+        const data = await response.json().catch(() => null);
+        const message = typeof data?.error === 'string' ? data.error : `Unable to ${isPersisted ? 'update' : 'add'} item.`;
+        setStatus(message);
         return;
       }
 
@@ -663,7 +732,6 @@ export function MinistryItemsManager({
       setStatus('Fallback items cannot be deleted. Save it first if you want to customize it.');
       return;
     }
-    if (!confirm('Delete this item?')) return;
 
     try {
       const response = await apiFetch(`${baseUrl}/items/${encodeURIComponent(item.id)}`, {
@@ -682,6 +750,29 @@ export function MinistryItemsManager({
     }
   };
 
+  const requestRemove = (item: MinistryItem) => {
+    if (item.isFallback) {
+      setStatus('Fallback items cannot be deleted. Save it first if you want to customize it.');
+      return;
+    }
+
+    const toastId = toast('Delete this item?', {
+      description: item.title,
+      duration: Infinity,
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          toast.dismiss(toastId);
+          void remove(item);
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => toast.dismiss(toastId),
+      },
+    });
+  };
+
   if (isLoading && items.length === 0) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -692,11 +783,14 @@ export function MinistryItemsManager({
 
   const isPersistedEdit = Boolean(editingItem && !editingItem.isFallback);
   const saveButtonText = labels?.save || 'Save Item';
+  const limitReached = typeof maxItems === 'number' && items.length >= maxItems;
+  const isCreatingNew = !editingItem;
+  const itemLimitLabel = typeof maxItems === 'number' ? `${Math.min(items.length, maxItems)} / ${maxItems}` : null;
 
   return (
     <div className="space-y-6">
       {status && (
-        <div className={`rounded-xl p-4 text-sm ${status.includes('Unable') || status.includes('Please') || status.includes('cannot') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+        <div className={`rounded-xl p-4 text-sm ${status.includes('Unable') || status.includes('Please') || status.includes('cannot') || status.includes('Only') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
           {status}
         </div>
       )}
@@ -707,6 +801,11 @@ export function MinistryItemsManager({
             <div>
               <h2 className="text-xl font-semibold text-foreground">{labels?.formTitle || (isPersistedEdit ? `Update ${title}` : `Add ${title}`)}</h2>
               <p className="mt-1 text-sm text-foreground/70">{description}</p>
+              {itemLimitLabel ? (
+                <p className={`mt-2 text-xs font-semibold ${limitReached ? 'text-destructive' : 'text-primary'}`}>
+                  {itemLimitLabel} items used. {limitReached ? 'Delete one before adding another.' : `Up to ${maxItems} items can be shown.`}
+                </p>
+              ) : null}
             </div>
             {editingItem ? (
               <div className="flex flex-wrap gap-2">
@@ -714,7 +813,7 @@ export function MinistryItemsManager({
                   {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   {saveButtonText}
                 </Button>
-                <Button variant="outline" onClick={addNew}>
+                <Button variant="outline" onClick={addNew} disabled={limitReached}>
                   <Plus className="mr-2 h-4 w-4" />
                   New
                 </Button>
@@ -758,6 +857,19 @@ export function MinistryItemsManager({
                   <p className="break-all px-3 py-2 text-xs text-foreground/50">{draft.imageUrl}</p>
                 </div>
               ) : null}
+              {draft.imageUrl ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => {
+                    setDraft((prev) => ({ ...prev, imageUrl: '' }));
+                    setStatus(`${labels?.image || 'Image'} removed. Save changes to publish it.`);
+                  }}
+                >
+                  Remove Image
+                </Button>
+              ) : null}
             </div>
           )}
 
@@ -770,13 +882,59 @@ export function MinistryItemsManager({
             Published
           </label>
 
+          {showPaymentFields && (
+            <div className="space-y-3 rounded-xl border border-border/60 bg-background/50 p-4">
+              <label className="flex items-center gap-3 text-sm font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  checked={draft.acceptsOnlinePayment}
+                  onChange={(event) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      acceptsOnlinePayment: event.target.checked,
+                      paymentAmount: event.target.checked ? prev.paymentAmount : '',
+                      paymentCurrency: event.target.checked ? prev.paymentCurrency : 'MWK',
+                      paymentAccount: event.target.checked ? prev.paymentAccount || defaultPaymentAccount : defaultPaymentAccount,
+                    }))
+                  }
+                />
+                Allow users to pay for this event on the website
+              </label>
+              {draft.acceptsOnlinePayment && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr]">
+                  <select
+                    value={draft.paymentCurrency}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, paymentCurrency: event.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                    aria-label="Event payment currency"
+                  >
+                    <option value="MWK">MWK</option>
+                    <option value="USD">USD</option>
+                  </select>
+                  <Field
+                    label="Payment Amount"
+                    value={draft.paymentAmount}
+                    onChange={(value) => setDraft((prev) => ({ ...prev, paymentAmount: value }))}
+                    placeholder="Event payment amount"
+                    type="number"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3 border-t border-border/60 pt-4">
-            <Button onClick={save} disabled={savingId !== null} className="gap-2">
+            <Button onClick={save} disabled={savingId !== null || (isCreatingNew && limitReached)} className="gap-2">
               {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {saveButtonText}
             </Button>
+            {isCreatingNew && limitReached ? (
+              <p className="flex items-center text-sm font-medium text-destructive">
+                Limit reached. Select an existing item to edit it, or delete one saved item first.
+              </p>
+            ) : null}
             {isPersistedEdit && editingItem ? (
-              <Button variant="destructive" onClick={() => remove(editingItem)} className="gap-2">
+              <Button variant="destructive" onClick={() => requestRemove(editingItem)} className="gap-2">
                 <Trash2 className="h-4 w-4" />
                 Delete
               </Button>
@@ -803,6 +961,11 @@ export function MinistryItemsManager({
               </div>
               {item.label ? <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{item.label}</p> : null}
               {item.description ? <p className="mt-2 line-clamp-2 text-xs text-foreground/60">{item.description}</p> : null}
+              {item.acceptsOnlinePayment && item.paymentAmount ? (
+                <p className="mt-2 text-xs font-semibold text-primary">
+                  Online payment: {item.paymentCurrency || 'MWK'} {Number(item.paymentAmount).toLocaleString('en-US')}
+                </p>
+              ) : null}
               {item.isFallback ? <p className="mt-2 text-[10px] text-foreground/40">Fallback content ready to edit</p> : null}
             </button>
           ))}

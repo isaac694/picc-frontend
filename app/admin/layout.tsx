@@ -6,7 +6,7 @@ import { SessionWarningModal } from '@/components/admin/SessionWarningModal';
 import { useSessionManagement } from '@/hooks/use-session-management';
 import { AdminAuthProvider, useAdminAuth } from '@/hooks/use-admin-auth';
 import { usePathname, useRouter } from 'next/navigation';
-import { ADMIN_PAGE, canAccessAdminPage } from '@/lib/admin-pages';
+import { ADMIN_PAGE, canAccessAdminPage, canAccessMinistry, ministryKeyFromAdminPath } from '@/lib/admin-pages';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useEffect } from 'react';
@@ -20,9 +20,10 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/events')) return ADMIN_PAGE.EVENTS;
   if (path.startsWith('/admin/quote-of-month')) return ADMIN_PAGE.QUOTE_OF_MONTH;
   if (path.startsWith('/admin/page-images')) return ADMIN_PAGE.PAGE_IMAGES;
+  if (path.startsWith('/admin/video-declarations')) return ADMIN_PAGE.VIDEO_DECLARATIONS;
   if (path.startsWith('/admin/livechat')) return ADMIN_PAGE.LIVECHAT;
   if (path.startsWith('/admin/schools/')) return ADMIN_PAGE.SCHOOLS_ENROLLMENT;
-  if (path.startsWith('/admin/ministries/')) return ADMIN_PAGE.MINISTRIES;
+  if (path.startsWith('/admin/ministries/')) return null;
   if (path.startsWith('/admin/about-page')) return ADMIN_PAGE.ABOUT_PAGE;
   if (path.startsWith('/admin/contact')) return ADMIN_PAGE.CONTACT_PAGE;
   if (path.startsWith('/admin/media')) return ADMIN_PAGE.MEDIA_PAGE;
@@ -69,10 +70,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   const requiredPage = pathToAdminPage(pathname);
+  const requiredMinistryKey = ministryKeyFromAdminPath(pathname);
   const isUsersPage = (pathname || '').startsWith('/admin/users');
 
   const isAuthorized = (() => {
     if (isUsersPage) return user?.role === 'SUPER_ADMIN';
+    if (requiredMinistryKey) return canAccessMinistry(user, requiredMinistryKey);
     if (!requiredPage) return true;
     return canAccessAdminPage(user, requiredPage);
   })();

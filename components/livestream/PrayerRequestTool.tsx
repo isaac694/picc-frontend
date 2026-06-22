@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { sendPrayerNotification } from '@/lib/email';
+import { apiFetch } from '@/lib/api';
 
 const initialPrayerForm = {
   fullName: '',
@@ -21,7 +21,7 @@ const initialPrayerForm = {
 const inputClass =
   'mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60';
 
-export default function PrayerRequestTool() {
+export default function PrayerRequestTool({ ministryKey = 'main' }: { ministryKey?: string }) {
   const [prayerForm, setPrayerForm] = useState(initialPrayerForm);
   const [prayerSubmitting, setPrayerSubmitting] = useState(false);
 
@@ -41,19 +41,29 @@ export default function PrayerRequestTool() {
 
     setPrayerSubmitting(true);
     try {
-      await sendPrayerNotification({
-        churchEmail: 'info@piccworldwide.org',
-        fullName: prayerForm.fullName,
-        email: prayerForm.email || undefined,
-        phone: prayerForm.phone || undefined,
-        address: prayerForm.address || undefined,
-        city: prayerForm.city || undefined,
-        state: prayerForm.state || undefined,
-        country: prayerForm.country || undefined,
-        bornAgain: prayerForm.bornAgain || undefined,
-        areaOfNeed: prayerForm.areaOfNeed || undefined,
-        request: prayerForm.request,
+      const response = await apiFetch('/api/prayer-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ministryKey,
+          name: prayerForm.fullName,
+          email: prayerForm.email || undefined,
+          phone: prayerForm.phone || undefined,
+          address: prayerForm.address || undefined,
+          city: prayerForm.city || undefined,
+          state: prayerForm.state || undefined,
+          country: prayerForm.country || undefined,
+          bornAgain: prayerForm.bornAgain || undefined,
+          areaOfNeed: prayerForm.areaOfNeed || undefined,
+          request: prayerForm.request,
+        }),
       });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to submit prayer request.');
+      }
+
       toast.success('Thank you! Your prayer request was submitted.');
       setPrayerForm(initialPrayerForm);
     } catch (error) {

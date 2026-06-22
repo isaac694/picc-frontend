@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
 }
 
 model Donation {
@@ -87,11 +86,25 @@ model Sermon {
   title       String
   description String?
   pastor      String?
+  series      String?
+  topic       String?
+  imageUrl    String?
+  videoUrl    String?
+  audioUrl    String?
   date        DateTime
   duration    String?
   isPublished Boolean       @default(true)
   createdAt   DateTime      @default(now())
   media       SermonMedia[]
+}
+
+model SermonMedia {
+  id        Int      @id @default(autoincrement())
+  sermon    Sermon   @relation(fields: [sermonId], references: [id], onDelete: Cascade)
+  sermonId  Int
+  url       String
+  type      String?
+  createdAt DateTime @default(now())
 }
 
 model User {

@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef, type SyntheticEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, type SyntheticEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
+import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
+import { YOUTH_CHURCH_NEWS_ITEMS, YOUTH_CHURCH_NEWS_KEY } from '@/components/youthChurchNews';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { 
   MapPin, Phone, Mail, CalendarClock, Globe, BookOpenText, MessageSquareText, 
-  StickyNote, Rocket, Sparkles, Flame, Baby, XIcon, Instagram, Facebook, Twitter
+  StickyNote, Rocket, Sparkles, Flame, Baby, XIcon, Instagram, Facebook, Twitter, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -16,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import LiveChat from '@/components/LiveChat';
 import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
-import GiveTool from '@/components/livestream/GiveTool';
+import YouthChurchGiveTool from '@/components/livestream/YouthChurchGiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
 
 // --- TYPES & GLOBALS ---
@@ -29,14 +32,6 @@ type YouTubeStateChangeEvent = {
   data: number;
   target: YouTubePlayer;
 };
-
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    YT: any;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
 
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
 
@@ -100,6 +95,10 @@ type MinistryItem = {
   label: string | null;
   imageUrl: string | null;
   sortOrder: number;
+  acceptsOnlinePayment?: boolean;
+  paymentAmount?: number | null;
+  paymentCurrency?: string | null;
+  paymentAccount?: string | null;
 };
 
 type YouthEvent = {
@@ -109,6 +108,25 @@ type YouthEvent = {
   date: string;
   location: string;
   description: string;
+  image: string;
+  acceptsOnlinePayment: boolean;
+  paymentAmount: number | null;
+  paymentCurrency: string;
+  paymentAccount: string;
+};
+
+type BankTransferDetails = {
+  bank_name?: string;
+  account_number?: string;
+  account_name?: string;
+  account_expiration_timestamp?: number;
+};
+
+type YouthInitiative = {
+  id: number;
+  type: string;
+  title: string;
+  status: string;
   image: string;
 };
 
@@ -131,6 +149,19 @@ const toAssetUrl = (value: string | null | undefined) => {
   return trimmed;
 };
 
+const normalizePaymentAmount = (value: unknown): number | null => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.replace(/[^0-9.-]+/g, '').trim();
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
 const videoIdFromUrl = (value: string | null | undefined) => {
   const raw = (value || '').trim();
   if (!raw) return '';
@@ -147,6 +178,41 @@ const videoIdFromUrl = (value: string | null | undefined) => {
 
 const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
   event.currentTarget.src = fallback;
+};
+
+const normalizeMinistryItem = (item: unknown): MinistryItem | null => {
+  if (!item || typeof item !== 'object') return null;
+  const record = item as Record<string, unknown>;
+  const id = typeof record.id === 'string' ? record.id : typeof record.id === 'number' ? String(record.id) : '';
+  const category = typeof record.category === 'string' ? record.category : '';
+  const title = typeof record.title === 'string' ? record.title : '';
+  if (!id || !category || !title) return null;
+
+  const imageUrl = typeof record.imageUrl === 'string'
+    ? record.imageUrl
+    : typeof record.image === 'string'
+      ? record.image
+      : null;
+
+  return {
+    id,
+    category,
+    title,
+    description: typeof record.description === 'string' ? record.description : null,
+    label: typeof record.label === 'string' ? record.label : null,
+    imageUrl,
+    sortOrder:
+      typeof record.sortOrder === 'number'
+        ? record.sortOrder
+        : typeof record.sortOrder === 'string'
+          ? Number(record.sortOrder) || 0
+          : 0,
+    acceptsOnlinePayment:
+      record.acceptsOnlinePayment === true || record.acceptsOnlinePayment === 'true',
+    paymentAmount: normalizePaymentAmount(record.paymentAmount),
+    paymentCurrency: typeof record.paymentCurrency === 'string' ? record.paymentCurrency : null,
+    paymentAccount: typeof record.paymentAccount === 'string' ? record.paymentAccount : null,
+  };
 };
 
 const mergeItemsWithFallback = (loaded: MinistryItem[], fallback: MinistryItem[]) => {
@@ -183,8 +249,11 @@ Our services are packed with high-energy worship, creative expressions, and tran
   partnershipBody: `Equipping the next generation requires resources, dedicated mentors, and community support. You can partner with the Youth Church to fund our outreach programs, retreats, and mentorship camps.
 
 Whether you are investing in the Heritage Kids, Teens, Hope & Beauty, or CTG, your support helps us build strong foundations for tomorrow's leaders.`,
-  partnershipDetails: [],
-  partnershipImageUrl: '/hero/hero-store.jpg',
+  partnershipDetails: [
+    { label: 'National Bank', value: 'PICC Youth Church - 1009799539' },
+    { label: 'Airtel Money', value: '0999291616' },
+  ],
+  partnershipImageUrl: '/ministries/youth-church/partner.jpg',
   phone: 'Check with your local PICC branch for youth pastor contacts.',
   email: 'info@picc.org',
   location: 'PICC Youth Church\nCamp of God Cathedral',
@@ -200,7 +269,7 @@ const eventsList = [
     date: 'Every Sunday | 1:30 PM - 3:30 PM',
     location: 'The Camp of God Cathedral, Area 49 Lilongwe',
     description: 'Join us every Sunday for high-energy worship, creative expressions, and transparent conversations about the issues young people face. Bring a friend!',
-    image: '/images/youth-church/img-1.jpg',
+    image: '/ministries/youth-church/img-1.jpg',
   },
   {
     id: 2,
@@ -209,7 +278,7 @@ const eventsList = [
     date: 'August 28 - 30, 2026',
     location: 'Lake Malawi',
     description: 'Our annual Youth Church Lake Retreat is back! Three days of disconnecting from the noise, encountering God, and building lifelong friendships on the shores of Lake Malawi. Registration details are available on our WhatsApp channels.',
-    image: '/images/youth-church/img-7.jpg',
+    image: '/ministries/youth-church/img-7.jpg',
   },
   {
     id: 3,
@@ -236,7 +305,7 @@ const eventsList = [
     date: 'September 12, 2026',
     location: 'Cathedral Hall',
     description: 'An elegant afternoon dedicated to mentoring young women. We will be discussing grace, purity, and purpose over tea and pastries.',
-    image: '/images/youth-church/img-2.jpg',
+    image: '/ministries/youth-church/img-2.jpg',
   },
 ];
 
@@ -248,15 +317,19 @@ const defaultEventItems: MinistryItem[] = eventsList.map((event, index) => ({
   label: event.date,
   imageUrl: event.image,
   sortOrder: index,
+  acceptsOnlinePayment: false,
+  paymentAmount: null,
+  paymentCurrency: 'MWK',
+  paymentAccount: 'youth',
 }));
 
 const highlightGallery = [
-  { id: 1, src: '/images/youth-church/img-1.jpg', caption: 'High-energy worship and sincere devotion.' },
-  { id: 2, src: '/images/youth-church/img-2.jpg', caption: 'Hope and Beauty: Sisterhood in action.' },
-  { id: 3, src: '/images/youth-church/img-3.jpg', caption: 'Called to Greatness: Building future leaders.' },
-  { id: 4, src: '/images/youth-church/img-4.jpg', caption: 'Teens Ministry: Navigating life with faith.' },
-  { id: 5, src: '/images/youth-church/img-5.jpg', caption: 'Heritage Ministry: Laying the early foundations.' },
-  { id: 6, src: '/images/youth-church/img-6.jpg', caption: 'Growing in Christ and community together.' },
+  { id: 1, src: '/ministries/youth-church/img-1.jpg', caption: 'High-energy worship and sincere devotion.' },
+  { id: 2, src: '/ministries/youth-church/img-2.jpg', caption: 'Hope and Beauty: Sisterhood in action.' },
+  { id: 3, src: '/ministries/youth-church/img-3.jpg', caption: 'Called to Greatness: Building future leaders.' },
+  { id: 4, src: '/ministries/youth-church/img-4.jpg', caption: 'Teens Ministry: Navigating life with faith.' },
+  { id: 5, src: '/ministries/youth-church/img-5.jpg', caption: 'Heritage Ministry: Laying the early foundations.' },
+  { id: 6, src: '/ministries/youth-church/img-6.jpg', caption: 'Growing in Christ and community together.' },
 ];
 
 const defaultYouthLifeItems: MinistryItem[] = highlightGallery.map((item, index) => ({
@@ -270,11 +343,11 @@ const defaultYouthLifeItems: MinistryItem[] = highlightGallery.map((item, index)
 }));
 
 const ministryProjects = [
-  { id: 1, type: 'Campus Outreach', title: 'University Mentorship Program', status: 'Ongoing', image: '/images/youth-church/img-4.jpg' },
-  { id: 2, type: 'Teens Initiative', title: 'High School Faith Clubs', status: 'Active', image: '/images/youth-church/img-3.jpg' },
-  { id: 3, type: 'CTG Project', title: 'Young Men’s Leadership Workshop', status: 'Active', image: '/images/youth-church/img-1.jpg' },
-  { id: 4, type: 'Hope & Beauty', title: 'Purity & Purpose Seminar', status: 'Upcoming', image: '/images/youth-church/img-2.jpg' },
-  { id: 5, type: 'Heritage', title: 'Vacation Bible School', status: 'August 2026', image: '/images/youth-church/img-6.jpg' },
+  { id: 1, type: 'Campus Outreach', title: 'University Mentorship Program', status: 'Ongoing', image: '/ministries/youth-church/img-4.jpg' },
+  { id: 2, type: 'Teens Initiative', title: 'High School Faith Clubs', status: 'Active', image: '/ministries/youth-church/img-3.jpg' },
+  { id: 3, type: 'CTG Project', title: 'Young Men’s Leadership Workshop', status: 'Active', image: '/ministries/youth-church/img-1.jpg' },
+  { id: 4, type: 'Hope & Beauty', title: 'Purity & Purpose Seminar', status: 'Upcoming', image: '/ministries/youth-church/img-2.jpg' },
+  { id: 5, type: 'Heritage', title: 'Vacation Bible School', status: 'August 2026', image: '/ministries/youth-church/img-6.jpg' },
 ];
 
 const defaultInitiativeItems: MinistryItem[] = ministryProjects.map((project, index) => ({
@@ -334,7 +407,25 @@ export default function YouthChurchMinistryPage() {
   // --- STATE ---
   const [activeGalleryId, setActiveGalleryId] = useState<number | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<YouthEvent | null>(null); // State for the Event Pop-up
+  const [selectedInitiative, setSelectedInitiative] = useState<YouthInitiative | null>(null);
   const [featuredEventIndex, setFeaturedEventIndex] = useState(0); // State for cycling events grid
+  const [eventSearchInput, setEventSearchInput] = useState('');
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
+  const [initiativeSearchInput, setInitiativeSearchInput] = useState('');
+  const [initiativeSearchQuery, setInitiativeSearchQuery] = useState('');
+  const [paymentEvent, setPaymentEvent] = useState<YouthEvent | null>(null);
+  const [paymentForm, setPaymentForm] = useState({
+    fullName: '',
+    phone: '',
+    phoneCountry: '+265',
+    email: '',
+    paymentMethod: 'airtel',
+  });
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
+  const [bankTransferDetails, setBankTransferDetails] = useState<BankTransferDetails | null>(null);
+  const [newsItems, setNewsItems] = useState<NewsSectionItem[]>(YOUTH_CHURCH_NEWS_ITEMS);
 
   // --- LIVESTREAM STATE ---
   const [ytReady, setYtReady] = useState(false);
@@ -359,7 +450,7 @@ export default function YouthChurchMinistryPage() {
     events: ministryItems.filter((item) => item.category === 'event'),
   };
   const armItems = mergeItemsWithFallback(itemGroups.arms, defaultArmItems);
-  const youthLifeItems = mergeItemsWithFallback(itemGroups.youthLife, defaultYouthLifeItems);
+  const youthLifeItems = mergeItemsWithFallback(itemGroups.youthLife, defaultYouthLifeItems).slice(0, 6);
   const galleryItems = youthLifeItems.map((item, index) => ({
     id: index + 1,
     src: toAssetUrl(item.imageUrl) || highlightGallery[index % highlightGallery.length]?.src || '/hero/hero-store.jpg',
@@ -386,6 +477,10 @@ export default function YouthChurchMinistryPage() {
       location: hasLocationAndBody ? maybeLocation : fallbackEvent?.location || 'PICC Youth Church',
       description: hasLocationAndBody ? bodyParts.join('\n\n') : item.description || '',
       image: toAssetUrl(item.imageUrl) || fallbackEvent?.image || '/hero/hero-store.jpg',
+      acceptsOnlinePayment: Boolean(item.acceptsOnlinePayment) || (normalizePaymentAmount(item.paymentAmount) != null && normalizePaymentAmount(item.paymentAmount)! > 0),
+      paymentAmount: normalizePaymentAmount(item.paymentAmount),
+      paymentCurrency: item.paymentCurrency || 'MWK',
+      paymentAccount: item.paymentAccount || 'youth',
     };
   });
   const aboutParagraphs = (ministryInfo.about || defaultInfo.about || '').split(/\n{2,}/).filter(Boolean);
@@ -400,13 +495,57 @@ export default function YouthChurchMinistryPage() {
     return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "Africa/Blantyre" });
   };
 
+  const formatSearchDate = (value: string) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  };
+
+  const normalizeSearchText = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+  const normalizedEventSearchQuery = normalizeSearchText(eventSearchQuery);
+  const normalizedFormattedSearchDate = normalizeSearchText(formatSearchDate(eventSearchQuery));
+  const displayedEventItems = normalizedEventSearchQuery
+    ? eventItems.filter((event) => {
+        const searchableDate = normalizeSearchText([event.date, formatSearchDate(event.date)].join(' '));
+        return (
+          searchableDate.includes(normalizedEventSearchQuery) ||
+          Boolean(normalizedFormattedSearchDate && searchableDate.includes(normalizedFormattedSearchDate))
+        );
+      })
+    : eventItems;
+  const normalizedInitiativeSearchQuery = normalizeSearchText(initiativeSearchQuery);
+  const normalizedFormattedInitiativeSearchDate = normalizeSearchText(formatSearchDate(initiativeSearchQuery));
+  const displayedProjectItems = normalizedInitiativeSearchQuery
+    ? projectItems.filter((project) => {
+        const searchableText = normalizeSearchText([
+          project.title,
+          project.type,
+          project.status,
+          formatSearchDate(project.status),
+        ].join(' '));
+
+        return (
+          searchableText.includes(normalizedInitiativeSearchQuery) ||
+          Boolean(normalizedFormattedInitiativeSearchDate && searchableText.includes(normalizedFormattedInitiativeSearchDate))
+        );
+      })
+    : projectItems;
+
   // --- CYCLING EVENTS EFFECT ---
   useEffect(() => {
+    if (!displayedEventItems.length) return;
     const timer = setInterval(() => {
-      setFeaturedEventIndex((prev) => (prev + 1) % eventItems.length);
+      setFeaturedEventIndex((prev) => (prev + 1) % displayedEventItems.length);
     }, 5000); // Cycles every 5 seconds
     return () => clearInterval(timer);
-  }, [eventItems.length]);
+  }, [displayedEventItems.length]);
+
+  useEffect(() => {
+    setFeaturedEventIndex(0);
+  }, [eventSearchQuery]);
 
   const fallbackGridEvent: YouthEvent = {
     id: 0,
@@ -415,11 +554,161 @@ export default function YouthChurchMinistryPage() {
     date: 'Every Sunday | 1:30 PM - 3:30 PM',
     location: 'The Camp of God Cathedral, Area 49 Lilongwe',
     description: 'Join us every Sunday for worship, word, and community.',
-    image: '/images/youth-church/img-1.jpg',
+    image: '/ministries/youth-church/img-1.jpg',
+    acceptsOnlinePayment: false,
+    paymentAmount: null,
+    paymentCurrency: 'MWK',
+    paymentAccount: 'youth',
   };
-  const safeFeaturedEventIndex = eventItems.length ? featuredEventIndex % eventItems.length : 0;
-  const featuredGridEvent = eventItems[safeFeaturedEventIndex] || fallbackGridEvent;
-  const remainingEvents = eventItems.filter((_, idx) => idx !== safeFeaturedEventIndex);
+  const safeFeaturedEventIndex = displayedEventItems.length ? featuredEventIndex % displayedEventItems.length : 0;
+  const featuredGridEvent = displayedEventItems[safeFeaturedEventIndex] || fallbackGridEvent;
+  const remainingEvents = displayedEventItems.filter((_, idx) => idx !== safeFeaturedEventIndex);
+
+  const handleEventSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setEventSearchQuery(eventSearchInput.trim());
+  };
+
+  const clearEventSearch = () => {
+    setEventSearchInput('');
+    setEventSearchQuery('');
+  };
+
+  const featuredProject = displayedProjectItems[0] || null;
+  const remainingProjects = displayedProjectItems.slice(1);
+
+  const handleInitiativeSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setInitiativeSearchQuery(initiativeSearchInput.trim());
+  };
+
+  const clearInitiativeSearch = () => {
+    setInitiativeSearchInput('');
+    setInitiativeSearchQuery('');
+  };
+
+  const normalizePaychanguPhone = (countryCode: string, rawPhone: string) => {
+    const digits = rawPhone.replace(/\D/g, '');
+    if (countryCode === '+265') return digits.replace(/^0+/, '');
+    return `${countryCode}${digits}`;
+  };
+
+  const formatPaymentAmount = (event: YouthEvent) =>
+    `${event.paymentCurrency || 'MWK'} ${Number(event.paymentAmount || 0).toLocaleString('en-US')}`;
+
+  const openPayment = (event: YouthEvent) => {
+    if (!event.acceptsOnlinePayment || event.paymentAmount == null || event.paymentAmount <= 0) return;
+    setPaymentEvent(event);
+    setPaymentError(null);
+    setPaymentSuccess(null);
+    setBankTransferDetails(null);
+  };
+
+  const submitPayment = async () => {
+    if (!paymentEvent) return;
+    setPaymentError(null);
+    setPaymentSuccess(null);
+    setBankTransferDetails(null);
+
+    if (!paymentForm.fullName || !paymentForm.phone || !paymentForm.email) {
+      setPaymentError('Please enter your name, phone number, and email.');
+      return;
+    }
+
+    const nameParts = paymentForm.fullName.trim().split(/\s+/).filter(Boolean);
+    if (nameParts.length < 2) {
+      setPaymentError('Please enter your full name (first and last).');
+      return;
+    }
+
+    const normalizedPhone = normalizePaychanguPhone(paymentForm.phoneCountry, paymentForm.phone);
+    if (paymentForm.phoneCountry === '+265' && normalizedPhone.length !== 9) {
+      setPaymentError('Please enter a valid Malawi mobile number with 9 digits.');
+      return;
+    }
+
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
+    const amount = Number(paymentEvent.paymentAmount || 0);
+    const currency = paymentEvent.paymentCurrency || 'MWK';
+    const reason = `Youth Event: ${paymentEvent.title}`;
+    const paymentAccount = paymentEvent.paymentAccount || 'youth';
+
+    setPaymentSubmitting(true);
+    try {
+      const givingResponse = await apiFetch('/api/giving', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          currency,
+          fullName: paymentForm.fullName,
+          email: paymentForm.email,
+          phone: normalizedPhone,
+          phoneCountry: paymentForm.phoneCountry,
+          paymentMethod: paymentForm.paymentMethod,
+          givingType: 'Youth Event Payment',
+          reason,
+          paymentAccount,
+        }),
+      });
+      const givingData = await givingResponse.json().catch(() => null);
+      if (!givingResponse.ok) {
+        throw new Error(givingData?.error || 'Failed to save payment record.');
+      }
+
+      const paymentResponse = await fetch('/api/paychangu/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          currency,
+          email: paymentForm.email,
+          firstName,
+          lastName,
+          phone: normalizedPhone,
+          paymentMethod: paymentForm.paymentMethod,
+          reason,
+          givingId: givingData.id,
+          account: paymentAccount,
+        }),
+      });
+      const paymentData = await paymentResponse.json().catch(() => null);
+      if (!paymentResponse.ok) {
+        throw new Error(paymentData?.error || paymentData?.message || 'Payment initialization failed.');
+      }
+
+      if (paymentForm.paymentMethod === 'card' && paymentData?.checkoutUrl) {
+        window.location.href = paymentData.checkoutUrl;
+        return;
+      }
+
+      if (paymentForm.paymentMethod === 'bank') {
+        setBankTransferDetails(paymentData?.bankTransfer || null);
+        setPaymentSuccess('Your bank transfer account has been generated. Use the details below to complete payment.');
+      } else {
+        setPaymentSuccess('Payment request sent. Please follow the mobile prompt to complete payment.');
+      }
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Failed to initialize payment.');
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
+
+  const parseSiteContentItems = (body: unknown): unknown[] => {
+    if (typeof body !== 'string' || !body) return [];
+    try {
+      const parsed = JSON.parse(body) as unknown;
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { items?: unknown[] }).items)) {
+        return (parsed as { items: unknown[] }).items;
+      }
+    } catch {
+      return [];
+    }
+    return [];
+  };
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -443,7 +732,11 @@ export default function YouthChurchMinistryPage() {
         }
 
         if (Array.isArray(data?.items)) {
-          setMinistryItems(data.items);
+          setMinistryItems(
+            (data.items as unknown[])
+              .map((item: unknown) => normalizeMinistryItem(item))
+              .filter((item): item is MinistryItem => item !== null),
+          );
         }
       } catch {
         // Keep the built-in Youth Church content as the public fallback.
@@ -451,6 +744,39 @@ export default function YouthChurchMinistryPage() {
     };
 
     void loadMinistryContent();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNews = async () => {
+      try {
+        const response = await apiFetch(`/api/site-content/${YOUTH_CHURCH_NEWS_KEY}`);
+        if (!response.ok) return;
+        const record = await response.json().catch(() => null);
+        const items = parseSiteContentItems(record?.body)
+          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+          .map((item) => ({
+            badge: typeof item.badge === 'string' ? item.badge : 'Update',
+            date: typeof item.date === 'string' ? item.date : '',
+            title: typeof item.title === 'string' ? item.title : '',
+            description: typeof item.description === 'string' ? item.description : '',
+            image: toAssetUrl(typeof item.imageUrl === 'string' ? item.imageUrl : typeof item.image === 'string' ? item.image : '') || '/ministries/youth-church/news-1.JPG',
+          }))
+          .filter((item) => item.title);
+
+        if (isMounted && items.length > 0) {
+          setNewsItems(items.slice(0, YOUTH_CHURCH_NEWS_ITEMS.length));
+        }
+      } catch {
+        // Keep fallback news.
+      }
+    };
+
+    void loadNews();
     return () => {
       isMounted = false;
     };
@@ -684,6 +1010,16 @@ export default function YouthChurchMinistryPage() {
                   {selectedEvent.description}
                 </p>
 
+                {selectedEvent.acceptsOnlinePayment && selectedEvent.paymentAmount != null && selectedEvent.paymentAmount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => openPayment(selectedEvent)}
+                    className="mb-6 w-fit rounded-full bg-[#2D5A8C] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
+                  >
+                    Pay {formatPaymentAmount(selectedEvent)}
+                  </button>
+                ) : null}
+
                 {/* Social & Contact Links */}
                 <div>
                   <p className="text-sm font-bold text-gray-900 mb-3">MORE INFO & RSVP:</p>
@@ -703,6 +1039,222 @@ export default function YouthChurchMinistryPage() {
                   </div>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {selectedInitiative && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setSelectedInitiative(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white text-black w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedInitiative(null)}
+                className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+
+              <div className="relative w-full md:w-1/2 h-64 md:h-[500px] bg-slate-100">
+                <Image
+                  src={selectedInitiative.image}
+                  alt={selectedInitiative.title}
+                  fill
+                  className="object-cover"
+                  onError={swapImage('/hero/hero-store.jpg')}
+                />
+              </div>
+
+              <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col justify-center bg-gray-50">
+                <span className="text-sm font-bold text-[#2D5A8C] uppercase tracking-wider mb-2">
+                  {selectedInitiative.type}
+                </span>
+                <h3 className="text-3xl font-black text-gray-900 mb-4 leading-tight">
+                  {selectedInitiative.title}
+                </h3>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-gray-400 mt-0.5" />
+                    <p className="text-gray-700 font-medium">Status: {selectedInitiative.status}</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Globe className="w-5 h-5 text-gray-400 mt-0.5" />
+                    <p className="text-gray-700 font-medium">Youth Church Initiative</p>
+                  </div>
+                </div>
+
+                <div className="w-12 h-1 bg-gray-200 rounded-full mb-6" />
+
+                <p className="text-gray-600 leading-relaxed mb-8">
+                  This initiative is part of Youth Church&apos;s work to mentor, equip, and gather young people across PICC&apos;s youth ministries.
+                </p>
+
+                <div>
+                  <p className="text-sm font-bold text-gray-900 mb-3">MORE INFO:</p>
+                  <div className="flex flex-wrap gap-3">
+                    <a href="https://wa.me/265999000000" target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
+                      <Phone className="w-4 h-4" /> WhatsApp
+                    </a>
+                    <a href="https://facebook.com/piccyouthchurch" target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-[#1877F2] hover:bg-[#0c5bc6] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
+                      <Facebook className="w-4 h-4" /> Facebook
+                    </a>
+                    <a href="https://instagram.com/piccyouthchurch" target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
+                      <Instagram className="w-4 h-4" /> Instagram
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {paymentEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+            onClick={() => setPaymentEvent(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 16 }}
+              className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 text-black shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#2D5A8C]">Youth Event Payment</p>
+                  <h2 className="mt-2 text-2xl font-black">{paymentEvent.title}</h2>
+                  <p className="mt-1 text-sm text-black/60">{formatPaymentAmount(paymentEvent)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPaymentEvent(null)}
+                  className="rounded-full bg-black/5 p-2 text-black transition hover:bg-black/10"
+                  aria-label="Close payment form"
+                >
+                  <XIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              {paymentError && (
+                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700">
+                  {paymentError}
+                </div>
+              )}
+              {paymentSuccess && (
+                <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+                  {paymentSuccess}
+                </div>
+              )}
+
+              <div className="grid gap-3 text-sm">
+                <label className="grid gap-1">
+                  <span className="font-medium text-black/75">Full name</span>
+                  <input
+                    className="rounded-lg border border-black/10 px-3 py-2"
+                    value={paymentForm.fullName}
+                    onChange={(event) => setPaymentForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                    type="text"
+                    placeholder="First and last name"
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="font-medium text-black/75">Email address</span>
+                  <input
+                    className="rounded-lg border border-black/10 px-3 py-2"
+                    value={paymentForm.email}
+                    onChange={(event) => setPaymentForm((prev) => ({ ...prev, email: event.target.value }))}
+                    type="email"
+                    placeholder="Email address"
+                  />
+                </label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[116px_minmax(0,1fr)]">
+                  <label className="grid gap-1">
+                    <span className="font-medium text-black/75">Country</span>
+                    <select
+                      className="rounded-lg border border-black/10 px-3 py-2"
+                      value={paymentForm.phoneCountry}
+                      onChange={(event) => setPaymentForm((prev) => ({ ...prev, phoneCountry: event.target.value }))}
+                    >
+                      <option value="+265">MW (+265)</option>
+                      <option value="+233">GH (+233)</option>
+                      <option value="+234">NG (+234)</option>
+                      <option value="+254">KE (+254)</option>
+                      <option value="+255">TZ (+255)</option>
+                      <option value="+260">ZM (+260)</option>
+                      <option value="+27">ZA (+27)</option>
+                      <option value="+44">UK (+44)</option>
+                      <option value="+1">US (+1)</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="font-medium text-black/75">Phone number</span>
+                    <input
+                      className="rounded-lg border border-black/10 px-3 py-2"
+                      value={paymentForm.phone}
+                      onChange={(event) => setPaymentForm((prev) => ({ ...prev, phone: event.target.value }))}
+                      type="tel"
+                      placeholder="Phone number"
+                    />
+                  </label>
+                </div>
+                <div className="grid gap-2">
+                  <span className="font-medium text-black/75">Payment method</span>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {[
+                      ['airtel', 'Airtel Money'],
+                      ['mpamba', 'Mpamba'],
+                      ['bank', 'Bank Transfer'],
+                      ['card', 'Card Payment'],
+                    ].map(([value, label]) => (
+                      <label key={value} className="flex items-center gap-2 rounded-lg border border-black/10 px-3 py-2">
+                        <input
+                          type="radio"
+                          name="youthEventPaymentMethod"
+                          value={value}
+                          checked={paymentForm.paymentMethod === value}
+                          onChange={(event) => setPaymentForm((prev) => ({ ...prev, paymentMethod: event.target.value }))}
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {bankTransferDetails && (
+                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                  <p className="font-semibold">Bank transfer details</p>
+                  <p className="mt-2">Bank: {bankTransferDetails.bank_name || 'N/A'}</p>
+                  <p>Account Name: {bankTransferDetails.account_name || 'N/A'}</p>
+                  <p>Account Number: {bankTransferDetails.account_number || 'N/A'}</p>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={submitPayment}
+                disabled={paymentSubmitting}
+                className="mt-5 w-full rounded-full bg-[#2D5A8C] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1E3A5F] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {paymentSubmitting ? 'Processing...' : 'Pay Now'}
+              </button>
             </motion.div>
           </motion.div>
         )}
@@ -955,7 +1507,7 @@ export default function YouthChurchMinistryPage() {
                     {activeTool === "chat" && <div className="h-100 w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Youth Church Live'} /></div>}
                     {activeTool === "notepad" && <NotepadTool />}
                     {activeTool === "testimony" && <div className="px-5 py-6"><TestimonyTool /></div>}
-                    {activeTool === "give" && <div className="px-5 py-6"><GiveTool isMobile={false} /></div>}
+                    {activeTool === "give" && <div className="px-5 py-6"><YouthChurchGiveTool isMobile={false} /></div>}
                   </div>
                 )}
               </div>
@@ -967,81 +1519,115 @@ export default function YouthChurchMinistryPage() {
         {!mobilePlayerActive && (
           <section className="py-20 bg-gray-50 text-black overflow-hidden border-y border-black/5">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
+              <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between mb-12">
                 <div>
                   <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming & Past Events</h2>
                   <p className="text-black/60 max-w-xl">Encompassing gatherings from the Youth Church, CTG, Hope & Beauty, Teens, and Heritage.</p>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                {/* Large Featured Image (Cycling) - BUTTON */}
-                <button 
-                  onClick={() => setSelectedEvent(featuredGridEvent)}
-                  className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
-                >
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={featuredGridEvent.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.5 }}
-                      className="absolute inset-0"
+                <div className="flex flex-col items-start gap-2 md:items-end">
+                  <form onSubmit={handleEventSearch} className="flex w-full items-center gap-2 sm:w-auto">
+                    <input
+                      type="search"
+                      value={eventSearchInput}
+                      onChange={(event) => setEventSearchInput(event.target.value)}
+                      placeholder="March 28, 2026"
+                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#2D5A8C] focus:ring-2 focus:ring-[#2D5A8C]/15 sm:w-48"
+                      aria-label="Search youth church events by date"
+                    />
+                    <button
+                      type="submit"
+                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#2D5A8C] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#1E3A5F] focus:outline-none focus:ring-2 focus:ring-[#2D5A8C]/30"
                     >
-                      <Image 
-                        src={featuredGridEvent.image} 
-                        alt={featuredGridEvent.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-700"
-                        onError={swapImage('/hero/hero-store.jpg')}
-                      />
-                      <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
-                        <span className="bg-[#2D5A8C] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
-                          <CalendarClock className="w-4 h-4" />
-                          {featuredGridEvent.type}
-                        </span>
-                        <h3 className="text-white text-3xl md:text-4xl font-bold mb-2 group-hover:underline decoration-2 underline-offset-4">{featuredGridEvent.title}</h3>
-                        <p className="text-white/90 text-sm md:text-base font-medium flex items-center gap-2 mb-1">
-                          <CalendarClock className="w-4 h-4" /> {featuredGridEvent.date}
-                        </p>
-                        <p className="text-white/70 text-sm flex items-center gap-2">
-                          <MapPin className="w-4 h-4" /> {featuredGridEvent.location}
-                        </p>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
-                  <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                    Click for Details
-                  </div>
-                </button>
-
-                {/* Grid of Smaller Previous/Future Events - BUTTONS */}
-                <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-                  {remainingEvents.map((event) => (
-                    <button 
-                      key={event.id} 
-                      onClick={() => setSelectedEvent(event)}
-                      className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group text-left w-full focus:outline-none focus:ring-2 focus:ring-[#2D5A8C]"
-                    >
-                      <Image 
-                        src={event.image} 
-                        alt={event.title}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={swapImage('/hero/hero-store.jpg')}
-                      />
-                      <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                        <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                          {event.type}
-                        </span>
-                        <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{event.title}</h4>
-                        <p className="text-white/60 text-[10px] truncate">{event.date}</p>
-                      </div>
+                      <Search className="h-3.5 w-3.5" />
+                      Search
                     </button>
-                  ))}
+                  </form>
+                  {eventSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={clearEventSearch}
+                      className="text-xs font-semibold text-[#2D5A8C] hover:text-[#1E3A5F]"
+                    >
+                      Clear search
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {displayedEventItems.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                  {/* Large Featured Image (Cycling) - BUTTON */}
+                  <button 
+                    onClick={() => setSelectedEvent(featuredGridEvent)}
+                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={featuredGridEvent.id}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.5 }}
+                        className="absolute inset-0"
+                      >
+                        <Image 
+                          src={featuredGridEvent.image} 
+                          alt={featuredGridEvent.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-700"
+                          onError={swapImage('/hero/hero-store.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
+                          <span className="bg-[#2D5A8C] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
+                            <CalendarClock className="w-4 h-4" />
+                            {featuredGridEvent.type}
+                          </span>
+                          <h3 className="text-white text-3xl md:text-4xl font-bold mb-2 group-hover:underline decoration-2 underline-offset-4">{featuredGridEvent.title}</h3>
+                          <p className="text-white/90 text-sm md:text-base font-medium flex items-center gap-2 mb-1">
+                            <CalendarClock className="w-4 h-4" /> {featuredGridEvent.date}
+                          </p>
+                          <p className="text-white/70 text-sm flex items-center gap-2">
+                            <MapPin className="w-4 h-4" /> {featuredGridEvent.location}
+                          </p>
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Click for Details
+                    </div>
+                  </button>
+
+                  {/* Scrollable Smaller Previous/Future Events - BUTTONS */}
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
+                    {remainingEvents.map((event) => (
+                      <button 
+                        key={event.id} 
+                        onClick={() => setSelectedEvent(event)}
+                        className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#2D5A8C] sm:w-72 lg:h-[113px] lg:w-full"
+                      >
+                        <Image 
+                          src={event.image} 
+                          alt={event.title}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={swapImage('/hero/hero-store.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
+                          <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
+                            {event.type}
+                          </span>
+                          <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{event.title}</h4>
+                          <p className="text-white/60 text-[10px] truncate">{event.date}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#2D5A8C]/25 bg-white p-8 text-center text-sm text-black/55">
+                  No Youth Church events found for this date search.
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -1050,53 +1636,106 @@ export default function YouthChurchMinistryPage() {
         {!mobilePlayerActive && (
           <section className="py-20 bg-white text-black border-b border-black/5">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
+              <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between mb-12">
                 <div>
                   <h2 className="text-3xl md:text-4xl font-bold mb-4">Ministry Initiatives</h2>
                   <p className="text-black/60 max-w-xl">See what our youth and sub-ministries are building and championing.</p>
                 </div>
+                <div className="flex flex-col items-start gap-2 md:items-end">
+                  <form onSubmit={handleInitiativeSearch} className="flex w-full items-center gap-2 sm:w-auto">
+                    <input
+                      type="search"
+                      value={initiativeSearchInput}
+                      onChange={(event) => setInitiativeSearchInput(event.target.value)}
+                      placeholder="August 2026"
+                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#2D5A8C] focus:ring-2 focus:ring-[#2D5A8C]/15 sm:w-48"
+                      aria-label="Search youth church initiatives"
+                    />
+                    <button
+                      type="submit"
+                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#2D5A8C] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#1E3A5F] focus:outline-none focus:ring-2 focus:ring-[#2D5A8C]/30"
+                    >
+                      <Search className="h-3.5 w-3.5" />
+                      Search
+                    </button>
+                  </form>
+                  {initiativeSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={clearInitiativeSearch}
+                      className="text-xs font-semibold text-[#2D5A8C] hover:text-[#1E3A5F]"
+                    >
+                      Clear search
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                {/* Large Featured Image (Current/Latest Project) */}
-                <div className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group">
-                  <Image 
-                    src={projectItems[0]?.image || '/hero/hero-store.jpg'} 
-                    alt={projectItems[0]?.title || 'Youth Church Initiative'}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    onError={swapImage('/hero/hero-store.jpg')}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
-                    <span className="bg-[#2D5A8C] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
-                      {projectItems[0]?.type || 'Initiative'}
-                    </span>
-                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{projectItems[0]?.title || 'Youth Church Initiative'}</h3>
-                    <p className="text-white/80 text-sm font-medium">Status: {projectItems[0]?.status || 'Active'}</p>
+              {featuredProject ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                  {/* Large Featured Image (Current/Latest Project) */}
+                  <button
+                    onClick={() => setSelectedInitiative(featuredProject)}
+                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
+                  >
+                    <Image 
+                      src={featuredProject.image || '/hero/hero-store.jpg'} 
+                      alt={featuredProject.title || 'Youth Church Initiative'}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-700"
+                      onError={swapImage('/hero/hero-store.jpg')}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
+                      <span className="bg-[#2D5A8C] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
+                        {featuredProject.type || 'Initiative'}
+                      </span>
+                      <h3 className="text-white text-2xl md:text-3xl font-bold mb-1 group-hover:underline decoration-2 underline-offset-4">{featuredProject.title || 'Youth Church Initiative'}</h3>
+                      <p className="text-white/80 text-sm font-medium">Status: {featuredProject.status || 'Active'}</p>
+                    </div>
+                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Click for Details
+                    </div>
+                  </button>
+
+                  {/* Scrollable Previous/Future Initiatives */}
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
+                    {remainingProjects.map((material) => (
+                      <button
+                        key={material.id}
+                        onClick={() => setSelectedInitiative(material)}
+                        className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#2D5A8C] sm:w-72 lg:h-[113px] lg:w-full"
+                      >
+                        <Image 
+                          src={material.image} 
+                          alt={material.title}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={swapImage('/hero/hero-store.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
+                          <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
+                            {material.type}
+                          </span>
+                          <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{material.title}</h4>
+                          <p className="text-white/60 text-[10px]">Status: {material.status}</p>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
-
-                {/* Grid of Smaller Previous/Future Publications */}
-                <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-                  {projectItems.slice(1).map((material) => (
-                    <div key={material.id} className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group">
-                      <Image 
-                        src={material.image} 
-                        alt={material.title}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={swapImage('/hero/hero-store.jpg')}
-                      />
-                      <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                        <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                          {material.type}
-                        </span>
-                        <h4 className="text-white text-sm font-semibold leading-tight mb-1">{material.title}</h4>
-                        <p className="text-white/60 text-[10px]">Status: {material.status}</p>
-                      </div>
-                    </div>
-                  ))}
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#2D5A8C]/25 bg-gray-50 p-8 text-center text-sm text-black/55">
+                  No Youth Church initiatives found for this search.
                 </div>
+              )}
+
+              <div className="mt-12 text-center">
+                <Link 
+                  href="/ministries/youth-church-ministry/archive"
+                  className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#2D5A8C] transition hover:bg-slate-50 hover:border-black/20 shadow-sm"
+                >
+                  View Archive <Search className="w-4 h-4" />
+                </Link>
               </div>
             </div>
           </section>
@@ -1132,7 +1771,7 @@ export default function YouthChurchMinistryPage() {
                 {activeTool === "bible" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><BibleTool /></div>}
                 {activeTool === "notepad" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><NotepadTool /></div>}
                 {activeTool === "testimony" && <div className="px-4 py-5"><TestimonyTool /></div>}
-                {activeTool === "give" && <div className="px-4 py-5"><GiveTool isMobile={true} /></div>}
+                {activeTool === "give" && <div className="px-4 py-5"><YouthChurchGiveTool isMobile={true} /></div>}
               </div>
             </div>
           </section>
@@ -1181,16 +1820,24 @@ export default function YouthChurchMinistryPage() {
 
         {/* 9. NEWS SECTION */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-white text-black border-y border-black/5">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-              <Globe className="w-12 h-12 mx-auto text-[#2D5A8C] mb-6" />
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">Latest News</h2>
-              <p className="text-lg text-black/70 max-w-2xl mx-auto mb-8">
-                Registrations are now open for the 2026 Lake Retreat! Connect with your youth leaders to secure your spot. Additionally, Hope & Beauty mentorship sign-ups close at the end of the month.
-              </p>
-            </div>
-          </section>
+          <NewsSection
+            kicker="Youth Church updates"
+            title="Latest News"
+            description="Stories, highlights, and ministry updates from Youth Church, Teens, Heritage, Hope & Beauty, and Called to Greatness."
+            items={newsItems}
+            backgroundClassName="bg-white text-black border-y border-black/5"
+            maxItems={9}
+          />
         )}
+
+        <div className="bg-white pb-16 text-center">
+          <Link 
+            href="/ministries/youth-church-ministry/archive"
+            className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#2D5A8C] transition hover:bg-slate-50 hover:border-black/20 shadow-sm"
+          >
+            View News Archive <Search className="w-4 h-4" />
+          </Link>
+        </div>
 
         {/* 10. CONTACTS SECTION */}
         {!mobilePlayerActive && (

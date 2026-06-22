@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef, type SyntheticEvent } from 'react';
+import { useState, useEffect, useRef, type SyntheticEvent, type FormEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
 import { Card } from '@/components/ui/card';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { 
   ChevronLeft, ChevronRight, MapPin, 
   Phone, Mail, CalendarClock, BookOpen, Globe, 
   BookOpenText, MessageSquareText, StickyNote,
-  Shield, HandHeart, Ear
+  Shield, HandHeart, Ear, Search, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import LiveChat from '@/components/LiveChat';
 import NotepadTool from '@/components/livestream/NotepadTool';
 import TestimonyTool from '@/components/livestream/TestimonyTool';
-import GiveTool from '@/components/livestream/GiveTool';
+import ICDGiveTool from '@/components/livestream/ICDGiveTool';
 import BibleTool from '@/components/livestream/BibleTool';
 
 // --- TYPES & GLOBALS ---
@@ -29,23 +31,8 @@ type YouTubePlayer = {
 
 type YouTubeStateChangeEvent = {
   data: number;
-  target: YouTubePlayer;
+  target?: YouTubePlayer;
 };
-
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (
-        element: HTMLIFrameElement,
-        options: { events: { onStateChange: (event: YouTubeStateChangeEvent) => void } },
-      ) => YouTubePlayer;
-      PlayerState: {
-        PLAYING: number;
-      };
-    };
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
 
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "give" | null;
 
@@ -60,6 +47,7 @@ type YouTubeVideo = {
   url: string;
   embedUrl: string;
   isLive?: boolean;
+  canEmbed?: boolean;
 };
 
 type PartnershipDetail = {
@@ -94,21 +82,27 @@ type MinistryItem = {
   sortOrder: number;
 };
 
+type YouTubeThumbnail = {
+  url?: string;
+};
+
+type YouTubeSnippet = {
+  title?: string;
+  publishedAt?: string;
+  channelTitle?: string;
+  description?: string;
+  liveBroadcastContent?: string;
+  thumbnails?: {
+    high?: YouTubeThumbnail;
+    medium?: YouTubeThumbnail;
+  };
+};
+
 type YouTubeSearchItem = {
   id?: {
     videoId?: string;
   };
-  snippet?: {
-    title?: string;
-    publishedAt?: string;
-    channelTitle?: string;
-    description?: string;
-    liveBroadcastContent?: string;
-    thumbnails?: {
-      high?: { url?: string };
-      medium?: { url?: string };
-    };
-  };
+  snippet?: YouTubeSnippet;
 };
 
 const TOOL_TABS: Array<{
@@ -120,7 +114,7 @@ const TOOL_TABS: Array<{
   { key: "notepad", label: "Notepad", kind: "component" },
   { key: "bible", label: "Bible", kind: "component" },
   { key: "testimony", label: "Send Testimony", kind: "form" },
-  { key: "give", label: "Give", kind: "form" },
+  { key: "give", label: "Give", kind: "component" },
 ];
 
 const toAssetUrl = (value: string | null | undefined) => {
@@ -128,20 +122,6 @@ const toAssetUrl = (value: string | null | undefined) => {
   if (!trimmed) return '';
   if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
   return trimmed;
-};
-
-const videoIdFromUrl = (value: string | null | undefined) => {
-  const raw = (value || '').trim();
-  if (!raw) return '';
-  try {
-    const url = new URL(raw);
-    if (url.hostname.includes('youtu.be')) {
-      return url.pathname.replace(/^\//, '');
-    }
-    return url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop() || '';
-  } catch {
-    return raw;
-  }
 };
 
 const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
@@ -155,9 +135,9 @@ const defaultInfo: MinistryInfo = {
   about: `ICD is an intercessory and developmental ministry arm of PICC. Our goal is to move believers from being mere spectators to becoming active, effective disciples of Jesus Christ who are capable of leading and guiding others.
 
 We provide structured modules covering biblical foundations, leadership development, and practical ministry skills. By combining sound doctrine with practical application, ICD ensures that every member is thoroughly equipped for every good work in the Kingdom.`,
-  heroImageUrl: '/hero/hero-icd.jpg',
+  heroImageUrl: '/ministries/icd/background.JPG',
   logoImageUrl: '/logo.png',
-  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=ydTADwZRquA',
+  liveSessionYoutubeUrl: 'https://www.youtube.com/watch?v=Z_HD5WhhxOU',
   partnershipTitle: 'Partner With Us',
   partnershipBody: `The work of building disciples, ministering deliverance, and reaching out to our community through initiatives like our hospital visits is vast.
 
@@ -168,10 +148,10 @@ By partnering with the ICD Ministry financially, you ensure that we can continue
     { label: 'Account Number', value: '1010850537' },
     { label: 'Branch', value: 'Gateway Mall' },
   ],
-  partnershipImageUrl: '/images/icd/ICD-MAY-26.png',
-  phone: 'Check with your local PICC branch for contact details.',
-  email: 'info@picc.org',
-  location: 'PICC ICD Department\nCamp of God Cathedral',
+  partnershipImageUrl: '/ministries/icd/icd7.jpg',
+  phone: '0995652414 / 0992874401',
+  email: 'icd@piccwordwide.org',
+  location: 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi',
   contactIntro:
     'Whether you need counselling, deliverance, or wish to grow as an active disciple, we are here to walk alongside you.',
 };
@@ -182,7 +162,7 @@ const pastEvents = [
     title: 'Kamuzu Central Hospital Visit',
     date: 'May 3 & 17, 2026',
     description: 'Join us from 8:00 AM at Kamuzu Central Hospital as we visit the sick, pray for healing, and share the love and hope of Christ with Pastor Mrs Loyce Banda.',
-    image: '/hero/hero-icd.jpg',
+    image: '/ministries/icd/background.JPG',
   },
   {
     id: 2,
@@ -244,12 +224,12 @@ const mergeItemsWithFallback = (loaded: MinistryItem[], fallback: MinistryItem[]
 };
 
 const highlightGallery = [
-  { id: 1, src: '/hero/hero-icd.jpg', caption: 'Moving believers from spectators to active disciples.' },
-  { id: 2, src: '/moments/icd-1.jpg', caption: 'Structured modules covering biblical foundations.' },
-  { id: 3, src: '/moments/icd-2.jpg', caption: 'Leadership development and practical ministry skills.' },
-  { id: 4, src: '/moments/icd-3.jpg', caption: 'Intercession, Counselling, and Deliverance in action.' },
-  { id: 5, src: '/moments/icd-4.jpg', caption: 'Combining sound doctrine with practical application.' },
-  { id: 6, src: '/moments/icd-5.jpg', caption: 'Equipping every member for good works.' },
+  { id: 1, src: '/ministries/icd/icd2.jpg', caption: 'Moving believers from spectators to active disciples.' },
+  { id: 2, src: '/ministries/icd/icd3.jpg', caption: 'Structured modules covering biblical foundations.' },
+  { id: 3, src: '/ministries/icd/icd4.jpg', caption: 'Leadership development and practical ministry skills.' },
+  { id: 4, src: '/ministries/icd/icd5.jpg', caption: 'Intercession, Counselling, and Deliverance in action.' },
+  { id: 5, src: '/ministries/icd/icd6.jpg', caption: 'Combining sound doctrine with practical application.' },
+  { id: 6, src: '/ministries/icd/icd7.jpg', caption: 'Equipping every member for good works.' },
 ];
 
 const defaultLearningItems: MinistryItem[] = highlightGallery.map((item, index) => ({
@@ -265,9 +245,9 @@ const defaultLearningItems: MinistryItem[] = highlightGallery.map((item, index) 
 const ministryProjects = [
   { id: 1, type: 'Upcoming Event', title: 'Hospital Visitation Ministry', status: '3 May 2026', image: '/images/icd/ICD-MAY-26.png' },
   { id: 2, type: 'Upcoming Event', title: 'Hospital Visitation Ministry', status: '17 May 2026', image: '/images/icd/ICD-MAY-26.png' },
-  { id: 3, type: 'Current Initiative', title: 'Counselling Programs', status: 'Active', image: '/moments/icd-2.jpg' },
-  { id: 4, type: 'Training Project', title: 'School of Ministry', status: 'Ongoing', image: '/moments/icd-3.jpg' },
-  { id: 5, type: 'Outreach', title: 'Deliverance Workshops', status: 'Upcoming', image: '/moments/icd-4.jpg' },
+  { id: 3, type: 'Current Initiative', title: 'Counselling Programs', status: 'Active', image: '/moments/2.JPG' },
+  { id: 4, type: 'Training Project', title: 'School of Ministry', status: 'Ongoing', image: '/moments/3.JPG' },
+  { id: 5, type: 'Outreach', title: 'Deliverance Workshops', status: 'Upcoming', image: '/moments/4.JPG' },
 ];
 
 const defaultInitiativeItems: MinistryItem[] = ministryProjects.map((project, index) => ({
@@ -283,6 +263,12 @@ const defaultInitiativeItems: MinistryItem[] = ministryProjects.map((project, in
 export default function IcdMinistryPage() {
   // --- STATE ---
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: number; title: string; date: string; description: string; image: string; location?: string; } | null>(null);
+  const [selectedInitiative, setSelectedInitiative] = useState<{ id: number; title: string; type: string; status: string; description: string; image: string; } | null>(null);
+  const [eventSearchInput, setEventSearchInput] = useState('');
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
+  const [initiativeSearchInput, setInitiativeSearchInput] = useState('');
+  const [initiativeSearchQuery, setInitiativeSearchQuery] = useState('');
   const [activeGalleryId, setActiveGalleryId] = useState<number | null>(null);
 
   // --- LIVESTREAM STATE ---
@@ -296,8 +282,8 @@ export default function IcdMinistryPage() {
   const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
   // --- LIVESTREAM CONSTANTS ---
-  const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
-  const FALLBACK_HERO_ID = videoIdFromUrl(ministryInfo.liveSessionYoutubeUrl) || "ydTADwZRquA";
+  const CHANNEL_ID = "UC8JUC-G4wKhrrPr7xjxYWJw";
+  const FALLBACK_HERO_ID = "Z_HD5WhhxOU";
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 
   const featuredVideo = videos[0] || null;
@@ -308,11 +294,11 @@ export default function IcdMinistryPage() {
     events: ministryItems.filter((item) => item.category === 'event'),
   };
   const icdCards = mergeItemsWithFallback(itemGroups.cards, defaultIcdCards);
-  const learningItems = mergeItemsWithFallback(itemGroups.learning, defaultLearningItems);
+  const learningItems = mergeItemsWithFallback(itemGroups.learning, defaultLearningItems).slice(0, 6);
   const galleryItems = learningItems.length > 0
     ? learningItems.map((item, index) => ({
         id: index + 1,
-        src: toAssetUrl(item.imageUrl) || highlightGallery[index % highlightGallery.length]?.src || '/hero/hero-icd.jpg',
+        src: toAssetUrl(item.imageUrl) || highlightGallery[index % highlightGallery.length]?.src || '/ministries/icd/background.JPG',
         caption: item.description || item.title,
       }))
     : highlightGallery;
@@ -323,19 +309,159 @@ export default function IcdMinistryPage() {
         type: item.label || 'Initiative',
         title: item.title,
         status: item.description || 'Active',
+        description: item.description || 'Active initiative for ICD ministry.',
         image: toAssetUrl(item.imageUrl) || ministryProjects[index % ministryProjects.length]?.image || '/images/icd/ICD-MAY-26.png',
       }))
-    : ministryProjects;
+    : ministryProjects.map((item) => ({
+        ...item,
+        description: item.status,
+      }));
+  const icdEventImages = [
+    '/ministries/icd/event-1.JPG',
+    '/ministries/icd/event-2.png',
+    '/ministries/icd/event-3.JPG',
+    '/ministries/icd/event-4.JPG',
+  ];
+
+  const icdEventDetails = [
+    {
+      title: 'ICD Connections Conference',
+      date: 'Saturday, June 15, 2024',
+      description: 'Join us for an inspiring day under the theme "Restoring Lives through Discipleship" with Pastor Esau Banda. Sessions run from 8:00 AM to 12:00 PM.',
+    },
+    {
+      title: 'Leadership Summit 2024',
+      date: 'July 12 - 13, 2024',
+      description: 'A two-day intensive summit on "Equipping Leaders for Global Impact." Join us Friday at 5:00 PM and Saturday at 8:00 AM for strategic ministry training.',
+    },
+    {
+      title: 'Prayer & Fasting Week',
+      date: 'August 5 - 9, 2024',
+      description: 'A dedicated week of "Seeking God\'s Direction." Join our daily sessions at 5:30 PM across all PICC branches as we focus on Matthew 6:33.',
+    },
+    {
+      title: 'ICD Year-End Celebration',
+      date: 'Saturday, December 7, 2024',
+      description: 'Celebrating "A Journey of Faithfulness" from 2:00 PM to 5:00 PM. An afternoon of powerful testimonies, worship, and ministry milestones.',
+    },
+  ];
+
   const mergedEventItems = mergeItemsWithFallback(itemGroups.events, defaultEventItems);
   const eventItems = mergedEventItems.length > 0
     ? mergedEventItems.map((item, index) => ({
         id: index + 1,
-        title: item.title,
-        date: item.label || 'Upcoming',
-        description: item.description || '',
-        image: toAssetUrl(item.imageUrl) || pastEvents[index % pastEvents.length]?.image || '/hero/hero-icd.jpg',
+        title: icdEventDetails[index]?.title || item.title,
+        date: icdEventDetails[index]?.date || item.label || 'Upcoming',
+        description: icdEventDetails[index]?.description || item.description || '',
+        location: 'Camp of God Cathedral, Lilongwe',
+        image: icdEventImages[index % icdEventImages.length],
       }))
-    : pastEvents;
+    : pastEvents.map((event, index) => ({
+        ...event,
+        title: icdEventDetails[index]?.title || event.title,
+        date: icdEventDetails[index]?.date || event.date,
+        description: icdEventDetails[index]?.description || event.description,
+        location: 'Camp of God Cathedral, Lilongwe',
+        image: icdEventImages[index % icdEventImages.length],
+      }));
+
+  const icdNewsItems: NewsSectionItem[] = [
+    {
+      badge: 'Update',
+      date: 'May 2026',
+      title: 'ICD Connects Community for Healing',
+      description: 'A powerful evening of worship and fellowship as ICD continues to deepen its outreach in Lilongwe.',
+      image: '/ministries/icd/news-1.JPG',
+    },
+    {
+      badge: 'Launch',
+      date: 'May 2026',
+      title: 'Hope Tabernacle ICD launch',
+      description: 'Celebrating the official launch of Hope Tabernacle within the ICD network of ministries.',
+      image: '/ministries/icd/news-2.JPG',
+    },
+    {
+      badge: 'Weekly',
+      date: 'May 2026',
+      title: 'Join us every Wednesday',
+      description: 'Come together midweek for teaching, prayer, and ministry growth in the ICD family.',
+      image: '/ministries/icd/news-3.JPG',
+    },
+    {
+      badge: 'Highlight',
+      date: 'May 2026',
+      title: 'ICD outreach makes an impact',
+      description: 'Stories from the field as ICD teams serve communities with compassion and practical help.',
+      image: '/ministries/icd/news-4.JPG',
+    },
+    {
+      badge: 'Community',
+      date: 'May 2026',
+      title: 'New discipleship classes launched',
+      description: 'Groups are forming across ICD to help members grow in word, prayer, and leadership.',
+      image: '/ministries/icd/news-5.JPG',
+    },
+    {
+      badge: 'Celebration',
+      date: 'May 2026',
+      title: 'ICD prayer night highlights',
+      description: 'A recap of the powerful testimonies, worship, and prophetic moments from our latest prayer night.',
+      image: '/ministries/icd/news-6.JPG',
+    },
+  ];
+
+  const normalizeSearchText = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+  const normalizedEventSearchQuery = normalizeSearchText(eventSearchQuery);
+  const displayedEventItems = normalizedEventSearchQuery
+    ? eventItems.filter((event) => {
+        const searchableText = normalizeSearchText([event.title, event.date, event.description].join(' '));
+        return searchableText.includes(normalizedEventSearchQuery);
+      })
+    : eventItems;
+
+  const safeCurrentSlide = displayedEventItems.length ? currentSlide % displayedEventItems.length : 0;
+  const featuredEvent = displayedEventItems[safeCurrentSlide] || {
+    id: 0,
+    title: 'ICD Event',
+    date: 'TBA',
+    description: 'No event information is currently available.',
+    image: '/ministries/icd/background.JPG',
+  };
+  const remainingEvents = displayedEventItems.filter((_, idx) => idx !== safeCurrentSlide);
+
+  const normalizeInitiativeSearchQuery = normalizeSearchText(initiativeSearchQuery);
+  const displayedProjectItems = normalizeInitiativeSearchQuery
+    ? projectItems.filter((project) => {
+        const searchableText = normalizeSearchText([project.title, project.type, project.status, project.description].join(' '));
+        return searchableText.includes(normalizeInitiativeSearchQuery);
+      })
+    : projectItems;
+
+  const featuredProject = displayedProjectItems[0] || null;
+  const remainingProjects = displayedProjectItems.slice(1);
+
+  const handleEventSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setEventSearchQuery(eventSearchInput.trim());
+  };
+
+  const clearEventSearch = () => {
+    setEventSearchInput('');
+    setEventSearchQuery('');
+  };
+
+  const handleInitiativeSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setInitiativeSearchQuery(initiativeSearchInput.trim());
+  };
+
+  const clearInitiativeSearch = () => {
+    setInitiativeSearchInput('');
+    setInitiativeSearchQuery('');
+  };
+
   const aboutParagraphs = (ministryInfo.about || defaultInfo.about || '').split(/\n{2,}/).filter(Boolean);
   const partnershipParagraphs = (ministryInfo.partnershipBody || defaultInfo.partnershipBody || '').split(/\n{2,}/).filter(Boolean);
   const partnershipDetails = ministryInfo.partnershipDetails?.length ? ministryInfo.partnershipDetails : defaultInfo.partnershipDetails || [];
@@ -359,9 +485,27 @@ export default function IcdMinistryPage() {
         if (!isMounted) return;
 
         if (data?.info) {
+          const info = { ...data.info };
+          // Prevent broken image from overriding the new background
+          if (info.heroImageUrl === '/hero/hero-icd.jpg') {
+            info.heroImageUrl = '/ministries/icd/background.JPG';
+          }
+          // Prevent old location and email from overriding new ones
+          const oldLocations = [
+            'Camp of God Cathedral Area 49, Lilongwe Malawi',
+            'PICC ICD Department\nCamp of God Cathedral',
+            'Camp of God Cathedral Area 49, Lilongwe',
+            'Area 49, Lilongwe'
+          ];
+          if (!info.location || oldLocations.some(loc => info.location?.includes(loc)) || info.location.length < 50) {
+            info.location = 'Pentecost International Christian Centre (PICC) Along Kaunda Road, Near Best Oil Filling Station, Area 49 Post Office Box 31841 Lilongwe 3 Malawi';
+          }
+          if (info.email === 'icd@piccworldwide.org' || info.email === 'info@picc.org' || !info.email) {
+            info.email = 'icd@piccwordwide.org';
+          }
           setMinistryInfo({
             ...defaultInfo,
-            ...data.info,
+            ...info,
             partnershipDetails: Array.isArray(data.info.partnershipDetails)
               ? data.info.partnershipDetails
               : defaultInfo.partnershipDetails,
@@ -383,14 +527,25 @@ export default function IcdMinistryPage() {
   }, []);
 
   useEffect(() => {
+    if (!displayedEventItems.length) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % eventItems.length);
+      setCurrentSlide((prev) => (prev + 1) % displayedEventItems.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [eventItems.length]);
+  }, [displayedEventItems.length]);
 
-  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % eventItems.length);
-  const prevSlide = () => setCurrentSlide((prev) => (prev === 0 ? eventItems.length - 1 : prev - 1));
+  useEffect(() => {
+    setCurrentSlide(0);
+  }, [eventSearchQuery]);
+
+  const nextSlide = () => {
+    if (!displayedEventItems.length) return;
+    setCurrentSlide((prev) => (prev + 1) % displayedEventItems.length);
+  };
+  const prevSlide = () => {
+    if (!displayedEventItems.length) return;
+    setCurrentSlide((prev) => (prev === 0 ? displayedEventItems.length - 1 : prev - 1));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -419,6 +574,22 @@ export default function IcdMinistryPage() {
       return response.json();
     };
 
+    const fetchLatestEmbeddableVideo = async (channelId: string) => {
+      const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
+      searchUrl.searchParams.set("part", "snippet");
+      searchUrl.searchParams.set("channelId", channelId);
+      searchUrl.searchParams.set("type", "video");
+      searchUrl.searchParams.set("order", "date");
+      searchUrl.searchParams.set("videoEmbeddable", "true");
+      searchUrl.searchParams.set("maxResults", "1");
+      searchUrl.searchParams.set("key", YOUTUBE_API_KEY);
+
+      const searchData = await fetchJson(searchUrl.toString());
+      return Array.isArray(searchData?.items)
+        ? toVideoFromSearch(searchData.items[0])
+        : null;
+    };
+
     const fetchVideos = async () => {
       try {
         if (!YOUTUBE_API_KEY) throw new Error("Missing API key");
@@ -428,15 +599,21 @@ export default function IcdMinistryPage() {
         liveUrl.searchParams.set("channelId", CHANNEL_ID);
         liveUrl.searchParams.set("eventType", "live");
         liveUrl.searchParams.set("type", "video");
+        liveUrl.searchParams.set("videoEmbeddable", "true");
         liveUrl.searchParams.set("maxResults", "1");
         liveUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
-        const liveData = await fetchJson(liveUrl.toString());
+        const [liveData, latestEmbeddableVideo] = await Promise.all([
+          fetchJson(liveUrl.toString()),
+          fetchLatestEmbeddableVideo(CHANNEL_ID),
+        ]);
+
         const liveVideo = Array.isArray(liveData?.items) ? toVideoFromSearch(liveData.items[0]) : null;
+        const finalVideo = liveVideo || latestEmbeddableVideo;
 
         if (isMounted) {
-          if (liveVideo) {
-            setVideos([liveVideo]);
+          if (finalVideo) {
+            setVideos([finalVideo]);
           } else {
             setVideos([{
               videoId: FALLBACK_HERO_ID,
@@ -494,7 +671,7 @@ export default function IcdMinistryPage() {
 
   useEffect(() => {
     if (!ytReady || typeof window === "undefined" || !window.YT?.Player) return;
-    const youtube = window.YT;
+    const youtube = window.YT as YouTubeNamespace;
     const players = playersRef.current;
     const iframes = Array.from(document.querySelectorAll<HTMLIFrameElement>("[data-yt-id]"));
 
@@ -504,14 +681,14 @@ export default function IcdMinistryPage() {
       const player = new youtube.Player(iframe, {
         events: {
           onStateChange: (event: YouTubeStateChangeEvent) => {
-            if (event.data === youtube.PlayerState.PLAYING) {
+            if (event.data === youtube.PlayerState.PLAYING && event.target) {
               players.forEach((p) => {
                 if (p !== event.target) p.pauseVideo();
               });
             }
           },
         },
-      });
+      }) as YouTubePlayer;
       players.set(videoId, player);
     });
   }, [ytReady, activeTool]);
@@ -558,6 +735,128 @@ export default function IcdMinistryPage() {
     <>
       <Navigation />
       
+      <AnimatePresence>
+        {selectedEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setSelectedEvent(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white text-black w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="relative w-full md:w-1/2 h-64 md:h-[500px] bg-slate-100">
+                <Image
+                  src={selectedEvent.image}
+                  alt={selectedEvent.title}
+                  fill
+                  className="object-cover"
+                  onError={swapImage('/hero/hero-store.jpg')}
+                />
+              </div>
+
+              <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col justify-center bg-gray-50">
+                <span className="text-sm font-bold text-[#045BB4] uppercase tracking-wider mb-2">
+                  Event
+                </span>
+                <h3 className="text-3xl font-black text-gray-900 mb-4 leading-tight">
+                  {selectedEvent.title}
+                </h3>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-start gap-3">
+                    <CalendarClock className="w-5 h-5 text-gray-400 mt-0.5" />
+                    <p className="text-gray-700 font-medium">{selectedEvent.date}</p>
+                  </div>
+                  {selectedEvent.location ? (
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <p className="text-gray-700 font-medium">{selectedEvent.location}</p>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="w-12 h-1 bg-gray-200 rounded-full mb-6" />
+
+                <p className="text-gray-600 leading-relaxed mb-8">
+                  {selectedEvent.description}
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {selectedInitiative && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setSelectedInitiative(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white text-black w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedInitiative(null)}
+                className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="relative w-full md:w-1/2 h-64 md:h-[500px] bg-slate-100">
+                <Image
+                  src={selectedInitiative.image}
+                  alt={selectedInitiative.title}
+                  fill
+                  className="object-cover"
+                  onError={swapImage('/hero/hero-store.jpg')}
+                />
+              </div>
+
+              <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col justify-center bg-gray-50">
+                <span className="text-sm font-bold text-[#045BB4] uppercase tracking-wider mb-2">
+                  {selectedInitiative.type}
+                </span>
+                <h3 className="text-3xl font-black text-gray-900 mb-4 leading-tight">
+                  {selectedInitiative.title}
+                </h3>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-start gap-3">
+                    <CalendarClock className="w-5 h-5 text-gray-400 mt-0.5" />
+                    <p className="text-gray-700 font-medium">Status: {selectedInitiative.status}</p>
+                  </div>
+                </div>
+
+                <div className="w-12 h-1 bg-gray-200 rounded-full mb-6" />
+
+                <p className="text-gray-600 leading-relaxed mb-8">
+                  {selectedInitiative.description}
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <main className="min-h-screen">
         
         {/* 1. HERO SECTION */}
@@ -565,7 +864,7 @@ export default function IcdMinistryPage() {
           <section
             className="relative z-10 overflow-hidden rounded-b-[36px] bg-[#033D7A] pt-28 pb-20 text-white shadow-lg sm:pt-36 sm:pb-28 md:rounded-b-[48px]"
             style={{
-              backgroundImage: `linear-gradient(rgba(2,24,48,0.78), rgba(4,91,180,0.72)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/hero/hero-icd.jpg'})`,
+              backgroundImage: `linear-gradient(rgba(2,24,48,0.78), rgba(4,91,180,0.72)), url(${toAssetUrl(ministryInfo.heroImageUrl) || '/ministries/icd/background.JPG'})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
@@ -747,7 +1046,7 @@ export default function IcdMinistryPage() {
                     {activeTool === "chat" && <div className="h-[400px] w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'ICD Live'} /></div>}
                     {activeTool === "notepad" && <NotepadTool />}
                     {activeTool === "testimony" && <div className="px-5 py-6"><TestimonyTool /></div>}
-                    {activeTool === "give" && <div className="px-5 py-6"><GiveTool isMobile={false} /></div>}
+                    {activeTool === "give" && <div className="px-5 py-6"><ICDGiveTool isMobile={false} /></div>}
                   </div>
                 )}
               </div>
@@ -759,53 +1058,102 @@ export default function IcdMinistryPage() {
         {!mobilePlayerActive && (
           <section className="py-20 bg-white text-black">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-6">
                 <div>
                   <h2 className="text-3xl md:text-4xl font-bold mb-4">Ministry Initiatives</h2>
                   <p className="text-black/60 max-w-xl">Our structured modules ensure members are consistently growing in sound doctrine and effective leadership.</p>
                 </div>
+                <div className="flex flex-col items-start gap-2 md:items-end w-full md:w-auto">
+                  <form onSubmit={handleInitiativeSearch} className="flex w-full items-center gap-2 sm:w-auto">
+                    <input
+                      type="search"
+                      value={initiativeSearchInput}
+                      onChange={(event) => setInitiativeSearchInput(event.target.value)}
+                      placeholder="Search ICD initiatives"
+                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#045BB4] focus:ring-2 focus:ring-[#045BB4]/15 sm:w-64"
+                      aria-label="Search ICD initiatives"
+                    />
+                    <button
+                      type="submit"
+                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#045BB4] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#033D7A] focus:outline-none focus:ring-2 focus:ring-[#045BB4]/30"
+                    >
+                      <Search className="h-3.5 w-3.5" />
+                      Search
+                    </button>
+                  </form>
+                  {initiativeSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={clearInitiativeSearch}
+                      className="text-xs font-semibold text-[#045BB4] hover:text-[#033D7A]"
+                    >
+                      Clear search
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                {/* Large Featured Image (Current/Latest Project) */}
-                <div className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group">
-                  <Image 
-                    src={projectItems[0]?.image || '/images/icd/ICD-MAY-26.png'} 
-                    alt={projectItems[0]?.title || 'ICD initiative'}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    onError={swapImage('/hero/hero-store.jpg')}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
-                    <span className="bg-[#045BB4] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
-                      {projectItems[0]?.type || 'Initiative'}
-                    </span>
-                    <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{projectItems[0]?.title || 'ICD Ministry'}</h3>
-                    <p className="text-white/80 text-sm font-medium">{projectItems[0]?.status || 'Active'}</p>
+              {featuredProject ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                  {/* Large Featured Image (Current/Latest Project) */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedInitiative(featuredProject)}
+                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
+                  >
+                    <Image 
+                      src={featuredProject.image || '/images/icd/ICD-MAY-26.png'} 
+                      alt={featuredProject.title || 'ICD initiative'}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-700"
+                      onError={swapImage('/hero/hero-store.jpg')}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
+                      <span className="bg-[#045BB4] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
+                        {featuredProject.type || 'Initiative'}
+                      </span>
+                      <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{featuredProject.title || 'ICD Ministry'}</h3>
+                      <p className="text-white/80 text-sm font-medium">Status: {featuredProject.status || 'Active'}</p>
+                    </div>
+                  </button>
+
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
+                    {remainingProjects.map((material) => (
+                      <button
+                        key={material.id}
+                        type="button"
+                        onClick={() => setSelectedInitiative(material)}
+                        className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#045BB4] sm:w-72 lg:h-[113px] lg:w-full"
+                      >
+                        <Image 
+                          src={material.image} 
+                          alt={material.title}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={swapImage('/hero/hero-store.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
+                          <span className="text-blue-200 text-[10px] font-bold uppercase tracking-wider mb-1">{material.type}</span>
+                          <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{material.title}</h4>
+                          <p className="text-white/60 text-[10px] truncate">Status: {material.status}</p>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
-
-                {/* Grid of Smaller Previous/Future Publications */}
-                <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-                  {projectItems.slice(1).map((material) => (
-                    <div key={material.id} className="relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group">
-                      <Image 
-                        src={material.image} 
-                        alt={material.title}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={swapImage('/images/icd/ICD-MAY-26.png')}
-                      />
-                      <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                        <span className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                          {material.type}
-                        </span>
-                        <h4 className="text-white text-sm font-semibold leading-tight mb-1">{material.title}</h4>
-                        <p className="text-white/60 text-[10px]">Status: {material.status}</p>
-                      </div>
-                    </div>
-                  ))}
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#045BB4]/25 bg-white p-8 text-center text-sm text-black/55">
+                  No ICD initiatives found for this search.
                 </div>
+              )}
+
+              <div className="mt-12 text-center">
+                <Link
+                  href="/ministries/icd/archive"
+                  className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#045BB4] transition hover:bg-slate-50 hover:border-black/20"
+                >
+                  View Archive <Search className="w-4 h-4" />
+                </Link>
               </div>
             </div>
           </section>
@@ -841,7 +1189,7 @@ export default function IcdMinistryPage() {
                 {activeTool === "bible" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><BibleTool /></div>}
                 {activeTool === "notepad" && <div className="mb-4 bg-white rounded-xl overflow-hidden border border-black/10"><NotepadTool /></div>}
                 {activeTool === "testimony" && <div className="px-4 py-5"><TestimonyTool /></div>}
-                {activeTool === "give" && <div className="px-4 py-5"><GiveTool isMobile={true} /></div>}
+                {activeTool === "give" && <div className="px-4 py-5"><ICDGiveTool isMobile={true} /></div>}
               </div>
             </div>
           </section>
@@ -851,76 +1199,135 @@ export default function IcdMinistryPage() {
         {!mobilePlayerActive && (
           <section className="py-20 bg-gray-50 text-black overflow-hidden border-y border-black/5">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-6">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming & Past Events</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Events</h2>
                   <p className="text-black/60 max-w-xl">A record of our commitment to continuous spiritual and leadership development.</p>
                 </div>
-              </div>
-
-              <div className="bg-[#045BB4] text-white rounded-2xl p-8 mb-12 flex flex-col md:flex-row items-center justify-between shadow-xl">
-                <div className="flex items-center gap-4 mb-6 md:mb-0">
-                  <div className="p-4 bg-white/20 rounded-full">
-                    <CalendarClock className="w-10 h-10 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold">Upcoming: {eventItems[0]?.title || 'ICD Event'}</h3>
-                    <p className="text-white/80 mt-1">{eventItems[0]?.date || 'Upcoming'}</p>
-                  </div>
-                </div>
-                <div className="text-center md:text-right">
-                  <p className="text-white/80 text-sm mt-1">{eventItems[0]?.description || 'Join us for the next ICD gathering.'}</p>
-                </div>
-              </div>
-
-              <div className="relative w-full max-w-4xl mx-auto">
-                <div className="relative h-[450px] sm:h-[400px] w-full">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={currentSlide}
-                      initial={{ opacity: 0, x: 50 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -50 }}
-                      transition={{ duration: 0.5, ease: "easeInOut" }}
-                      className="absolute inset-0"
+                <div className="flex flex-col items-start gap-2 md:items-end w-full md:w-auto">
+                  <form onSubmit={handleEventSearch} className="flex w-full items-center gap-2 sm:w-auto">
+                    <input
+                      type="search"
+                      value={eventSearchInput}
+                      onChange={(event) => setEventSearchInput(event.target.value)}
+                      placeholder="Search by title, date, or keyword"
+                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#045BB4] focus:ring-2 focus:ring-[#045BB4]/15 sm:w-64"
+                      aria-label="Search ICD events"
+                    />
+                    <button
+                      type="submit"
+                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#045BB4] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#033D7A] focus:outline-none focus:ring-2 focus:ring-[#045BB4]/30"
                     >
-                      <Card className="flex flex-col sm:flex-row h-full overflow-hidden border border-black/10 shadow-lg bg-white">
-                        <div className="relative w-full sm:w-1/2 h-48 sm:h-full bg-blue-50 flex-shrink-0">
-                          <Image 
-                            src={eventItems[currentSlide]?.image || eventItems[0]?.image || '/hero/hero-icd.jpg'} 
-                            alt={eventItems[currentSlide]?.title || 'Event Image'} 
-                            fill 
-                            className="object-cover"
-                            onError={swapImage('/hero/hero-store.jpg')}
-                          />
-                        </div>
-                        <div className="p-8 sm:p-10 flex flex-col justify-center w-full sm:w-1/2">
-                          <div className="flex items-center gap-2 text-[#045BB4] font-semibold text-sm mb-4 bg-blue-50 w-fit px-3 py-1 rounded-full">
-                            <BookOpen className="w-4 h-4" />
-                            <span>{eventItems[currentSlide]?.date || eventItems[0]?.date}</span>
-                          </div>
-                          <h3 className="text-2xl sm:text-3xl font-bold mb-4 leading-tight">
-                            {eventItems[currentSlide]?.title || eventItems[0]?.title}
-                          </h3>
-                          <p className="text-black/60 leading-relaxed">
-                            {eventItems[currentSlide]?.description || eventItems[0]?.description}
-                          </p>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-                <div className="flex items-center justify-center gap-6 mt-8">
-                  <button onClick={prevSlide} className="p-2 rounded-full bg-white shadow hover:bg-blue-50 border border-black/5">
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button onClick={nextSlide} className="p-2 rounded-full bg-white shadow hover:bg-blue-50 border border-black/5">
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
+                      <Search className="h-3.5 w-3.5" />
+                      Search
+                    </button>
+                  </form>
+                  {eventSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={clearEventSearch}
+                      className="text-xs font-semibold text-[#045BB4] hover:text-[#033D7A]"
+                    >
+                      Clear search
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {displayedEventItems.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvent(featuredEvent)}
+                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={featuredEvent.id}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.5 }}
+                        className="absolute inset-0"
+                      >
+                        <Image
+                          src={featuredEvent.image}
+                          alt={featuredEvent.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-700"
+                          onError={swapImage('/hero/hero-store.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
+                          <span className="bg-[#045BB4] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
+                            <CalendarClock className="w-4 h-4" />
+                            Event
+                          </span>
+                          <h3 className="text-white text-3xl md:text-4xl font-bold mb-2 group-hover:underline decoration-2 underline-offset-4">{featuredEvent.title}</h3>
+                          <p className="text-white/90 text-sm md:text-base font-medium flex items-center gap-2 mb-1">
+                            <CalendarClock className="w-4 h-4" /> {featuredEvent.date}
+                          </p>
+                          <p className="text-white/70 text-sm leading-relaxed">{featuredEvent.description}</p>
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Select this event
+                    </div>
+                  </button>
+
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
+                    {remainingEvents.map((event, index) => (
+                      <button
+                        key={event.id}
+                        type="button"
+                        onClick={() => setSelectedEvent(event)}
+                        className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#045BB4] sm:w-72 lg:h-[113px] lg:w-full"
+                      >
+                        <Image
+                          src={event.image}
+                          alt={event.title}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={swapImage('/hero/hero-store.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
+                          <span className="text-blue-200 text-[10px] font-bold uppercase tracking-wider mb-1">Event</span>
+                          <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{event.title}</h4>
+                          <p className="text-white/60 text-[10px] truncate">{event.date}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#045BB4]/25 bg-white p-8 text-center text-sm text-black/55">
+                  No ICD events found for this search.
+                </div>
+              )}
             </div>
           </section>
+        )}
+
+        {!mobilePlayerActive && (
+          <NewsSection
+            kicker="ICD updates"
+            title="Latest News"
+            description="Recent highlights from ICD ministry life, outreach, and gatherings."
+            items={icdNewsItems}
+            backgroundClassName="bg-white text-black border-y border-black/5"
+            maxItems={6}
+          />
+        )}
+
+        {!mobilePlayerActive && (
+          <div className="bg-white pb-16 text-center">
+            <Link
+              href="/ministries/icd/archive"
+              className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#045BB4] transition hover:bg-slate-50 hover:border-black/20"
+            >
+              View News Archive <Search className="w-4 h-4" />
+            </Link>
+          </div>
         )}
 
         {/* 7. PARTNER WITH US SECTION (Updated with Banking Details) */}
@@ -956,19 +1363,6 @@ export default function IcdMinistryPage() {
                   />
                 </div>
               </div>
-            </div>
-          </section>
-        )}
-
-        {/* 8. NEWS SECTION */}
-        {!mobilePlayerActive && (
-          <section className="py-20 bg-gray-50 text-black border-y border-black/5">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-              <Globe className="w-12 h-12 mx-auto text-[#045BB4] mb-6" />
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">Latest News</h2>
-              <p className="text-lg text-black/70 max-w-2xl mx-auto mb-8">
-                Preparations are in full swing for the upcoming Kamuzu Central Hospital Visits on May 3 and 17, 2026. All volunteers and partners are encouraged to register early. The newest Discipleship Intensive cohort materials are also now available for download.
-              </p>
             </div>
           </section>
         )}

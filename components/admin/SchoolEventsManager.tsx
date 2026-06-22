@@ -5,6 +5,7 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import Image from 'next/image';
+import { toast } from 'sonner';
 
 type EventItem = {
   id: string;
@@ -29,7 +30,6 @@ type Draft = {
 export default function SchoolEventsManager({
   token,
   schoolKey,
-  schoolName,
 }: {
   token: string;
   schoolKey: string;
@@ -214,7 +214,6 @@ export default function SchoolEventsManager({
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this event?')) return;
     setStatus('');
     try {
       const response = await apiFetch(`${baseUrl}/${encodeURIComponent(id)}`, {
@@ -235,6 +234,24 @@ export default function SchoolEventsManager({
     } catch {
       setStatus('Unable to delete event.');
     }
+  };
+
+  const requestRemove = (item: EventItem) => {
+    const toastId = toast('Delete this event?', {
+      description: item.title,
+      duration: Infinity,
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          toast.dismiss(toastId);
+          void remove(item.id);
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => toast.dismiss(toastId),
+      },
+    });
   };
 
   const filteredEvents = useMemo(() => {
@@ -398,7 +415,7 @@ export default function SchoolEventsManager({
                 {editingItem ? 'Update Event' : 'Add Event'}
               </Button>
               {editingItem && (
-                <Button variant="destructive" onClick={() => remove(editingItem.id)} className="gap-2">
+                <Button variant="destructive" onClick={() => requestRemove(editingItem)} className="gap-2">
                   <Trash2 className="h-4 w-4" />
                   Delete
                 </Button>

@@ -42,7 +42,6 @@ export default function GivePage() {
     givingDate: '',
     givingType: '',
     specialRecipient: '',
-    reason: '',
     paymentMethod: 'airtel',
   });
 
@@ -106,8 +105,7 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     return;
   }
 
-  const resolvedReason =
-    formData.reason || formData.givingType || 'Giving';
+  const resolvedReason = formData.givingType || 'Giving';
 
   setIsSubmitting(true);
 
@@ -194,7 +192,6 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
       givingDate: '',
       givingType: '',
       specialRecipient: '',
-      reason: '',
       paymentMethod: 'airtel',
     }));
   } catch (error) {
@@ -440,20 +437,6 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
                       <span className="text-sm font-medium text-foreground">Card Payment</span>
                     </label>
                   </div>
-                </div>
-                <div className="mt-4 flex flex-col gap-2">
-                  <label htmlFor="reason" className="text-sm font-medium text-foreground">
-                    Giving Reason
-                  </label>
-                  <input
-                    id="reason"
-                    type="text"
-                    name="reason"
-                    value={formData.reason}
-                    onChange={handleChange}
-                    placeholder="Giving Reason"
-                    className="h-12 rounded-full border border-border bg-background px-4 text-sm"
-                  />
                 </div>
                 <div className="mt-6">
                   <Button

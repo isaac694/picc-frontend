@@ -6,6 +6,7 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { toast } from 'sonner';
 
 export default function QuoteOfMonthAdminPage() {
   const {
@@ -144,7 +145,6 @@ export default function QuoteOfMonthAdminPage() {
 
   const handleDeleteQuote = async () => {
     if (!token) return;
-    if (!confirm('Delete the current Quote of the Month?')) return;
 
     setIsDeleting(true);
     setStatus('');
@@ -175,6 +175,24 @@ export default function QuoteOfMonthAdminPage() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const requestDeleteQuote = () => {
+    const toastId = toast('Delete the current Quote of the Month?', {
+      description: 'This action cannot be undone.',
+      duration: Infinity,
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          toast.dismiss(toastId);
+          void handleDeleteQuote();
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => toast.dismiss(toastId),
+      },
+    });
   };
 
   if (!token) {
@@ -270,7 +288,7 @@ export default function QuoteOfMonthAdminPage() {
             <Button onClick={handleSaveQuote}>Save Quote</Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteQuote}
+              onClick={requestDeleteQuote}
               disabled={isDeleting}
             >
               {isDeleting ? 'Deleting...' : 'Delete Quote'}

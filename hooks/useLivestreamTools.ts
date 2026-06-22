@@ -26,7 +26,7 @@ export function useNotepad() {
   return { notepadContent, setNotepadContent };
 }
 
-export function useTestimonyForm() {
+export function useTestimonyForm(churchEmail: string = 'testimony@piccworldwide.org') {
   const [testimonyForm, setTestimonyForm] = useState({
     fullName: '',
     phone: '',
@@ -55,7 +55,7 @@ export function useTestimonyForm() {
     setIsSubmitting(true);
     try {
       await sendTestimonyNotification({
-        churchEmail: 'testimony@piccworldwide.org',
+        churchEmail,
         fullName: testimonyForm.fullName,
         phone: testimonyForm.phone || undefined,
         area: testimonyForm.area || undefined,

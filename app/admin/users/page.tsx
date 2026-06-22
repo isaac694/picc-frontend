@@ -4,21 +4,19 @@ import { useEffect, useMemo, useState } from 'react';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { apiFetch } from '@/lib/api';
-import { ADMIN_PAGE_OPTIONS, type AdminPageKey } from '@/lib/admin-pages';
+import {
+  ADMIN_PAGE,
+  ADMIN_PAGE_OPTIONS,
+  MINISTRY_ADMIN_OPTIONS,
+  ministryAdminAccessKey,
+  type AdminPageKey,
+  type MinistryAdminKey,
+} from '@/lib/admin-pages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { Eye, EyeOff } from 'lucide-react';
 
 type UserRow = {
@@ -32,10 +30,26 @@ type UserRow = {
   updatedAt: string;
 };
 
+const isUserRole = (value: string): value is UserRow['role'] =>
+  value === 'USER' || value === 'ADMIN' || value === 'SUPER_ADMIN';
+
 const toLocal = (iso: string) => {
   const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleString();
 };
+
+const ministryKeysFromAccess = (access: string[]) =>
+  MINISTRY_ADMIN_OPTIONS
+    .filter((ministry) => access.includes(ministryAdminAccessKey(ministry.key)))
+    .map((ministry) => ministry.key);
+
+const pageKeysFromAccess = (access: string[]) =>
+  access.filter((key) => !key.startsWith('MINISTRY:') && key !== ADMIN_PAGE.MINISTRIES) as AdminPageKey[];
+
+const buildAdminPageAccess = (pageKeys: AdminPageKey[], ministryKeys: MinistryAdminKey[]) => [
+  ...pageKeys,
+  ...ministryKeys.map((key) => ministryAdminAccessKey(key)),
+];
 
 export default function AdminUsersPage() {
   const {
@@ -61,10 +75,10 @@ export default function AdminUsersPage() {
     role: 'ADMIN' as UserRow['role'],
     adminAccessAll: false,
     adminPageAccess: [] as AdminPageKey[],
+    adminMinistryAccess: [] as MinistryAdminKey[],
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const editingUser = useMemo(() => users.find((u) => u.id === editingId) || null, [users, editingId]);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -73,6 +87,7 @@ export default function AdminUsersPage() {
     role: 'ADMIN' as UserRow['role'],
     adminAccessAll: false,
     adminPageAccess: [] as AdminPageKey[],
+    adminMinistryAccess: [] as MinistryAdminKey[],
   });
 
   const isSuperAdmin = me?.role === 'SUPER_ADMIN';
@@ -118,7 +133,8 @@ export default function AdminUsersPage() {
       password: '',
       role: editingUser.role,
       adminAccessAll: Boolean(editingUser.adminAccessAll),
-      adminPageAccess: (editingUser.adminPageAccess || []) as AdminPageKey[],
+      adminPageAccess: pageKeysFromAccess(editingUser.adminPageAccess || []),
+      adminMinistryAccess: ministryKeysFromAccess(editingUser.adminPageAccess || []),
     });
   }, [editingUser]);
 
@@ -137,6 +153,24 @@ export default function AdminUsersPage() {
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return { ...prev, adminPageAccess: Array.from(next) };
+    });
+  };
+
+  const toggleCreateMinistry = (key: MinistryAdminKey) => {
+    setCreateForm((prev) => {
+      const next = new Set(prev.adminMinistryAccess);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return { ...prev, adminMinistryAccess: Array.from(next) };
+    });
+  };
+
+  const toggleEditMinistry = (key: MinistryAdminKey) => {
+    setEditForm((prev) => {
+      const next = new Set(prev.adminMinistryAccess);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return { ...prev, adminMinistryAccess: Array.from(next) };
     });
   };
 
@@ -163,7 +197,9 @@ export default function AdminUsersPage() {
           role: createForm.role,
           adminAccessAll: createForm.role === 'ADMIN' ? createForm.adminAccessAll : true,
           adminPageAccess:
-            createForm.role === 'ADMIN' && !createForm.adminAccessAll ? createForm.adminPageAccess : [],
+            createForm.role === 'ADMIN' && !createForm.adminAccessAll
+              ? buildAdminPageAccess(createForm.adminPageAccess, createForm.adminMinistryAccess)
+              : [],
         }),
       });
 
@@ -181,6 +217,7 @@ export default function AdminUsersPage() {
         role: 'ADMIN',
         adminAccessAll: false,
         adminPageAccess: [],
+        adminMinistryAccess: [],
       });
       await fetchUsers();
     } catch {
@@ -206,7 +243,9 @@ export default function AdminUsersPage() {
           role: editForm.role,
           adminAccessAll: editForm.role === 'ADMIN' ? editForm.adminAccessAll : true,
           adminPageAccess:
-            editForm.role === 'ADMIN' && !editForm.adminAccessAll ? editForm.adminPageAccess : [],
+            editForm.role === 'ADMIN' && !editForm.adminAccessAll
+              ? buildAdminPageAccess(editForm.adminPageAccess, editForm.adminMinistryAccess)
+              : [],
         }),
       });
 
@@ -242,11 +281,18 @@ export default function AdminUsersPage() {
       }
 
       setStatus('User deleted.');
-      setDeleteConfirmId(null);
       await fetchUsers();
     } catch {
       setStatus('Unable to delete user.');
     }
+  };
+
+  const requestDeleteUser = (user: UserRow) => {
+    confirmDeleteToast({
+      title: 'Delete this user?',
+      description: user.email || user.name || 'This user will be permanently removed.',
+      onConfirm: () => handleDelete(user.id),
+    });
   };
 
   if (!token) {
@@ -283,7 +329,9 @@ export default function AdminUsersPage() {
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">Admin</p>
           <h1 className="text-3xl font-semibold">User Management</h1>
-          <p className="text-foreground/70 mt-2">Create admins and control which admin pages they can access.</p>
+          <p className="text-foreground/70 mt-2">
+            Create admins and control which admin pages and ministries they can access.
+          </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>Logout</Button>
       </div>
@@ -331,7 +379,12 @@ export default function AdminUsersPage() {
             <select
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
               value={createForm.role}
-              onChange={(e) => setCreateForm((p) => ({ ...p, role: e.target.value as any }))}
+              onChange={(e) => {
+                const role = e.target.value;
+                if (isUserRole(role)) {
+                  setCreateForm((p) => ({ ...p, role }));
+                }
+              }}
             >
               <option value="ADMIN">Admin</option>
               <option value="SUPER_ADMIN">Super Admin</option>
@@ -351,17 +404,35 @@ export default function AdminUsersPage() {
             </div>
 
             {!createForm.adminAccessAll && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {ADMIN_PAGE_OPTIONS.map((opt) => (
-                  <label key={opt.key} className="flex items-center gap-2 text-sm rounded-lg border border-border/60 px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={createForm.adminPageAccess.includes(opt.key)}
-                      onChange={() => toggleCreatePage(opt.key)}
-                    />
-                    {opt.label}
-                  </label>
-                ))}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {ADMIN_PAGE_OPTIONS.map((opt) => (
+                    <label key={opt.key} className="flex items-center gap-2 text-sm rounded-lg border border-border/60 px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={createForm.adminPageAccess.includes(opt.key)}
+                        onChange={() => toggleCreatePage(opt.key)}
+                      />
+                      {opt.label}
+                    </label>
+                  ))}
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium mb-2">Ministries</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {MINISTRY_ADMIN_OPTIONS.map((opt) => (
+                      <label key={opt.key} className="flex items-center gap-2 text-sm rounded-lg border border-border/60 px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={createForm.adminMinistryAccess.includes(opt.key)}
+                          onChange={() => toggleCreateMinistry(opt.key)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -402,7 +473,7 @@ export default function AdminUsersPage() {
                     {u.role === 'ADMIN'
                       ? u.adminAccessAll
                         ? 'All pages'
-                        : `${(u.adminPageAccess || []).length} pages`
+                        : `${pageKeysFromAccess(u.adminPageAccess || []).length} pages, ${ministryKeysFromAccess(u.adminPageAccess || []).length} ministries`
                       : u.role === 'SUPER_ADMIN'
                         ? 'All pages'
                         : '-'}
@@ -413,7 +484,7 @@ export default function AdminUsersPage() {
                       <Button variant="outline" size="sm" onClick={() => setEditingId(u.id)}>
                         Edit
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmId(u.id)}>
+                      <Button variant="destructive" size="sm" onClick={() => requestDeleteUser(u)}>
                         Delete
                       </Button>
                     </div>
@@ -464,7 +535,12 @@ export default function AdminUsersPage() {
                 <select
                   className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
                   value={editForm.role}
-                  onChange={(e) => setEditForm((p) => ({ ...p, role: e.target.value as any }))}
+                  onChange={(e) => {
+                    const role = e.target.value;
+                    if (isUserRole(role)) {
+                      setEditForm((p) => ({ ...p, role }));
+                    }
+                  }}
                 >
                   <option value="ADMIN">Admin</option>
                   <option value="SUPER_ADMIN">Super Admin</option>
@@ -484,17 +560,35 @@ export default function AdminUsersPage() {
                 </div>
 
                 {!editForm.adminAccessAll && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {ADMIN_PAGE_OPTIONS.map((opt) => (
-                      <label key={opt.key} className="flex items-center gap-2 text-sm rounded-lg border border-border/60 px-3 py-2">
-                        <input
-                          type="checkbox"
-                          checked={editForm.adminPageAccess.includes(opt.key)}
-                          onChange={() => toggleEditPage(opt.key)}
-                        />
-                        {opt.label}
-                      </label>
-                    ))}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {ADMIN_PAGE_OPTIONS.map((opt) => (
+                        <label key={opt.key} className="flex items-center gap-2 text-sm rounded-lg border border-border/60 px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={editForm.adminPageAccess.includes(opt.key)}
+                            onChange={() => toggleEditPage(opt.key)}
+                          />
+                          {opt.label}
+                        </label>
+                      ))}
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium mb-2">Ministries</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {MINISTRY_ADMIN_OPTIONS.map((opt) => (
+                          <label key={opt.key} className="flex items-center gap-2 text-sm rounded-lg border border-border/60 px-3 py-2">
+                            <input
+                              type="checkbox"
+                              checked={editForm.adminMinistryAccess.includes(opt.key)}
+                              onChange={() => toggleEditMinistry(opt.key)}
+                            />
+                            {opt.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -506,28 +600,6 @@ export default function AdminUsersPage() {
             </div>
           </div>
         )}
-      <AlertDialog open={Boolean(deleteConfirmId)} onOpenChange={(open) => setDeleteConfirmId(open ? deleteConfirmId : null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove the user from the system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteConfirmId(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteConfirmId) {
-                  void handleDelete(deleteConfirmId);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       </div>
     </div>
   );

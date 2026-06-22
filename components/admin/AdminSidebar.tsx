@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Moon, Sun, Users } from 'lucide-react';
 import { useMemo } from 'react';
-import { ADMIN_PAGE, canAccessAdminPage } from '@/lib/admin-pages';
+import { ADMIN_PAGE, canAccessAdminPage, canAccessMinistry } from '@/lib/admin-pages';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useAdminTheme } from '@/hooks/use-admin-theme';
 import type { AdminPageKey } from '@/lib/admin-pages';
@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Events', href: '/admin/events', pageKey: ADMIN_PAGE.EVENTS },
   { label: 'Qoutes', href: '/admin/quote-of-month', pageKey: ADMIN_PAGE.QUOTE_OF_MONTH },
   { label: 'Homepage Images', href: '/admin/page-images', pageKey: ADMIN_PAGE.PAGE_IMAGES },
+  { label: 'Video Declarations', href: '/admin/video-declarations', pageKey: ADMIN_PAGE.VIDEO_DECLARATIONS },
   { label: 'FAQ (Footer)', href: '/admin/faqs', pageKey: ADMIN_PAGE.FAQS },
   { label: 'Hope School', href: '/admin/schools/hope-school', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT },
   { label: 'Discipleship', href: '/admin/schools/discipleship', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT },
@@ -32,25 +33,24 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const SITE_PAGE_ITEMS: NavItem[] = [
-  { label: 'About Page (Edit)', href: '/admin/about-page', pageKey: ADMIN_PAGE.ABOUT_PAGE },
-  { label: 'Contact Page (Edit)', href: '/admin/contact', pageKey: ADMIN_PAGE.CONTACT_PAGE },
-  { label: 'Media Page (Edit)', href: '/admin/media', pageKey: ADMIN_PAGE.MEDIA_PAGE },
-  { label: 'Forms Page (Edit)', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE },
-  { label: 'Sermons Page (Edit)', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE },
-  { label: 'Give Page (Edit)', href: '/admin/give', pageKey: ADMIN_PAGE.GIVE_PAGE },
-  { label: 'Church Locations (Edit)', href: '/admin/locations', pageKey: ADMIN_PAGE.LOCATIONS_PAGE },
+  { label: 'About Page', href: '/admin/about-page', pageKey: ADMIN_PAGE.ABOUT_PAGE },
+  { label: 'Contact Page', href: '/admin/contact', pageKey: ADMIN_PAGE.CONTACT_PAGE },
+  { label: 'Media Page', href: '/admin/media', pageKey: ADMIN_PAGE.MEDIA_PAGE },
+  { label: 'Forms Page', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE },
+  { label: 'Sermons Page', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE },
+  { label: 'Give Page', href: '/admin/give', pageKey: ADMIN_PAGE.GIVE_PAGE },
+  { label: 'Church Locations', href: '/admin/locations', pageKey: ADMIN_PAGE.LOCATIONS_PAGE },
 ];
 
-const MINISTRIES_ITEMS: NavItem[] = [
-  { label: 'ICD', href: '/admin/ministries/icd', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Men of Valour', href: '/admin/ministries/men-of-valour', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Prison Ministry', href: '/admin/ministries/prison-ministry', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Youth Church', href: '/admin/ministries/youth-church', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Women of Hope', href: '/admin/ministries/women-of-hope', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Rivers of Hope', href: '/admin/ministries/rivers-of-hope', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Hope and Beauty', href: '/admin/ministries/hope-and-beauty', pageKey: ADMIN_PAGE.MINISTRIES },
-  { label: 'Heritage', href: '/admin/ministries/heritage', pageKey: ADMIN_PAGE.MINISTRIES },
+const MINISTRIES_ITEMS: Array<NavItem & { ministryKey: string }> = [
+  { label: 'ICD', href: '/admin/ministries/icd', ministryKey: 'icd' },
+  { label: 'Men of Valour', href: '/admin/ministries/men-of-valour', ministryKey: 'men-of-valour' },
+  { label: 'Prison Ministry', href: '/admin/ministries/prison-ministry', ministryKey: 'prison-ministry' },
+  { label: 'Youth Church', href: '/admin/ministries/youth-church', ministryKey: 'youth-church' },
+  { label: 'Women of Hope', href: '/admin/ministries/women-of-hope', ministryKey: 'women-of-hope' },
+  { label: 'Wailing Woman', href: '/admin/ministries/wailing-woman', ministryKey: 'wailing-woman' },
+  { label: 'Rivers of Hope', href: '/admin/ministries/rivers-of-hope', ministryKey: 'rivers-of-hope' },
+  { label: 'Heritage', href: '/admin/ministries/heritage', ministryKey: 'heritage' },
 ];
 
 const ARCHIVE_ITEMS: NavItem[] = [
@@ -98,7 +98,7 @@ export default function AdminSidebar() {
       nav,
       site,
       usersItem,
-      ministries: MINISTRIES_ITEMS.filter(canSee),
+      ministries: MINISTRIES_ITEMS.filter((item) => canAccessMinistry(user, item.ministryKey)),
       showArchives: isSuperAdmin,
     };
   }, [user]);
