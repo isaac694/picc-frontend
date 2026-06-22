@@ -91,6 +91,9 @@ model Sermon {
     id          String   @id @default(cuid())
     title       String
     speaker     String
+    series      String?
+    topic       String?
+    imageUrl    String?
     date        DateTime
     description String?
     videoUrl    String?

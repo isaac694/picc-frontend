@@ -545,10 +545,10 @@ export default function SermonsPage() {
 
             <div className="mt-12 flex justify-center">
               <Link
-                href="/livestream"
-                className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground px-6 py-3 text-sm font-semibold hover:bg-primary/90 transition-colors"
+                href="/sermons/archive"
+                className="inline-flex items-center justify-center rounded-full bg-background border-2 border-primary/20 text-foreground px-8 py-3 text-sm font-semibold hover:bg-primary/5 hover:border-primary/40 transition-all w-full sm:w-auto shadow-sm"
               >
-                Watch Live
+                Browse Full Archive
               </Link>
             </div>
           </div>

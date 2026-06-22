@@ -1132,19 +1132,49 @@ app.get('/api/sermons', async (req, res) => {
   try {
     const skip = parseInt(req.query.skip || '0', 10);
     const take = parseInt(req.query.take || '10', 10);
+    const { speaker, series, topic, year, month, search } = req.query;
+
+    const where = {};
+    if (speaker) where.speaker = { contains: speaker, mode: 'insensitive' };
+    if (series) where.series = { contains: series, mode: 'insensitive' };
+    if (topic) where.topic = { contains: topic, mode: 'insensitive' };
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (year || month) {
+      const y = year ? parseInt(year, 10) : new Date().getFullYear();
+      const m = month ? parseInt(month, 10) - 1 : 0;
+      const start = new Date(y, m, 1);
+      const end = month 
+        ? new Date(y, m + 1, 1) 
+        : new Date(y + 1, 0, 1);
+      
+      where.date = {
+        gte: start,
+        lt: end,
+      };
+    }
 
     const sermons = await prisma.sermon.findMany({
+      where,
       include: { media: true },
       orderBy: { date: 'desc' },
       skip,
       take,
     });
 
-    const total = await prisma.sermon.count();
+    const total = await prisma.sermon.count({ where });
 
     const normalized = sermons.map((sermon) => ({
       ...sermon,
       pastor: sermon.speaker,
+      image: sermon.imageUrl || null,
+      youtubeUrl: sermon.videoUrl || null,
+      audioSrc: sermon.audioUrl || null,
       duration: sermon.duration ?? null,
       isPublished: true,
     }));
@@ -1155,9 +1185,9 @@ app.get('/api/sermons', async (req, res) => {
   }
 });
 
-app.post('/api/sermons', async (req, res) => {
+app.post('/api/sermons', authRequired, adminRequired, async (req, res) => {
   try {
-    const { title, description, pastor, date, duration } = req.body;
+    const { title, description, pastor, date, duration, series, topic, image, youtubeUrl, audioSrc, videoUrl, audioUrl } = req.body;
 
     if (!title || !date) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -1169,12 +1199,54 @@ app.post('/api/sermons', async (req, res) => {
         speaker: pastor || '',
         date: new Date(date),
         description: description || null,
-        videoUrl: null,
-        audioUrl: null,
+        series: series || null,
+        topic: topic || null,
+        imageUrl: image || null,
+        videoUrl: youtubeUrl || videoUrl || null,
+        audioUrl: audioSrc || audioUrl || null,
       },
     });
 
     res.status(201).json({ message: 'Sermon created successfully', id: sermon.id });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/sermons/:id', authRequired, adminRequired, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, pastor, date, duration, series, topic, image, youtubeUrl, audioSrc, videoUrl, audioUrl } = req.body;
+
+    const updates = {
+      title: title || undefined,
+      description: description ?? undefined,
+      speaker: pastor ?? undefined,
+      date: date ? new Date(date) : undefined,
+      duration: duration ?? undefined,
+      series: series ?? undefined,
+      topic: topic ?? undefined,
+      imageUrl: image ?? undefined,
+      videoUrl: (youtubeUrl || videoUrl) ?? undefined,
+      audioUrl: (audioSrc || audioUrl) ?? undefined,
+    };
+
+    const sermon = await prisma.sermon.update({
+      where: { id },
+      data: updates,
+    });
+
+    res.status(200).json({ message: 'Sermon updated successfully', id: sermon.id });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.delete('/api/sermons/:id', authRequired, adminRequired, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.sermon.delete({ where: { id } });
+    res.status(200).json({ message: 'Sermon deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

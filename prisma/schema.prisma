@@ -86,6 +86,11 @@ model Sermon {
   title       String
   description String?
   pastor      String?
+  series      String?
+  topic       String?
+  imageUrl    String?
+  videoUrl    String?
+  audioUrl    String?
   date        DateTime
   duration    String?
   isPublished Boolean       @default(true)

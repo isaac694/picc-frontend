@@ -19,6 +19,9 @@ interface Sermon {
   views: string;
   youtubeUrl: string;
   audioSrc: string;
+  pastor: string;
+  series: string;
+  topic: string;
 }
 
 const DEFAULT_HEADER_IMAGE = '/sermons/header.JPG';
@@ -30,6 +33,9 @@ const DEFAULT_SERMON: Omit<Sermon, 'id'> = {
   views: '0',
   youtubeUrl: '',
   audioSrc: '',
+  pastor: '',
+  series: '',
+  topic: '',
 };
 
 export default function AdminSermonsPage() {
@@ -101,6 +107,9 @@ export default function AdminSermonsPage() {
           : typeof record.audioUrl === 'string'
             ? record.audioUrl
             : '',
+      pastor: typeof record.pastor === 'string' ? record.pastor : '',
+      series: typeof record.series === 'string' ? record.series : '',
+      topic: typeof record.topic === 'string' ? record.topic : '',
     };
   }, []);
 
@@ -379,6 +388,9 @@ export default function AdminSermonsPage() {
       views: sermon.views || '0',
       youtubeUrl: sermon.youtubeUrl || '',
       audioSrc: sermon.audioSrc || '',
+      pastor: sermon.pastor || '',
+      series: sermon.series || '',
+      topic: sermon.topic || '',
     });
     setEditingId(sermon.id);
   };
@@ -566,6 +578,16 @@ export default function AdminSermonsPage() {
               />
             </div>
             <div>
+              <Label htmlFor="pastor">Speaker / Pastor</Label>
+              <Input
+                id="pastor"
+                value={draftSermon.pastor}
+                onChange={(e) => setDraftSermon(prev => ({ ...prev, pastor: e.target.value }))}
+                placeholder="Speaker name"
+                className="rounded-xl border-border bg-background px-4 py-3"
+              />
+            </div>
+            <div>
               <Label htmlFor="date">Date</Label>
               <input
                 id="date"
@@ -576,6 +598,26 @@ export default function AdminSermonsPage() {
               />
             </div>
             <div>
+              <Label htmlFor="series">Series</Label>
+              <Input
+                id="series"
+                value={draftSermon.series}
+                onChange={(e) => setDraftSermon(prev => ({ ...prev, series: e.target.value }))}
+                placeholder="Sermon series (optional)"
+                className="rounded-xl border-border bg-background px-4 py-3"
+              />
+            </div>
+            <div>
+              <Label htmlFor="topic">Topic / Category</Label>
+              <Input
+                id="topic"
+                value={draftSermon.topic}
+                onChange={(e) => setDraftSermon(prev => ({ ...prev, topic: e.target.value }))}
+                placeholder="e.g. Faith, Healing, Prayer"
+                className="rounded-xl border-border bg-background px-4 py-3"
+              />
+            </div>
+            <div className="md:col-span-2">
               <Label htmlFor="youtube-url">YouTube URL</Label>
               <Input
                 id="youtube-url"
