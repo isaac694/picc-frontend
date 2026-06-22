@@ -24,6 +24,10 @@ import BibleTool from '@/components/livestream/BibleTool';
 import NewsSection from '@/components/NewsSection';
 import { WAILING_WOMAN_NEWS_ITEMS } from '@/components/wailingWomanNews';
 
+// --- NEWS COMPONENTS ---
+import NewsSection from '@/components/NewsSection';
+import { WAILING_WOMAN_NEWS_ITEMS } from '@/components/wailingWomanNews';
+
 // --- TYPES & GLOBALS ---
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "prayer" | "give" | null;
 
@@ -393,7 +397,7 @@ export default function WailingWomenPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mediaQuery = window.matchMedia("(max-width: 767px)");
-    const handleChange = (event: MediaQueryListEvent | MediaQueryList) => setIsMobileViewport(event.matches);
+    const handleChange = (event: any) => setIsMobileViewport(event.matches);
     handleChange(mediaQuery);
     if (typeof mediaQuery.addEventListener === "function") {
       mediaQuery.addEventListener("change", handleChange);
@@ -864,7 +868,7 @@ export default function WailingWomenPage() {
                     data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
                     id="yt-hero"
                     src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
-                    title={featuredVideo?.title || "Wailing Woman Live"}
+                    title={featuredVideo?.title || "Youth Church Live"}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                   />
@@ -921,7 +925,7 @@ export default function WailingWomenPage() {
                     </div>
 
                     {activeTool === "bible" && <BibleTool />}
-                    {activeTool === "chat" && <div className="h-[400px] w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Wailing Woman Live'} /></div>}
+                    {activeTool === "chat" && <div className="h-100 w-full bg-white"><LiveChat videoId={featuredVideo?.videoId || FALLBACK_HERO_ID} videoTitle={featuredVideo?.title || 'Youth Church Live'} /></div>}
                     {activeTool === "notepad" && <NotepadTool />}
                     {activeTool === "testimony" && <div className="px-5 py-6"><TestimonyTool churchEmail="wailingwoman@piccworldwide.org" /></div>}
                     {activeTool === "prayer" && <div className="px-5 py-6"><PrayerRequestTool ministryKey="wailing-woman" /></div>}
