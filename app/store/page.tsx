@@ -45,7 +45,30 @@ type StoreCartPayload = {
 const STORE_TOKEN_KEY = 'store_token';
 const STORE_USER_KEY = 'store_user';
 const STORE_CART_TOKEN_KEY = 'hope_store_cart_token';
+const STORE_CART_STATE_KEY = 'hope_store_cart_state';
 const CART_SYNC_DEBOUNCE_MS = 250;
+
+type StoredStoreCartState = {
+  cart: CartItem[];
+  digitalCart: CartItem[];
+  expiresAt: string | null;
+};
+
+function parseStoredStoreCartState(value: string | null): StoredStoreCartState | null {
+  if (!value) return null;
+
+  try {
+    const parsed = JSON.parse(value) as Partial<StoredStoreCartState>;
+
+    return {
+      cart: Array.isArray(parsed.cart) ? parsed.cart : [],
+      digitalCart: Array.isArray(parsed.digitalCart) ? parsed.digitalCart : [],
+      expiresAt: typeof parsed.expiresAt === 'string' ? parsed.expiresAt : null,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default function StorePage() {
   const [searchInput, setSearchInput] = useState('');
@@ -593,6 +616,15 @@ export default function StorePage() {
     }
 
     setCartToken(nextToken);
+
+    const storedCartState = parseStoredStoreCartState(localStorage.getItem(STORE_CART_STATE_KEY));
+    if (storedCartState) {
+      setCart(storedCartState.cart);
+      setDigitalCart(storedCartState.digitalCart);
+      setCartExpiresAt(storedCartState.expiresAt);
+    }
+
+    setHasLoadedStoredCart(true);
   }, []);
 
   useEffect(() => {
@@ -686,41 +718,28 @@ export default function StorePage() {
   useEffect(() => {
     if (!hasLoadedStoredCart) return;
 
-    setCart((current) => mergeCartItemsWithCatalog(current));
-    setDigitalCart((current) => mergeCartItemsWithCatalog(current));
-  }, [hasLoadedStoredCart, mergeCartItemsWithCatalog]);
-
-  useEffect(() => {
-    if (!cartExpiresAt || !cartToken) return;
-
-    const expiresAtMs = new Date(cartExpiresAt).getTime();
-    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
-      setCart([]);
-      setDigitalCart([]);
-      setCartExpiresAt(null);
+    const hasItems = cart.length > 0 || digitalCart.length > 0;
+    if (!hasItems) {
+      localStorage.removeItem(STORE_CART_STATE_KEY);
       return;
     }
 
-    const timeout = window.setTimeout(() => {
-      setCart([]);
-      setDigitalCart([]);
-      setCartExpiresAt(null);
-      apiFetch('/api/store/cart', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-store-cart-token': cartToken,
-        },
-        body: JSON.stringify({ cartToken }),
-      }).catch(() => {
-        // If cleanup fails, the server-side purge still removes the row later.
-      });
-    }, expiresAtMs - Date.now());
+    localStorage.setItem(
+      STORE_CART_STATE_KEY,
+      JSON.stringify({
+        cart,
+        digitalCart,
+        expiresAt: cartExpiresAt,
+      } satisfies StoredStoreCartState),
+    );
+  }, [cart, digitalCart, cartExpiresAt, hasLoadedStoredCart]);
 
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [cartExpiresAt, cartToken]);
+  useEffect(() => {
+    if (!hasLoadedStoredCart) return;
+
+    setCart((current) => mergeCartItemsWithCatalog(current));
+    setDigitalCart((current) => mergeCartItemsWithCatalog(current));
+  }, [hasLoadedStoredCart, mergeCartItemsWithCatalog]);
 
   const getBookOverview = (book: Product) => {
     const genreIntro: Record<string, string> = {

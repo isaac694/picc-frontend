@@ -81,7 +81,7 @@ type YouTubePlaylistItem = {
   snippet?: YouTubeSearchItem['snippet'];
 };
 
-const PASTOR_ESAU_BANDA_CHANNEL_ID = "UC-v_ov21EZf8f";
+const WOMEN_OF_HOPE_CHANNEL_ID = "UC8JUC-G4wKhrrPr7xjxYWJw";
 const FALLBACK_HERO_ID = "ydTADwZRquA";
 
 const TOOL_TABS: Array<{
@@ -314,7 +314,7 @@ export default function WailingWomenPage() {
 
         const liveUrl = new URL("https://www.googleapis.com/youtube/v3/search");
         liveUrl.searchParams.set("part", "snippet");
-        liveUrl.searchParams.set("channelId", PASTOR_ESAU_BANDA_CHANNEL_ID);
+        liveUrl.searchParams.set("channelId", WOMEN_OF_HOPE_CHANNEL_ID);
         liveUrl.searchParams.set("eventType", "live");
         liveUrl.searchParams.set("type", "video");
         liveUrl.searchParams.set("q", "Wailing Woman");
@@ -324,7 +324,7 @@ export default function WailingWomenPage() {
 
         const [liveData, wwVideos] = await Promise.all([
           fetchJson(liveUrl.toString()),
-          fetchLatestWailingWomanVideos(PASTOR_ESAU_BANDA_CHANNEL_ID),
+          fetchLatestWailingWomanVideos(WOMEN_OF_HOPE_CHANNEL_ID),
         ]);
 
         const liveVideo = Array.isArray(liveData?.items) ? toVideoFromSearch(liveData.items[0]) : null;
@@ -943,7 +943,7 @@ export default function WailingWomenPage() {
                   <p className="text-gray-500 mt-2">Catch up on previous warfare intercessions and prophetic sessions.</p>
                 </div>
                 <a 
-                  href={`https://www.youtube.com/channel/${PASTOR_ESAU_BANDA_CHANNEL_ID}`} 
+                  href={`https://www.youtube.com/channel/${WOMEN_OF_HOPE_CHANNEL_ID}`} 
                   target="_blank" 
                   rel="noreferrer"
                   className="hidden sm:flex items-center gap-2 text-purple-600 font-bold hover:text-purple-800 transition-colors"
