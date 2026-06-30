@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useMemo, type FormEvent, type SyntheticEvent } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ type DigitalPurchase = {
   status: 'pending' | 'available' | 'cancelled';
   purchasedAt: string;
   downloadUrl?: string | null;
+  bookContent?: string | null;
 };
 
 type BankTransferDetails = Record<string, string | number | null | undefined>;
@@ -71,6 +73,7 @@ function parseStoredStoreCartState(value: string | null): StoredStoreCartState |
 }
 
 export default function StorePage() {
+  const router = useRouter();
   const [searchInput, setSearchInput] = useState('');
   const [trendingTab, setTrendingTab] = useState<'Featured' | 'New arrivals' | 'Best sellers'>('Featured');
   const [selectedBookGenre, setSelectedBookGenre] = useState<'All' | (typeof bookGenres)[number]>('All');
@@ -254,6 +257,7 @@ export default function StorePage() {
     hardCopyEnabled?: boolean;
     softCopyEnabled?: boolean;
     downloadUrl?: string | null;
+    bookContent?: string | null;
     sortOrder?: number;
     isActive?: boolean;
   }): Product => ({
@@ -270,6 +274,7 @@ export default function StorePage() {
     hardCopyEnabled: book.hardCopyEnabled !== false,
     softCopyEnabled: book.softCopyEnabled !== false,
     downloadUrl: book.downloadUrl || null,
+    bookContent: book.bookContent || null,
     sortOrder: Number(book.sortOrder || 0),
     isActive: book.isActive !== false,
   });
@@ -284,6 +289,7 @@ export default function StorePage() {
     price: number;
     status: DigitalPurchase['status'];
     downloadUrl?: string | null;
+    bookContent?: string | null;
     createdAt: string;
   }): DigitalPurchase => ({
     id: purchase.id,
@@ -299,6 +305,7 @@ export default function StorePage() {
     price: purchase.price,
     status: purchase.status,
     downloadUrl: purchase.downloadUrl || null,
+    bookContent: purchase.bookContent || null,
     purchasedAt: purchase.createdAt,
   });
 
@@ -413,6 +420,12 @@ export default function StorePage() {
 
       if (pendingSoftCopyBook) {
         addSoftCopyToCart(pendingSoftCopyBook);
+        router.push('/store/checkout');
+        return;
+      }
+
+      if (cartMode === 'soft' && digitalCart.length > 0) {
+        router.push('/store/checkout');
       }
     } catch {
       setAuthError('Unable to connect right now. Please try again.');
@@ -444,10 +457,15 @@ export default function StorePage() {
   const completeDigitalCheckout = async () => {
     const checkoutItems = cartMode === 'soft' ? digitalCart : cart;
 
-    if (cartMode === 'soft' && (!storeToken || !storeUser)) {
-      setPendingSoftCopyBook(null);
-      setAuthMode('signin');
-      setIsAuthOpen(true);
+    if (cartMode === 'soft') {
+      if (!storeToken || !storeUser) {
+        setPendingSoftCopyBook(null);
+        setAuthMode('signin');
+        setIsAuthOpen(true);
+        return;
+      }
+
+      router.push('/store/checkout');
       return;
     }
 
@@ -943,7 +961,7 @@ export default function StorePage() {
                   type="button"
                   onClick={() => {
                     if (storeUser) {
-                      setIsLibraryOpen(true);
+                      router.push('/store/library');
                       return;
                     }
                     setAuthMode('signin');
@@ -957,7 +975,14 @@ export default function StorePage() {
                 <span className="h-4 w-px bg-slate-300" />
                 <button
                   type="button"
-                  onClick={() => setIsLibraryOpen(true)}
+                  onClick={() => {
+                    if (storeUser) {
+                      router.push('/store/library');
+                      return;
+                    }
+                    setAuthMode('signin');
+                    setIsAuthOpen(true);
+                  }}
                   className="inline-flex items-center gap-2 hover:text-slate-950"
                 >
                   <Library className="h-4 w-4" />
@@ -1655,7 +1680,7 @@ export default function StorePage() {
                           setIsCartOpen(false);
                           if (cartMode === 'soft') {
                             setDigitalCart([]);
-                            setIsLibraryOpen(true);
+                            router.push('/store/library');
                           } else {
                             setCart([]);
                           }

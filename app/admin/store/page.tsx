@@ -19,6 +19,7 @@ type StoreBook = Product & {
   hardCopyEnabled: boolean;
   softCopyEnabled: boolean;
   downloadUrl?: string | null;
+  bookContent?: string | null;
   sortOrder: number;
   isActive: boolean;
   isBuiltIn?: boolean;
@@ -36,6 +37,7 @@ type StoreBookDraft = {
   hardCopyEnabled: boolean;
   softCopyEnabled: boolean;
   downloadUrl: string;
+  bookContent: string;
   sortOrder: string;
   isActive: boolean;
 };
@@ -52,6 +54,7 @@ const EMPTY_DRAFT: StoreBookDraft = {
   hardCopyEnabled: true,
   softCopyEnabled: true,
   downloadUrl: '',
+  bookContent: '',
   sortOrder: '0',
   isActive: true,
 };
@@ -70,6 +73,7 @@ const toDraft = (book: StoreBook): StoreBookDraft => ({
   hardCopyEnabled: book.hardCopyEnabled !== false,
   softCopyEnabled: book.softCopyEnabled !== false,
   downloadUrl: book.downloadUrl || '',
+  bookContent: book.bookContent || '',
   sortOrder: String(book.sortOrder ?? 0),
   isActive: book.isActive !== false,
 });
@@ -91,6 +95,7 @@ const normalizeBook = (book: Partial<StoreBook>): StoreBook => ({
   hardCopyEnabled: book.hardCopyEnabled !== false,
   softCopyEnabled: book.softCopyEnabled !== false,
   downloadUrl: book.downloadUrl || '',
+  bookContent: book.bookContent || '',
   sortOrder: Number(book.sortOrder || 0),
   isActive: book.isActive !== false,
   isBuiltIn: book.isBuiltIn === true,
@@ -201,6 +206,7 @@ export default function AdminStorePage() {
     hardCopyEnabled: draft.hardCopyEnabled,
     softCopyEnabled: draft.softCopyEnabled,
     downloadUrl: draft.downloadUrl.trim(),
+    bookContent: draft.bookContent.trim(),
     sortOrder: Number(draft.sortOrder || 0),
     isActive: draft.isActive,
   });
@@ -477,6 +483,18 @@ export default function AdminStorePage() {
               onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
               rows={4}
               placeholder="Book description"
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="store-book-content" className="text-sm font-medium text-foreground">Soft copy reader content</label>
+            <textarea
+              id="store-book-content"
+              value={draft.bookContent}
+              onChange={(event) => setDraft((prev) => ({ ...prev, bookContent: event.target.value }))}
+              rows={10}
+              placeholder="Enter chapters or reading content for users who paid for the soft copy. Leave blank to show sample content."
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
             />
           </div>
