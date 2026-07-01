@@ -426,7 +426,10 @@ export default function StorePage() {
 
       if (cartMode === 'soft' && digitalCart.length > 0) {
         router.push('/store/checkout');
+        return;
       }
+
+      router.push('/store/library');
     } catch {
       setAuthError('Unable to connect right now. Please try again.');
     } finally {
