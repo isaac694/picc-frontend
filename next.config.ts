@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.NODE_ENV !== "production" ? "http://localhost:5000" : "https://api.piccworldwide.org");
 const apiUrl = new URL(apiBase);
 const apiProtocol = apiUrl.protocol === "https:" ? "https" : "http";
 const projectRoot = process.cwd();
@@ -26,10 +26,10 @@ const nextConfig: NextConfig = {
         port: apiUrl.port || undefined,
         pathname: "/**",
       },
-      // Explicitly allow your Render backend
+      // Explicitly allow your Hostinger backend
       {
         protocol: "https",
-        hostname: "picc-backend.onrender.com",
+        hostname: "api.piccworldwide.org",
         port: "", // Leave port empty for standard https
         pathname: "/**",
       },
