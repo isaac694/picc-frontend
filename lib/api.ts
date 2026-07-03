@@ -1,5 +1,5 @@
 const LOCAL_API_BASE_URL = 'http://localhost:5000';
-const PROD_API_BASE_URL = 'https://api.piccworldwide.org';
+const PROD_API_BASE_URL = 'https://picc-backend.vercel.app';
 
 const normalize = (value: string) => value.replace(/\/+$/, '');
 
