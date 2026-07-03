@@ -1,6 +1,25 @@
 import type { NextConfig } from "next";
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.NODE_ENV !== "production" ? "http://localhost:5000" : "https://api.piccworldwide.org");
+const LOCAL_API_BASE_URL = "http://localhost:5000";
+const PROD_API_BASE_URL = "https://api.piccworldwide.org";
+const DEPRECATED_API_HOSTS = new Set(["picc-backend.onrender.com"]);
+
+const normalizeConfiguredBaseUrl = (value: string | undefined): string | null => {
+  if (!value) return null;
+
+  const normalized = value.trim().replace(/\/+$/, "");
+  try {
+    const url = new URL(normalized);
+    if (DEPRECATED_API_HOSTS.has(url.hostname)) return null;
+    return normalized;
+  } catch {
+    return null;
+  }
+};
+
+const apiBase =
+  normalizeConfiguredBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL) ||
+  (process.env.NODE_ENV !== "production" ? LOCAL_API_BASE_URL : PROD_API_BASE_URL);
 const apiUrl = new URL(apiBase);
 const apiProtocol = apiUrl.protocol === "https:" ? "https" : "http";
 const projectRoot = process.cwd();

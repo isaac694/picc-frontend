@@ -1,7 +1,21 @@
 const LOCAL_API_BASE_URL = 'http://localhost:5000';
 const PROD_API_BASE_URL = 'https://api.piccworldwide.org';
+const DEPRECATED_API_HOSTS = new Set(['picc-backend.onrender.com']);
 
 const normalize = (value: string) => value.replace(/\/+$/, '');
+
+const normalizeConfiguredBaseUrl = (value: string | undefined): string | null => {
+  if (!value) return null;
+
+  const normalized = normalize(value.trim());
+  try {
+    const url = new URL(normalized);
+    if (DEPRECATED_API_HOSTS.has(url.hostname)) return null;
+    return normalized;
+  } catch {
+    return null;
+  }
+};
 
 const buildUrl = (baseUrl: string, path: string): string => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -9,8 +23,9 @@ const buildUrl = (baseUrl: string, path: string): string => {
 };
 
 const resolveApiBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return normalize(process.env.NEXT_PUBLIC_API_BASE_URL);
+  const configuredBaseUrl = normalizeConfiguredBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
   }
 
   if (process.env.NODE_ENV !== 'production') {
@@ -21,8 +36,9 @@ const resolveApiBaseUrl = () => {
 };
 
 const resolveFallbackApiBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_API_FALLBACK_BASE_URL) {
-    return normalize(process.env.NEXT_PUBLIC_API_FALLBACK_BASE_URL);
+  const configuredFallbackBaseUrl = normalizeConfiguredBaseUrl(process.env.NEXT_PUBLIC_API_FALLBACK_BASE_URL);
+  if (configuredFallbackBaseUrl) {
+    return configuredFallbackBaseUrl;
   }
 
   if (typeof window === 'undefined') return null;
