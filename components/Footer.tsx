@@ -26,7 +26,7 @@ export default function Footer() {
   const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>([]);
   const fallbackFaqs = [
     {
-      question: 'What time are services?',
+      question: 'What time are church services?',
       answer: 'Service times are listed on the Service Times page and updated weekly.',
     },
     {
