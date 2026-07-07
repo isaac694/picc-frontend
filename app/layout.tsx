@@ -41,6 +41,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/logos/picc-logo.png" />
+        <link rel="shortcut icon" href="/logos/picc-logo.png" />
+        <link rel="apple-touch-icon" href="/logos/picc-logo.png" />
+      </head>
       <body>
         <AdminThemeSync />
         {children}
