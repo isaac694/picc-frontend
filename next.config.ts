@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const LOCAL_API_BASE_URL = "http://localhost:5000";
-const PROD_API_BASE_URL = "https://api.piccworldwide.org";
+const PROD_API_BASE_URL = "https://backend.piccworldwide.org";
 const DEPRECATED_API_HOSTS = new Set(["picc-backend.onrender.com"]);
 
 const normalizeConfiguredBaseUrl = (value: string | undefined): string | null => {
@@ -48,7 +48,7 @@ const nextConfig: NextConfig = {
       // Explicitly allow your Hostinger backend
       {
         protocol: "https",
-        hostname: "api.piccworldwide.org",
+        hostname: "backend.piccworldwide.org",
         port: "", // Leave port empty for standard https
         pathname: "/**",
       },

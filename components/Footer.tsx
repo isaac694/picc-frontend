@@ -121,7 +121,7 @@ export default function Footer() {
   return (
     <footer className="bg-[#0b0b0b] text-white rounded-t-[36px] overflow-hidden">
       <div className="w-full px-0 pt-20 pb-0">
-        <div className="w-full rounded-t-[36px] rounded-b-none bg-[#0b0b0b] px-8 pt-16 pb-6 md:px-12 md:pt-20 md:pb-8 shadow-2xl min-h-[520px]">
+        <div className="w-full rounded-t-[36px] rounded-b-none bg-[#0b0b0b] px-8 pt-16 pb-6 md:px-12 md:pt-20 md:pb-8 shadow-2xl min-h-130">
           <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.8fr_1fr] gap-10 md:gap-12">
             <div>
               <div className="flex items-center gap-4 mb-6">

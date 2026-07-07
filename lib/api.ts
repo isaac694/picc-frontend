@@ -1,6 +1,5 @@
 const LOCAL_API_BASE_URL = 'http://localhost:5000';
-const PROD_API_BASE_URL = 'https://api.piccworldwide.org';
-const DEPRECATED_API_HOSTS = new Set(['picc-backend.onrender.com']);
+const PROD_API_BASE_URL = 'https://backend.piccworldwide.org';
 
 const normalize = (value: string) => value.replace(/\/+$/, '');
 
@@ -9,8 +8,7 @@ const normalizeConfiguredBaseUrl = (value: string | undefined): string | null =>
 
   const normalized = normalize(value.trim());
   try {
-    const url = new URL(normalized);
-    if (DEPRECATED_API_HOSTS.has(url.hostname)) return null;
+    new URL(normalized);
     return normalized;
   } catch {
     return null;
