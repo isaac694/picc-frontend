@@ -1,5 +1,4 @@
 // app/layout.tsx
-import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ScrollActions from '@/components/ScrollActions';
 import { Toaster } from '@/components/ui/sonner';
@@ -8,7 +7,7 @@ import AdminThemeSync from '@/components/admin/AdminThemeSync';
 /**
  * Metadata (SEO, title, description, icons, etc.)
  */
-export const metadata: Metadata = {
+export const metadata: any = {
   title: 'Church Website - Welcome to Our Community',
   description:
     'Join our church community for worship, fellowship, and spiritual growth. ' +
@@ -23,7 +22,7 @@ export const metadata: Metadata = {
 /**
  * Viewport settings (theme color, zoom behavior)
  */
-export const viewport: Viewport = {
+export const viewport: any = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
     { media: '(prefers-color-scheme: dark)', color: '#0F1419' },

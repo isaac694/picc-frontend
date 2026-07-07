@@ -14,7 +14,7 @@ import VideoDeclarationCard, { type VideoDeclarationCardContent } from '@/compon
 import { apiFetch, apiUrl } from '@/lib/api';
 
 const HOME_HERO_SLOTS = [
-  { key: 'home-hero-1', fallback: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
+  { key: 'home-hero-1', fallback: '/hero/hero-4.jpg', className: 'col-span-2 row-span-1' },
   { key: 'home-hero-2', fallback: '/hero/hero-10.JPG', className: 'col-span-2 row-span-2' },
   { key: 'home-hero-3', fallback: '/hero/hero-9.JPG', className: 'col-span-2 row-span-1' },
   { key: 'home-hero-4', fallback: '/hero/hero-8.JPG', className: 'col-span-2 row-span-2 hidden sm:block' },
@@ -22,7 +22,7 @@ const HOME_HERO_SLOTS = [
   { key: 'home-hero-6', fallback: '/hero/hero-2.jpg', className: 'col-span-2 row-span-2 hidden sm:block' },
   { key: 'home-hero-7', fallback: '/hero/hero-1.jpg', className: 'col-span-2 row-span-1 hidden sm:block' },
   { key: 'home-hero-8', fallback: '/hero/hero-5.png', className: 'col-span-2 row-span-1 hidden md:block' },
-  { key: 'home-hero-9', fallback: '/hero/hero-3.JPG', className: 'col-span-2 row-span-1 hidden md:block' },
+  { key: 'home-hero-9', fallback: '/hero/hero-3.jpg', className: 'col-span-2 row-span-1 hidden md:block' },
 ];
 
 const GROW_CARD_SLOTS = [
