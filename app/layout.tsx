@@ -15,8 +15,8 @@ export const metadata: Metadata = {
     'Sunday services, prayer requests, livestreams, and more.',
   generator: 'v0.app',
   icons: {
-    icon: '/logos/picc-logo.png',
-    apple: '/logos/picc-logo.png',
+    icon: '/logos/favicon.ico',
+    apple: '/logos/favicon.ico',
   },
 };
 
