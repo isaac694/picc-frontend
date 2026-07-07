@@ -14,7 +14,7 @@ import VideoDeclarationCard, { type VideoDeclarationCardContent } from '@/compon
 import { apiFetch, apiUrl } from '@/lib/api';
 
 const HOME_HERO_SLOTS = [
-  { key: 'home-hero-1', fallback: '/hero/hero-4.jpg', className: 'col-span-2 row-span-1' },
+  { key: 'home-hero-1', fallback: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
   { key: 'home-hero-2', fallback: '/hero/hero-10.JPG', className: 'col-span-2 row-span-2' },
   { key: 'home-hero-3', fallback: '/hero/hero-9.JPG', className: 'col-span-2 row-span-1' },
   { key: 'home-hero-4', fallback: '/hero/hero-8.JPG', className: 'col-span-2 row-span-2 hidden sm:block' },
