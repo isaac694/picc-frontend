@@ -21,16 +21,16 @@ const buildUrl = (baseUrl: string, path: string): string => {
 };
 
 const resolveApiBaseUrl = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return PROD_API_BASE_URL;
+  }
+
   const configuredBaseUrl = normalizeConfiguredBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
   if (configuredBaseUrl) {
     return configuredBaseUrl;
   }
 
-  if (process.env.NODE_ENV !== 'production') {
-    return LOCAL_API_BASE_URL;
-  }
-
-  return PROD_API_BASE_URL;
+  return LOCAL_API_BASE_URL;
 };
 
 const resolveFallbackApiBaseUrl = () => {
