@@ -193,7 +193,7 @@ export default function ContactPage() {
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
     } catch (error) {
       console.error('Error submitting form:', error);
-      toast.error('There was an error sending your message. Please try again.');
+      toast.error('There was an error sending your message. Please try again...');
     } finally {
       setIsSubmitting(false);
     }
