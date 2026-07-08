@@ -194,5 +194,5 @@ export function normalizeLoadedMediaItems<T extends Record<string, unknown>>(ite
       ...item,
       imageUrl: item.imageUrl ? String(item.imageUrl) : '',
       fileUrl: item.fileUrl ? String(item.fileUrl) : '',
-    })) as T[];
+    })) as unknown as T[];
 }

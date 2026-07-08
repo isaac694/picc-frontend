@@ -207,12 +207,12 @@ const resolveImageSrc = (value: string | null | undefined, fallback: string) => 
 export default async function SchoolOfDiscipleshipPage() {
   const schoolInfo = await getDiscipleshipInfo();
   const lessonIcons = [Sun, BookOpen, ShieldCheck, Flame, Gift, Crown, Anchor, Zap];
-  const courses = (schoolInfo.lessons ?? discipleshipFallbackInfo.lessons).map((course, index) => ({
+  const courses = (schoolInfo.lessons ?? discipleshipFallbackInfo.lessons ?? []).map((course, index) => ({
     ...course,
     icon: lessonIcons[index % lessonIcons.length] || BookOpen,
     num: course.num || String(index + 1).padStart(2, '0'),
   }));
-  const coreValues = schoolInfo.coreValues ?? discipleshipFallbackInfo.coreValues;
+  const coreValues = schoolInfo.coreValues ?? discipleshipFallbackInfo.coreValues ?? [];
 
   const keyDatesFallback: Array<[string, string]> = [
     ['Registration Starts', 'January 20, 2025'],
@@ -399,9 +399,9 @@ export default async function SchoolOfDiscipleshipPage() {
 
           <div className="max-w-3xl mx-auto grid sm:grid-cols-3 gap-px bg-slate-200 shadow-2xl border border-[#c9a84c]/20">
             {[
-              { icon: '📞', label: 'Phone', lines: [schoolInfo.phone || discipleshipFallbackInfo.phone].filter(Boolean) },
-              { icon: '✉', label: 'Email', lines: [schoolInfo.email || discipleshipFallbackInfo.email].filter(Boolean) },
-              { icon: '⊕', label: 'Location', lines: [schoolInfo.address || discipleshipFallbackInfo.address].filter(Boolean) },
+              { icon: '📞', label: 'Phone', lines: [schoolInfo.phone || discipleshipFallbackInfo.phone].filter((line): line is string => Boolean(line)) },
+              { icon: '✉', label: 'Email', lines: [schoolInfo.email || discipleshipFallbackInfo.email].filter((line): line is string => Boolean(line)) },
+              { icon: '⊕', label: 'Location', lines: [schoolInfo.address || discipleshipFallbackInfo.address].filter((line): line is string => Boolean(line)) },
             ].map(({ icon, label, lines }) => (
               <div key={label} className="bg-white/95 p-8 text-center hover:bg-white transition-colors duration-300">
                 <div className="inline-flex items-center justify-center w-14 h-14 border border-[#c9a84c] text-2xl mx-auto mb-4">
@@ -566,4 +566,3 @@ export default async function SchoolOfDiscipleshipPage() {
     </div>
   );
 }
-

@@ -443,7 +443,7 @@ export default function EventsAdminPage() {
             />
             <select
               value={eventDraft.scope}
-              onChange={(event) => setEventDraft((prev) => ({ ...prev, scope: event.target.value }))}
+              onChange={(event) => setEventDraft((prev) => ({ ...prev, scope: normalizeScope(event.target.value) }))}
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
               aria-label="Event scope"
             >

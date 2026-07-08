@@ -1,15 +1,9 @@
 import { defineConfig } from 'prisma/config';
 
 export default defineConfig({
-  datasources: {
-    db: {
-      provider: 'sqlite',
-      url: process.env.DATABASE_URL || 'file:./dev.db',
-    },
-  },
-  generators: {
-    client: {
-      provider: 'prisma-client-js',
-    },
+  schema: 'prisma/schema.prisma',
+  engine: 'classic',
+  datasource: {
+    url: process.env.DATABASE_URL || 'file:./dev.db',
   },
 });

@@ -481,10 +481,6 @@ export default function StorePage() {
       const checkoutHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      if (cartMode === 'soft' && storeToken) {
-        checkoutHeaders.Authorization = `Bearer ${storeToken}`;
-      }
-
       const response = await apiFetch('/api/store/purchases', {
         method: 'POST',
         headers: checkoutHeaders,
@@ -492,13 +488,13 @@ export default function StorePage() {
           paymentMethod,
           phone: checkoutPhone,
           phoneCountry: '+265',
-          format: cartMode === 'soft' ? 'soft' : 'hard',
+          format: 'hard',
           customerEmail: checkoutEmail,
           cartToken,
           items: checkoutItems.map((item) => ({
             product: item.product,
             quantity: item.quantity,
-            price: cartMode === 'soft' ? getSoftCopyPrice(item.product) : item.product.price,
+            price: item.product.price,
             currency: 'MWK',
           })),
         }),
@@ -512,9 +508,6 @@ export default function StorePage() {
       }
 
       const purchases = Array.isArray(data?.purchases) ? data.purchases.map(mapStorePurchase) : [];
-      if (cartMode === 'soft') {
-        setDigitalLibrary((prev) => [...purchases, ...prev]);
-      }
       setPaymentChargeId(String(data?.chargeId || data?.payment?.chargeId || ''));
       setCheckoutBankTransfer(data?.payment?.bankTransfer || null);
       if (data?.payment?.checkoutUrl) {
