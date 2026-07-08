@@ -1,5 +1,6 @@
 const LOCAL_API_BASE_URL = 'http://localhost:5000';
 const PROD_API_BASE_URL = 'https://backend.piccworldwide.org';
+const ALLOWED_API_HOSTS = new Set(['localhost', '127.0.0.1', 'backend.piccworldwide.org']);
 
 const normalize = (value: string) => value.replace(/\/+$/, '');
 
@@ -8,7 +9,9 @@ const normalizeConfiguredBaseUrl = (value: string | undefined): string | null =>
 
   const normalized = normalize(value.trim());
   try {
-    new URL(normalized);
+    const url = new URL(normalized);
+    if (!ALLOWED_API_HOSTS.has(url.hostname)) return null;
+    if ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') && url.port !== '5000') return null;
     return normalized;
   } catch {
     return null;
