@@ -69,9 +69,14 @@ export default async function CareersPage() {
                 Open Positions ({vacancies.length})
               </h2>
             </div>
-            <p className="max-w-2xl text-muted-foreground">
-              Review the current opening below and contact us to submit your CV, cover letter, and supporting documents.
-            </p>
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              <p className="max-w-2xl text-muted-foreground">
+                Review current openings and apply through the Applicant Portal.
+              </p>
+              <Link href="/careers/portal" className="text-sm font-semibold text-primary hover:underline">
+                My applications
+              </Link>
+            </div>
           </div>
 
           <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -100,7 +105,7 @@ export default async function CareersPage() {
                       <td className="px-6 py-5">
                         <div className="flex flex-wrap gap-2">
                         <Link
-                          href={`/careers/${item.slug}`}
+                          href={`/careers/${item.slug || item.id}`}
                           className="inline-flex rounded-full bg-secondary px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-secondary-foreground transition-colors hover:bg-secondary/90"
                         >
                           View Details
@@ -108,6 +113,7 @@ export default async function CareersPage() {
                         <CareerApplyButton
                           vacancyIdOrSlug={item.id || item.slug}
                           title={item.title}
+                          portalConfig={item.portalConfig}
                           className="inline-flex rounded-full border border-secondary px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-primary transition-colors hover:bg-secondary/10"
                         />
                         </div>
@@ -171,7 +177,7 @@ export default async function CareersPage() {
                 </ul>
               </div>
               <Link
-                href={`/careers/${vacancy.slug}`}
+                href={`/careers/${vacancy.slug || vacancy.id}`}
                 className="mt-8 inline-flex rounded-xl bg-secondary px-5 py-3 font-semibold text-secondary-foreground transition-colors hover:bg-secondary/90"
               >
                 View Full Details
@@ -179,6 +185,7 @@ export default async function CareersPage() {
               <CareerApplyButton
                 vacancyIdOrSlug={vacancy.id || vacancy.slug}
                 title={vacancy.title}
+                portalConfig={vacancy.portalConfig}
                 className="ml-3 mt-8 inline-flex rounded-xl border border-secondary px-5 py-3 font-semibold text-primary transition-colors hover:bg-secondary/10"
               />
             </article>
