@@ -97,8 +97,7 @@ export default function WomenOfHopeAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -133,10 +132,7 @@ export default function WomenOfHopeAdminPage() {
             Manage logo, motto, hero picture, about text, ministry pillars, highlights gallery,
             projects, events, partnership details, phone number, and email.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

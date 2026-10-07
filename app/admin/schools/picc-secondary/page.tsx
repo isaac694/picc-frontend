@@ -48,8 +48,7 @@ export default function PICCSecondaryEnrollmentAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [activeTab, setActiveTab] = useState<Tab>('enrollment');
@@ -82,10 +81,7 @@ export default function PICCSecondaryEnrollmentAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Manage enrollment and school information.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

@@ -112,8 +112,7 @@ export default function IcdAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -147,10 +146,7 @@ export default function IcdAdminPage() {
           <p className="mt-3 max-w-2xl text-foreground/70">
             Manage ICD page content, images, livestream, initiatives, events, partnership details, and contact information.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

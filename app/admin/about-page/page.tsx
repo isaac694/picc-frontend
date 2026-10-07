@@ -111,8 +111,7 @@ export default function AboutPageAdmin() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -273,10 +272,7 @@ export default function AboutPageAdmin() {
             Update images, story video, and yearly themes shown on the About page.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline" onClick={handleLogout}>
-            Log out
-          </Button>
+        <div className="flex flex-wrap gap-3">
           <Button onClick={handleSaveAll} disabled={saving}>
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>

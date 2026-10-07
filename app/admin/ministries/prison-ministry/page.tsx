@@ -60,8 +60,7 @@ export default function PrisonMinistryAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -92,10 +91,7 @@ export default function PrisonMinistryAdminPage() {
           <p className="mt-3 max-w-2xl text-foreground/70">
             Manage Prison Ministry page content, logo, hero picture, and past outreaches.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

@@ -102,8 +102,7 @@ export default function MenOfValourAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -139,10 +138,7 @@ export default function MenOfValourAdminPage() {
             Manage logo, motto, hero picture, about text, cards, brotherhood pictures,
             initiatives, events, news, membership payment details, phone number, and email.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

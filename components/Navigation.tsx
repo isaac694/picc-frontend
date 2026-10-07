@@ -246,6 +246,17 @@ export default function Navigation() {
             </div>
 
             <Link
+              href="/careers"
+              className={
+                isDarkNav
+                  ? 'text-white/80 hover:text-white transition-colors text-sm font-medium'
+                  : 'text-foreground hover:text-primary transition-colors text-sm font-medium'
+              }
+            >
+              Careers
+            </Link>
+
+            <Link
               href="/give"
               className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/90 transition-colors"
             >
@@ -450,6 +461,18 @@ export default function Navigation() {
                   </div>
                 )}
               </div>
+
+              <Link
+                href="/careers"
+                className={
+                  isDarkNav
+                    ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                    : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                }
+                onClick={closeMenu}
+              >
+                Careers
+              </Link>
 
               <Link
                 href="/give"

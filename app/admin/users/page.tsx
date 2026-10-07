@@ -5,6 +5,7 @@ import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { apiFetch } from '@/lib/api';
 import {
+  ADMIN_ACCESS_RIGHT,
   ADMIN_PAGE,
   ADMIN_PAGE_OPTIONS,
   MINISTRY_ADMIN_OPTIONS,
@@ -16,8 +17,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toast';
+import { Eye, EyeOff, Plus } from 'lucide-react';
 
 type UserRow = {
   id: string;
@@ -28,6 +38,11 @@ type UserRow = {
   adminPageAccess: string[];
   createdAt: string;
   updatedAt: string;
+};
+
+type RoleOption = {
+  id: string;
+  name: string;
 };
 
 const isUserRole = (value: string): value is UserRow['role'] =>
@@ -51,31 +66,53 @@ const buildAdminPageAccess = (pageKeys: AdminPageKey[], ministryKeys: MinistryAd
   ...ministryKeys.map((key) => ministryAdminAccessKey(key)),
 ];
 
+const normalizeRoleOptions = (value: unknown): RoleOption[] => {
+  const source = Array.isArray(value)
+    ? value
+    : Array.isArray((value as { roles?: unknown[] })?.roles)
+      ? (value as { roles: unknown[] }).roles
+      : Array.isArray((value as { data?: unknown[] })?.data)
+        ? (value as { data: unknown[] }).data
+        : [];
+
+  return source
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const role = item as Record<string, unknown>;
+      const id = String(role.id ?? role._id ?? '').trim();
+      const name = String(role.name ?? '').trim();
+      if (!id || !name) return null;
+      return { id, name };
+    })
+    .filter((role): role is RoleOption => Boolean(role));
+};
+
 export default function AdminUsersPage() {
   const {
     token,
-    user: me,
     email,
     password,
     loginError,
     setEmail,
     setPassword,
     handleLogin,
-    handleLogout,
+    can,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const [createForm, setCreateForm] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'ADMIN' as UserRow['role'],
-    adminAccessAll: false,
-    adminPageAccess: [] as AdminPageKey[],
-    adminMinistryAccess: [] as MinistryAdminKey[],
+    roleId: '',
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -90,7 +127,10 @@ export default function AdminUsersPage() {
     adminMinistryAccess: [] as MinistryAdminKey[],
   });
 
-  const isSuperAdmin = me?.role === 'SUPER_ADMIN';
+  const canListUsers = can(ADMIN_ACCESS_RIGHT.USER_LIST);
+  const canCreateUsers = can(ADMIN_ACCESS_RIGHT.USER_CREATE);
+  const canEditUsers = can(ADMIN_ACCESS_RIGHT.USER_EDIT);
+  const canDeleteUsers = can(ADMIN_ACCESS_RIGHT.USER_DELETE);
 
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
@@ -119,11 +159,51 @@ export default function AdminUsersPage() {
     }
   };
 
+  const fetchRoles = async () => {
+    if (!token || !canCreateUsers) return;
+
+    setRolesLoading(true);
+
+    try {
+      const response = await apiFetch('/api/admin/roles', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const message = data.error || data.message || 'Unable to load roles.';
+        setStatus(message);
+        adminErrorToast(message);
+        setRoles([]);
+        return;
+      }
+
+      const normalized = normalizeRoleOptions(data);
+      setRoles(normalized);
+      setCreateForm((current) => ({
+        ...current,
+        roleId: current.roleId || normalized[0]?.id || '',
+      }));
+    } catch {
+      setStatus('Unable to load roles.');
+      adminErrorToast('Unable to load roles.');
+      setRoles([]);
+    } finally {
+      setRolesLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (!token || !isSuperAdmin) return;
+    if (!token || !canListUsers) return;
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, isSuperAdmin]);
+  }, [token, canListUsers]);
+
+  useEffect(() => {
+    if (!token || !canCreateUsers || !createDialogOpen) return;
+    fetchRoles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, canCreateUsers, createDialogOpen]);
 
   useEffect(() => {
     if (!editingUser) return;
@@ -138,30 +218,12 @@ export default function AdminUsersPage() {
     });
   }, [editingUser]);
 
-  const toggleCreatePage = (key: AdminPageKey) => {
-    setCreateForm((prev) => {
-      const next = new Set(prev.adminPageAccess);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return { ...prev, adminPageAccess: Array.from(next) };
-    });
-  };
-
   const toggleEditPage = (key: AdminPageKey) => {
     setEditForm((prev) => {
       const next = new Set(prev.adminPageAccess);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return { ...prev, adminPageAccess: Array.from(next) };
-    });
-  };
-
-  const toggleCreateMinistry = (key: MinistryAdminKey) => {
-    setCreateForm((prev) => {
-      const next = new Set(prev.adminMinistryAccess);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return { ...prev, adminMinistryAccess: Array.from(next) };
     });
   };
 
@@ -178,10 +240,19 @@ export default function AdminUsersPage() {
     if (!token) return;
     setStatus('');
 
-    if (!createForm.name.trim() || !createForm.email.trim() || !createForm.password.trim()) {
-      setStatus('Name, email, and password are required.');
+    if (!canCreateUsers) {
+      setStatus('You do not have permission to create users.');
+      adminErrorToast('You do not have permission to create users.');
       return;
     }
+
+    if (!createForm.name.trim() || !createForm.email.trim() || !createForm.password.trim() || !createForm.roleId) {
+      setStatus('Name, email, password, and role are required.');
+      adminErrorToast('Name, email, password, and role are required.');
+      return;
+    }
+
+    setCreateLoading(true);
 
     try {
       const response = await apiFetch('/api/admin/users', {
@@ -191,43 +262,54 @@ export default function AdminUsersPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          name: createForm.name.trim(),
           email: createForm.email.trim(),
+          name: createForm.name.trim(),
           password: createForm.password,
-          role: createForm.role,
-          adminAccessAll: createForm.role === 'ADMIN' ? createForm.adminAccessAll : true,
-          adminPageAccess:
-            createForm.role === 'ADMIN' && !createForm.adminAccessAll
-              ? buildAdminPageAccess(createForm.adminPageAccess, createForm.adminMinistryAccess)
-              : [],
+          role: 'ADMIN',
+          roleId: createForm.roleId,
+          adminAccessAll: false,
+          isApproved: true,
         }),
       });
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setStatus(data.error || 'Unable to create user.');
+        const message = data.error || data.message || 'Unable to create user.';
+        setStatus(message);
+        adminErrorToast(message);
         return;
       }
 
-      setStatus('User created.');
+      const message = data.message || 'User created.';
+      setStatus(message);
+      adminSuccessToast(message);
       setCreateForm({
         name: '',
         email: '',
         password: '',
-        role: 'ADMIN',
-        adminAccessAll: false,
-        adminPageAccess: [],
-        adminMinistryAccess: [],
+        roleId: roles[0]?.id || '',
       });
+      setCreateDialogOpen(false);
       await fetchUsers();
     } catch {
       setStatus('Unable to create user.');
+      adminErrorToast('Unable to create user.');
+    } finally {
+      setCreateLoading(false);
     }
   };
 
   const handleUpdate = async () => {
     if (!token || !editingUser) return;
     setStatus('');
+
+    if (!canEditUsers) {
+      setStatus('You do not have permission to edit users.');
+      adminErrorToast('You do not have permission to edit users.');
+      return;
+    }
+
+    setUpdateLoading(true);
 
     try {
       const response = await apiFetch(`/api/admin/users/${editingUser.id}`, {
@@ -251,20 +333,33 @@ export default function AdminUsersPage() {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setStatus(data.error || 'Unable to update user.');
+        const message = data.error || data.message || 'Unable to update user.';
+        setStatus(message);
+        adminErrorToast(message);
         return;
       }
 
-      setStatus('User updated.');
+      const message = data.message || 'User updated.';
+      setStatus(message);
+      adminSuccessToast(message);
       setEditingId(null);
       await fetchUsers();
     } catch {
       setStatus('Unable to update user.');
+      adminErrorToast('Unable to update user.');
+    } finally {
+      setUpdateLoading(false);
     }
   };
   const handleDelete = async (id: string) => {
     if (!token) return;
     setStatus('');
+
+    if (!canDeleteUsers) {
+      setStatus('You do not have permission to delete users.');
+      adminErrorToast('You do not have permission to delete users.');
+      return;
+    }
 
     try {
       const response = await apiFetch(`/api/admin/users/${id}`, {
@@ -276,14 +371,19 @@ export default function AdminUsersPage() {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setStatus(data.error || 'Unable to delete user.');
+        const message = data.error || data.message || 'Unable to delete user.';
+        setStatus(message);
+        adminErrorToast(message);
         return;
       }
 
-      setStatus('User deleted.');
+      const message = data.message || 'User deleted.';
+      setStatus(message);
+      adminSuccessToast(message);
       await fetchUsers();
     } catch {
       setStatus('Unable to delete user.');
+      adminErrorToast('Unable to delete user.');
     }
   };
 
@@ -308,7 +408,7 @@ export default function AdminUsersPage() {
     );
   }
 
-  if (!isSuperAdmin) {
+  if (!canListUsers) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -316,9 +416,8 @@ export default function AdminUsersPage() {
             <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">Admin</p>
             <h1 className="text-2xl font-bold">User Management</h1>
           </div>
-          <Button variant="outline" onClick={handleLogout}>Logout</Button>
         </div>
-        <p className="text-red-500">Super admin access required.</p>
+        <p className="text-red-500">You do not have permission to view users.</p>
       </div>
     );
   }
@@ -333,7 +432,14 @@ export default function AdminUsersPage() {
             Create admins and control which admin pages and ministries they can access.
           </p>
         </div>
-        <Button variant="outline" onClick={handleLogout}>Logout</Button>
+        <div className="flex items-center gap-3">
+          {canCreateUsers ? (
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add User
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {status && (
@@ -343,110 +449,9 @@ export default function AdminUsersPage() {
       )}
 
       <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
-        <h2 className="text-xl font-semibold">Add User</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Name</Label>
-            <Input value={createForm.name} onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input type="email" value={createForm.email} onChange={(e) => setCreateForm((p) => ({ ...p, email: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Password</Label>
-            <div className="relative">
-              <Input
-                type={showCreatePassword ? 'text' : 'password'}
-                value={createForm.password}
-                onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
-                className="pr-12"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCreatePassword((prev) => !prev)}
-                aria-label={showCreatePassword ? 'Hide password' : 'Show password'}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/60 hover:text-foreground"
-              >
-                {showCreatePassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            <p className="text-xs text-foreground/60">For now, the super admin sets the initial password here.</p>
-          </div>
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <select
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
-              value={createForm.role}
-              onChange={(e) => {
-                const role = e.target.value;
-                if (isUserRole(role)) {
-                  setCreateForm((p) => ({ ...p, role }));
-                }
-              }}
-            >
-              <option value="ADMIN">Admin</option>
-              <option value="SUPER_ADMIN">Super Admin</option>
-              <option value="USER">User</option>
-            </select>
-          </div>
-        </div>
-
-        {createForm.role === 'ADMIN' && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={createForm.adminAccessAll}
-                onCheckedChange={(v) => setCreateForm((p) => ({ ...p, adminAccessAll: Boolean(v) }))}
-              />
-              <span className="text-sm">Allow access to all admin pages</span>
-            </div>
-
-            {!createForm.adminAccessAll && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {ADMIN_PAGE_OPTIONS.map((opt) => (
-                    <label key={opt.key} className="flex items-center gap-2 text-sm rounded-lg border border-border/60 px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={createForm.adminPageAccess.includes(opt.key)}
-                        onChange={() => toggleCreatePage(opt.key)}
-                      />
-                      {opt.label}
-                    </label>
-                  ))}
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium mb-2">Ministries</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {MINISTRY_ADMIN_OPTIONS.map((opt) => (
-                      <label key={opt.key} className="flex items-center gap-2 text-sm rounded-lg border border-border/60 px-3 py-2">
-                        <input
-                          type="checkbox"
-                          checked={createForm.adminMinistryAccess.includes(opt.key)}
-                          onChange={() => toggleCreateMinistry(opt.key)}
-                        />
-                        {opt.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div>
-          <Button onClick={handleCreate}>Create User</Button>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Users</h2>
-          <Button variant="outline" onClick={fetchUsers} disabled={loading}>
+          <Button variant="outline" onClick={fetchUsers} loading={loading}>
             {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
@@ -481,12 +486,16 @@ export default function AdminUsersPage() {
                   <td className="py-2 pr-4">{toLocal(u.createdAt)}</td>
                   <td className="py-2 pr-4">
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setEditingId(u.id)}>
-                        Edit
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => requestDeleteUser(u)}>
-                        Delete
-                      </Button>
+                      {canEditUsers ? (
+                        <Button variant="outline" size="sm" onClick={() => setEditingId(u.id)}>
+                          Edit
+                        </Button>
+                      ) : null}
+                      {canDeleteUsers ? (
+                        <Button variant="destructive" size="sm" onClick={() => requestDeleteUser(u)}>
+                          Delete
+                        </Button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -495,7 +504,7 @@ export default function AdminUsersPage() {
           </table>
         </div>
 
-        {editingUser && (
+        {editingUser && canEditUsers && (
           <div className="mt-6 rounded-xl border border-border/60 p-4 space-y-4">
             <div className="flex items-center justify-between gap-4">
               <h3 className="font-semibold">Edit User</h3>
@@ -595,12 +604,95 @@ export default function AdminUsersPage() {
             )}
 
             <div className="flex gap-3">
-              <Button onClick={handleUpdate}>Save Changes</Button>
+              <Button onClick={handleUpdate} loading={updateLoading}>Save Changes</Button>
               <Button variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
             </div>
           </div>
         )}
       </div>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create User</DialogTitle>
+            <DialogDescription>
+              Create an approved admin user and assign a role.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-user-name">Name</Label>
+              <Input
+                id="create-user-name"
+                value={createForm.name}
+                onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Admin User"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-user-email">Email</Label>
+              <Input
+                id="create-user-email"
+                type="email"
+                value={createForm.email}
+                onChange={(e) => setCreateForm((p) => ({ ...p, email: e.target.value }))}
+                placeholder="admin@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-user-password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="create-user-password"
+                  type={showCreatePassword ? 'text' : 'password'}
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
+                  className="pr-12"
+                  placeholder="password123"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePassword((prev) => !prev)}
+                  aria-label={showCreatePassword ? 'Hide password' : 'Show password'}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/60 hover:text-foreground"
+                >
+                  {showCreatePassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-user-role">Role</Label>
+              <select
+                id="create-user-role"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                value={createForm.roleId}
+                onChange={(e) => setCreateForm((p) => ({ ...p, roleId: e.target.value }))}
+                disabled={rolesLoading}
+              >
+                <option value="">{rolesLoading ? 'Loading roles...' : 'Select role'}</option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                The request sends role as ADMIN, with adminAccessAll false and isApproved true.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} loading={createLoading}>
+              Create User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

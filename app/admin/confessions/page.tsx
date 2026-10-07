@@ -59,8 +59,7 @@ export default function ConfessionsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [confessionSearch, setConfessionSearch] = useState('');
@@ -333,10 +332,7 @@ export default function ConfessionsAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Upload and schedule daily confession declarations.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       {status && (

@@ -84,8 +84,7 @@ export default function VideoDeclarationsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -328,10 +327,7 @@ export default function VideoDeclarationsAdminPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button onClick={startNewDeclaration}>New Declaration</Button>
-          <Button variant="outline" onClick={handleLogout}>
-            Log out
-          </Button>
+          <Button onClick={startNewDeclaration}>New Declaration</Button>
         </div>
       </div>
 

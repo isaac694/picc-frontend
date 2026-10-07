@@ -25,8 +25,7 @@ export default function AdminGivePage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -230,10 +229,7 @@ export default function AdminGivePage() {
           <p className="mt-3 max-w-2xl text-foreground/70">
             Manage the giving types shown on the public Give form.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}

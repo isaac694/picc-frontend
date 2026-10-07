@@ -13,8 +13,7 @@ export default function FAQsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   if (!token) {
@@ -43,10 +42,7 @@ export default function FAQsAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Manage the Frequently Asked Questions displayed in the website footer.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <FAQManager token={token} />

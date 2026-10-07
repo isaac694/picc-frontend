@@ -120,8 +120,7 @@ export default function YouthChurchAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -157,10 +156,7 @@ export default function YouthChurchAdminPage() {
             Manage logo, motto, hero picture, about text, ministry arms, youth life gallery,
             initiatives, events, partnership details, phone number, and email.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

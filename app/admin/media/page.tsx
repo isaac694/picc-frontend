@@ -157,8 +157,7 @@ export default function AdminMediaPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -529,10 +528,7 @@ export default function AdminMediaPage() {
           <p className="mt-3 max-w-2xl text-foreground/70">
             Manage church news, gallery items, Fire on the Altar books, and magazines. Built-in content appears alongside saved dashboard items, just like the ministry pages.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}

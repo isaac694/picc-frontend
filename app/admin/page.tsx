@@ -3,25 +3,41 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
-import { ADMIN_PAGE, canAccessAdminPage } from '@/lib/admin-pages';
+import { ADMIN_ACCESS_RIGHT, ADMIN_PAGE, canAccessAdminPage, canAccessRight, type AdminPageKey } from '@/lib/admin-pages';
+
+type AdminCard = {
+  key: string;
+  title: string;
+  description: string;
+  href: string;
+  button: string;
+  variant: 'default';
+  pageKey?: AdminPageKey;
+  right?: string;
+};
 
 export default function AdminHomePage() {
-  const { user, token, handleLogout } = useAdminAuth();
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const { user } = useAdminAuth();
 
-  const cards = [
-    ...(isSuperAdmin
-      ? [
-          {
-            key: 'users',
-            title: 'User Management',
-            description: 'Create admins and control which admin pages they can access.',
-            href: '/admin/users',
-            button: 'Manage Users',
-            variant: 'default' as const,
-          },
-        ]
-      : []),
+  const cards: AdminCard[] = [
+    {
+      key: 'roles',
+      right: ADMIN_ACCESS_RIGHT.ROLE_LIST,
+      title: 'Role Management',
+      description: 'Create and maintain reusable admin role definitions.',
+      href: '/admin/roles',
+      button: 'Manage Roles',
+      variant: 'default',
+    },
+    {
+      key: 'users',
+      right: ADMIN_ACCESS_RIGHT.USER_LIST,
+      title: 'User Management',
+      description: 'Create admins and control which admin pages they can access.',
+      href: '/admin/users',
+      button: 'Manage Users',
+      variant: 'default',
+    },
     {
       key: 'devotions',
       pageKey: ADMIN_PAGE.DEVOTIONS,
@@ -29,7 +45,16 @@ export default function AdminHomePage() {
       description: 'Write and publish daily devotions.',
       href: '/admin/devotions',
       button: 'Open Devotions',
-      variant: 'default' as const,
+      variant: 'default',
+    },
+    {
+      key: 'hr',
+      pageKey: ADMIN_PAGE.HR_PAGE,
+      title: 'HR Vacancies',
+      description: 'Manage vacancies and review applicants.',
+      href: '/admin/hr',
+      button: 'Open HR',
+      variant: 'default',
     },
     {
       key: 'confessions',
@@ -38,7 +63,7 @@ export default function AdminHomePage() {
       description: 'Upload daily confession declarations.',
       href: '/admin/confessions',
       button: 'Open Confessions',
-      variant: 'default' as const,
+      variant: 'default',
     },
     {
       key: 'video-declarations',
@@ -47,7 +72,7 @@ export default function AdminHomePage() {
       description: 'Publish the video or audio declaration shown on the homepage.',
       href: '/admin/video-declarations',
       button: 'Open Declarations',
-      variant: 'default' as const,
+      variant: 'default',
     },
     {
       key: 'livechat',
@@ -56,12 +81,12 @@ export default function AdminHomePage() {
       description: 'Review chat messages for every streamed video.',
       href: '/admin/livechat',
       button: 'Open Archive',
-      variant: 'default' as const,
+      variant: 'default',
     },
   ].filter((card) => {
-    if (!('pageKey' in card)) return true;
-    // @ts-expect-error pageKey is optional on some cards
-    return canAccessAdminPage(user, card.pageKey);
+    if (card.right) return canAccessRight(user, card.right);
+    if (card.pageKey) return canAccessAdminPage(user, card.pageKey);
+    return true;
   });
 
   return (
@@ -74,11 +99,6 @@ export default function AdminHomePage() {
             Quick links for daily updates and reviewing archives.
           </p>
         </div>
-        {token && (
-          <Button variant="outline" onClick={handleLogout}>
-            Logout
-          </Button>
-        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
