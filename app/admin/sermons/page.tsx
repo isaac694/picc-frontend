@@ -46,8 +46,7 @@ export default function AdminSermonsPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -434,10 +433,7 @@ export default function AdminSermonsPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Upload and manage sermons with real audio files, update the header image, and notify subscribers.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       {status && (

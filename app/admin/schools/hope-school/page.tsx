@@ -43,8 +43,7 @@ export default function HopeSchoolEnrollmentAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [activeTab, setActiveTab] = useState<Tab>('enrollment');
@@ -79,10 +78,7 @@ export default function HopeSchoolEnrollmentAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Manage enrollment, school information, news, and events.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

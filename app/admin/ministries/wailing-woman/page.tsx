@@ -95,8 +95,7 @@ export default function WailingWomanAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -131,10 +130,7 @@ export default function WailingWomanAdminPage() {
             Manage logo, motto, hero picture, about text, prosperity arrows, weekly devotionals, highlights gallery,
             events, partnership details, phone number, and email.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

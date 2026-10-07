@@ -13,8 +13,7 @@ export default function ServicesAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   if (!token) {
@@ -43,10 +42,7 @@ export default function ServicesAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Keep the Contact page Locate Us service times up to date.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <ServiceTimesManager token={token} />

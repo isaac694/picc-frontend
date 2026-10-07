@@ -113,8 +113,7 @@ export default function RiversOfHopeAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -148,10 +147,7 @@ export default function RiversOfHopeAdminPage() {
           <p className="mt-3 max-w-2xl text-foreground/70">
             Manage Rivers of Hope content, outreach programs, highlights, events, and partnership details.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

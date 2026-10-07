@@ -73,8 +73,7 @@ export default function PageImagesAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -335,10 +334,7 @@ export default function PageImagesAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Upload and manage homepage visuals.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}

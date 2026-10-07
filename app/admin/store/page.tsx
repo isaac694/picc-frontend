@@ -126,8 +126,7 @@ export default function AdminStorePage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [books, setBooks] = useState<StoreBook[]>([]);
@@ -389,8 +388,7 @@ export default function AdminStorePage() {
           <Button variant="outline" onClick={importExistingBooks} disabled={isImporting}>
             <RefreshCw className="h-4 w-4" />
             {isImporting ? 'Importing...' : 'Import Existing Books'}
-          </Button>
-          <Button variant="outline" onClick={handleLogout}>Log out</Button>
+          </Button>
         </div>
       </div>
 

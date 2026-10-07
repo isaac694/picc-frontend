@@ -52,8 +52,7 @@ export default function DevotionsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [devotionSearch, setDevotionSearch] = useState('');
@@ -267,10 +266,7 @@ export default function DevotionsAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Write and schedule devotionals for the church family.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       {status && (

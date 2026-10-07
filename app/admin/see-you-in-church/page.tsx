@@ -78,8 +78,7 @@ export default function SeeYouInChurchAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -285,10 +284,7 @@ export default function SeeYouInChurchAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Control the featured call-to-action on the homepage.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}

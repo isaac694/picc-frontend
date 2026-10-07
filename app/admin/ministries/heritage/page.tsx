@@ -92,8 +92,7 @@ export default function HeritageAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
-    handleLogout,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -126,10 +125,7 @@ export default function HeritageAdminPage() {
           <p className="mt-3 max-w-2xl text-foreground/70">
             Manage children&apos;s ministry content, focus areas, highlights, and upcoming events.
           </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

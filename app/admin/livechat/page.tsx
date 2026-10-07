@@ -36,7 +36,6 @@ export default function LiveChatAdminPage() {
     setEmail,
     setPassword,
     handleLogin,
-    handleLogout,
   } = useAdminAuth();
   const [status, setStatus] = useState('');
   const [lastError, setLastError] = useState('');
@@ -111,15 +110,6 @@ export default function LiveChatAdminPage() {
     } catch {
       return `HTTP ${response.status} ${response.statusText}`.trim();
     }
-  };
-
-  const handleAdminLogout = () => {
-    handleLogout();
-    setSelectedVideoId(null);
-    setMessages([]);
-    setThreads([]);
-    setStatus('');
-    setLastError('');
   };
 
   const refreshThreads = async () => {
@@ -298,11 +288,6 @@ export default function LiveChatAdminPage() {
             </Link>
           </div>
         </div>
-        {token && (
-          <Button variant="outline" onClick={handleAdminLogout}>
-            Log out
-          </Button>
-        )}
       </div>
 
       {!token ? (
