@@ -90,24 +90,22 @@ export default function AdminHomePage() {
   });
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">Admin</p>
-          <h1 className="text-3xl md:text-5xl font-semibold text-foreground">Admin Hub</h1>
-          <p className="text-foreground/70 mt-3 max-w-2xl">
-            Quick links for daily updates and reviewing archives.
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/70">Admin</p>
+        <h1 className="text-base font-semibold text-foreground">Admin Hub</h1>
+        <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+          Quick links for daily updates and reviewing archives.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
-          <div key={card.key} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-foreground mb-2">{card.title}</h2>
-            <p className="text-foreground/70 mb-6">{card.description}</p>
+          <div key={card.key} className="rounded-lg border border-border/60 bg-card p-3 shadow-sm">
+            <h2 className="mb-1 text-sm font-semibold text-foreground">{card.title}</h2>
+            <p className="mb-3 text-xs text-muted-foreground">{card.description}</p>
             <Link href={card.href}>
-              <Button variant={card.variant} className="rounded-full px-6 py-3">
+              <Button variant={card.variant} size="sm">
                 {card.button}
               </Button>
             </Link>

@@ -24,26 +24,26 @@ export default function AdminLoginCard({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="max-w-md rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-      <h2 className="text-xl font-semibold text-foreground mb-4">Admin Login</h2>
+    <div className="max-w-sm rounded-lg border border-border/60 bg-card p-4 shadow-sm">
+      <h2 className="mb-3 text-base font-semibold text-foreground">Admin Login</h2>
       {loginError && (
-        <p className="text-sm text-red-600 mb-3">{loginError}</p>
+        <p className="mb-2 text-xs text-red-600">{loginError}</p>
       )}
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
+          <label className="mb-1 block text-xs font-medium text-foreground">
             Email
           </label>
           <input
             type="email"
             value={email}
             onChange={(event) => onEmailChange(event.target.value)}
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            className="h-8 w-full rounded-md border border-border bg-background px-2.5 text-sm text-foreground"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
+          <label className="mb-1 block text-xs font-medium text-foreground">
             Password
           </label>
           <div className="relative">
@@ -51,20 +51,20 @@ export default function AdminLoginCard({
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(event) => onPasswordChange(event.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-12 text-foreground"
+              className="h-8 w-full rounded-md border border-border bg-background px-2.5 pr-9 text-sm text-foreground"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              className="absolute inset-y-0 right-0 flex items-center px-4 text-foreground/60 hover:text-foreground"
+              className="absolute inset-y-0 right-0 flex items-center px-2 text-foreground/60 hover:text-foreground"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
           </div>
         </div>
-        <Button type="submit" className="w-full">
+        <Button type="submit" size="sm" className="w-full">
           Log in
         </Button>
       </form>

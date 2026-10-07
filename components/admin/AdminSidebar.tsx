@@ -102,13 +102,13 @@ function SidebarSection({
   if (!items.length) return null;
 
   return (
-    <div className="mt-5 border-t border-border/60 pt-4 first:mt-0 first:border-t-0 first:pt-0">
+    <div className="mt-3 border-t border-border/60 pt-2.5 first:mt-0 first:border-t-0 first:pt-0">
       {collapsed ? (
-        <div className="mx-auto mb-3 h-px w-8 bg-border/80" aria-hidden="true" />
+        <div className="mx-auto mb-2 h-px w-6 bg-border/80" aria-hidden="true" />
       ) : (
-        <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{title}</p>
+        <p className="mb-1 px-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{title}</p>
       )}
-      <nav className="space-y-1">
+      <nav className="space-y-0.5">
         {items.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -119,17 +119,17 @@ function SidebarSection({
               href={item.href}
               title={collapsed ? item.label : undefined}
               className={cn(
-                'group relative flex items-center rounded-xl text-sm font-medium transition-all',
-                collapsed ? 'h-11 justify-center px-0' : 'gap-3 px-3 py-2',
+                'group relative flex items-center rounded-md text-[12px] font-medium transition-all',
+                collapsed ? 'h-8 justify-center px-0' : 'gap-2 px-2 py-1.5',
                 active
                   ? 'bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-500/15 dark:text-blue-400'
                   : 'text-foreground/70 hover:bg-accent/60 hover:text-foreground'
               )}
             >
-              {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : null}
+              {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : null}
               {!collapsed ? <span className="truncate">{item.label}</span> : null}
               {collapsed ? (
-                <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-lg group-hover:block">
+                <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-[11px] text-popover-foreground shadow-lg group-hover:block">
                   {item.label}
                 </span>
               ) : null}
@@ -196,26 +196,25 @@ export default function AdminSidebar() {
   return (
     <aside
       className={cn(
-        'flex h-full shrink-0 flex-col rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-300 ease-in-out',
-        collapsed ? 'w-[76px]' : 'w-72'
+        'flex h-full shrink-0 flex-col rounded-lg border border-border/60 bg-card shadow-sm transition-all duration-300 ease-in-out',
+        collapsed ? 'w-12' : 'w-52'
       )}
     >
-      <div className={cn('flex h-16 shrink-0 items-center border-b border-border/60 px-3', collapsed ? 'justify-center' : 'justify-between')}>
-        <Link href="/admin" className={cn('flex min-w-0 items-center gap-3', collapsed && 'justify-center')}>
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-white">
+      <div className={cn('flex h-11 shrink-0 items-center border-b border-border/60 px-2', collapsed ? 'justify-center' : 'justify-between')}>
+        <Link href="/admin" className={cn('flex min-w-0 items-center gap-2', collapsed && 'justify-center')}>
+          <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-white">
             <Image
               src="/logo.png"
               alt="PICC logo"
               fill
-              sizes="40px"
-              className="object-contain p-1"
+              sizes="28px"
+              className="object-contain p-0.5"
               priority
             />
           </div>
           {!collapsed ? (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">PICC Portal</p>
-              <p className="truncate text-xs text-muted-foreground"></p>
+              <p className="truncate text-xs font-semibold text-foreground">PICC Portal</p>
             </div>
           ) : null}
         </Link>
@@ -223,23 +222,23 @@ export default function AdminSidebar() {
           <button
             type="button"
             onClick={() => setCollapsed(true)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label="Collapse sidebar"
           >
-            <PanelLeftClose className="h-4 w-4" />
+            <PanelLeftClose className="h-3.5 w-3.5" />
           </button>
         ) : null}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-1.5">
         {collapsed ? (
           <button
             type="button"
             onClick={() => setCollapsed(false)}
-            className="mb-3 inline-flex h-11 w-full items-center justify-center rounded-xl border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="mb-2 inline-flex h-8 w-full items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label="Expand sidebar"
           >
-            <PanelLeftOpen className="h-4 w-4" />
+            <PanelLeftOpen className="h-3.5 w-3.5" />
           </button>
         ) : null}
         <SidebarSection title="Main" items={filtered.nav} isActive={isActive} collapsed={collapsed} />
@@ -249,19 +248,19 @@ export default function AdminSidebar() {
         <SidebarSection title="Archives" items={filtered.showArchives ? ARCHIVE_ITEMS : []} isActive={isActive} collapsed={collapsed} />
       </div>
 
-      <div className="border-t border-border/60 p-3">
+      <div className="border-t border-border/60 p-1.5">
         <button
           type="button"
           onClick={() => setTheme(isDark ? 'light' : 'dark')}
           className={cn(
-            'inline-flex h-11 w-full items-center rounded-xl border border-border/60 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
-            collapsed ? 'justify-center px-0' : 'justify-start gap-3 px-3'
+            'inline-flex h-8 w-full items-center rounded-md border border-border/60 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
+            collapsed ? 'justify-center px-0' : 'justify-start gap-2 px-2'
           )}
           aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
           disabled={!showThemeToggle}
           title={collapsed ? (isDark ? 'Light mode' : 'Dark mode') : undefined}
         >
-          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
           {!collapsed ? <span>{isDark ? 'Light mode' : 'Dark mode'}</span> : null}
         </button>
       </div>
