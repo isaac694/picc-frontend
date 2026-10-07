@@ -387,207 +387,379 @@ export default function PICCAssistant() {
         </div>
       )}
 
-      {/* =====================================================
-          FLOATING ACTION BUTTONS
-      ===================================================== */}
+     {/* =====================================================
+    FLOATING ACTION BUTTONS
+===================================================== */}
 
-      <div
-        className="
-          fixed
-          bottom-5
-          right-5
-          z-[10000]
-          flex
-          flex-col
-          items-center
-          gap-3
-        "
-      >
+<div
+  className="
+    fixed
+    bottom-5
+    right-5
+    z-[10000]
+    flex
+    flex-col
+    items-end
+    gap-3
+  "
+>
 
-        {/* CHAT */}
-        <div
-          className={`
-            transition-all
-            duration-300
-            ${
-              open
-                ? 'translate-y-0 opacity-100'
-                : 'pointer-events-none translate-y-5 opacity-0'
-            }
-          `}
-        >
-          <button
-            type="button"
-            onClick={openChat}
-            className="
-              flex
-              h-12
-              w-12
-              items-center
-              justify-center
-              rounded-full
-              bg-blue-600
-              text-white
-              shadow-lg
-              transition
-              hover:scale-110
-              hover:bg-blue-700
-            "
-            aria-label="Chat with PICC"
-            title="Chat with PICC"
-          >
-            <MessageCircle size={22} />
-          </button>
-        </div>
 
-        {/* EMAIL */}
-        <div
-          className={`
-            transition-all
-            duration-300
-            delay-75
-            ${
-              open
-                ? 'translate-y-0 opacity-100'
-                : 'pointer-events-none translate-y-5 opacity-0'
-            }
-          `}
-        >
-          <a
-            href={`mailto:${email}`}
-            className="
-              flex
-              h-12
-              w-12
-              items-center
-              justify-center
-              rounded-full
-              bg-red-500
-              text-white
-              shadow-lg
-              transition
-              hover:scale-110
-              hover:bg-red-600
-            "
-            aria-label="Email PICC"
-            title="Email PICC"
-          >
-            <Mail size={21} />
-          </a>
-        </div>
+  {/* CHAT */}
+  <div
+    className={`
+      group
+      flex
+      items-center
+      gap-3
+      transition-all
+      duration-300
+      ${
+        open
+          ? 'translate-y-0 opacity-100'
+          : 'pointer-events-none translate-y-5 opacity-0'
+      }
+    `}
+  >
 
-        {/* CONTACT */}
-        <div
-          className={`
-            transition-all
-            duration-300
-            delay-100
-            ${
-              open
-                ? 'translate-y-0 opacity-100'
-                : 'pointer-events-none translate-y-5 opacity-0'
-            }
-          `}
-        >
-          <a
-            href={`tel:${phone}`}
-            className="
-              flex
-              h-12
-              w-12
-              items-center
-              justify-center
-              rounded-full
-              bg-green-500
-              text-white
-              shadow-lg
-              transition
-              hover:scale-110
-              hover:bg-green-600
-            "
-            aria-label="Contact PICC"
-            title="Contact PICC"
-          >
-            <Phone size={21} />
-          </a>
-        </div>
+    <span
+      className="
+        rounded-lg
+        bg-white
+        px-4
+        py-2
+        text-sm
+        text-gray-700
+        shadow-md
+        opacity-0
+        translate-x-3
+        transition-all
+        duration-300
+        group-hover:opacity-100
+        group-hover:translate-x-0
+      "
+    >
+      Chat with PICC
+    </span>
 
-        {/* WHATSAPP */}
-        <div
-          className={`
-            transition-all
-            duration-300
-            delay-150
-            ${
-              open
-                ? 'translate-y-0 opacity-100'
-                : 'pointer-events-none translate-y-5 opacity-0'
-            }
-          `}
-        >
-          <a
-            href={`https://wa.me/${whatsapp}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="
-              flex
-              h-12
-              w-12
-              items-center
-              justify-center
-              rounded-full
-              bg-[#25D366]
-              text-white
-              shadow-lg
-              transition
-              hover:scale-110
-              hover:bg-[#20bd5a]
-            "
-            aria-label="WhatsApp PICC"
-            title="WhatsApp PICC"
-          >
-            <MessageCircle size={22} />
-          </a>
-        </div>
 
-        {/* MAIN BUTTON / CLOSE */}
-        <button
-          type="button"
-          onClick={() =>
-            setOpen((previous) => !previous)
-          }
-          className="
-            flex
-            h-14
-            w-14
-            items-center
-            justify-center
-            rounded-full
-            bg-blue-600
-            text-white
-            shadow-xl
-            transition-all
-            duration-200
-            hover:scale-110
-            hover:bg-blue-700
-            focus:outline-none
-            focus:ring-4
-            focus:ring-blue-300
-          "
-          aria-label={
-            open
-              ? 'Close PICC Assistant'
-              : 'Open PICC Assistant'
-          }
-        >
-          {open ? (
-            <X size={26} />
-          ) : (
-            <Bot size={27} />
-          )}
-        </button>
+    <button
+      type="button"
+      onClick={openChat}
+      className="
+        flex
+        h-12
+        w-12
+        items-center
+        justify-center
+        rounded-full
+        bg-blue-600
+        text-white
+        shadow-lg
+        transition
+        hover:scale-110
+      "
+    >
+      <MessageCircle size={22}/>
+    </button>
 
-      </div>
-    </>
+  </div>
+
+
+
+
+  {/* EMAIL */}
+  <div
+    className={`
+      group
+      flex
+      items-center
+      gap-3
+      transition-all
+      duration-300
+      delay-75
+      ${
+        open
+          ? 'translate-y-0 opacity-100'
+          : 'pointer-events-none translate-y-5 opacity-0'
+      }
+    `}
+  >
+
+    <span
+      className="
+        rounded-lg
+        bg-white
+        px-4
+        py-2
+        text-sm
+        text-gray-700
+        shadow-md
+        opacity-0
+        translate-x-3
+        transition-all
+        duration-300
+        group-hover:opacity-100
+        group-hover:translate-x-0
+      "
+    >
+      Email PICC
+    </span>
+
+
+    <a
+      href={`mailto:${email}`}
+      className="
+        flex
+        h-12
+        w-12
+        items-center
+        justify-center
+        rounded-full
+        bg-red-500
+        text-white
+        shadow-lg
+        transition
+        hover:scale-110
+      "
+    >
+      <Mail size={21}/>
+    </a>
+
+  </div>
+
+
+
+
+  {/* CONTACT */}
+  <div
+    className={`
+      group
+      flex
+      items-center
+      gap-3
+      transition-all
+      duration-300
+      delay-100
+      ${
+        open
+          ? 'translate-y-0 opacity-100'
+          : 'pointer-events-none translate-y-5 opacity-0'
+      }
+    `}
+  >
+
+    <span
+      className="
+        rounded-lg
+        bg-white
+        px-4
+        py-2
+        text-sm
+        text-gray-700
+        shadow-md
+        opacity-0
+        translate-x-3
+        transition-all
+        duration-300
+        group-hover:opacity-100
+        group-hover:translate-x-0
+      "
+    >
+      Contact PICC
+    </span>
+
+
+    <a
+      href={`tel:${phone}`}
+      className="
+        flex
+        h-12
+        w-12
+        items-center
+        justify-center
+        rounded-full
+        bg-green-500
+        text-white
+        shadow-lg
+        transition
+        hover:scale-110
+      "
+    >
+      <Phone size={21}/>
+    </a>
+
+  </div>
+
+
+
+
+  {/* WHATSAPP */}
+  {/* WHATSAPP */}
+<div
+  className={`
+    group
+    relative
+    transition-all
+    duration-300
+    delay-150
+    ${
+      open
+        ? 'translate-y-0 opacity-100'
+        : 'pointer-events-none translate-y-5 opacity-0'
+    }
+  `}
+>
+
+  {/* LABEL ON HOVER */}
+  <span
+    className="
+      absolute
+      right-16
+      top-1/2
+      -translate-y-1/2
+      whitespace-nowrap
+      rounded-lg
+      bg-white
+      px-4
+      py-2
+      text-sm
+      font-medium
+      text-gray-700
+      shadow-md
+      opacity-0
+      transition-all
+      duration-200
+      group-hover:opacity-100
+      dark:bg-gray-800
+      dark:text-white
+    "
+  >
+    WhatsApp PICC
+  </span>
+
+
+  <a
+    href={`https://wa.me/${whatsapp}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="
+      flex
+      h-14
+      w-14
+      items-center
+      justify-center
+      rounded-full
+      bg-[#00A884]
+      text-white
+      shadow-xl
+      transition-all
+      duration-200
+      hover:scale-110
+      hover:bg-[#008f72]
+    "
+    aria-label="WhatsApp PICC"
+  >
+
+    {/* WhatsApp style icon */}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 32 32"
+      className="h-8 w-8 fill-white"
+    >
+      <path
+        d="M16 3C8.82 3 3 8.82 3 16c0 2.3.6 4.55 1.74 6.54L3 29l6.67-1.7A13 13 0 0 0 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3zm0 23.5c-2.02 0-4-.54-5.72-1.57l-.41-.24-3.96 1.01 1.05-3.84-.27-.43A10.5 10.5 0 1 1 16 26.5zm5.8-7.9c-.32-.16-1.9-.94-2.2-1.05-.3-.11-.52-.16-.74.16-.22.32-.85 1.05-1.04 1.27-.19.22-.38.24-.7.08-.32-.16-1.34-.49-2.55-1.57-.94-.84-1.58-1.88-1.77-2.2-.19-.32-.02-.49.14-.65.14-.14.32-.38.48-.57.16-.19.22-.32.32-.54.11-.22.05-.41-.03-.57-.08-.16-.74-1.78-1.02-2.44-.27-.65-.55-.56-.74-.57h-.63c-.22 0-.57.08-.87.41-.3.32-1.14 1.11-1.14 2.7s1.17 3.13 1.33 3.35c.16.22 2.3 3.51 5.58 4.92.78.34 1.39.54 1.87.69.79.25 1.51.21 2.08.13.63-.09 1.9-.78 2.17-1.54.27-.76.27-1.41.19-1.55-.08-.14-.3-.22-.62-.38z"
+      />
+    </svg>
+
+  </a>
+
+</div>
+
+
+
+
+  {/* MAIN BUTTON */}
+  {/* MAIN CHAT BUBBLE BUTTON */}
+
+{/* MAIN CHAT BUTTON */}
+
+<button
+  type="button"
+  onClick={() =>
+    setOpen((previous) => !previous)
+  }
+  className="
+    group
+    relative
+    flex
+    h-16
+    w-16
+    items-center
+    justify-center
+    rounded-2xl
+    bg-gradient-to-br
+    from-cyan-400
+    to-blue-600
+    text-white
+    shadow-2xl
+    transition-all
+    duration-300
+    hover:scale-110
+    focus:outline-none
+  "
+  aria-label="Open PICC Assistant"
+>
+
+  {open ? (
+    <X size={28} />
+  ) : (
+    <div className="flex gap-1">
+
+      <span className="
+        h-2.5
+        w-2.5
+        rounded-full
+        bg-white
+      " />
+
+      <span className="
+        h-2.5
+        w-2.5
+        rounded-full
+        bg-white
+      " />
+
+      <span className="
+        h-2.5
+        w-2.5
+        rounded-full
+        bg-white
+      " />
+
+    </div>
+  )}
+
+
+  {/* CHAT BUBBLE POINTER */}
+
+  {!open && (
+    <span
+      className="
+        absolute
+        -bottom-3
+        left-6
+        h-5
+        w-5
+        rotate-45
+        bg-gradient-to-br
+        from-cyan-400
+        to-blue-600
+      "
+    />
+  )}
+
+</button>
+</div>   </>
   );
 }

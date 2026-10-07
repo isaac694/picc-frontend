@@ -3,6 +3,10 @@ import { PrismaClient } from '@prisma/client';
 const ABOUT_CONTEXT = `
 PICC stands for Pentecost International Christian Centre.
 
+PICC was founded by Pastor Esau Banda.
+
+Pastor Esau Banda is the founder of Pentecost International Christian Centre (PICC).
+
 PICC is a Christian church. The PICC website describes its story
 as a testament to God's grace and help through the years.
 
