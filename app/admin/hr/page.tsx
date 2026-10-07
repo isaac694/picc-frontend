@@ -19,6 +19,15 @@ import {
 } from '@/components/ui/dialog';
 import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toast';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import VacancyPortalBuilder from '@/components/admin/VacancyPortalBuilder';
+import {
+  buildDefaultPortalConfig,
+  DEFAULT_PORTAL_FIELD_TYPES,
+  normalizePortalConfig,
+  parseCatalog,
+  type PortalConfig,
+  type PortalFieldCatalogItem,
+} from '@/lib/hr-portal';
 
 type VacancyStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'ARCHIVED';
 type ApplicationStatus = 'SUBMITTED' | 'UNDER_REVIEW' | 'SHORTLISTED' | 'REJECTED' | 'HIRED' | 'WITHDRAWN';
@@ -50,6 +59,7 @@ type HrVacancy = {
   status: VacancyStatus;
   closesAt?: string;
   applications?: HrApplication[];
+  portalConfig?: PortalConfig | null;
 };
 
 const EMPTY_FORM = {
@@ -101,6 +111,7 @@ const normalizeVacancy = (value: unknown): HrVacancy | null => {
     status: (item.status as VacancyStatus) || 'DRAFT',
     closesAt: typeof item.closesAt === 'string' ? item.closesAt : undefined,
     applications: Array.isArray(item.applications) ? item.applications as HrApplication[] : [],
+    portalConfig: normalizePortalConfig(item.portalConfig),
   };
 };
 
@@ -216,6 +227,8 @@ export default function AdminHrPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<HrVacancy | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [portalConfig, setPortalConfig] = useState<PortalConfig>(buildDefaultPortalConfig({}));
+  const [fieldTypes, setFieldTypes] = useState<PortalFieldCatalogItem[]>(DEFAULT_PORTAL_FIELD_TYPES);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewStatus, setReviewStatus] = useState<ApplicationStatus>('UNDER_REVIEW');
   const [reviewNotes, setReviewNotes] = useState('');
@@ -248,6 +261,16 @@ export default function AdminHrPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  useEffect(() => {
+    if (!token) return;
+    void apiFetch('/api/admin/hr/portal-field-types', {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) setFieldTypes(parseCatalog(data));
+    }).catch(() => undefined);
+  }, [token]);
+
   const fetchApplications = async (vacancyId: string) => {
     if (!token) return;
     setLoadingApplications(true);
@@ -278,10 +301,11 @@ export default function AdminHrPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setPortalConfig(buildDefaultPortalConfig({ requiredDocuments: ['CV', 'Cover Letter'] }));
     setDialogOpen(true);
   };
 
-  const openEdit = (vacancy: HrVacancy) => {
+  const openEdit = async (vacancy: HrVacancy) => {
     setEditing(vacancy);
     setForm({
       title: vacancy.title,
@@ -296,7 +320,36 @@ export default function AdminHrPage() {
       status: vacancy.status,
       closesAt: vacancy.closesAt ? vacancy.closesAt.slice(0, 10) : '',
     });
+    setPortalConfig(vacancy.portalConfig || buildDefaultPortalConfig(vacancy));
     setDialogOpen(true);
+
+    if (!token) return;
+    try {
+      const response = await apiFetch(`/api/admin/hr/vacancies/${vacancy.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+      const full = normalizeVacancy(data.vacancy || data);
+      if (!full) return;
+      setEditing(full);
+      setForm({
+        title: full.title,
+        department: full.department,
+        location: full.location,
+        employmentType: full.employmentType,
+        summary: full.summary,
+        description: full.description,
+        responsibilities: full.responsibilities.join('\n'),
+        requirements: full.requirements.join('\n'),
+        requiredDocuments: full.requiredDocuments.join('\n'),
+        status: full.status,
+        closesAt: full.closesAt ? full.closesAt.slice(0, 10) : '',
+      });
+      setPortalConfig(full.portalConfig || buildDefaultPortalConfig(full));
+    } catch {
+      // Keep the list payload if the detail request fails.
+    }
   };
 
   const saveVacancy = async () => {
@@ -320,6 +373,19 @@ export default function AdminHrPage() {
         requiredDocuments: splitLines(form.requiredDocuments),
         status: form.status,
         closesAt: form.closesAt ? new Date(`${form.closesAt}T23:59:59`).toISOString() : undefined,
+        portalConfig: {
+          ...portalConfig,
+          version: portalConfig.version || 1,
+          display: {
+            ...(portalConfig.display || {}),
+            title: form.title.trim(),
+            subtitle: form.summary.trim(),
+            department: form.department.trim(),
+            location: form.location.trim(),
+            employmentType: form.employmentType.trim(),
+            summary: form.summary.trim(),
+          },
+        },
       };
 
       const response = await apiFetch(editing ? `/api/admin/hr/vacancies/${editing.id}` : '/api/admin/hr/vacancies', {
@@ -551,7 +617,7 @@ export default function AdminHrPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Vacancy' : 'Create Vacancy'}</DialogTitle>
             <DialogDescription>
@@ -614,6 +680,7 @@ export default function AdminHrPage() {
               <Label>Required Documents, one per line</Label>
               <Textarea rows={3} value={form.requiredDocuments} onChange={(e) => setForm((p) => ({ ...p, requiredDocuments: e.target.value }))} />
             </div>
+            <VacancyPortalBuilder value={portalConfig} fieldTypes={fieldTypes} onChange={setPortalConfig} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

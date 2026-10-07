@@ -1,4 +1,5 @@
 import { apiUrl } from '@/lib/api';
+import { htmlToText, normalizePortalConfig, type PortalConfig } from '@/lib/hr-portal';
 
 export type Vacancy = {
   id?: string;
@@ -10,9 +11,11 @@ export type Vacancy = {
   posted: string;
   closingDate: string;
   summary: string;
+  description?: string;
   requirements: string[];
   responsibilities: string[];
   documents: string[];
+  portalConfig?: PortalConfig | null;
 };
 
 type ApiVacancy = Partial<{
@@ -33,6 +36,7 @@ type ApiVacancy = Partial<{
   responsibilities: string[];
   requiredDocuments: Array<string | { label?: string; name?: string; description?: string }>;
   documents: string[];
+  portalConfig?: PortalConfig | null;
 }>;
 
 function formatDate(value?: string) {
@@ -46,25 +50,61 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
+function firstText(...values: Array<string | undefined>) {
+  return values.find((value) => htmlToText(value)) || '';
+}
+
+function firstList(...values: Array<string[] | undefined>) {
+  return values.find((value) => Array.isArray(value) && value.length) || [];
+}
+
+function mergeVacancyPayload(detail: ApiVacancy, portal: ApiVacancy, portalConfig?: PortalConfig | null) {
+  return {
+    ...detail,
+    ...portal,
+    id: portal.id || detail.id,
+    slug: portal.slug || detail.slug,
+    title: firstText(portal.title, detail.title) || portal.title || detail.title,
+    department: firstText(portal.department, detail.department) || portal.department || detail.department,
+    location: firstText(portal.location, detail.location) || portal.location || detail.location,
+    summary: firstText(portal.summary, detail.summary) || portal.summary || detail.summary,
+    description: firstText(portal.description, detail.description) || portal.description || detail.description,
+    requirements: firstList(portal.requirements, detail.requirements),
+    responsibilities: firstList(portal.responsibilities, detail.responsibilities),
+    requiredDocuments: firstList(
+      (portal.requiredDocuments || []).map((document) => (typeof document === 'string' ? document : document.label || document.name || '')).filter(Boolean),
+      (detail.requiredDocuments || []).map((document) => (typeof document === 'string' ? document : document.label || document.name || '')).filter(Boolean),
+      portal.documents,
+      detail.documents,
+    ),
+    portalConfig: portalConfig || portal.portalConfig || detail.portalConfig,
+  } satisfies ApiVacancy;
+}
+
 export function normalizeVacancy(vacancy: ApiVacancy): Vacancy {
   const requiredDocuments = vacancy.requiredDocuments || vacancy.documents || [];
+  const portalConfig = normalizePortalConfig(vacancy.portalConfig);
+  const display = portalConfig?.display;
+  const description = firstText(vacancy.description);
 
   return {
     id: vacancy.id,
     slug: vacancy.slug || vacancy.id || '',
-    title: vacancy.title || 'Untitled Vacancy',
-    department: vacancy.department || 'PICC',
-    location: vacancy.location || 'Lilongwe',
-    type: vacancy.employmentType || vacancy.type || 'Full Time',
+    title: display?.title || vacancy.title || 'Untitled Vacancy',
+    department: display?.department || vacancy.department || 'PICC',
+    location: display?.location || vacancy.location || 'Lilongwe',
+    type: display?.employmentType || vacancy.employmentType || vacancy.type || 'Full Time',
     posted: formatDate(vacancy.postedAt || vacancy.createdAt),
     closingDate: formatDate(vacancy.closesAt || vacancy.closingDate),
-    summary: vacancy.summary || vacancy.description || 'Vacancy details will be shared soon.',
+    summary: htmlToText(display?.summary || display?.subtitle || vacancy.summary || vacancy.description) || 'Vacancy details will be shared soon.',
+    description: description || undefined,
     requirements: vacancy.requirements || [],
     responsibilities: vacancy.responsibilities || [],
     documents: requiredDocuments.map((document) => {
       if (typeof document === 'string') return document;
       return document.label || document.name || document.description || 'Required document';
     }),
+    portalConfig,
   };
 }
 
@@ -178,12 +218,20 @@ export async function getPublicVacancies(): Promise<Vacancy[]> {
 
 export async function getPublicVacancyBySlug(slug: string): Promise<Vacancy | undefined> {
   try {
-    const response = await fetch(apiUrl(`/api/hr/vacancies/${slug}`), {
-      cache: 'no-store',
-    });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok) {
-      return normalizeVacancy(data.vacancy || data);
+    const [detailResponse, portalResponse] = await Promise.all([
+      fetch(apiUrl(`/api/hr/vacancies/${slug}`), { cache: 'no-store' }),
+      fetch(apiUrl(`/api/hr/vacancies/${slug}/portal`), { cache: 'no-store' }),
+    ]);
+    const detailData = await detailResponse.json().catch(() => ({}));
+    const portalData = await portalResponse.json().catch(() => ({}));
+    const detailVacancy: ApiVacancy = detailResponse.ok ? (detailData.vacancy || detailData) : {};
+    const portalVacancy: ApiVacancy = portalResponse.ok ? (portalData.vacancy || {}) : {};
+    const portalConfig = portalResponse.ok
+      ? portalData.portalConfig || portalVacancy.portalConfig || detailVacancy.portalConfig
+      : detailVacancy.portalConfig;
+
+    if (detailResponse.ok || portalResponse.ok) {
+      return normalizeVacancy(mergeVacancyPayload(detailVacancy, portalVacancy, portalConfig));
     }
   } catch {
     // Fall through to the local dummy vacancies when the backend is unavailable.
