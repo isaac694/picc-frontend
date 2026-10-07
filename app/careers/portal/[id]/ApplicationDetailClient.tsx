@@ -97,7 +97,7 @@ export default function ApplicationDetailClient({ id, vacancyId }: { id: string;
       });
     }
   };
-  ///
+  ///kkkkk
 
   const loadDetail = async () => {
     if (!getApplicantToken()) return;
