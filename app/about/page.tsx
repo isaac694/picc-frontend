@@ -44,7 +44,11 @@ export default function AboutPage() {
   const [openTenet, setOpenTenet] = useState<number | null>(0);
   const [openCoreValue, setOpenCoreValue] = useState<number | null>(0);
   const [openThemeYear, setOpenThemeYear] = useState<number | null>(null);
+  
 
+
+
+  
   useEffect(() => {
     const imageKeys = [
       'about-header-bg',
