@@ -81,6 +81,7 @@ export default function PICCAssistant() {
       return;
     }
 
+    // Add user's message immediately
     setMessages((previous) => [
       ...previous,
       {
@@ -89,7 +90,10 @@ export default function PICCAssistant() {
       },
     ]);
 
+    // Clear input
     setMessage('');
+
+    // Show loading state
     setIsLoading(true);
 
     try {
@@ -228,6 +232,7 @@ export default function PICCAssistant() {
         'Your message has been sent successfully to PICC. Thank you for contacting us.'
       );
 
+      // Clear form
       setContactName('');
       setContactEmail('');
       setContactSubject('');
@@ -248,33 +253,37 @@ export default function PICCAssistant() {
   return (
     <>
       {/* =====================================================
-          FLOATING CENTER CONTACT PICC FORM
+          CONTACT PICC FORM MODAL
       ===================================================== */}
 
       {emailOpen && (
         <div
           className="
             fixed
-            left-1/2
-            top-1/2
+            inset-0
             z-[10001]
-            w-[calc(100vw-2rem)]
-            max-w-lg
-            -translate-x-1/2
-            -translate-y-1/2
+            flex
+            items-center
+            justify-center
+            bg-black/60
+            p-4
+            backdrop-blur-sm
           "
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeEmailForm();
+            }
+          }}
         >
           <div
             className="
               relative
-              max-h-[calc(100vh-2rem)]
+              w-full
+              max-w-lg
               overflow-hidden
               rounded-2xl
-              border
-              border-gray-200
               bg-white
-              shadow-[0_25px_70px_rgba(0,0,0,0.25)]
-              dark:border-gray-700
+              shadow-2xl
               dark:bg-gray-900
             "
           >
@@ -290,8 +299,8 @@ export default function PICCAssistant() {
                 bg-gradient-to-r
                 from-cyan-500
                 to-blue-600
-                px-5
-                py-4
+                px-6
+                py-5
                 text-white
               "
             >
@@ -299,16 +308,15 @@ export default function PICCAssistant() {
                 <div
                   className="
                     flex
-                    h-10
-                    w-10
-                    shrink-0
+                    h-11
+                    w-11
                     items-center
                     justify-center
                     rounded-full
                     bg-white/20
                   "
                 >
-                  <Mail size={21} />
+                  <Mail size={22} />
                 </div>
 
                 <div>
@@ -346,20 +354,22 @@ export default function PICCAssistant() {
 
             <form
               onSubmit={sendContactMessage}
-              className="
-                max-h-[calc(100vh-7rem)]
-                space-y-3.5
-                overflow-y-auto
-                p-5
-              "
+              className="space-y-4 p-6"
             >
               {/* INTRODUCTION */}
 
               <div>
-                <p className="text-sm leading-5 text-gray-600 dark:text-gray-300">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
                   Have a question or need assistance? Send your
                   message to PICC and our team will get back to
                   you.
+                </p>
+
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Your message will be sent to{' '}
+                  <span className="font-medium">
+                    {email}
+                  </span>
                 </p>
               </div>
 
@@ -413,7 +423,7 @@ export default function PICCAssistant() {
                 <label
                   htmlFor="contact-name"
                   className="
-                    mb-1
+                    mb-1.5
                     block
                     text-sm
                     font-medium
@@ -440,7 +450,7 @@ export default function PICCAssistant() {
                     border-gray-300
                     bg-white
                     px-4
-                    py-2.5
+                    py-3
                     text-sm
                     text-gray-900
                     outline-none
@@ -464,7 +474,7 @@ export default function PICCAssistant() {
                 <label
                   htmlFor="contact-email"
                   className="
-                    mb-1
+                    mb-1.5
                     block
                     text-sm
                     font-medium
@@ -491,7 +501,7 @@ export default function PICCAssistant() {
                     border-gray-300
                     bg-white
                     px-4
-                    py-2.5
+                    py-3
                     text-sm
                     text-gray-900
                     outline-none
@@ -515,7 +525,7 @@ export default function PICCAssistant() {
                 <label
                   htmlFor="contact-subject"
                   className="
-                    mb-1
+                    mb-1.5
                     block
                     text-sm
                     font-medium
@@ -542,7 +552,7 @@ export default function PICCAssistant() {
                     border-gray-300
                     bg-white
                     px-4
-                    py-2.5
+                    py-3
                     text-sm
                     text-gray-900
                     outline-none
@@ -566,7 +576,7 @@ export default function PICCAssistant() {
                 <label
                   htmlFor="contact-message"
                   className="
-                    mb-1
+                    mb-1.5
                     block
                     text-sm
                     font-medium
@@ -584,7 +594,7 @@ export default function PICCAssistant() {
                     setContactMessage(event.target.value)
                   }
                   placeholder="Type your message here..."
-                  rows={4}
+                  rows={5}
                   disabled={contactLoading}
                   className="
                     w-full
@@ -594,7 +604,7 @@ export default function PICCAssistant() {
                     border-gray-300
                     bg-white
                     px-4
-                    py-2.5
+                    py-3
                     text-sm
                     text-gray-900
                     outline-none
@@ -614,7 +624,7 @@ export default function PICCAssistant() {
 
               {/* BUTTONS */}
 
-              <div className="flex flex-col-reverse gap-2.5 pt-1 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={closeEmailForm}
@@ -624,7 +634,7 @@ export default function PICCAssistant() {
                     border
                     border-gray-300
                     px-5
-                    py-2.5
+                    py-3
                     text-sm
                     font-medium
                     text-gray-700
@@ -651,7 +661,7 @@ export default function PICCAssistant() {
                     rounded-xl
                     bg-blue-600
                     px-5
-                    py-2.5
+                    py-3
                     text-sm
                     font-medium
                     text-white
@@ -1214,6 +1224,8 @@ export default function PICCAssistant() {
             }
           `}
         >
+          {/* LABEL */}
+
           <span
             className="
               absolute
@@ -1262,6 +1274,8 @@ export default function PICCAssistant() {
             aria-label="WhatsApp PICC"
             title="WhatsApp PICC"
           >
+            {/* WHATSAPP ICON */}
+
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 32 32"
@@ -1287,8 +1301,9 @@ export default function PICCAssistant() {
             group
             relative
             flex
-            h-16
-            w-16
+            h-12
+            w-12
+            group-hover:opacity-100
             items-center
             justify-center
             rounded-2xl
@@ -1314,13 +1329,13 @@ export default function PICCAssistant() {
           }
         >
           {open ? (
-            <X size={28} />
+            <X size={20} />
           ) : (
             <div className="flex gap-1">
               <span
                 className="
-                  h-2.5
-                  w-2.5
+                  h-1.5
+                  w-1.5
                   rounded-full
                   bg-white
                 "
@@ -1328,8 +1343,8 @@ export default function PICCAssistant() {
 
               <span
                 className="
-                  h-2.5
-                  w-2.5
+                  h-1.5
+                  w-1.5
                   rounded-full
                   bg-white
                 "
@@ -1337,8 +1352,8 @@ export default function PICCAssistant() {
 
               <span
                 className="
-                  h-2.5
-                  w-2.5
+                  h-1.5
+                  w-1.5
                   rounded-full
                   bg-white
                 "
@@ -1346,21 +1361,9 @@ export default function PICCAssistant() {
             </div>
           )}
 
-          {!open && (
-            <span
-              className="
-                absolute
-                -bottom-3
-                left-6
-                h-5
-                w-5
-                rotate-45
-                bg-gradient-to-br
-                from-cyan-400
-                to-blue-600
-              "
-            />
-          )}
+          {/* CHAT BUBBLE POINTER */}
+
+        
         </button>
       </div>
     </>
