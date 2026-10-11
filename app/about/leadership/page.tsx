@@ -274,7 +274,7 @@ export default function LeadershipPage() {
                     : 'text-foreground/70 hover:text-foreground hover:bg-background'
                     }`}
                 >
-                  Church Secretariat
+                  The Secretariat
                 </button>
 
               </div>
@@ -294,13 +294,13 @@ export default function LeadershipPage() {
               <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-3">
                 {activeTab === 'administration'
                   ? 'Church Administration'
-                  : 'Church Secretariat'}
+                  : 'The Secretariat'}
               </p>
 
               <h2 className="text-3xl md:text-5xl font-semibold text-foreground">
                 {activeTab === 'administration'
                   ? 'Church Administration'
-                  : 'Church Secretariat'}
+                  : 'The Secretariat'}
               </h2>
 
               <p className="mt-4 text-foreground/65 max-w-2xl leading-relaxed">
