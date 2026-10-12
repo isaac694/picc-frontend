@@ -18,7 +18,7 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const MODEL =
   process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 
-// Meta calls GET to verify your webhook.
+// Meta calls GET to verify your webhook.      floxyleon
 export async function GET(request: Request) {
   const url = new URL(request.url);
 
@@ -191,8 +191,7 @@ export async function POST(request: Request) {
         } catch (error) {
           console.error('PICC WhatsApp reply error:', error);
 
-          // Avoid repeatedly messaging a visitor if a service fails.
-          // The error is logged for the developer to investigate.
+          
         }
       }
     }
