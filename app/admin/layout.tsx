@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useEffect } from 'react';
 import { LogOut } from 'lucide-react';
+import './admin-compact.css';
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin': { title: 'Admin Hub', subtitle: 'Manage church content and daily operations.' },
@@ -88,6 +89,15 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [token, isLoginPage, router]);
 
+  useEffect(() => {
+    if (isLoginPage) {
+      document.documentElement.classList.remove('admin-compact');
+      return;
+    }
+    document.documentElement.classList.add('admin-compact');
+    return () => document.documentElement.classList.remove('admin-compact');
+  }, [isLoginPage]);
+
   if (!token && !isLoginPage) {
     return null;
   }
@@ -96,8 +106,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     return (
       <>
         <Navigation />
-        <main className="min-h-screen bg-background py-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <main className="min-h-screen bg-background py-8">
+          <div className="mx-auto max-w-lg px-4">
             {children}
           </div>
         </main>
@@ -124,23 +134,20 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <main className="h-screen overflow-hidden bg-muted/60 p-3">
-        <div className="flex h-full gap-3">
+      <main className="admin-shell h-screen overflow-hidden bg-muted/50 p-2">
+        <div className="flex h-full gap-2">
           <AdminSidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <header className="mb-3 flex h-16 shrink-0 items-center justify-between gap-4 rounded-2xl border border-border/60 bg-card px-5 shadow-sm">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-primary/70">PICC Admin</p>
-                <h1 className="text-xl font-semibold text-foreground">{meta.title}</h1>
-                {meta.subtitle ? (
-                  <p className="hidden text-sm text-muted-foreground md:block">{meta.subtitle}</p>
-                ) : null}
+            <header className="mb-2 flex h-11 shrink-0 items-center justify-between gap-3 rounded-lg border border-border/60 bg-card px-3 shadow-sm">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/70">PICC Admin</p>
+                <h1 className="truncate text-sm font-semibold leading-tight text-foreground">{meta.title}</h1>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {user ? (
                   <div className="hidden text-right sm:block">
-                    <p className="text-sm font-medium text-foreground">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.role}</p>
+                    <p className="text-xs font-medium leading-tight text-foreground">{user.name}</p>
+                    <p className="text-[10px] leading-tight text-muted-foreground">{user.role}</p>
                   </div>
                 ) : null}
                 <Button
@@ -151,22 +158,22 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                     logout();
                   }}
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-3.5 w-3.5" />
                   Logout
                 </Button>
               </div>
             </header>
-            <div className="flex-1 overflow-y-auto rounded-2xl border border-border/60 bg-background p-5 shadow-sm">
+            <div className="flex-1 overflow-y-auto rounded-lg border border-border/60 bg-background p-3 shadow-sm">
               {isAuthorized ? (
                 children
               ) : (
-                <div className="rounded-2xl border border-border/60 bg-card p-8 shadow-sm space-y-4">
-                  <h1 className="text-2xl font-semibold">Not authorized</h1>
-                  <p className="text-foreground/70">
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card p-4 shadow-sm">
+                  <h1 className="text-base font-semibold">Not authorized</h1>
+                  <p className="text-xs text-foreground/70">
                     You do not have access to this admin page. Please contact a super admin.
                   </p>
                   <Link href="/admin">
-                    <Button variant="outline">Back to Admin Hub</Button>
+                    <Button variant="outline" size="sm">Back to Admin Hub</Button>
                   </Link>
                 </div>
               )}

@@ -181,11 +181,11 @@ export default function HrDashboardPage() {
   const maxApplication = Math.max(...applicationRows.map((row) => row.value), 1);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">HR vacancies, applicant activity, and hiring progress.</p>
+          <h1 className="text-base font-semibold">Dashboard</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">HR vacancies, applicant activity, and hiring progress.</p>
         </div>
         <Button variant="outline" onClick={fetchDashboard} loading={loading}>
           <RefreshCw className="h-4 w-4" />
@@ -264,22 +264,22 @@ function KpiCard({
   detail: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <Icon className="h-5 w-5 text-muted-foreground" />
+    <div className="rounded-lg border border-border/60 bg-card p-3 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
       </div>
-      <p className="mt-4 text-3xl font-bold">{value}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
+      <p className="mt-2 text-xl font-bold">{value}</p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">{detail}</p>
     </div>
   );
 }
 
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
-      <h2 className="font-semibold">{title}</h2>
-      <div className="mt-5 space-y-4">{children}</div>
+    <div className="rounded-lg border border-border/60 bg-card p-3 shadow-sm">
+      <h2 className="text-sm font-semibold">{title}</h2>
+      <div className="mt-3 space-y-2.5">{children}</div>
     </div>
   );
 }
