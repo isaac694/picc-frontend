@@ -19,6 +19,7 @@ export const ADMIN_PAGE = {
   FAQS: 'FAQS',
   SCHOOLS_ENROLLMENT: 'SCHOOLS_ENROLLMENT',
   HR_PAGE: 'HR_PAGE',
+  LEADERSHIP: 'LEADERSHIP',
   MINISTRIES: 'MINISTRIES',
 } as const;
 
@@ -66,6 +67,7 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.FAQS, label: 'FAQ (Footer)' },
   { key: ADMIN_PAGE.SCHOOLS_ENROLLMENT, label: 'Schools Enrollment' },
   { key: ADMIN_PAGE.HR_PAGE, label: 'HR Vacancies' },
+  { key: ADMIN_PAGE.LEADERSHIP, label: 'Leadership Management' },
 ];
 
 export const MINISTRY_ADMIN_OPTIONS = [
