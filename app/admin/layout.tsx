@@ -30,6 +30,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/services': { title: 'Services', subtitle: 'Manage service times and weekly schedules.' },
   '/admin/events': { title: 'Events', subtitle: 'Create and publish upcoming events.' },
   '/admin/hr/dashboard': { title: 'HR Dashboard', subtitle: 'Track vacancies, applicants, applications, and hiring progress.' },
+  '/admin/hr/applications': { title: 'Application Details', subtitle: 'Review the full applicant profile, answers, and documents.' },
   '/admin/hr': { title: 'HR Vacancies', subtitle: 'Manage vacancies and applicant reviews.' },
   '/admin/quote-of-month': { title: 'Qoutes', subtitle: 'Manage monthly quote content.' },
   '/admin/page-images': { title: 'Homepage Images', subtitle: 'Update site imagery and page visuals.' },
@@ -140,14 +141,14 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <header className="mb-2 flex h-11 shrink-0 items-center justify-between gap-3 rounded-lg border border-border/60 bg-card px-3 shadow-sm">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/70">PICC Admin</p>
-                <h1 className="truncate text-sm font-semibold leading-tight text-foreground">{meta.title}</h1>
+                {/* <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/70">PICC Admin</p>
+                <h1 className="truncate text-sm font-semibold leading-tight text-foreground">{meta.title}</h1> */}
               </div>
               <div className="flex items-center gap-2">
                 {user ? (
                   <div className="hidden text-right sm:block">
                     <p className="text-xs font-medium leading-tight text-foreground">{user.name}</p>
-                    <p className="text-[10px] leading-tight text-muted-foreground">{user.role}</p>
+                    {/* <p className="text-[10px] leading-tight text-muted-foreground">{user.role}</p> */}
                   </div>
                 ) : null}
                 <Button

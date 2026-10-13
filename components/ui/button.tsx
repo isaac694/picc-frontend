@@ -74,8 +74,14 @@ function Button({
       aria-busy={isLoading || props['aria-busy']}
       {...props}
     >
-      {isLoading ? <Loader2 className="animate-spin" /> : null}
-      {children}
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {isLoading ? <Loader2 className="animate-spin" /> : null}
+          {children}
+        </>
+      )}
     </Comp>
   )
 }
