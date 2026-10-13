@@ -11,6 +11,8 @@
     "check:assets": "node scripts/check-missing-public-assets.mjs"
   },
   "dependencies": {
+    "@azure/identity": "^4.13.3",
+    "@google/genai": "^2.29.0",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "6.19.2",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -55,10 +57,10 @@
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.577.0",
-    "next": "16.2.4",
+    "next": "^16.4.0",
     "next-themes": "^0.3.0",
-    "nodemailer": "^8.0.11",
-    "quill": "^2.0.3",
+    "nodemailer": "^10.1.0",
+    "quill": "^2.0.2",
     "react": "19.2.4",
     "react-day-picker": "^9.14.0",
     "react-dom": "19.2.4",
@@ -81,8 +83,8 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
-    "prisma": "^6.19.3",
+    "eslint-config-next": "^16.4.0",
+    "prisma": "^6.12.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

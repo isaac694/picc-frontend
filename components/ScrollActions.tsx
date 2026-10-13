@@ -24,7 +24,7 @@ export default function ScrollActions({ showAfter = 240 }: ScrollActionsProps) {
 
   return (
     <>
-      <div className="fixed bottom-6 right-5 z-50 flex flex-col gap-3">
+      {/* <div className="fixed bottom-6 right-5 z-50 flex flex-col gap-3">
       <a
         href="#top"
         aria-label="Back to top"
@@ -32,8 +32,8 @@ export default function ScrollActions({ showAfter = 240 }: ScrollActionsProps) {
       >
         <ArrowUp className="h-5 w-5" />
       </a>
-      </div>
-      <div className="fixed bottom-6 left-5 z-50 flex flex-col gap-3">
+      </div> */}
+      {/* <div className="fixed bottom-6 left-5 z-50 flex flex-col gap-3">
         <a
           href="https://wa.me/265992433333"
           aria-label="Chat on WhatsApp"
@@ -50,7 +50,7 @@ export default function ScrollActions({ showAfter = 240 }: ScrollActionsProps) {
             <path d="M27.2 4.8A15.48 15.48 0 0 0 16.07 0C7.2 0 0 7.2 0 16.07c0 2.83.74 5.58 2.14 8.01L0 32l8.23-2.09A15.99 15.99 0 0 0 16.07 32C24.94 32 32 24.8 32 15.93c0-4.27-1.66-8.28-4.8-11.13zM16.07 29.2c-2.49 0-4.93-.66-7.05-1.92l-.5-.3-4.87 1.23 1.3-4.74-.33-.5a13.09 13.09 0 0 1-2.06-7c0-7.25 5.89-13.14 13.14-13.14 3.5 0 6.79 1.36 9.27 3.84a13.02 13.02 0 0 1 3.87 9.26c0 7.25-5.92 13.27-13.77 13.27z" />
           </svg>
         </a>
-      </div>
+      </div> */}
     </>
   );
 }

@@ -242,7 +242,7 @@ export default function LeadershipManager() {
   async function remove(person: Person) {
     if (
       !window.confirm(
-        `Delete ${person.user.name} from ${group === 'church-admins' ? 'Church Administration' : 'Church Secretariat'}?\n\nAny direct reports will become top-level positions.`
+        `Delete ${person.user.name} from ${group === 'church-admins' ? 'Church Administration' : 'The Secretariat'}?\n\nAny direct reports will become top-level positions.`
       )
     ) {
       return;
@@ -296,7 +296,7 @@ export default function LeadershipManager() {
     );
   }, [records, search]);
 
-  const activeGroupLabel = group === 'church-admins' ? 'Church Administration' : 'Church Secretariat';
+  const activeGroupLabel = group === 'church-admins' ? 'Church Administration' : 'The Secretariat';
   const secretariatStats = useMemo(() => {
     if (group !== 'secretariates') {
       return null;
@@ -334,13 +334,13 @@ export default function LeadershipManager() {
 
           <div className="flex items-center gap-2">
             <Link
-              href="/about/leader"
+              href="/about/leadership"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2.5 text-xs font-semibold text-foreground shadow-xs transition hover:bg-muted"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              View Public Page (/about/leader)
+              View Public Page (/about/leadership)
             </Link>
           </div>
         </div>
@@ -350,7 +350,7 @@ export default function LeadershipManager() {
           {(
             [
               ['church-admins', 'Church Administration', Building2],
-              ['secretariates', 'Church Secretariat', Users],
+              ['secretariates', 'The Secretariat', Users],
             ] as const
           ).map(([val, label, Icon]) => {
             const active = group === val;
@@ -702,7 +702,7 @@ export default function LeadershipManager() {
                 <div>
                   <span className="font-semibold">Published on Public Website</span>
                   <p className="text-[11px] text-muted-foreground">
-                    When checked, this profile is visible to visitors on /about/leader.
+                    When checked, this profile is visible to visitors on /about/leadership.
                   </p>
                 </div>
               </label>
