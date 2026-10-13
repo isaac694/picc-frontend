@@ -1056,8 +1056,8 @@ export default function PICCAssistant() {
             onClick={openChat}
             className="
               flex
-              h-12
-              w-12
+              h-14
+              w-14
               items-center
               justify-center
               rounded-full
@@ -1122,8 +1122,8 @@ export default function PICCAssistant() {
             onClick={openEmailForm}
             className="
               flex
-              h-12
-              w-12
+              h-14
+              w-14
               items-center
               justify-center
               rounded-full
@@ -1187,8 +1187,8 @@ export default function PICCAssistant() {
             href={`tel:${phone}`}
             className="
               flex
-              h-12
-              w-12
+              h-14
+              w-14
               items-center
               justify-center
               rounded-full
@@ -1292,79 +1292,48 @@ export default function PICCAssistant() {
             MAIN BUTTON
         ================================================= */}
 
-        <button
-          type="button"
-          onClick={() =>
-            setOpen((previous) => !previous)
-          }
-          className="
-            group
-            relative
-            flex
-            h-12
-            w-12
-            group-hover:opacity-100
-            items-center
-            justify-center
-            rounded-2xl
-            bg-gradient-to-br
-            from-cyan-400
-            to-blue-600
-            text-white
-            shadow-2xl
-            transition-all
-            duration-300
-            hover:scale-110
-            focus:outline-none
-          "
-          aria-label={
-            open
-              ? 'Close PICC Assistant'
-              : 'Open PICC Assistant'
-          }
-          title={
-            open
-              ? 'Close PICC Assistant'
-              : 'Open PICC Assistant'
-          }
-        >
-          {open ? (
-            <X size={20} />
-          ) : (
-            <div className="flex gap-1">
-              <span
-                className="
-                  h-1.5
-                  w-1.5
-                  rounded-full
-                  bg-white
-                "
-              />
+     
+{/* MAIN BUTTON */}
+<button
+  type="button"
+  onClick={() => setOpen((previous) => !previous)}
+  className="
+    flex
+    h-14
+    w-14
+    items-center
+    justify-center
+    rounded-full
+    bg-blue-600
+    text-white
+    shadow-lg
+    transition-all
+    duration-300
+    hover:scale-110
+    hover:bg-blue-700
+    focus:outline-none
+    focus:ring-2
+    focus:ring-blue-400
+    focus:ring-offset-2
+  "
+  aria-label={
+    open
+      ? 'Close PICC Assistant'
+      : 'Open PICC Assistant'
+  }
+  title={
+    open
+      ? 'Close PICC Assistant'
+      : 'Open PICC Assistant'
+  }
+>
+  {open ? (
+    <X size={18} />
+  ) : (
+    <MessageCircle size={19} strokeWidth={2.5} />
+  )}
+</button>
 
-              <span
-                className="
-                  h-1.5
-                  w-1.5
-                  rounded-full
-                  bg-white
-                "
-              />
-
-              <span
-                className="
-                  h-1.5
-                  w-1.5
-                  rounded-full
-                  bg-white
-                "
-              />
-            </div>
-          )}
-
-          {/* CHAT BUBBLE POINTER */}
-
-        
-        </button>
       </div>
     </>
   );

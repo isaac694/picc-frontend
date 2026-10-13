@@ -1,8 +1,9 @@
-
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getPICCContext } from '@/lib/picc-assistant';
+
+import { searchWithGemini } from '@/lib/google-search';
 
 export const runtime = 'nodejs';
 
@@ -15,16 +16,22 @@ const APP_SECRET = process.env.WHATSAPP_APP_SECRET;
 const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
-const MODEL =
-  process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
+const MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 
-// Meta calls GET to verify your webhook.      floxyleon
+// Meta uses this GET request when verifying the webhook URL.
 export async function GET(request: Request) {
   const url = new URL(request.url);
 
   const mode = url.searchParams.get('hub.mode');
   const token = url.searchParams.get('hub.verify_token');
   const challenge = url.searchParams.get('hub.challenge');
+
+  console.log('WhatsApp webhook verification request received', {
+    mode,
+    hasToken: Boolean(token),
+    hasChallenge: Boolean(challenge),
+    verifyTokenConfigured: Boolean(VERIFY_TOKEN),
+  });
 
   if (
     mode === 'subscribe' &&
@@ -33,19 +40,21 @@ export async function GET(request: Request) {
     token === VERIFY_TOKEN &&
     challenge
   ) {
+    console.log('WhatsApp webhook verification successful');
     return new Response(challenge, { status: 200 });
   }
 
-  return new Response('Webhook verification failed', {
-    status: 403,
-  });
+  console.error('WhatsApp webhook verification failed');
+  return new Response('Webhook verification failed', { status: 403 });
 }
 
 function validSignature(
   rawBody: string,
   signature: string | null,
 ): boolean {
-  if (!APP_SECRET || !signature) return false;
+  if (!APP_SECRET || !signature) {
+    return false;
+  }
 
   const expected =
     'sha256=' +
@@ -67,8 +76,12 @@ async function sendWhatsAppMessage(
   message: string,
 ) {
   if (!ACCESS_TOKEN || !PHONE_NUMBER_ID) {
-    throw new Error('WhatsApp API environment variables are missing.');
+    throw new Error(
+      'WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID is missing.',
+    );
   }
+
+  console.log('Sending WhatsApp reply to:', recipient);
 
   const response = await fetch(
     `https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}/messages`,
@@ -95,13 +108,17 @@ async function sendWhatsAppMessage(
     const errorText = await response.text();
     throw new Error(`WhatsApp send failed: ${errorText}`);
   }
+
+  console.log('WhatsApp reply sent successfully');
 }
 
 async function generatePICCAnswer(question: string) {
   let websiteContext = '';
 
   try {
+    console.log('Retrieving PICC website information...');
     websiteContext = await getPICCContext(question);
+    console.log('Website information retrieved:', Boolean(websiteContext));
   } catch (error) {
     console.error('PICC knowledge retrieval failed:', error);
   }
@@ -126,9 +143,6 @@ If the supplied information does not answer a PICC-specific
 question, explain that you do not have that information yet
 and direct the visitor to contact PICC.
 
-You may answer general questions, but do not present general
-knowledge as confirmed PICC information.
-
 Keep WhatsApp replies concise and easy to read.
         `.trim(),
       },
@@ -151,13 +165,27 @@ ${websiteContext || 'No PICC information could be retrieved.'}
   );
 }
 
-// Meta sends incoming messages to this endpoint.
+// Meta sends WhatsApp messages to this POST endpoint.
 export async function POST(request: Request) {
+  console.log('WhatsApp webhook POST received');
+
   try {
     const rawBody = await request.text();
     const signature = request.headers.get('x-hub-signature-256');
 
+    console.log('Webhook checks:', {
+      signatureReceived: Boolean(signature),
+      appSecretConfigured: Boolean(APP_SECRET),
+      accessTokenConfigured: Boolean(ACCESS_TOKEN),
+      phoneNumberIdConfigured: Boolean(PHONE_NUMBER_ID),
+      groqApiKeyConfigured: Boolean(process.env.GROQ_API_KEY),
+    });
+
     if (!validSignature(rawBody, signature)) {
+      console.error(
+        'Invalid webhook signature. Check WHATSAPP_APP_SECRET in .env.local.',
+      );
+
       return NextResponse.json(
         { error: 'Invalid webhook signature.' },
         { status: 401 },
@@ -166,16 +194,21 @@ export async function POST(request: Request) {
 
     const payload = JSON.parse(rawBody);
 
-    // Ignore delivery/read status updates and unrelated events.
-    const changes = payload.entry?.flatMap(
-      (entry: any) => entry.changes ?? [],
-    ) ?? [];
+    const changes =
+      payload.entry?.flatMap((entry: any) => entry.changes ?? []) ?? [];
+
+    console.log('Webhook changes found:', changes.length);
 
     for (const change of changes) {
       const value = change.value;
       const messages = value?.messages ?? [];
 
+      console.log('Incoming messages found:', messages.length);
+
       for (const message of messages) {
+        console.log('Incoming message type:', message.type);
+
+        // Ignore message-status updates, images, audio, etc.
         if (message.type !== 'text' || !message.text?.body) {
           continue;
         }
@@ -183,21 +216,30 @@ export async function POST(request: Request) {
         const sender = message.from;
         const question = message.text.body.trim();
 
-        if (!sender || !question) continue;
+        if (!sender || !question) {
+          console.log('Skipped message: sender or text was empty.');
+          continue;
+        }
+
+        console.log('Incoming WhatsApp text message:', {
+          sender,
+          question,
+        });
 
         try {
           const answer = await generatePICCAnswer(question);
+
+          console.log('Generated assistant answer:', answer);
+
           await sendWhatsAppMessage(sender, answer);
         } catch (error) {
           console.error('PICC WhatsApp reply error:', error);
-
-          
         }
       }
     }
 
-    // Acknowledge the webhook so Meta does not keep retrying it.
-    return NextResponse.json({ received: true });
+    // Tell Meta the webhook was received.
+    return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
     console.error('WhatsApp webhook error:', error);
 
