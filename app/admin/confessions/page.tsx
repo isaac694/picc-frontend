@@ -5,6 +5,8 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import {
   getDateTimeInputValueInMalawi,
@@ -59,7 +61,7 @@ export default function ConfessionsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [confessionSearch, setConfessionSearch] = useState('');
@@ -70,6 +72,7 @@ export default function ConfessionsAdminPage() {
   const [title, setTitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [uploadName, setUploadName] = useState('');
+  const { runUpload, progress, uploading } = useMediaUpload();
   const [loading, setLoading] = useState(false);
   const [confessionId, setConfessionId] = useState<string | null>(null);
   const [allConfessions, setAllConfessions] = useState<ConfessionRecord[]>([]);
@@ -96,40 +99,21 @@ export default function ConfessionsAdminPage() {
   };
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
-
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setErrorStatus('Please upload an image file (JPEG, PNG, GIF, WebP, etc.)');
       return null;
     }
 
-    // Validate file size
     if (file.size > 1024 * 1024) {
       setErrorStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMsg = errorData?.error || 'Image upload failed.';
-        setErrorStatus(errorMsg);
-        return null;
-      }
-      const data = await response.json();
-      return normalizeImageUrl(data.url);
-    } catch {
-      setErrorStatus('Image upload failed.');
+      const url = await runUpload(file, 'page-images');
+      return normalizeImageUrl(url);
+    } catch (error) {
+      setErrorStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -332,7 +316,7 @@ export default function ConfessionsAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Upload and schedule daily confession declarations.
           </p>
-        </div>
+        </div>
       </div>
 
       {status && (
@@ -399,6 +383,7 @@ export default function ConfessionsAdminPage() {
               }}
               className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
             />
+            <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
             {uploadName ? (
               <p className="mt-2 text-xs text-foreground/60">
                 Selected: {uploadName}

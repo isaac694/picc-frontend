@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { apiFetch } from '@/lib/api';
 import { products, bookGenres, type Product } from '@/components/data/products';
 import { ImageIcon, RefreshCw, Trash2 } from 'lucide-react';
@@ -126,13 +128,14 @@ export default function AdminStorePage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [books, setBooks] = useState<StoreBook[]>([]);
   const [draft, setDraft] = useState<StoreBookDraft>(EMPTY_DRAFT);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
+  const { runUpload, progress, uploading } = useMediaUpload();
   const [search, setSearch] = useState('');
   const [uploadName, setUploadName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -166,29 +169,15 @@ export default function AdminStorePage() {
   }, [fetchBooks]);
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      if (!response.ok) {
-        setStatus('Cover upload failed.');
-        return null;
-      }
-      const data = await response.json();
-      return data.url as string;
-    } catch {
-      setStatus('Cover upload failed.');
+      return await runUpload(file, 'store');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Cover upload failed.');
       return null;
     }
   };
@@ -388,11 +377,12 @@ export default function AdminStorePage() {
           <Button variant="outline" onClick={importExistingBooks} disabled={isImporting}>
             <RefreshCw className="h-4 w-4" />
             {isImporting ? 'Importing...' : 'Import Existing Books'}
-          </Button>
+          </Button>
         </div>
       </div>
 
       {status && <p className="rounded-xl bg-muted px-4 py-3 text-sm text-foreground/70">{status}</p>}
+      <MediaUploadProgress uploading={uploading} progress={progress} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <section className={`${cardClassName} space-y-5`}>

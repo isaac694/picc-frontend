@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toast';
 import {
   Users,
@@ -83,7 +85,7 @@ export default function LeadershipManager() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [search, setSearch] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const { runUpload, progress, uploading } = useMediaUpload();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const authHeaders = useMemo(() => {
@@ -181,30 +183,14 @@ export default function LeadershipManager() {
       return;
     }
 
-    setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: authHeaders,
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to upload photo');
-      }
-
-      const data = await res.json();
-      const path = data.url || data.path || data.imageUrl || '';
-      setForm((prev) => ({ ...prev, imageLinkPath: path }));
+      const url = await runUpload(file, 'hr-leadership');
+      setForm((prev) => ({ ...prev, imageLinkPath: url }));
       adminSuccessToast('Profile picture uploaded.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Photo upload failed';
       adminErrorToast(msg);
     } finally {
-      setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
@@ -686,6 +672,7 @@ export default function LeadershipManager() {
                       onChange={(e) => setForm((p) => ({ ...p, imageLinkPath: e.target.value }))}
                       placeholder="Or enter path / URL"
                     />
+                    <MediaUploadProgress uploading={uploading} progress={progress} />
                   </div>
                 </div>
               </div>

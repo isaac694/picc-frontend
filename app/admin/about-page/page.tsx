@@ -5,6 +5,8 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 
 type SiteContentRecord = {
   key: string;
@@ -111,7 +113,7 @@ export default function AboutPageAdmin() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -120,6 +122,7 @@ export default function AboutPageAdmin() {
 
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
+  const { runUpload, progress, uploading } = useMediaUpload();
   const [storyVideoUrl, setStoryVideoUrl] = useState('');
   const [themesText, setThemesText] = useState('');
 
@@ -149,26 +152,16 @@ export default function AboutPageAdmin() {
   };
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
-
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setErrorStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      if (!response.ok) return null;
-      const data = await response.json();
-      return normalizeImageUrl(data.url);
-    } catch {
+      const url = await runUpload(file, 'page-images');
+      return normalizeImageUrl(url);
+    } catch (error) {
+      setErrorStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -272,7 +265,7 @@ export default function AboutPageAdmin() {
             Update images, story video, and yearly themes shown on the About page.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button onClick={handleSaveAll} disabled={saving}>
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
@@ -291,6 +284,7 @@ export default function AboutPageAdmin() {
           <p className="text-sm text-foreground/60">
             Upload new images for the About page sections.
           </p>
+          <MediaUploadProgress uploading={uploading} progress={progress} className="mt-4" />
 
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {IMAGE_ITEMS.map((item) => {

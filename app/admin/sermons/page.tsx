@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { Plus } from 'lucide-react';
 
@@ -46,10 +48,11 @@ export default function AdminSermonsPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
+  const { runUpload, progress, uploading } = useMediaUpload();
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [headerImage, setHeaderImage] = useState(DEFAULT_HEADER_IMAGE);
   const [draftSermon, setDraftSermon] = useState(DEFAULT_SERMON);
@@ -118,68 +121,31 @@ export default function AdminSermonsPage() {
   }, [normalizeSermon]);
 
   const uploadFile = async (file: File) => {
-    if (!token) return null;
-
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        setStatus('File upload failed.');
-        return null;
-      }
-
-      const data = await response.json();
-      return apiUrl(data.url);
-    } catch {
-      setStatus('File upload failed.');
+      const url = await runUpload(file, 'sermons');
+      return url.startsWith('http') ? url : apiUrl(url);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'File upload failed.');
       return null;
     }
   };
 
   const uploadAudioFile = async (file: File) => {
-    if (!token) return null;
-
     if (!file.type.startsWith('audio/')) {
       setStatus('Please upload an audio file.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await apiFetch('/api/uploads/media', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        setStatus(typeof data?.error === 'string' ? data.error : 'Audio upload failed.');
-        return null;
-      }
-
-      const data = await response.json();
-      return apiUrl(data.url);
-    } catch {
-      setStatus('Audio upload failed.');
+      const url = await runUpload(file, 'sermons');
+      return url.startsWith('http') ? url : apiUrl(url);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Audio upload failed.');
       return null;
     }
   };
@@ -433,12 +399,13 @@ export default function AdminSermonsPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Upload and manage sermons with real audio files, update the header image, and notify subscribers.
           </p>
-        </div>
+        </div>
       </div>
 
       {status && (
         <p className="text-sm text-foreground/70">{status}</p>
       )}
+      <MediaUploadProgress uploading={uploading} progress={progress} />
 
       {/* Header Image Section */}
       <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">

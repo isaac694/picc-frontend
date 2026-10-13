@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 
@@ -218,6 +220,7 @@ export default function SchoolInfoManager({
   const [draft, setDraft] = useState<SchoolInfo>(buildEmptyInfo(schoolKey));
   const [selection, setSelection] = useState<EditorSelection | null>(null);
   const [uploadNames, setUploadNames] = useState<Partial<Record<FocusableSchoolInfoField, string>>>({});
+  const { runUpload, progress, uploading } = useMediaUpload();
 
   const headerRef = useRef<HTMLInputElement | null>(null);
   const mottoRef = useRef<HTMLInputElement | null>(null);
@@ -384,39 +387,15 @@ export default function SchoolInfoManager({
   };
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
-
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        setStatus('Image upload failed.');
-        return null;
-      }
-
-      const data = await response.json().catch(() => null) as { url?: string } | null;
-      if (!data?.url) {
-        setStatus('Image upload failed.');
-        return null;
-      }
-
-      return data.url;
-    } catch {
-      setStatus('Image upload failed.');
+      return await runUpload(file, 'school');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -684,6 +663,7 @@ export default function SchoolInfoManager({
                   {uploadNames[selection.field] ? (
                     <p className="text-xs text-foreground/60">Selected: {uploadNames[selection.field]}</p>
                   ) : null}
+                  <MediaUploadProgress uploading={uploading} progress={progress} />
                 </div>
               )}
 

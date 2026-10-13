@@ -35,6 +35,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/hr': { title: 'HR Vacancies', subtitle: 'Manage vacancies and applicant reviews.' },
   '/admin/quote-of-month': { title: 'Qoutes', subtitle: 'Manage monthly quote content.' },
   '/admin/page-images': { title: 'Homepage Images', subtitle: 'Update site imagery and page visuals.' },
+  '/admin/ads-management': { title: 'Ads Management', subtitle: 'Manage promotional ads and placements.' },
   '/admin/video-declarations': { title: 'Video Declarations', subtitle: 'Publish video and audio declarations.' },
   '/admin/faqs': { title: 'FAQ', subtitle: 'Manage footer frequently asked questions.' },
   '/admin/livechat': { title: 'Live Chat Archive', subtitle: 'Review livestream chat messages.' },
@@ -59,6 +60,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/hr')) return ADMIN_PAGE.HR_PAGE;
   if (path.startsWith('/admin/quote-of-month')) return ADMIN_PAGE.QUOTE_OF_MONTH;
   if (path.startsWith('/admin/page-images')) return ADMIN_PAGE.PAGE_IMAGES;
+  if (path.startsWith('/admin/ads-management')) return ADMIN_PAGE.ADS_MANAGEMENT;
   if (path.startsWith('/admin/video-declarations')) return ADMIN_PAGE.VIDEO_DECLARATIONS;
   if (path.startsWith('/admin/livechat')) return ADMIN_PAGE.LIVECHAT;
   if (path.startsWith('/admin/schools/')) return ADMIN_PAGE.SCHOOLS_ENROLLMENT;

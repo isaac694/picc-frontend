@@ -5,6 +5,8 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { Search } from 'lucide-react';
 import Image from 'next/image';
@@ -87,7 +89,7 @@ export default function EventsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -97,6 +99,7 @@ export default function EventsAdminPage() {
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const { runUpload, progress, uploading } = useMediaUpload();
 
   const updateUploadName = (key: string, name: string) => {
     setUploadNames((prev) => ({ ...prev, [key]: name }));
@@ -131,32 +134,15 @@ export default function EventsAdminPage() {
   }, [searchQuery, sortedEvents]);
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
-
-    // Check file size (1MB = 1024 * 1024 bytes)
     if (file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      if (!response.ok) {
-        setStatus('Image upload failed.');
-        return null;
-      }
-      const data = await response.json();
-      return data.url;
-    } catch {
-      setStatus('Image upload failed.');
+      return await runUpload(file, 'events');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -375,7 +361,7 @@ export default function EventsAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Publish upcoming events and update visuals.
           </p>
-        </div>
+        </div>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
@@ -473,6 +459,7 @@ export default function EventsAdminPage() {
               }}
               className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
             />
+            <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
           </div>
           {uploadNames['event-draft'] ? (
             <div>

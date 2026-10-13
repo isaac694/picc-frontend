@@ -5,6 +5,8 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -76,13 +78,14 @@ export default function LocationsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
+  const { runUpload, progress, uploading } = useMediaUpload();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -103,26 +106,16 @@ export default function LocationsAdminPage() {
   };
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
-
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      if (!response.ok) return null;
-      const data = await response.json();
-      return normalizeImageUrl(data.url);
-    } catch {
+      const url = await runUpload(file, 'page-images');
+      return normalizeImageUrl(url);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -318,7 +311,7 @@ export default function LocationsAdminPage() {
           <p className='text-foreground/70 mt-3 max-w-2xl'>
             Manage church locations, update the header image, and edit branch information.
           </p>
-        </div>
+        </div>
       </div>
 
       {status && <p className='text-sm text-foreground/70'>{status}</p>}
@@ -336,6 +329,8 @@ export default function LocationsAdminPage() {
             {saving ? 'Saving...' : 'Save Image'}
           </Button>
         </div>
+
+        <MediaUploadProgress uploading={uploading} progress={progress} />
 
         <div className='grid grid-cols-1 gap-4'>
           {IMAGE_ITEMS.map((item) => {

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -112,48 +114,6 @@ const normalizeDetails = (value: unknown): PartnershipDetail[] => {
     .filter((item): item is PartnershipDetail => Boolean(item));
 };
 
-async function uploadMinistryImage(token: string, file: File, setStatus: (value: string) => void) {
-  if (!file.type.startsWith('image/')) {
-    setStatus('Please upload an image file.');
-    return null;
-  }
-
-  if (file.size > 1_000_000) {
-    setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
-    return null;
-  }
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const response = await apiFetch('/api/uploads', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const data = await response.json().catch(() => null);
-      const message = typeof data?.error === 'string' ? data.error : 'Image upload failed.';
-      setStatus(message);
-      return null;
-    }
-
-    const data = await response.json().catch(() => null);
-    const rawUrl = typeof data?.url === 'string' ? data.url : '';
-    if (!rawUrl) {
-      setStatus('Image upload failed.');
-      return null;
-    }
-
-    return rawUrl;
-  } catch {
-    setStatus('Image upload failed.');
-    return null;
-  }
-}
-
 export function MinistryInfoManager({
   token,
   ministryKey,
@@ -177,6 +137,7 @@ export function MinistryInfoManager({
   const [uploadName, setUploadName] = useState('');
   const [draft, setDraft] = useState<MinistryInfoDraft>(fallbackInfo);
   const [activeField, setActiveField] = useState<MinistryInfoField>('name');
+  const { runUpload, progress, uploading } = useMediaUpload();
 
   const baseUrl = useMemo(() => `/api/admin/ministries/${encodeURIComponent(ministryKey)}`, [ministryKey]);
   const isVisible = (field: MinistryInfoField) => !visibleFields || visibleFields.includes(field);
@@ -343,13 +304,21 @@ export function MinistryInfoManager({
               const file = event.currentTarget.files?.[0];
               event.currentTarget.value = '';
               if (!file) return;
-              const url = await uploadMinistryImage(token, file, setStatus);
-              if (!url) return;
-              setDraft((prev) => ({ ...prev, [imageField]: url }));
-              setUploadName(file.name);
-              setStatus(`${label} uploaded. Save changes to publish it.`);
+              if (file.size > 1_000_000) {
+                setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+                return;
+              }
+              try {
+                const url = await runUpload(file, 'ministry');
+                setDraft((prev) => ({ ...prev, [imageField]: url }));
+                setUploadName(file.name);
+                setStatus(`${label} uploaded. Save changes to publish it.`);
+              } catch (error) {
+                setStatus(error instanceof Error ? error.message : 'Image upload failed.');
+              }
             }}
           />
+          <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
           {draft[imageField] ? (
             <Button
               type="button"
@@ -576,6 +545,7 @@ export function MinistryItemsManager({
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
+  const { runUpload, progress, uploading } = useMediaUpload();
 
   const baseUrl = useMemo(() => `/api/admin/ministries/${encodeURIComponent(ministryKey)}`, [ministryKey]);
   const fallback = useMemo<MinistryItem[]>(
@@ -845,10 +815,20 @@ export function MinistryItemsManager({
                   const file = event.currentTarget.files?.[0];
                   event.currentTarget.value = '';
                   if (!file) return;
-                  const url = await uploadMinistryImage(token, file, setStatus);
-                  if (url) setDraft((prev) => ({ ...prev, imageUrl: url }));
+                  if (file.size > 1_000_000) {
+                    setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+                    return;
+                  }
+                  try {
+                    const url = await runUpload(file, 'ministry');
+                    setDraft((prev) => ({ ...prev, imageUrl: url }));
+                    setStatus('');
+                  } catch (error) {
+                    setStatus(error instanceof Error ? error.message : 'Image upload failed.');
+                  }
                 }}
               />
+              <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
               {draft.imageUrl ? (
                 <div className="mt-3 overflow-hidden rounded-xl border border-border/60">
                   <div className="relative h-40">

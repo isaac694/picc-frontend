@@ -124,6 +124,29 @@ export default function ApplicantProfileForm({ value, onChange, errors = {} }: A
 
       <section className="space-y-3">
         <div>
+          <h3 className="text-lg font-semibold text-primary">Achievements</h3>
+          <p className="text-sm text-slate-600">
+            Awards, recognitions, notable projects, or other highlights you want the hiring team to see.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="achievements">Achievements</Label>
+          <Textarea
+            id="achievements"
+            rows={5}
+            value={value.achievements}
+            aria-invalid={Boolean(errors.achievements)}
+            onChange={(event) => onChange({ ...value, achievements: event.target.value })}
+            placeholder={examplePlaceholder(
+              'Led a regional communications campaign in 2024.\nVolunteer coordinator for youth outreach programs.',
+            )}
+          />
+          <FieldError message={errors.achievements} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div>
           <h3 className="text-lg font-semibold text-primary">Skills</h3>
           <p className="text-sm text-slate-600">Add professional and technical skills. Empty or duplicate skills are not saved.</p>
         </div>

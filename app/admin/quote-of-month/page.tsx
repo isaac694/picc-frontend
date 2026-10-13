@@ -6,6 +6,8 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { toast } from 'sonner';
 
 export default function QuoteOfMonthAdminPage() {
@@ -16,7 +18,7 @@ export default function QuoteOfMonthAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -30,6 +32,7 @@ export default function QuoteOfMonthAdminPage() {
   const [draftQuoteImageUrl, setDraftQuoteImageUrl] = useState('');
   const [uploadName, setUploadName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const { runUpload, progress, uploading } = useMediaUpload();
 
   useEffect(() => {
     if (!token) return;
@@ -64,31 +67,15 @@ export default function QuoteOfMonthAdminPage() {
   }, [token]);
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
-
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      if (!response.ok) {
-        setStatus('Image upload failed.');
-        return null;
-      }
-      const data = await response.json();
-      return apiUrl(data.url);
-    } catch {
-      setStatus('Image upload failed.');
+      return await runUpload(file, 'page-images');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -218,7 +205,7 @@ export default function QuoteOfMonthAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Refresh the monthly quote and its background image.
           </p>
-        </div>
+        </div>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
@@ -265,6 +252,7 @@ export default function QuoteOfMonthAdminPage() {
               }}
               className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
             />
+            <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
           </div>
           <div>
             <Button
