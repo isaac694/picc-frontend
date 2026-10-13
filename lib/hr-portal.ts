@@ -212,6 +212,26 @@ export function newSection(type: 'content' | 'form' | 'attachments', title?: str
   };
 }
 
+type PortalDocumentInput = string | {
+  label?: string;
+  required?: boolean;
+  accept?: string[];
+  maxSizeMb?: number;
+};
+
+const toDocumentField = (document: PortalDocumentInput) => {
+  const label = typeof document === 'string' ? document : String(document.label || '').trim();
+  if (!label) return null;
+  const field = newField('file', label);
+  return {
+    ...field,
+    key: slugifyKey(label),
+    required: typeof document === 'string' ? true : document.required !== false,
+    accept: typeof document === 'string' || !document.accept?.length ? field.accept : document.accept,
+    maxSizeMb: typeof document === 'string' ? field.maxSizeMb : Number(document.maxSizeMb || field.maxSizeMb || 5),
+  };
+};
+
 export function buildDefaultPortalConfig(input: {
   title?: string;
   department?: string;
@@ -221,13 +241,11 @@ export function buildDefaultPortalConfig(input: {
   description?: string;
   responsibilities?: string[];
   requirements?: string[];
-  requiredDocuments?: string[];
+  requiredDocuments?: PortalDocumentInput[];
 }): PortalConfig {
-  const documentFields = (input.requiredDocuments || []).map((label) => ({
-    ...newField('file', label),
-    key: slugifyKey(label),
-    required: true,
-  }));
+  const documentFields = (input.requiredDocuments || [])
+    .map(toDocumentField)
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
   return {
     version: 1,
@@ -256,8 +274,8 @@ export function buildDefaultPortalConfig(input: {
         type: 'form',
         description: 'Complete the fields below to apply.',
         fields: [
-          { key: 'coverLetter', type: 'textarea', widget: 'textarea', label: 'Cover letter', required: true, rows: 6 },
-          { key: 'availability', type: 'text', widget: 'text', label: 'Availability', required: true },
+          { key: 'coverLetter', type: 'textarea', widget: 'textarea', label: 'Cover letter', required: true, rows: 6, placeholder: 'e.g. I am interested in this role because...' },
+          { key: 'availability', type: 'text', widget: 'text', label: 'Availability', required: true, placeholder: 'e.g. Two weeks’ notice' },
         ],
       },
       {
@@ -270,6 +288,28 @@ export function buildDefaultPortalConfig(input: {
       },
     ],
   };
+}
+
+export function applyRequiredDocumentsToPortal(
+  config: PortalConfig,
+  documents: PortalDocumentInput[],
+): PortalConfig {
+  const fields = documents
+    .map(toDocumentField)
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const sections = [...(config.sections || [])];
+  const index = sections.findIndex((section) => section.type === 'attachments' || section.id === 'attachments');
+  const nextSection = {
+    ...(index >= 0 ? sections[index] : newSection('attachments')),
+    fields: fields.length
+      ? fields
+      : [{ key: 'cv', type: 'file', widget: 'file', label: 'CV', required: true, accept: DEFAULT_FILE_ACCEPT, maxSizeMb: 5 }],
+  };
+
+  if (index >= 0) sections[index] = nextSection;
+  else sections.push(nextSection);
+
+  return { ...config, sections };
 }
 
 export function normalizePortalConfig(value: unknown): PortalConfig | null {

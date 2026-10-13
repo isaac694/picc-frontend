@@ -1,5 +1,7 @@
 'use client';
 
+import { apiFetch } from '@/lib/api';
+
 export interface GivingNotificationPayload {
   userEmail?: string;
   churchEmail: string;
@@ -75,7 +77,7 @@ export async function sendGivingNotification(payload: GivingNotificationPayload)
 }
 
 export async function sendTestimonyNotification(payload: TestimonyNotificationPayload) {
-  const response = await fetch('/api/send-testimony-email', {
+  const response = await apiFetch('/api/send-testimony-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -83,14 +85,14 @@ export async function sendTestimonyNotification(payload: TestimonyNotificationPa
 
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw new Error(data?.error || 'Failed to send testimony email');
+    throw new Error(data?.error || data?.message || 'Failed to send testimony email');
   }
 
   return response.json();
 }
 
 export async function sendMembershipNotification(payload: MembershipNotificationPayload) {
-  const response = await fetch('/api/send-membership-email', {
+  const response = await apiFetch('/api/send-membership-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -98,14 +100,14 @@ export async function sendMembershipNotification(payload: MembershipNotification
 
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw new Error(data?.error || 'Failed to send membership email');
+    throw new Error(data?.error || data?.message || 'Failed to send membership email');
   }
 
   return response.json();
 }
 
 export async function sendPrayerNotification(payload: PrayerNotificationPayload) {
-  const response = await fetch('/api/send-prayer-email', {
+  const response = await apiFetch('/api/send-prayer-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -113,7 +115,7 @@ export async function sendPrayerNotification(payload: PrayerNotificationPayload)
 
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw new Error(data?.error || 'Failed to send prayer email');
+    throw new Error(data?.error || data?.message || 'Failed to send prayer email');
   }
 
   return response.json();

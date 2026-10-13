@@ -149,7 +149,8 @@ export default function AdminSidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   const isActive = (href: string) => {
-    if (href === '/admin' || href === '/admin/hr') return pathname === href;
+    if (href === '/admin') return pathname === href;
+    if (href === '/admin/hr') return pathname === href || Boolean(pathname?.startsWith('/admin/hr/applications'));
     return pathname?.startsWith(href);
   };
 

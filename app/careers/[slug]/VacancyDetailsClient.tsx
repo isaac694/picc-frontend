@@ -100,22 +100,22 @@ export default function VacancyDetailsClient({ slug, initialVacancy }: { slug: s
             </article>
 
             <aside className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm lg:sticky lg:top-24 lg:self-start">
-              <div className="inline-flex items-center gap-2 rounded-full bg-secondary/15 px-4 py-2 text-sm font-semibold text-primary">
-                <FileText className="h-4 w-4 text-secondary" />
+              {/* <div className="inline-flex items-center gap-2 rounded-full bg-secondary/15 px-4 py-2 text-sm font-semibold text-primary">
+                
                 Application Pack
-              </div>
-              <h2 className="mt-6 text-2xl font-bold text-primary">How to Apply</h2>
+              </div> */}
+              {/* <h2 className="mt-6 text-2xl font-bold text-primary">How to Apply</h2>
               <p className="mt-4 text-sm leading-relaxed text-slate-600">
                 Review the vacancy details, then submit your application in the Applicant Portal.
-              </p>
-              <ul className="mt-5 space-y-3 text-sm text-slate-600">
+              </p> */}
+              {/* <ul className="mt-5 space-y-3 text-sm text-slate-600">
                 {documentLabels.map((document) => (
                   <li key={document} className="flex gap-3">
                     <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-secondary" />
                     <span>{document}</span>
                   </li>
                 ))}
-              </ul>
+              </ul> */}
               <div className="mt-8 space-y-3">
                 <CareerApplyButton
                   vacancyIdOrSlug={vacancy.slug || vacancy.id || slug}

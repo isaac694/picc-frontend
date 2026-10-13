@@ -16,11 +16,14 @@ import {
   type ApplicantRecord,
 } from '@/lib/hr-applicant';
 import { normalizePortalConfig, type PortalConfig } from '@/lib/hr-portal';
+import { extractApplicantProfile } from '@/lib/hr-applicant';
+import ApplicantProfileView from '@/components/careers/ApplicantProfileView';
 
 type ApplicationDetail = {
   id: string;
   status?: string;
   createdAt?: string;
+  coverLetter?: string | null;
   answers?: Record<string, unknown>;
   reviewNotes?: string;
   vacancyId?: string;
@@ -128,6 +131,8 @@ export default function ApplicationDetailClient({ id, vacancyId }: { id: string;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, vacancyId]);
 
+  const profile = extractApplicantProfile(application);
+
   return (
     <main className="min-h-screen bg-stone-50">
       <Navigation />
@@ -157,6 +162,16 @@ export default function ApplicationDetailClient({ id, vacancyId }: { id: string;
                 <p className="text-sm text-slate-600">
                   Submitted {application.createdAt ? new Date(application.createdAt).toLocaleDateString() : '-'}
                 </p>
+              </div>
+              <div className="space-y-6">
+                <h2 className="text-lg font-semibold text-primary">Your application</h2>
+                {application.coverLetter ? (
+                  <section>
+                    <h3 className="font-semibold">Cover letter</h3>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground/80">{application.coverLetter}</p>
+                  </section>
+                ) : null}
+                <ApplicantProfileView profile={profile} />
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
