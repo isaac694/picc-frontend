@@ -2,7 +2,8 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { BriefcaseBusiness, FileText, RefreshCw, TrendingUp, Users } from 'lucide-react';
+import Link from 'next/link';
+import { BriefcaseBusiness, Eye, FileText, RefreshCw, TrendingUp, Users } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ type RecentApplication = {
     email?: string;
   };
   vacancy?: {
+    id?: string;
     title?: string;
     department?: string;
   };
@@ -227,6 +229,7 @@ export default function HrDashboardPage() {
                 <th className="px-5 py-3 font-semibold">Vacancy</th>
                 <th className="px-5 py-3 font-semibold">Status</th>
                 <th className="px-5 py-3 font-semibold">Submitted</th>
+                <th className="px-5 py-3 font-semibold">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -239,6 +242,20 @@ export default function HrDashboardPage() {
                   <td className="px-5 py-4">{application.vacancy?.title || '-'}</td>
                   <td className="px-5 py-4"><Badge variant="outline">{application.status}</Badge></td>
                   <td className="px-5 py-4">{application.createdAt ? new Date(application.createdAt).toLocaleDateString() : '-'}</td>
+                  <td className="px-5 py-4">
+                    <Button asChild size="sm" variant="outline">
+                      <Link
+                        href={
+                          application.vacancy?.id
+                            ? `/admin/hr/applications/${application.id}?vacancyId=${application.vacancy.id}`
+                            : `/admin/hr/applications/${application.id}`
+                        }
+                      >
+                        <Eye className="h-4 w-4" />
+                        View
+                      </Link>
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>

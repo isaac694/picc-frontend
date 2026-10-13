@@ -50,6 +50,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Events', href: '/admin/events', pageKey: ADMIN_PAGE.EVENTS, icon: CalendarDays },
   { label: 'Dashboard', href: '/admin/hr/dashboard', pageKey: ADMIN_PAGE.HR_PAGE, icon: LayoutDashboard },
   { label: 'Vacancies', href: '/admin/hr', pageKey: ADMIN_PAGE.HR_PAGE, icon: BriefcaseBusiness },
+  { label: 'Leadership', href: '/admin/hr/leadership', pageKey: ADMIN_PAGE.LEADERSHIP, icon: Users },
   { label: 'Qoutes', href: '/admin/quote-of-month', pageKey: ADMIN_PAGE.QUOTE_OF_MONTH, icon: Quote },
   { label: 'Homepage Images', href: '/admin/page-images', pageKey: ADMIN_PAGE.PAGE_IMAGES, icon: ImageIcon },
   { label: 'Video Declarations', href: '/admin/video-declarations', pageKey: ADMIN_PAGE.VIDEO_DECLARATIONS, icon: Video },
@@ -148,7 +149,8 @@ export default function AdminSidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   const isActive = (href: string) => {
-    if (href === '/admin' || href === '/admin/hr') return pathname === href;
+    if (href === '/admin') return pathname === href;
+    if (href === '/admin/hr') return pathname === href || Boolean(pathname?.startsWith('/admin/hr/applications'));
     return pathname?.startsWith(href);
   };
 
