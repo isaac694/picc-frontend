@@ -31,6 +31,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/events': { title: 'Events', subtitle: 'Create and publish upcoming events.' },
   '/admin/hr/dashboard': { title: 'HR Dashboard', subtitle: 'Track vacancies, applicants, applications, and hiring progress.' },
   '/admin/hr/applications': { title: 'Application Details', subtitle: 'Review the full applicant profile, answers, and documents.' },
+  '/admin/hr/leadership': { title: 'Leadership Management', subtitle: 'Manage church administration and secretariat leadership structure.' },
   '/admin/hr': { title: 'HR Vacancies', subtitle: 'Manage vacancies and applicant reviews.' },
   '/admin/quote-of-month': { title: 'Qoutes', subtitle: 'Manage monthly quote content.' },
   '/admin/page-images': { title: 'Homepage Images', subtitle: 'Update site imagery and page visuals.' },
@@ -54,6 +55,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/see-you-in-church')) return ADMIN_PAGE.SEE_YOU_IN_CHURCH;
   if (path.startsWith('/admin/services')) return ADMIN_PAGE.SERVICES;
   if (path.startsWith('/admin/events')) return ADMIN_PAGE.EVENTS;
+  if (path.startsWith('/admin/hr/leadership')) return ADMIN_PAGE.LEADERSHIP;
   if (path.startsWith('/admin/hr')) return ADMIN_PAGE.HR_PAGE;
   if (path.startsWith('/admin/quote-of-month')) return ADMIN_PAGE.QUOTE_OF_MONTH;
   if (path.startsWith('/admin/page-images')) return ADMIN_PAGE.PAGE_IMAGES;
