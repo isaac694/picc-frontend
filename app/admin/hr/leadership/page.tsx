@@ -256,7 +256,7 @@ export default function LeadershipManager() {
   async function remove(person: Person) {
     if (
       !window.confirm(
-        `Delete ${person.user.name} from ${group === 'church-admins' ? 'Church Administration' : 'Church Secretariat'}?\n\nAny direct reports will become top-level positions.`
+        `Delete ${person.user.name} from ${group === 'church-admins' ? 'Church Administration' : 'The Secretariat'}?\n\nAny direct reports will become top-level positions.`
       )
     ) {
       return;
@@ -310,7 +310,7 @@ export default function LeadershipManager() {
     );
   }, [records, search]);
 
-  const activeGroupLabel = group === 'church-admins' ? 'Church Administration' : 'Church Secretariat';
+  const activeGroupLabel = group === 'church-admins' ? 'Church Administration' : 'The Secretariat';
   const secretariatStats = useMemo(() => {
     if (group !== 'secretariates') {
       return null;
@@ -364,7 +364,7 @@ export default function LeadershipManager() {
           {(
             [
               ['church-admins', 'Church Administration', Building2],
-              ['secretariates', 'Church Secretariat', Users],
+              ['secretariates', 'The Secretariat', Users],
             ] as const
           ).map(([val, label, Icon]) => {
             const active = group === val;

@@ -358,7 +358,7 @@ const { roots, childrenByParent } = useMemo(() => {
   };
 }, [seniorMembers, members]);
 
-  const title = group === 'church-admins' ? 'Church Administration' : 'Church Secretariat';
+  const title = group === 'church-admins' ? 'Church Administration' : 'The Secretariat';
 
   return (
     <>
@@ -403,7 +403,7 @@ const { roots, childrenByParent } = useMemo(() => {
           <div className="mx-auto mt-10 flex max-w-xl rounded-2xl border border-slate-200 bg-slate-100 p-1.5" role="group" aria-label="Leadership group">
             {([
               ['church-admins', 'Church Administration'],
-              ['secretariates', 'Church Secretariat'],
+              ['secretariates', 'The Secretariat'],
             ] as const).map(([id, label]) => (
               <button
                 key={id}
