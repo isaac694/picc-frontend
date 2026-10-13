@@ -348,13 +348,13 @@ export default function LeadershipManager() {
 
           <div className="flex items-center gap-2">
             <Link
-              href="/about/leader"
+              href="/about/leadership"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2.5 text-xs font-semibold text-foreground shadow-xs transition hover:bg-muted"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              View Public Page (/about/leader)
+              View Public Page (/about/leadership)
             </Link>
           </div>
         </div>
@@ -715,7 +715,7 @@ export default function LeadershipManager() {
                 <div>
                   <span className="font-semibold">Published on Public Website</span>
                   <p className="text-[11px] text-muted-foreground">
-                    When checked, this profile is visible to visitors on /about/leader.
+                    When checked, this profile is visible to visitors on /about/leadership.
                   </p>
                 </div>
               </label>
