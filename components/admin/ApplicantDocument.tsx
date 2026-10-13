@@ -243,6 +243,16 @@ const ApplicantDocument = forwardRef<HTMLDivElement, ApplicantDocumentProps>(
             </p>
           </section>
 
+          <section style={styles.section}>
+            <div style={styles.sectionHead}>
+              <span style={styles.sectionMark} />
+              <h2 style={styles.sectionTitle}>Achievements</h2>
+            </div>
+            <p style={styles.paragraph}>
+              {profile.achievements || 'No achievements were provided.'}
+            </p>
+          </section>
+
           {/* <section style={styles.section}>
             <div style={styles.sectionHead}>
               <span style={styles.sectionMark} />

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 
 const FORM_IMAGE_ITEMS = [
   {
@@ -35,13 +37,14 @@ export default function FormsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
   const [formImages, setFormImages] = useState<Record<string, string>>({});
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const { runUpload, progress, uploading } = useMediaUpload();
 
   const normalizeImageUrl = (value: string) =>
     value.startsWith('http') ? value : apiUrl(value);
@@ -78,32 +81,16 @@ export default function FormsAdminPage() {
   }, [token]);
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
-
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      if (!response.ok) {
-        setStatus('Image upload failed.');
-        return null;
-      }
-      const data = await response.json();
-      return normalizeImageUrl(data.url);
+      const url = await runUpload(file, 'page-images');
+      return normalizeImageUrl(url);
     } catch (error) {
-      setStatus('Image upload failed.');
+      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -156,10 +143,11 @@ export default function FormsAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Update the pictures used on the membership, testimony, and prayer forms.
           </p>
-        </div>
+        </div>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
+      <MediaUploadProgress uploading={uploading} progress={progress} />
 
       <div className="space-y-6">
         {FORM_IMAGE_ITEMS.map((item) => (

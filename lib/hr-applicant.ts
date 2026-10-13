@@ -39,6 +39,7 @@ export type ApplicantProfileFields = {
   personalSummary: string;
   currentLocation: string;
   address: string;
+  achievements: string;
   skills: string[];
   workExperience: ApplicantWorkExperience[];
   education: ApplicantEducation[];
@@ -54,6 +55,7 @@ export type ApplicantRecord = {
   personalSummary?: string;
   currentLocation?: string;
   address?: string;
+  achievements?: string;
   skills?: string[];
   workExperience?: ApplicantWorkExperience[];
   education?: ApplicantEducation[];
@@ -92,6 +94,7 @@ export const emptyApplicantProfile = (): ApplicantProfileFields => ({
   personalSummary: '',
   currentLocation: '',
   address: '',
+  achievements: '',
   skills: [],
   workExperience: [],
   education: [],
@@ -275,6 +278,7 @@ export function extractApplicantProfile(value: unknown): ApplicantProfileFields 
     personalSummary: pickText('personalSummary', 'summary'),
     currentLocation: pickText('currentLocation', 'location', 'current_location', 'city'),
     address: pickText('address', 'homeAddress', 'home_address', 'residentialAddress'),
+    achievements: pickText('achievements', 'achievement', 'honors', 'accomplishments'),
     skills: parseSkills(pickArray('skills')),
     workExperience: parseWorkExperience(pickArray('workExperience', 'experience')).sort((a, b) =>
       String(b.startDate || '').localeCompare(String(a.startDate || '')),
@@ -289,6 +293,7 @@ export function serializeApplicantProfile(profile: ApplicantProfileFields) {
     personalSummary: profile.personalSummary.trim(),
     currentLocation: profile.currentLocation.trim(),
     address: profile.address.trim(),
+    achievements: profile.achievements.trim(),
     skills: parseSkills(profile.skills),
     workExperience: [...profile.workExperience]
       .sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')))

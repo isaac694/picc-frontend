@@ -5,6 +5,8 @@ import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { Trash2 } from 'lucide-react';
 import {
@@ -157,10 +159,11 @@ export default function AdminMediaPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
+  const { runUpload, progress, uploading } = useMediaUpload();
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [bookItems, setBookItems] = useState<BookItem[]>([]);
@@ -235,34 +238,15 @@ export default function AdminMediaPage() {
   };
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
-
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        setStatus('Image upload failed.');
-        return null;
-      }
-
-      const data = await response.json();
-      return data.url as string;
-    } catch {
-      setStatus('Image upload failed.');
+      return await runUpload(file, 'media');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -528,10 +512,11 @@ export default function AdminMediaPage() {
           <p className="mt-3 max-w-2xl text-foreground/70">
             Manage church news, gallery items, Fire on the Altar books, and magazines. Built-in content appears alongside saved dashboard items, just like the ministry pages.
           </p>
-        </div>
+        </div>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
+      <MediaUploadProgress uploading={uploading} progress={progress} />
 
       <div className="space-y-12">
         <section className="space-y-5 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">

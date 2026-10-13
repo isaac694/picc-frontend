@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import Image from 'next/image';
@@ -42,6 +44,7 @@ export default function SchoolEventsManager({
   const [searchTerm, setSearchTerm] = useState('');
   const [editingItem, setEditingItem] = useState<EventItem | null>(null);
   const [uploadName, setUploadName] = useState('');
+  const { runUpload, progress, uploading } = useMediaUpload();
   const [draft, setDraft] = useState<Draft>({
     title: '',
     description: '',
@@ -127,33 +130,9 @@ export default function SchoolEventsManager({
     setUploadName(file.name);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        setStatus('Image upload failed.');
-        return null;
-      }
-
-      const data = await response.json().catch(() => null);
-      const rawUrl = typeof data?.url === 'string' ? data.url : typeof data?.imageUrl === 'string' ? data.imageUrl : '';
-
-      if (!rawUrl) {
-        setStatus('Image upload failed.');
-        return null;
-      }
-
-      return rawUrl.startsWith('http') ? rawUrl : apiUrl(rawUrl);
-    } catch {
-      setStatus('Image upload failed.');
+      return await runUpload(file, 'school');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -380,6 +359,7 @@ export default function SchoolEventsManager({
               {uploadName && (
                 <p className="mt-2 text-xs text-foreground/60">Selected: {uploadName}</p>
               )}
+              <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
               {draft.imageUrl && (
                 <div className="mt-3 overflow-hidden rounded-xl border border-border/60 bg-background">
                   <div className="relative h-40">

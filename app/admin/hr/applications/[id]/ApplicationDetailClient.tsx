@@ -18,6 +18,7 @@ import {
   Phone,
   Printer,
   Sparkles,
+  Trophy,
   UserRound,
 } from 'lucide-react';
 import { apiFetch, apiUrl } from '@/lib/api';
@@ -91,6 +92,7 @@ type ApplicationDetail = {
   personalSummary?: string | null;
   currentLocation?: string | null;
   address?: string | null;
+  achievements?: string | null;
   skills?: string[];
   workExperience?: Array<Record<string, unknown>>;
   education?: Array<Record<string, unknown>>;
@@ -216,15 +218,22 @@ const extractApplication = (value: unknown, id: string): ApplicationDetail | nul
   return pick(value);
 };
 
+const mergeProfileText = (primary?: string | null, supplemental?: string | null) => {
+  const left = String(primary ?? '').trim();
+  const right = String(supplemental ?? '').trim();
+  return left || right || undefined;
+};
+
 const mergeApplicationDetails = (
   primary: ApplicationDetail,
   supplemental: ApplicationDetail,
 ): ApplicationDetail => ({
   ...supplemental,
   ...primary,
-  personalSummary: primary.personalSummary ?? supplemental.personalSummary,
-  currentLocation: primary.currentLocation ?? supplemental.currentLocation,
-  address: primary.address ?? supplemental.address,
+  personalSummary: mergeProfileText(primary.personalSummary, supplemental.personalSummary),
+  currentLocation: mergeProfileText(primary.currentLocation, supplemental.currentLocation),
+  address: mergeProfileText(primary.address, supplemental.address),
+  achievements: mergeProfileText(primary.achievements, supplemental.achievements),
   skills: primary.skills?.length ? primary.skills : supplemental.skills,
   education: primary.education?.length ? primary.education : supplemental.education,
   workExperience: primary.workExperience?.length ? primary.workExperience : supplemental.workExperience,
@@ -589,6 +598,14 @@ export default function ApplicationDetailClient({ id, vacancyId }: { id: string;
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No location details were provided.</p>
+                )}
+              </Panel>
+
+              <Panel title="Achievements" icon={Trophy}>
+                {profile.achievements ? (
+                  <p className="whitespace-pre-wrap text-sm leading-7 text-foreground/85">{profile.achievements}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No achievements were provided.</p>
                 )}
               </Panel>
 

@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 
 const FALLBACK_TITLE = "Listen to God's Word for You.";
@@ -84,7 +86,7 @@ export default function VideoDeclarationsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
@@ -92,7 +94,7 @@ export default function VideoDeclarationsAdminPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [declarationSearch, setDeclarationSearch] = useState('');
   const [uploadName, setUploadName] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
+  const { runUploadWithKind, progress, uploading: isUploading } = useMediaUpload();
   const [isSaving, setIsSaving] = useState(false);
   const [archive, setArchive] = useState<DeclarationRecord[]>([]);
 
@@ -147,43 +149,15 @@ export default function VideoDeclarationsAdminPage() {
   };
 
   const uploadMedia = async (file: File) => {
-    if (!token) return null;
-
-    const formData = new FormData();
-    formData.append('file', file);
-    setIsUploading(true);
     setStatus('');
 
     try {
-      const response = await apiFetch('/api/uploads/media', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        setStatus(typeof data?.error === 'string' ? data.error : 'Media upload failed.');
-        return null;
-      }
-
-      const rawUrl = typeof data?.url === 'string' ? data.url : '';
-      if (!rawUrl) {
-        setStatus('Media upload failed.');
-        return null;
-      }
-
-      return {
-        url: apiUrl(rawUrl),
-        kind: data?.kind === 'audio' || file.type.startsWith('audio/') ? 'audio' : 'video',
-      } as const;
-    } catch {
-      setStatus('Media upload failed.');
+      const result = await runUploadWithKind(file, 'media');
+      const url = result.url.startsWith('http') ? result.url : apiUrl(result.url);
+      return { url, kind: result.kind } as const;
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Media upload failed.');
       return null;
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -327,7 +301,7 @@ export default function VideoDeclarationsAdminPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button onClick={startNewDeclaration}>New Declaration</Button>
+          <Button onClick={startNewDeclaration}>New Declaration</Button>
         </div>
       </div>
 
@@ -429,6 +403,7 @@ export default function VideoDeclarationsAdminPage() {
                   {isUploading ? 'Uploading' : 'Selected'}: {uploadName}
                 </p>
               )}
+              <MediaUploadProgress uploading={isUploading} progress={progress} className="mt-2" />
               {draft.mediaUrl && (
                 <p className="break-all rounded-xl bg-muted px-3 py-2 text-xs text-foreground/60">
                   Current file: {draft.mediaUrl}

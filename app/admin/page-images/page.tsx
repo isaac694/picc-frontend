@@ -5,6 +5,8 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { BookOpen, ImageIcon, RefreshCw, Search, Trash2 } from 'lucide-react';
 
 const IMAGE_SECTIONS = [
@@ -73,10 +75,11 @@ export default function PageImagesAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
+  const { runUpload, progress, uploading } = useMediaUpload();
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [savingImages, setSavingImages] = useState(false);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
@@ -115,31 +118,16 @@ export default function PageImagesAdminPage() {
   );
 
   const uploadImage = async (file: File) => {
-    if (!token) return null;
-
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-      const response = await apiFetch('/api/uploads', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      if (!response.ok) {
-        setStatus('Image upload failed.');
-        return null;
-      }
-      const data = await response.json();
-      return apiUrl(data.url);
-    } catch {
-      setStatus('Image upload failed.');
+      const url = await runUpload(file, 'page-images');
+      return url.startsWith('http') ? url : apiUrl(url);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   };
@@ -334,10 +322,11 @@ export default function PageImagesAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Upload and manage homepage visuals.
           </p>
-        </div>
+        </div>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
+      <MediaUploadProgress uploading={uploading} progress={progress} />
 
       <div className="rounded-[24px] border border-border/60 bg-card p-6 shadow-sm md:p-8">
         <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.7fr_0.8fr]">

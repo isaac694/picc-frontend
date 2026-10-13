@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { Loader2, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import type { NewsSectionItem } from '@/components/NewsSection';
 
@@ -51,40 +53,6 @@ const parseItems = (body: unknown): unknown[] => {
   return [];
 };
 
-async function uploadImage(token: string, file: File, setStatus: (value: string) => void) {
-  if (!file.type.startsWith('image/')) {
-    setStatus('Please upload an image file.');
-    return null;
-  }
-
-  if (file.size > 1_000_000) {
-    setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
-    return null;
-  }
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const response = await apiFetch('/api/uploads', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      setStatus('Image upload failed.');
-      return null;
-    }
-
-    const data = await response.json().catch(() => null);
-    return typeof data?.url === 'string' ? data.url : null;
-  } catch {
-    setStatus('Image upload failed.');
-    return null;
-  }
-}
-
 export default function SiteNewsManager({
   token,
   contentKey,
@@ -122,6 +90,7 @@ export default function SiteNewsManager({
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [uploadName, setUploadName] = useState('');
+  const { runUpload, progress, uploading } = useMediaUpload();
 
   const resetDraft = () => {
     setDraft(emptyDraft);
@@ -346,14 +315,23 @@ export default function SiteNewsManager({
                   const file = event.currentTarget.files?.[0];
                   event.currentTarget.value = '';
                   if (!file) return;
-                  const url = await uploadImage(token, file, setStatus);
-                  if (!url) return;
-                  setDraft((prev) => ({ ...prev, imageUrl: url }));
-                  setUploadName(file.name);
+                  if (file.size > 1_000_000) {
+                    setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+                    return;
+                  }
+                  try {
+                    const url = await runUpload(file, 'news');
+                    setDraft((prev) => ({ ...prev, imageUrl: url }));
+                    setUploadName(file.name);
+                    setStatus('');
+                  } catch (error) {
+                    setStatus(error instanceof Error ? error.message : 'Image upload failed.');
+                  }
                 }}
                 className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
               />
               {uploadName ? <p className="mt-2 text-xs text-foreground/60">Selected: {uploadName}</p> : null}
+              <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
             </div>
             <div className="overflow-hidden rounded-xl border border-border/60 bg-background">
               {draft.imageUrl ? (

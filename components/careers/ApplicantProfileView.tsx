@@ -17,6 +17,7 @@ export default function ApplicantProfileView({ profile }: { profile: ApplicantPr
     profile.personalSummary
     || profile.currentLocation
     || profile.address
+    || profile.achievements
     || profile.skills.length
     || profile.workExperience.length
     || profile.education.length
@@ -49,6 +50,13 @@ export default function ApplicantProfileView({ profile }: { profile: ApplicantPr
               {profile.address}
             </p>
           ) : null}
+        </section>
+      ) : null}
+
+      {profile.achievements ? (
+        <section>
+          <h3 className="font-semibold">Achievements</h3>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground/80">{profile.achievements}</p>
         </section>
       ) : null}
 
