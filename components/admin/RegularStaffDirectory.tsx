@@ -84,7 +84,7 @@ export default function RegularStaffDirectory({
           id="regular-staff-heading"
           className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
         >
-          Secretariat Staff
+          The Secretariat Staff
         </h2>
 
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-slate-500">
