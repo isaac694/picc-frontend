@@ -10,15 +10,24 @@ import { apiFetch } from '@/lib/api';
 import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toast';
 import ApplicantAuthPanel from '@/components/careers/ApplicantAuthPanel';
 import ApplicantPortalFields, {
+  validatePortalAnswerFields,
   validatePortalAnswers,
   type AnswerMap,
   type FileMap,
 } from '@/components/careers/ApplicantPortalFields';
+import ApplicantProfileForm from '@/components/careers/ApplicantProfileForm';
 import {
   applicantAuthHeaders,
   clearApplicantSession,
+  emptyApplicantProfile,
+  extractApplicantProfile,
   getApplicant,
   getApplicantToken,
+  saveApplicantSession,
+  serializeApplicantProfile,
+  validateApplicantProfile,
+  validateApplicantProfileFields,
+  type ApplicantProfileFields,
   type ApplicantRecord,
 } from '@/lib/hr-applicant';
 import type { PortalConfig } from '@/lib/hr-portal';
@@ -31,11 +40,57 @@ export default function ApplyPageClient({ vacancy }: { vacancy: Vacancy }) {
   const [loading, setLoading] = useState(false);
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [files, setFiles] = useState<FileMap>({});
+  const [profile, setProfile] = useState<ApplicantProfileFields>(emptyApplicantProfile());
   const [portalConfig, setPortalConfig] = useState<PortalConfig | null>(vacancy.portalConfig || null);
+  const [showErrors, setShowErrors] = useState(false);
+
+  const loadSavedProfile = async (current: ApplicantRecord | null) => {
+    const saved = extractApplicantProfile(current);
+    setProfile((existing) => ({
+      personalSummary: saved.personalSummary || existing.personalSummary,
+      currentLocation: saved.currentLocation || existing.currentLocation,
+      address: saved.address || existing.address,
+      skills: saved.skills.length ? saved.skills : existing.skills,
+      workExperience: saved.workExperience.length ? saved.workExperience : existing.workExperience,
+      education: saved.education.length ? saved.education : existing.education,
+      referees: saved.referees.length ? saved.referees : existing.referees,
+    }));
+
+    if (!getApplicantToken()) return;
+    try {
+      const response = await apiFetch('/api/hr/applicant/me', {
+        headers: applicantAuthHeaders(),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+      const next = extractApplicantProfile(data);
+      setProfile((existing) => ({
+        personalSummary: next.personalSummary || existing.personalSummary,
+        currentLocation: next.currentLocation || existing.currentLocation,
+        address: next.address || existing.address,
+        skills: next.skills.length ? next.skills : existing.skills,
+        workExperience: next.workExperience.length ? next.workExperience : existing.workExperience,
+        education: next.education.length ? next.education : existing.education,
+        referees: next.referees.length ? next.referees : existing.referees,
+      }));
+      const token = getApplicantToken();
+      if (token) {
+        saveApplicantSession(token, {
+          ...(current || {}),
+          ...(data.applicant && typeof data.applicant === 'object' ? data.applicant : data),
+          ...next,
+        });
+      }
+    } catch {
+      // Keep locally saved profile if the backend profile request fails.
+    }
+  };
 
   useEffect(() => {
-    setApplicant(getApplicant());
+    const current = getApplicant();
+    setApplicant(current);
     setReady(true);
+    if (current) void loadSavedProfile(current);
     void apiFetch(`/api/hr/vacancies/${vacancy.id || vacancy.slug}/portal`)
       .then(async (response) => {
         const data = await response.json().catch(() => ({}));
@@ -51,22 +106,41 @@ export default function ApplyPageClient({ vacancy }: { vacancy: Vacancy }) {
       return;
     }
 
-    const validationErrors = validatePortalAnswers(portalConfig, answers, files);
-    if (validationErrors.length) {
-      adminErrorToast(validationErrors[0]);
+    setShowErrors(true);
+    const profileErrors = validateApplicantProfile(profile);
+    if (profileErrors.length) {
+      adminErrorToast(profileErrors[0]);
+      return;
+    }
+
+    const portalValidation = validatePortalAnswers(portalConfig, answers, files);
+    if (portalValidation.length) {
+      adminErrorToast(portalValidation[0]);
       return;
     }
 
     setLoading(true);
     try {
-      const coverLetter = typeof answers.coverLetter === 'string' ? answers.coverLetter : '';
+      const coverLetter = typeof answers.coverLetter === 'string' ? answers.coverLetter.trim() : '';
+      const profilePayload = serializeApplicantProfile(profile);
+      const portalAnswers = Object.fromEntries(
+        Object.entries(answers).filter(([key, value]) => {
+          if (key === 'coverLetter') return false;
+          if (Array.isArray(value)) return value.length > 0;
+          return String(value ?? '').trim() !== '';
+        }),
+      );
       const response = await apiFetch(`/api/hr/vacancies/${vacancy.id || vacancy.slug}/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...applicantAuthHeaders(),
         },
-        body: JSON.stringify({ coverLetter, answers }),
+        body: JSON.stringify({
+          coverLetter,
+          ...profilePayload,
+          ...(Object.keys(portalAnswers).length ? { answers: portalAnswers } : {}),
+        }),
       });
       const data = await response.json().catch(() => ({}));
       if (response.status === 403) {
@@ -102,6 +176,12 @@ export default function ApplyPageClient({ vacancy }: { vacancy: Vacancy }) {
         }
       }
 
+      if (token) {
+        saveApplicantSession(token, {
+          ...(applicant || {}),
+          ...profilePayload,
+        });
+      }
       adminSuccessToast(data.message || 'Application submitted.');
       router.push('/careers/portal');
     } catch {
@@ -128,7 +208,12 @@ export default function ApplyPageClient({ vacancy }: { vacancy: Vacancy }) {
       <section className="py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {!ready ? null : !applicant ? (
-            <ApplicantAuthPanel onAuthenticated={setApplicant} />
+            <ApplicantAuthPanel
+              onAuthenticated={(next) => {
+                setApplicant(next);
+                void loadSavedProfile(next);
+              }}
+            />
           ) : (
             <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -151,11 +236,17 @@ export default function ApplyPageClient({ vacancy }: { vacancy: Vacancy }) {
                   </Button>
                 </div>
               </div>
-              <div className="mt-8">
+              <div className="mt-8 space-y-10">
+                <ApplicantProfileForm
+                  value={profile}
+                  onChange={setProfile}
+                  errors={showErrors ? validateApplicantProfileFields(profile) : {}}
+                />
                 <ApplicantPortalFields
                   portalConfig={portalConfig}
                   answers={answers}
                   files={files}
+                  errors={showErrors ? validatePortalAnswerFields(portalConfig, answers, files) : {}}
                   onAnswerChange={(key, value) => setAnswers((current) => ({ ...current, [key]: value }))}
                   onFileChange={(key, file) => setFiles((current) => ({ ...current, [key]: file }))}
                 />
