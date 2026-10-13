@@ -32,6 +32,8 @@ type Person = {
   parentId: string | null;
   sortOrder: number;
   isPublished: boolean;
+  regularStaff?: boolean;
+
   user: { id: string; name: string; email: string };
 };
 
@@ -45,6 +47,8 @@ type Form = {
   parentId: string;
   sortOrder: number;
   isPublished: boolean;
+
+  regularStaff: boolean;
 };
 
 const blank: Form = {
@@ -55,6 +59,7 @@ const blank: Form = {
   parentId: '',
   sortOrder: 0,
   isPublished: true,
+  regularStaff: false
 };
 
 const DEFAULT_AVATAR =
@@ -140,6 +145,7 @@ export default function LeadershipManager() {
 
   function edit(person: Person) {
     setEditing(person.id);
+
     setForm({
       userId: person.userId,
       designation: person.designation,
@@ -148,10 +154,16 @@ export default function LeadershipManager() {
       parentId: person.parentId ?? '',
       sortOrder: person.sortOrder,
       isPublished: person.isPublished,
+      regularStaff: person.regularStaff ?? false
     });
+
     setError('');
     setNotice('');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }
 
   function cancelEdit() {
@@ -299,7 +311,21 @@ export default function LeadershipManager() {
   }, [records, search]);
 
   const activeGroupLabel = group === 'church-admins' ? 'Church Administration' : 'Church Secretariat';
+  const secretariatStats = useMemo(() => {
+    if (group !== 'secretariates') {
+      return null;
+    }
 
+    return {
+      total: records.length,
+      seniorOfficers: records.filter(
+        (person) => !person.regularStaff
+      ).length,
+      regularStaff: records.filter(
+        (person) => person.regularStaff
+      ).length
+    };
+  }, [group, records]);
   return (
     <div className="h-full overflow-y-auto pr-1">
       <div className="mx-auto max-w-7xl pb-12">
@@ -347,18 +373,16 @@ export default function LeadershipManager() {
                 key={val}
                 type="button"
                 onClick={() => switchGroup(val)}
-                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
-                  active
-                    ? 'bg-card text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:bg-card/50 hover:text-foreground'
-                }`}
+                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${active
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:bg-card/50 hover:text-foreground'
+                  }`}
               >
                 <Icon className={`h-4 w-4 ${active ? 'text-amber-600' : 'text-muted-foreground'}`} />
                 {label}
                 <span
-                  className={`ml-1.5 rounded-full px-2 py-0.5 text-xs ${
-                    active ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold' : 'bg-muted text-muted-foreground'
-                  }`}
+                  className={`ml-1.5 rounded-full px-2 py-0.5 text-xs ${active ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold' : 'bg-muted text-muted-foreground'
+                    }`}
                 >
                   {group === val ? records.length : ''}
                 </span>
@@ -366,6 +390,39 @@ export default function LeadershipManager() {
             );
           })}
         </div>
+
+        {secretariatStats && (
+          <div className="mb-6 grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                label: 'Total Secretariat Members',
+                value: secretariatStats.total
+              },
+              {
+                label: 'Senior Officers',
+                value: secretariatStats.seniorOfficers
+              },
+              {
+                label: 'Regular Staff',
+                value: secretariatStats.regularStaff
+              }
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-border bg-card p-5 shadow-sm"
+              >
+                <p className="text-xs font-medium text-muted-foreground">
+                  {stat.label}
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-foreground">
+                  {stat.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
 
         {/* Alerts */}
         {error && (
@@ -458,6 +515,88 @@ export default function LeadershipManager() {
                 />
               </div>
 
+              {/* Secretariat Staff Classification */}
+              {group === 'secretariates' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Secretariat Staff Classification
+                      <span className="text-destructive"> *</span>
+                    </label>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Choose how this member should appear on the
+                      public website.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label
+                      className={`cursor-pointer rounded-xl border-2 p-4 transition ${!form.regularStaff
+                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20'
+                        : 'border-border hover:border-amber-300'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="staffClassification"
+                          checked={!form.regularStaff}
+                          onChange={() =>
+                            setForm((previous) => ({
+                              ...previous,
+                              regularStaff: false
+                            }))
+                          }
+                          className="accent-amber-600"
+                        />
+
+                        <span className="text-sm font-semibold text-foreground">
+                          Senior Officer
+                        </span>
+                      </div>
+
+                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                        Appears within the official Secretariat
+                        organogram according to the reporting hierarchy.
+                      </p>
+                    </label>
+
+                    <label
+                      className={`cursor-pointer rounded-xl border-2 p-4 transition ${form.regularStaff
+                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20'
+                        : 'border-border hover:border-amber-300'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="staffClassification"
+                          checked={form.regularStaff}
+                          onChange={() =>
+                            setForm((previous) => ({
+                              ...previous,
+                              regularStaff: true
+                            }))
+                          }
+                          className="accent-amber-600"
+                        />
+
+                        <span className="text-sm font-semibold text-foreground">
+                          Regular Staff
+                        </span>
+                      </div>
+
+                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                        Appears in the separate Secretariat staff
+                        directory, not in the organogram.
+                      </p>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+
               {/* Reports to (Parent in Hierarchy) */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -480,7 +619,9 @@ export default function LeadershipManager() {
                   </select>
                 </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Selecting a supervisor nests this person beneath them on /about/leader.
+                  {group === 'secretariates' && form.regularStaff
+                    ? 'Select the officer this staff member reports to. The reporting relationship will be stored internally, but the staff member will not appear on the public organogram.'
+                    : 'Select the supervisor for this position in the official reporting hierarchy.'}
                 </p>
               </div>
 
@@ -533,9 +674,8 @@ export default function LeadershipManager() {
                     />
                     <label
                       htmlFor="leadership-photo-input"
-                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted ${
-                        uploading ? 'pointer-events-none opacity-50' : ''
-                      }`}
+                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted ${uploading ? 'pointer-events-none opacity-50' : ''
+                        }`}
                     >
                       <Upload className="h-3.5 w-3.5 text-muted-foreground" />
                       {uploading ? 'Uploading...' : 'Upload Image'}
@@ -673,12 +813,22 @@ export default function LeadershipManager() {
                             <h3 className="truncate font-semibold text-foreground">
                               {r.user.name}
                             </h3>
+
+                            {group === 'secretariates' && (
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${r.regularStaff
+                                  ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                                  }`}
+                              >
+                                {r.regularStaff ? 'Regular Staff' : 'Senior Officer'}
+                              </span>
+                            )}
                             <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                                r.isPublished
-                                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                  : 'bg-muted text-muted-foreground'
-                              }`}
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${r.isPublished
+                                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                : 'bg-muted text-muted-foreground'
+                                }`}
                             >
                               {r.isPublished ? 'Published' : 'Draft'}
                             </span>

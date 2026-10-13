@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { apiFetch, apiUrl } from '@/lib/api';
-
+import RegularStaffDirectory from '@/components/admin/RegularStaffDirectory';
 type Group = 'church-admins' | 'secretariates';
 type ViewMode = 'chart' | 'list';
 
@@ -14,9 +14,17 @@ type Member = {
   designation: string;
   description?: string | null;
   imageLinkPath?: string | null;
+
   parentId?: string | null;
   sortOrder: number;
-  user: { id: string; name: string };
+
+  // Secretariat staff classification
+  regularStaff?: boolean;
+
+  user: {
+    id: string;
+    name: string;
+  };
 };
 
 type ChildrenIndex = Map<string, Member[]>;
@@ -62,9 +70,8 @@ function Portrait({
 }) {
   return (
     <article
-      className={`flex h-[238px] w-[184px] shrink-0 flex-col overflow-hidden rounded-2xl border bg-white text-center transition-shadow hover:shadow-md sm:w-[198px] ${
-        isRoot ? 'border-amber-300 shadow-md' : 'border-slate-200 shadow-sm'
-      }`}
+      className={`flex h-[238px] w-[184px] shrink-0 flex-col overflow-hidden rounded-2xl border bg-white text-center transition-shadow hover:shadow-md sm:w-[198px] ${isRoot ? 'border-amber-300 shadow-md' : 'border-slate-200 shadow-sm'
+        }`}
     >
       <div className={`h-1 shrink-0 ${isRoot ? 'bg-amber-500' : 'bg-amber-200'}`} />
       <div className="flex min-h-0 flex-1 flex-col items-center px-3 pb-3 pt-4">
@@ -252,27 +259,104 @@ export default function LeadershipPage() {
     };
   }, [group]);
 
-  const { roots, childrenByParent } = useMemo(() => {
-    const ordered = [...members].sort(
-      (a, b) =>
-        (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
-        a.user.name.localeCompare(b.user.name),
-    );
-    const ids = new Set(ordered.map((person) => person.id));
-    const childrenByParent: ChildrenIndex = new Map();
-    const roots: Member[] = [];
-
-    for (const person of ordered) {
-      if (person.parentId && person.parentId !== person.id && ids.has(person.parentId)) {
-        const siblings = childrenByParent.get(person.parentId) ?? [];
-        siblings.push(person);
-        childrenByParent.set(person.parentId, siblings);
-      } else {
-        roots.push(person);
-      }
+  const { seniorMembers, regularStaffMembers } = useMemo(() => {
+    if (group === 'church-admins') {
+      return {
+        seniorMembers: members,
+        regularStaffMembers: [] as Member[]
+      };
     }
-    return { roots, childrenByParent };
-  }, [members]);
+
+    return {
+      seniorMembers: members.filter(
+        (person) => !person.regularStaff
+      ),
+
+      regularStaffMembers: members.filter(
+        (person) => person.regularStaff === true
+      )
+    };
+  }, [members, group]);
+
+const { roots, childrenByParent } = useMemo(() => {
+  const ordered = [...seniorMembers].sort(
+    (a, b) =>
+      (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+      a.user.name.localeCompare(b.user.name)
+  );
+
+  const seniorIds = new Set(
+    ordered.map((person) => person.id)
+  );
+
+  // Includes all published records so we can resolve
+  // reporting relationships without exposing regular
+  // staff in the organogram.
+  const allMembersById = new Map(
+    members.map((person) => [person.id, person])
+  );
+
+  const childrenByParent: ChildrenIndex = new Map();
+  const roots: Member[] = [];
+
+  function findVisibleSupervisor(
+    person: Member
+  ): string | null {
+    let cursor = person.parentId ?? null;
+
+    const visited = new Set<string>([person.id]);
+
+    while (cursor) {
+      // Prevent an accidental circular relationship.
+      if (visited.has(cursor)) {
+        return null;
+      }
+
+      visited.add(cursor);
+
+      const supervisor = allMembersById.get(cursor);
+
+      if (!supervisor) {
+        return null;
+      }
+
+      // Only senior members qualify as visible
+      // organogram supervisors.
+      if (seniorIds.has(supervisor.id)) {
+        return supervisor.id;
+      }
+
+      // A regular staff member is skipped visually,
+      // but their reporting chain can still be followed.
+      cursor = supervisor.parentId ?? null;
+    }
+
+    return null;
+  }
+
+  for (const person of ordered) {
+    const visibleParentId = findVisibleSupervisor(person);
+
+    if (visibleParentId) {
+      const siblings =
+        childrenByParent.get(visibleParentId) ?? [];
+
+      siblings.push(person);
+
+      childrenByParent.set(
+        visibleParentId,
+        siblings
+      );
+    } else {
+      roots.push(person);
+    }
+  }
+
+  return {
+    roots,
+    childrenByParent
+  };
+}, [seniorMembers, members]);
 
   const title = group === 'church-admins' ? 'Church Administration' : 'Church Secretariat';
 
@@ -326,9 +410,8 @@ export default function LeadershipPage() {
                 type="button"
                 aria-pressed={group === id}
                 onClick={() => setGroup(id)}
-                className={`flex-1 rounded-xl px-2 py-3 text-xs font-semibold transition sm:px-3 sm:text-sm ${
-                  group === id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`flex-1 rounded-xl px-2 py-3 text-xs font-semibold transition sm:px-3 sm:text-sm ${group === id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 {label}
               </button>
@@ -345,14 +428,15 @@ export default function LeadershipPage() {
               <div role="status" className="py-20 text-center text-slate-500">Loading leadership…</div>
             ) : error ? (
               <div role="alert" className="rounded-xl bg-red-50 p-6 text-center text-red-700">{error}</div>
-            ) : roots.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500">
-                {members.length ? 'No top-level leader was found. Please check the reporting relationships.' : 'No published leadership profiles are available yet.'}
-              </div>
-            ) : (
+            ) : roots.length === 0 ? (<div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500">
+    {group === 'secretariates' && regularStaffMembers.length > 0
+      ? 'No published senior Secretariat officers are available.'
+      : 'No published leadership profiles are available yet.'}
+  </div>) : (
               <>
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs text-slate-500">{members.length} leadership {members.length === 1 ? 'profile' : 'profiles'}</p>
+                  {seniorMembers.length} leadership{' '}
+{seniorMembers.length === 1 ? 'profile' : 'profiles'}
                   <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1" role="group" aria-label="Organogram display mode">
                     <button
                       type="button"
@@ -401,6 +485,15 @@ export default function LeadershipPage() {
               </>
             )}
           </div>
+
+          {/* Regular Secretariat Staff Directory */}
+          {!loading &&
+            !error &&
+            group === 'secretariates' && (
+              <RegularStaffDirectory
+                members={regularStaffMembers}
+              />
+            )}
         </section>
 
         <section className="bg-slate-950 px-5 py-16 text-center text-white">
