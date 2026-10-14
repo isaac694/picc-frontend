@@ -55,7 +55,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Leadership', href: '/admin/hr/leadership', pageKey: ADMIN_PAGE.LEADERSHIP, icon: Users },
   { label: 'Qoutes', href: '/admin/quote-of-month', pageKey: ADMIN_PAGE.QUOTE_OF_MONTH, icon: Quote },
   { label: 'Homepage Images', href: '/admin/page-images', pageKey: ADMIN_PAGE.PAGE_IMAGES, icon: ImageIcon },
-  { label: 'Ads Management', href: '/admin/ads-management', pageKey: ADMIN_PAGE.ADS_MANAGEMENT, icon: Megaphone },
+  { label: 'Ads Management', href: '/admin/ads-management', pageKey: ADMIN_PAGE.WEBSITE_ADS, icon: Megaphone },
   { label: 'Video Declarations', href: '/admin/video-declarations', pageKey: ADMIN_PAGE.VIDEO_DECLARATIONS, icon: Video },
   { label: 'FAQ (Footer)', href: '/admin/faqs', pageKey: ADMIN_PAGE.FAQS, icon: FileQuestion },
   { label: 'Hope School', href: '/admin/schools/hope-school', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT, icon: School },
@@ -73,7 +73,7 @@ const SITE_PAGE_ITEMS: NavItem[] = [
   { label: 'Sermons Page', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE, icon: BookOpen },
   { label: 'Give Page', href: '/admin/give', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: FileText },
   { label: 'Church Locations', href: '/admin/locations', pageKey: ADMIN_PAGE.LOCATIONS_PAGE, icon: MapPin },
-  { label: 'Zones & Home Churches', href: '/admin/zones', pageKey: ADMIN_PAGE.LOCATIONS_PAGE, icon: Layers2 },
+  { label: 'Zones & Home Churches', href: '/admin/zones', pageKey: ADMIN_PAGE.HOME_CHURCHES_PAGE, icon: Layers2 },
 ];
 
 const MINISTRIES_ITEMS: Array<NavItem & { ministryKey: string }> = [

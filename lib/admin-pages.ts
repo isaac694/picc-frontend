@@ -16,11 +16,12 @@ export const ADMIN_PAGE = {
   SERMONS_PAGE: 'SERMONS_PAGE',
   GIVE_PAGE: 'GIVE_PAGE',
   LOCATIONS_PAGE: 'LOCATIONS_PAGE',
+  HOME_CHURCHES_PAGE: 'HOME_CHURCHES_PAGE',
   FAQS: 'FAQS',
   SCHOOLS_ENROLLMENT: 'SCHOOLS_ENROLLMENT',
   HR_PAGE: 'HR_PAGE',
   LEADERSHIP: 'LEADERSHIP',
-  ADS_MANAGEMENT: 'WEBSITE_ADS',
+  WEBSITE_ADS: 'WEBSITE_ADS',
   MINISTRIES: 'MINISTRIES',
 } as const;
 
@@ -65,11 +66,12 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.SERMONS_PAGE, label: 'Sermons Page' },
   { key: ADMIN_PAGE.GIVE_PAGE, label: 'Give Page' },
   { key: ADMIN_PAGE.LOCATIONS_PAGE, label: 'Church Locations' },
+  { key: ADMIN_PAGE.HOME_CHURCHES_PAGE, label: 'Zones & Home Churches' },
   { key: ADMIN_PAGE.FAQS, label: 'FAQ (Footer)' },
   { key: ADMIN_PAGE.SCHOOLS_ENROLLMENT, label: 'Schools Enrollment' },
   { key: ADMIN_PAGE.HR_PAGE, label: 'HR Vacancies' },
   { key: ADMIN_PAGE.LEADERSHIP, label: 'Leadership Management' },
-  { key: ADMIN_PAGE.ADS_MANAGEMENT, label: 'Ads Management' },
+  { key: ADMIN_PAGE.WEBSITE_ADS, label: 'Ads Management' },
 ];
 
 export const MINISTRY_ADMIN_OPTIONS = [
@@ -220,7 +222,13 @@ export function getAdminUserAccessRights(user: AdminUser | null): string[] {
   if (!user) return [];
 
   const record = user as Record<string, unknown>;
-  const sources = [record.permissions, record.accessRights, record.rights, record.adminPageAccess];
+  const sources = [
+    record.permissions,
+    record.accessRights,
+    record.accessRightNames,
+    record.rights,
+    record.adminPageAccess,
+  ];
 
   return sources
     .flatMap((source) => (Array.isArray(source) ? source : []))

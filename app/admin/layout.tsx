@@ -61,7 +61,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/hr')) return ADMIN_PAGE.HR_PAGE;
   if (path.startsWith('/admin/quote-of-month')) return ADMIN_PAGE.QUOTE_OF_MONTH;
   if (path.startsWith('/admin/page-images')) return ADMIN_PAGE.PAGE_IMAGES;
-  if (path.startsWith('/admin/ads-management')) return ADMIN_PAGE.ADS_MANAGEMENT;
+  if (path.startsWith('/admin/ads-management')) return ADMIN_PAGE.WEBSITE_ADS;
   if (path.startsWith('/admin/video-declarations')) return ADMIN_PAGE.VIDEO_DECLARATIONS;
   if (path.startsWith('/admin/livechat')) return ADMIN_PAGE.LIVECHAT;
   if (path.startsWith('/admin/schools/')) return ADMIN_PAGE.SCHOOLS_ENROLLMENT;
@@ -73,7 +73,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/forms')) return ADMIN_PAGE.FORMS_PAGE;
   if (path.startsWith('/admin/sermons')) return ADMIN_PAGE.SERMONS_PAGE;
   if (path.startsWith('/admin/give')) return ADMIN_PAGE.GIVE_PAGE;
-  if (path.startsWith('/admin/zones')) return ADMIN_PAGE.LOCATIONS_PAGE;
+  if (path.startsWith('/admin/zones')) return ADMIN_PAGE.HOME_CHURCHES_PAGE;
   if (path.startsWith('/admin/locations')) return ADMIN_PAGE.LOCATIONS_PAGE;
   return null;
 };

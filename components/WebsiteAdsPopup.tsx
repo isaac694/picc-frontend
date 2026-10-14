@@ -113,26 +113,28 @@ export default function WebsiteAdsPopup() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group pointer-events-auto relative flex h-6 w-full items-center gap-0 overflow-hidden rounded border border-primary/30 bg-primary pl-0 pr-1.5 text-left text-primary-foreground shadow-md outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-7 sm:pr-2"
+          className="group pointer-events-auto relative flex h-9 w-full items-center gap-0 overflow-hidden rounded-md border border-[#1a1a1a]/30 bg-primary pl-0 pr-2 text-left text-primary-foreground shadow-[0_4px_14px_rgba(26,26,26,0.35),inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(26,26,26,0.2)] outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:pr-2.5"
         >
-          <span
-            className="flex h-full w-6 shrink-0 items-center justify-center bg-primary-foreground/10 sm:w-7"
-            aria-hidden
-          >
-            <ChevronRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
-          </span>
-          <span className="flex h-full min-w-0 flex-1 items-center gap-1.5 border-l border-primary-foreground/15 pl-1.5 pr-0.5 sm:gap-2 sm:pl-2">
-            <span className="max-w-[38%] shrink-0 truncate text-[10px] font-semibold leading-none sm:max-w-[9rem]">
+          <span className="flex h-full max-w-[min(52%,14rem)] shrink-0 items-stretch overflow-hidden rounded-l-md rounded-r-full bg-[#d4af37] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(26,26,26,0.15)] sm:max-w-[min(48%,16rem)]">
+            <span
+              className="flex h-full w-9 shrink-0 items-center justify-center sm:w-10"
+              aria-hidden
+            >
+              <ChevronRight className="h-4 w-4 text-[#1a1a1a] transition group-hover:translate-x-0.5" />
+            </span>
+            <span className="flex min-w-0 flex-1 items-center truncate px-2.5 pr-3.5 text-xs font-semibold leading-tight text-[#1a1a1a] sm:px-3 sm:pr-4 sm:text-sm">
               {floaterCopy.title}
             </span>
+          </span>
+          <span className="flex h-full min-w-0 flex-1 items-stretch gap-0">
             {floaterCopy.description ? (
               <span
-                className="relative min-w-0 flex-1 overflow-hidden"
+                className="relative flex min-w-0 flex-1 items-center overflow-hidden pl-2 pr-1 sm:pl-2.5"
                 aria-label={floaterCopy.description}
               >
                 <span
                   key={current.id}
-                  className="website-ad-marquee-track flex w-max whitespace-nowrap text-[10px] leading-none text-primary-foreground/90"
+                  className="website-ad-marquee-track flex w-max whitespace-nowrap text-xs leading-tight text-primary-foreground/90 sm:text-sm"
                 >
                   <span className="pr-8">{floaterCopy.description}</span>
                   <span className="pr-8" aria-hidden="true">
@@ -141,12 +143,11 @@ export default function WebsiteAdsPopup() {
                 </span>
               </span>
             ) : (
-              <span className="min-w-0 flex-1 truncate text-[10px] leading-none text-primary-foreground/75">
+              <span className="flex min-w-0 flex-1 items-center truncate pl-2 pr-1 text-xs leading-tight text-primary-foreground/75 sm:pl-2.5 sm:text-sm">
                 Tap to read more
               </span>
             )}
           </span>
-          <span className="pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-primary-foreground/40" />
         </button>
       </div>
 

@@ -2,16 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  ExternalLink,
-  Loader2,
-  MapPinned,
-  Pencil,
-  Plus,
-  Search,
-  Settings2,
-  Trash2,
-} from 'lucide-react';
+import { Loader2, Pencil, Plus, Search, Settings2, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { adminErrorToast, adminSuccessToast, readApiMessage } from '@/components/admin/admin-toast';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
@@ -263,75 +254,89 @@ export default function ZonesManager({ token }: { token: string }) {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredZones.map((zone) => (
-            <article
-              key={zone.id}
-              className="flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition hover:border-amber-300/60 hover:shadow-md dark:hover:border-amber-500/30"
-            >
-              <div className="h-1.5 bg-gradient-to-r from-amber-400 to-amber-600" />
-              <div className="flex flex-1 flex-col p-4">
-                <div className="flex items-start gap-3">
-                  <span
-                    className={cn(
-                      'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xs font-bold ring-1 ring-inset',
-                      zoneBadgeColor(zone.name),
-                    )}
-                  >
-                    {zone.name.replace(/zone\s*/i, '').slice(0, 3).toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate text-base font-semibold text-foreground">{zone.name}</h3>
-                    <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-xs leading-5 text-muted-foreground">
-                      {zone.zonalPastorName
-                        ? `Zonal Pastor: ${zone.zonalPastorName}`
-                        : 'No zonal pastor assigned yet'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <Badge variant="outline" className="text-[10px]">
-                    {areaCounts[zone.id] ?? '…'} home church{(areaCounts[zone.id] ?? 0) === 1 ? '' : 'es'}
-                  </Badge>
-                </div>
-
-                <div className="mt-auto flex items-center gap-2 pt-4">
-                  <Button type="button" className="flex-1" size="sm" asChild>
-                    <Link href={`/admin/zones/${zone.id}`}>
-                      <Settings2 className="mr-1.5 h-3.5 w-3.5" />
-                      Manage
-                    </Link>
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="h-9 w-9 shrink-0"
-                    onClick={() => openEditZone(zone)}
-                    aria-label={`Edit ${zone.name}`}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
-                    disabled={deletingZoneId === zone.id}
-                    onClick={() => deleteZone(zone)}
-                    aria-label={`Delete ${zone.name}`}
-                  >
-                    {deletingZoneId === zone.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </article>
-          ))}
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-border/60 bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Zone</th>
+                  <th className="px-4 py-3 font-semibold">Zonal pastor</th>
+                  <th className="px-4 py-3 font-semibold">Phone</th>
+                  <th className="px-4 py-3 font-semibold">Home churches</th>
+                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {filteredZones.map((zone) => {
+                  const areaCount = areaCounts[zone.id];
+                  return (
+                    <tr key={zone.id} className="hover:bg-muted/15">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={cn(
+                              'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ring-1 ring-inset',
+                              zoneBadgeColor(zone.name),
+                            )}
+                          >
+                            {zone.name.replace(/zone\s*/i, '').slice(0, 3).toUpperCase()}
+                          </span>
+                          <span className="font-medium text-foreground">{zone.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {zone.zonalPastorName?.trim() || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {zone.zonalPastorPhone?.trim() || '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="text-[11px] font-normal">
+                          {areaCount === undefined ? '…' : areaCount}{' '}
+                          {areaCount === 1 ? 'area' : 'areas'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button type="button" size="sm" variant="outline" className="h-8" asChild>
+                            <Link href={`/admin/zones/${zone.id}`}>
+                              <Settings2 className="mr-1.5 h-3.5 w-3.5" />
+                              Manage
+                            </Link>
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8"
+                            onClick={() => openEditZone(zone)}
+                            aria-label={`Edit ${zone.name}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            disabled={deletingZoneId === zone.id}
+                            onClick={() => deleteZone(zone)}
+                            aria-label={`Delete ${zone.name}`}
+                          >
+                            {deletingZoneId === zone.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

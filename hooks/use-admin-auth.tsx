@@ -148,7 +148,11 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
-      const me = data?.user ?? data;
+      const raw = data?.user ?? data;
+      const me =
+        raw && typeof raw === 'object'
+          ? { ...(raw as AdminUser), accessRights: getAdminUserAccessRights(raw as AdminUser) }
+          : raw;
       updateStoredUser(me);
       setUser(me);
     } catch {
@@ -285,10 +289,13 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
-      persistAdminSession(data, email);
+      const normalizedUser = data.user
+        ? { ...data.user, accessRights: getAdminUserAccessRights(data.user) }
+        : null;
+      persistAdminSession({ ...data, user: normalizedUser }, email);
 
-      if (data.user) {
-        setUser(data.user);
+      if (normalizedUser) {
+        setUser(normalizedUser);
       } else {
         updateStoredUser(null);
         setUser(null);
