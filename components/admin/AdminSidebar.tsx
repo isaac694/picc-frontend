@@ -13,6 +13,7 @@ import {
   FileText,
   ImageIcon,
   LayoutDashboard,
+  Layers2,
   MapPin,
   Megaphone,
   MessageSquareText,
@@ -72,6 +73,7 @@ const SITE_PAGE_ITEMS: NavItem[] = [
   { label: 'Sermons Page', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE, icon: BookOpen },
   { label: 'Give Page', href: '/admin/give', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: FileText },
   { label: 'Church Locations', href: '/admin/locations', pageKey: ADMIN_PAGE.LOCATIONS_PAGE, icon: MapPin },
+  { label: 'Zones & Home Churches', href: '/admin/zones', pageKey: ADMIN_PAGE.LOCATIONS_PAGE, icon: Layers2 },
 ];
 
 const MINISTRIES_ITEMS: Array<NavItem & { ministryKey: string }> = [

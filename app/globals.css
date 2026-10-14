@@ -145,3 +145,27 @@ body {
 .hero-collage image {
   filter: grayscale(25%) brightness(0.62) saturate(0.8);
 }
+
+@keyframes website-ad-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.website-ad-marquee-track {
+  animation: website-ad-marquee 22s linear infinite;
+}
+
+.website-ad-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .website-ad-marquee-track {
+    animation: none;
+    transform: none;
+  }
+}

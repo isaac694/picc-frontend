@@ -55,26 +55,14 @@ function Avatar({ person, className }: { person: Member; className: string }) {
   );
 }
 
-function Portrait({
-  person,
-  isRoot,
-  directReports,
-  expanded,
-  onToggle,
-}: {
-  person: Member;
-  isRoot: boolean;
-  directReports: number;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
+function Portrait({ person, isRoot }: { person: Member; isRoot: boolean }) {
   return (
     <article
-      className={`flex h-[238px] w-[184px] shrink-0 flex-col overflow-hidden rounded-2xl border bg-white text-center transition-shadow hover:shadow-md sm:w-[198px] ${isRoot ? 'border-amber-300 shadow-md' : 'border-slate-200 shadow-sm'
+      className={`flex w-[184px] shrink-0 flex-col overflow-hidden rounded-2xl border bg-white text-center transition-shadow hover:shadow-md sm:w-[198px] ${isRoot ? 'border-amber-300 shadow-md' : 'border-slate-200 shadow-sm'
         }`}
     >
       <div className={`h-1 shrink-0 ${isRoot ? 'bg-amber-500' : 'bg-amber-200'}`} />
-      <div className="flex min-h-0 flex-1 flex-col items-center px-3 pb-3 pt-4">
+      <div className="flex flex-col items-center px-3 pb-4 pt-4">
         <div className="h-[76px] w-[76px] shrink-0 overflow-hidden rounded-full border-[3px] border-amber-100 bg-slate-100 sm:h-[84px] sm:w-[84px]">
           <Avatar person={person} className="h-full w-full" />
         </div>
@@ -91,22 +79,6 @@ function Portrait({
         >
           {person.designation}
         </p>
-
-        <div className="mt-auto pt-2">
-          {directReports > 0 ? (
-            <button
-              type="button"
-              onClick={onToggle}
-              aria-expanded={expanded}
-              aria-label={`${expanded ? 'Collapse' : 'Expand'} direct reports for ${person.user.name}`}
-              className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800 transition hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
-            >
-              {expanded ? '−' : '+'} {directReports} direct {directReports === 1 ? 'report' : 'reports'}
-            </button>
-          ) : (
-            <span className="block h-[22px]" aria-hidden="true" />
-          )}
-        </div>
       </div>
     </article>
   );
@@ -123,7 +95,6 @@ function ChartBranch({
   ancestry?: string[];
   depth?: number;
 }) {
-  const [expanded, setExpanded] = useState(true);
   if (ancestry.includes(person.id)) return null; // Guard against invalid cyclic hierarchies.
 
   const path = [...ancestry, person.id];
@@ -133,15 +104,9 @@ function ChartBranch({
 
   return (
     <div className="flex w-max flex-col items-center">
-      <Portrait
-        person={person}
-        isRoot={depth === 0}
-        directReports={children.length}
-        expanded={expanded}
-        onToggle={() => setExpanded((value) => !value)}
-      />
+      <Portrait person={person} isRoot={depth === 0} />
 
-      {expanded && children.length > 0 && (
+      {children.length > 0 && (
         <>
           {/* Parent line descends to the sibling connector row. */}
           <div className="h-6 w-px bg-amber-300" aria-hidden="true" />
@@ -199,11 +164,6 @@ function CompactBranch({
           <p className="break-words text-sm font-semibold leading-5 text-slate-900">{person.user.name}</p>
           <p className="mt-0.5 break-words text-xs leading-4 text-amber-800">{person.designation}</p>
         </div>
-        {children.length > 0 && (
-          <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">
-            {children.length} {children.length === 1 ? 'report' : 'reports'}
-          </span>
-        )}
       </div>
 
       {children.length > 0 && (
@@ -434,9 +394,7 @@ const { roots, childrenByParent } = useMemo(() => {
       : 'No published leadership profiles are available yet.'}
   </div>) : (
               <>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  {seniorMembers.length} leadership{' '}
-{seniorMembers.length === 1 ? 'profile' : 'profiles'}
+                <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
                   <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1" role="group" aria-label="Organogram display mode">
                     <button
                       type="button"
@@ -458,23 +416,18 @@ const { roots, childrenByParent } = useMemo(() => {
                 </div>
 
                 {viewMode === 'chart' ? (
-                  <>
-                    <p className="mb-3 text-xs text-slate-500">
-                      Scroll sideways to explore wide reporting structures. Select a direct-reports button to expand or collapse that branch.
-                    </p>
-                    <div
-                      className="max-w-full overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-6"
-                      role="region"
-                      aria-label={`${title} organogram (scroll horizontally to explore)`}
-                      tabIndex={0}
-                    >
-                      <div className="flex w-max min-w-full flex-col items-center gap-12 py-4">
-                        {roots.map((root) => (
-                          <ChartBranch key={`${group}-${root.id}`} person={root} childrenByParent={childrenByParent} />
-                        ))}
-                      </div>
+                  <div
+                    className="max-w-full overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-6"
+                    role="region"
+                    aria-label={`${title} organogram`}
+                    tabIndex={0}
+                  >
+                    <div className="flex w-max min-w-full flex-col items-center gap-12 py-4">
+                      {roots.map((root) => (
+                        <ChartBranch key={`${group}-${root.id}`} person={root} childrenByParent={childrenByParent} />
+                      ))}
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <ul className="mx-auto max-w-3xl space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-6" aria-label={`${title} hierarchy`}>
                     {roots.map((root) => (

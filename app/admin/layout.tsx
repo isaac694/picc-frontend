@@ -47,6 +47,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/sermons': { title: 'Sermons Page', subtitle: 'Publish sermon content.' },
   '/admin/give': { title: 'Give Page', subtitle: 'Manage giving page content.' },
   '/admin/locations': { title: 'Church Locations', subtitle: 'Manage church location details.' },
+  '/admin/zones': { title: 'Zones & Home Churches', subtitle: 'Manage zonal pastors and home church areas for the locations page.' },
 };
 
 const pathToAdminPage = (pathname: string | null) => {
@@ -72,6 +73,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/forms')) return ADMIN_PAGE.FORMS_PAGE;
   if (path.startsWith('/admin/sermons')) return ADMIN_PAGE.SERMONS_PAGE;
   if (path.startsWith('/admin/give')) return ADMIN_PAGE.GIVE_PAGE;
+  if (path.startsWith('/admin/zones')) return ADMIN_PAGE.LOCATIONS_PAGE;
   if (path.startsWith('/admin/locations')) return ADMIN_PAGE.LOCATIONS_PAGE;
   return null;
 };

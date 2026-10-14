@@ -86,6 +86,16 @@ export default function WebsiteAdsPopup() {
     }
   }, [visibleAds.length, index]);
 
+  useEffect(() => {
+    if (visibleAds.length <= 1 || open || isAdminRoute) return;
+
+    const timer = window.setInterval(() => {
+      setIndex((prev) => (prev + 1) % visibleAds.length);
+    }, 10_000);
+
+    return () => window.clearInterval(timer);
+  }, [visibleAds.length, open, isAdminRoute]);
+
   if (isAdminRoute || !adsReady || !current) return null;
 
   return (
@@ -93,7 +103,7 @@ export default function WebsiteAdsPopup() {
       {/* Bottom-left tab — same row as chat FAB (bottom-5), mirrored on the left */}
       <div
         className={cn(
-          'pointer-events-none fixed bottom-5 left-5 z-[9995] max-w-[min(calc(100vw-6rem),15.5rem)]',
+          'pointer-events-none fixed bottom-5 left-5 z-[9995] w-[min(calc(100vw-5.5rem),22rem)] sm:w-[min(calc(100vw-6rem),26rem)] md:w-[min(calc(100vw-8rem),32rem)]',
           'transition-all duration-300 ease-out',
           mounted ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
         )}
@@ -103,24 +113,35 @@ export default function WebsiteAdsPopup() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group pointer-events-auto relative flex w-full items-stretch gap-0 overflow-hidden rounded-lg border border-primary/30 bg-primary py-2 pl-0 pr-2.5 text-left text-primary-foreground shadow-lg outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:pr-3"
+          className="group pointer-events-auto relative flex h-6 w-full items-center gap-0 overflow-hidden rounded border border-primary/30 bg-primary pl-0 pr-1.5 text-left text-primary-foreground shadow-md outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-7 sm:pr-2"
         >
           <span
-            className="flex w-7 shrink-0 items-center justify-center bg-primary-foreground/10 sm:w-8"
+            className="flex h-full w-6 shrink-0 items-center justify-center bg-primary-foreground/10 sm:w-7"
             aria-hidden
           >
-            <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            <ChevronRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
           </span>
-          <span className="min-w-0 flex-1 border-l border-primary-foreground/15 py-0.5 pl-2">
-            <span className="block truncate text-[11px] font-semibold leading-tight sm:text-xs">
+          <span className="flex h-full min-w-0 flex-1 items-center gap-1.5 border-l border-primary-foreground/15 pl-1.5 pr-0.5 sm:gap-2 sm:pl-2">
+            <span className="max-w-[38%] shrink-0 truncate text-[10px] font-semibold leading-none sm:max-w-[9rem]">
               {floaterCopy.title}
             </span>
             {floaterCopy.description ? (
-              <span className="mt-1 block line-clamp-3 text-[10px] leading-snug text-primary-foreground/85 sm:line-clamp-2 sm:text-[11px]">
-                {floaterCopy.description}
+              <span
+                className="relative min-w-0 flex-1 overflow-hidden"
+                aria-label={floaterCopy.description}
+              >
+                <span
+                  key={current.id}
+                  className="website-ad-marquee-track flex w-max whitespace-nowrap text-[10px] leading-none text-primary-foreground/90"
+                >
+                  <span className="pr-8">{floaterCopy.description}</span>
+                  <span className="pr-8" aria-hidden="true">
+                    {floaterCopy.description}
+                  </span>
+                </span>
               </span>
             ) : (
-              <span className="mt-0.5 block text-[10px] text-primary-foreground/70 sm:text-[11px]">
+              <span className="min-w-0 flex-1 truncate text-[10px] leading-none text-primary-foreground/75">
                 Tap to read more
               </span>
             )}

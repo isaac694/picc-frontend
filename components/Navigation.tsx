@@ -283,6 +283,16 @@ const closeMenu = () => {
                     Church Locations
                   </Link>
                   <Link
+                    href="/home-churches"
+                    className={
+                      isDarkNav
+                        ? 'block px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10'
+                        : 'block px-4 py-2 text-sm text-foreground hover:text-primary hover:bg-muted'
+                    }
+                  >
+                    Camp of God Cathedral Home Churches
+                  </Link>
+                  <Link
                     href="/sermons"
                     className={
                       isDarkNav
@@ -538,6 +548,17 @@ const closeMenu = () => {
                       onClick={closeMenu}
                     >
                       Church Locations
+                    </Link>
+                    <Link
+                      href="/home-churches"
+                      className={
+                        isDarkNav
+                          ? 'block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors'
+                          : 'block px-4 py-2 text-foreground hover:bg-muted rounded-lg transition-colors'
+                      }
+                      onClick={closeMenu}
+                    >
+                      Camp of God Cathedral Home Churches
                     </Link>
                     <Link
                       href="/sermons"
