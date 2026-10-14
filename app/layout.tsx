@@ -3,8 +3,8 @@ import './globals.css';
 import ScrollActions from '@/components/ScrollActions';
 import { Toaster } from '@/components/ui/sonner';
 import AdminThemeSync from '@/components/admin/AdminThemeSync';
-import PICCAssistant from '@/components/PICCAssistant/PICCAssistant';
 import WebsiteAdsPopup from '@/components/WebsiteAdsPopup';
+import PublicPICCAssistant from '@/components/PICCAssistant/PublicPICCAssistant';
 /**
  * Metadata (SEO, title, description, icons, etc.)
  */
@@ -53,7 +53,7 @@ export default function RootLayout({
         <Toaster richColors closeButton />
         <ScrollActions />
         <WebsiteAdsPopup />
-        <PICCAssistant />
+        <PublicPICCAssistant/>
       </body>
     </html>
   );
