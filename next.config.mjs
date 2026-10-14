@@ -1,10 +1,10 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
 
 const LOCAL_API_BASE_URL = "http://localhost:5000";
 const PROD_API_BASE_URL = "https://backend.piccworldwide.org";
 const ALLOWED_API_HOSTS = new Set(["localhost", "127.0.0.1", "backend.piccworldwide.org"]);
 
-const normalizeConfiguredBaseUrl = (value: string | undefined): string | null => {
+const normalizeConfiguredBaseUrl = (value) => {
   if (!value) return null;
 
   const normalized = value.trim().replace(/\/+$/, "");
@@ -26,7 +26,7 @@ const apiUrl = new URL(apiBase);
 const apiProtocol = apiUrl.protocol === "https:" ? "https" : "http";
 const projectRoot = process.cwd();
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   outputFileTracingRoot: projectRoot,
   turbopack: {
     root: projectRoot,
@@ -38,7 +38,6 @@ const nextConfig: NextConfig = {
     workerThreads: true,
   },
   images: {
-    // Next blocks proxying to private IPs by default; allow it for local dev when your API base is localhost.
     dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       {
@@ -47,11 +46,10 @@ const nextConfig: NextConfig = {
         port: apiUrl.port || undefined,
         pathname: "/**",
       },
-      // Explicitly allow your Hostinger backend
       {
         protocol: "https",
         hostname: "backend.piccworldwide.org",
-        port: "", // Leave port empty for standard https
+        port: "",
         pathname: "/**",
       },
       {
@@ -85,7 +83,8 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://www.google.com https://www.podbean.com https://*.podbean.com;",
+            value:
+              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://www.google.com https://www.podbean.com https://*.podbean.com;",
           },
         ],
       },
