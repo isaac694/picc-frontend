@@ -8,6 +8,8 @@ import {
   MessageCircle,
   X,
 } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
+import { toast } from 'sonner';
 
 type ChatMessage = {
   role: 'user' | 'assistant';
@@ -15,7 +17,7 @@ type ChatMessage = {
 };
 
 export default function PICCAssistant() {
-  const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
   // =====================================================
@@ -46,7 +48,6 @@ export default function PICCAssistant() {
   const [contactMessage, setContactMessage] = useState('');
 
   const [contactLoading, setContactLoading] = useState(false);
-  const [contactSuccess, setContactSuccess] = useState('');
   const [contactError, setContactError] = useState('');
 
   // =====================================================
@@ -57,13 +58,38 @@ export default function PICCAssistant() {
   const phone = '+265884748498';
   const whatsapp = '265884748498';
 
+  /** Speed-dial actions only when the menu is open and no panel is covering it. */
+  const speedDialOpen = menuOpen && !chatOpen && !emailOpen;
+
+  /** Main FAB shows “close” while the menu or a panel is active. */
+  const assistantExpanded = menuOpen || chatOpen || emailOpen;
+
+  const closeChat = () => {
+    setChatOpen(false);
+  };
+
+  const toggleMainFab = () => {
+    if (chatOpen) {
+      closeChat();
+      return;
+    }
+
+    if (emailOpen) {
+      closeEmailForm();
+      return;
+    }
+
+    setMenuOpen((previous) => !previous);
+  };
+
   // =====================================================
   // OPEN AI CHAT
   // =====================================================
 
   const openChat = () => {
+    setEmailOpen(false);
+    setMenuOpen(false);
     setChatOpen(true);
-    setOpen(false);
   };
 
   // =====================================================
@@ -107,7 +133,15 @@ export default function PICCAssistant() {
         }),
       });
 
-      const data = await response.json();
+      const raw = await response.text();
+      let data: { answer?: string; error?: string } = {};
+      if (raw) {
+        try {
+          data = JSON.parse(raw) as { answer?: string; error?: string };
+        } catch {
+          throw new Error('Invalid response from the assistant.');
+        }
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -153,10 +187,10 @@ export default function PICCAssistant() {
   // =====================================================
 
   const openEmailForm = () => {
+    setChatOpen(false);
+    setMenuOpen(false);
     setEmailOpen(true);
-    setOpen(false);
 
-    setContactSuccess('');
     setContactError('');
   };
 
@@ -170,7 +204,6 @@ export default function PICCAssistant() {
     }
 
     setEmailOpen(false);
-    setContactSuccess('');
     setContactError('');
   };
 
@@ -183,7 +216,6 @@ export default function PICCAssistant() {
   ) => {
     event.preventDefault();
 
-    setContactSuccess('');
     setContactError('');
 
     const name = contactName.trim();
@@ -206,7 +238,7 @@ export default function PICCAssistant() {
     setContactLoading(true);
 
     try {
-      const response = await fetch('/api/contact', {
+      const response = await apiFetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,7 +251,15 @@ export default function PICCAssistant() {
         }),
       });
 
-      const data = await response.json();
+      const raw = await response.text();
+      let data: { error?: string; message?: string } | null = null;
+      if (raw.trim()) {
+        try {
+          data = JSON.parse(raw) as { error?: string; message?: string };
+        } catch {
+          data = null;
+        }
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -228,11 +268,11 @@ export default function PICCAssistant() {
         );
       }
 
-      setContactSuccess(
-        'Your message has been sent successfully to PICC. Thank you for contacting us.'
+      toast.success(
+        data?.message ||
+          'Thank you for reaching out! We will get back to you soon.',
       );
 
-      // Clear form
       setContactName('');
       setContactEmail('');
       setContactSubject('');
@@ -372,28 +412,6 @@ export default function PICCAssistant() {
                   </span>
                 </p>
               </div>
-
-              {/* SUCCESS MESSAGE */}
-
-              {contactSuccess && (
-                <div
-                  className="
-                    rounded-xl
-                    border
-                    border-green-200
-                    bg-green-50
-                    px-4
-                    py-3
-                    text-sm
-                    text-green-700
-                    dark:border-green-800
-                    dark:bg-green-900/30
-                    dark:text-green-300
-                  "
-                >
-                  {contactSuccess}
-                </div>
-              )}
 
               {/* ERROR MESSAGE */}
 
@@ -710,7 +728,7 @@ export default function PICCAssistant() {
             fixed
             bottom-24
             right-5
-            z-[9999]
+            z-[10002]
             flex
             h-[500px]
             w-[min(380px,calc(100vw-2rem))]
@@ -766,7 +784,7 @@ export default function PICCAssistant() {
 
             <button
               type="button"
-              onClick={() => setChatOpen(false)}
+              onClick={closeChat}
               className="rounded-full p-2 hover:bg-white/10"
               aria-label="Close chat"
             >
@@ -1023,7 +1041,7 @@ export default function PICCAssistant() {
             transition-all
             duration-300
             ${
-              open
+              speedDialOpen
                 ? 'translate-y-0 opacity-100'
                 : 'pointer-events-none translate-y-5 opacity-0'
             }
@@ -1089,7 +1107,7 @@ export default function PICCAssistant() {
             duration-300
             delay-75
             ${
-              open
+              speedDialOpen
                 ? 'translate-y-0 opacity-100'
                 : 'pointer-events-none translate-y-5 opacity-0'
             }
@@ -1155,7 +1173,7 @@ export default function PICCAssistant() {
             duration-300
             delay-100
             ${
-              open
+              speedDialOpen
                 ? 'translate-y-0 opacity-100'
                 : 'pointer-events-none translate-y-5 opacity-0'
             }
@@ -1185,6 +1203,7 @@ export default function PICCAssistant() {
 
           <a
             href={`tel:${phone}`}
+            onClick={() => setMenuOpen(false)}
             className="
               flex
               h-14
@@ -1218,7 +1237,7 @@ export default function PICCAssistant() {
             duration-300
             delay-150
             ${
-              open
+              speedDialOpen
                 ? 'translate-y-0 opacity-100'
                 : 'pointer-events-none translate-y-5 opacity-0'
             }
@@ -1256,6 +1275,7 @@ export default function PICCAssistant() {
             href={`https://wa.me/${whatsapp}`}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => setMenuOpen(false)}
             className="
               flex
               h-14
@@ -1293,46 +1313,46 @@ export default function PICCAssistant() {
         ================================================= */}
 
      
-{/* MAIN BUTTON */}
-<button
-  type="button"
-  onClick={() => setOpen((previous) => !previous)}
-  className="
-    flex
-    h-14
-    w-14
-    items-center
-    justify-center
-    rounded-full
-    bg-blue-600
-    text-white
-    shadow-lg
-    transition-all
-    duration-300
-    hover:scale-110
-    hover:bg-blue-700
-    focus:outline-none
-    focus:ring-2
-    focus:ring-blue-400
-    focus:ring-offset-2
-  "
-  aria-label={
-    open
-      ? 'Close PICC Assistant'
-      : 'Open PICC Assistant'
-  }
-  title={
-    open
-      ? 'Close PICC Assistant'
-      : 'Open PICC Assistant'
-  }
->
-  {open ? (
-    <X size={18} />
-  ) : (
-    <MessageCircle size={19} strokeWidth={2.5} />
-  )}
-</button>
+        <button
+          type="button"
+          onClick={toggleMainFab}
+          className="
+            flex
+            h-14
+            w-14
+            items-center
+            justify-center
+            rounded-full
+            bg-blue-600
+            text-white
+            shadow-lg
+            transition-all
+            duration-300
+            hover:scale-110
+            hover:bg-blue-700
+            focus:outline-none
+            focus:ring-2
+            focus:ring-blue-400
+            focus:ring-offset-2
+          "
+          aria-expanded={assistantExpanded}
+          aria-label={
+            assistantExpanded
+              ? 'Close PICC Assistant'
+              : 'Open PICC Assistant'
+          }
+          title={
+            assistantExpanded
+              ? 'Close PICC Assistant'
+              : 'Open PICC Assistant'
+          }
+        >
+          {assistantExpanded ? (
+            <X size={18} />
+          ) : (
+            <MessageCircle size={19} strokeWidth={2.5} />
+          )}
+        </button>
 
       </div>
     </>

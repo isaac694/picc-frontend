@@ -6,9 +6,11 @@ import { searchWithGemini } from '@/lib/google-search';
 
 export const runtime = 'nodejs';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+function getGroqClient() {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) return null;
+  return new Groq({ apiKey });
+}
 
 const MODEL =
   process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
@@ -69,7 +71,8 @@ Be friendly, professional, accurate, and concise.
 
 export async function POST(request: Request) {
   try {
-    if (!process.env.GROQ_API_KEY) {
+    const groq = getGroqClient();
+    if (!groq) {
       console.error('GROQ_API_KEY is missing');
 
       return NextResponse.json(

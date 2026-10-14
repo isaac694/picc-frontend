@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "node scripts/fix-windows-bin-shims.mjs",
+    "postinstall": "prisma generate && node scripts/fix-windows-bin-shims.mjs",
+    "prebuild": "prisma generate",
     "check:assets": "node scripts/check-missing-public-assets.mjs"
   },
   "dependencies": {

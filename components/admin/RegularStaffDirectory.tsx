@@ -7,7 +7,6 @@ import { apiUrl } from '@/lib/api';
 export type RegularStaffMember = {
   id: string;
   designation: string;
-  description?: string | null;
   imageLinkPath?: string | null;
   sortOrder: number;
   user: {
@@ -95,15 +94,8 @@ export default function RegularStaffDirectory({
         </p>
       </div>
 
-      {/* Staff count and search */}
-      <div className="mt-10 flex flex-wrap items-center justify-between gap-4">
-        <p className="text-sm text-slate-500">
-          <span className="font-bold text-slate-900">
-            {members.length}
-          </span>{' '}
-          {members.length === 1 ? 'Staff Member' : 'Staff Members'}
-        </p>
-
+      {/* Search */}
+      <div className="mt-10 flex justify-end">
         <div className="relative w-full sm:w-72">
           <Search
             className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
@@ -125,11 +117,11 @@ export default function RegularStaffDirectory({
 
       {/* Staff grid */}
       {filteredMembers.length > 0 ? (
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-8 flex flex-wrap justify-center gap-6">
           {filteredMembers.map((person) => (
             <article
               key={person.id}
-              className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-amber-200 hover:shadow-lg"
+              className="group w-full max-w-[280px] shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-amber-200 hover:shadow-lg sm:w-[280px]"
             >
               <div className="h-1 bg-amber-400" />
 
@@ -157,12 +149,6 @@ export default function RegularStaffDirectory({
                 <p className="mt-2 text-xs font-semibold leading-relaxed text-amber-700">
                   {person.designation}
                 </p>
-
-                {person.description && (
-                  <p className="mt-4 line-clamp-3 text-xs leading-relaxed text-slate-500">
-                    {person.description}
-                  </p>
-                )}
               </div>
             </article>
           ))}
