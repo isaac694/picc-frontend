@@ -7,6 +7,8 @@ const normalize = (value: string) => value.replace(/\/+$/, '');
 const normalizeConfiguredBaseUrl = (value: string | undefined): string | null => {
   if (!value) return null;
 
+  //shshshshs
+
   const normalized = normalize(value.trim());
   try {
     const url = new URL(normalized);
