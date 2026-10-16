@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "next build --webpack",
+    "start": "next start ",
     "lint": "eslint",
     "postinstall": "node scripts/fix-windows-bin-shims.mjs",
     "check:assets": "node scripts/check-missing-public-assets.mjs"
