@@ -1,14 +1,10 @@
 import { notFound } from 'next/navigation';
 import ApplyPageClient from './ApplyPageClient';
-import { getPublicVacancyBySlug, vacancies } from '../../vacancies';
+import { getPublicVacancyBySlug } from '../../vacancies';
 
 type ApplyPageProps = {
   params: Promise<{ slug: string }>;
 };
-
-export function generateStaticParams() {
-  return vacancies.map((vacancy) => ({ slug: vacancy.slug }));
-}
 
 export async function generateMetadata({ params }: ApplyPageProps) {
   const { slug } = await params;

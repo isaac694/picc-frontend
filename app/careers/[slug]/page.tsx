@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getPublicVacancyBySlug, vacancies } from '../vacancies';
+import { getPublicVacancyBySlug } from '../vacancies';
 import VacancyDetailsClient from './VacancyDetailsClient';
 
 type VacancyDetailsPageProps = {
@@ -7,12 +7,6 @@ type VacancyDetailsPageProps = {
     slug: string;
   }>;
 };
-
-export function generateStaticParams() {
-  return vacancies.map((vacancy) => ({
-    slug: vacancy.slug,
-  }));
-}
 
 export async function generateMetadata({ params }: VacancyDetailsPageProps) {
   const { slug } = await params;

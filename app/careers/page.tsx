@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Briefcase, CalendarDays, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { Briefcase, CalendarDays, Clock, GraduationCap, MapPin } from 'lucide-react';
 import CareerApplyButton from '@/components/careers/CareerApplyButton';
 import { getPublicVacancies, type Vacancy } from './vacancies';
 
@@ -34,33 +34,9 @@ export default async function CareersPage() {
         </div>
       </section>
 
-      <section className="-mt-10 relative z-10 pb-20">
+      <section className="relative z-10 pb-20 pt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5">
-            <div className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr]">
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Search by Keyword</span>
-                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500">
-                  <Search className="h-4 w-4" />
-                  <span className="text-sm">Secondary school teacher</span>
-                </div>
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Location</span>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  All Locations
-                </div>
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Department</span>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  All Departments
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-secondary text-sm font-semibold uppercase tracking-[0.25em]">
                 Careers
@@ -94,32 +70,40 @@ export default async function CareersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {vacancies.map((item) => (
-                    <tr key={item.id || item.slug || item.title} className="hover:bg-slate-50/80">
-                      <td className="px-6 py-5 font-semibold text-primary">{item.title}</td>
-                      <td className="px-6 py-5">{item.department}</td>
-                      <td className="px-6 py-5">{item.location}</td>
-                      <td className="px-6 py-5">{item.type}</td>
-                      <td className="px-6 py-5">{item.posted}</td>
-                      <td className="px-6 py-5">{item.closingDate}</td>
-                      <td className="px-6 py-5">
-                        <div className="flex flex-wrap gap-2">
-                        <Link
-                          href={`/careers/${item.slug || item.id}`}
-                          className="inline-flex rounded-full bg-secondary px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-secondary-foreground transition-colors hover:bg-secondary/90"
-                        >
-                          View Details
-                        </Link>
-                        <CareerApplyButton
-                          vacancyIdOrSlug={item.id || item.slug}
-                          title={item.title}
-                          portalConfig={item.portalConfig}
-                          className="inline-flex rounded-full border border-secondary px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-primary transition-colors hover:bg-secondary/10"
-                        />
-                        </div>
+                  {vacancies.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
+                        There are no open positions at the moment. Check back later or contact PICC if you have questions about future opportunities.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    vacancies.map((item) => (
+                      <tr key={item.id || item.slug || item.title} className="hover:bg-slate-50/80">
+                        <td className="px-6 py-5 font-semibold text-primary">{item.title}</td>
+                        <td className="px-6 py-5">{item.department}</td>
+                        <td className="px-6 py-5">{item.location}</td>
+                        <td className="px-6 py-5">{item.type}</td>
+                        <td className="px-6 py-5">{item.posted}</td>
+                        <td className="px-6 py-5">{item.closingDate}</td>
+                        <td className="px-6 py-5">
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/careers/${item.slug || item.id}`}
+                              className="inline-flex rounded-full bg-secondary px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-secondary-foreground transition-colors hover:bg-secondary/90"
+                            >
+                              View Details
+                            </Link>
+                            <CareerApplyButton
+                              vacancyIdOrSlug={item.id || item.slug}
+                              title={item.title}
+                              portalConfig={item.portalConfig}
+                              className="inline-flex rounded-full border border-secondary px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-primary transition-colors hover:bg-secondary/10"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
