@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { apiFetch } from '@/lib/api';
 
 const ABOUT_CONTEXT = `
 PICC stands for Pentecost International Christian Centre.
@@ -40,24 +40,62 @@ The PICC website invites people to worship with the church,
 including Sunday services and Thursday gatherings.
 `;
 
-const globalForPrisma = globalThis as unknown as {
-  piccPrisma?: PrismaClient;
-};
-
-const prisma =
-  globalForPrisma.piccPrisma ??
-  new PrismaClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.piccPrisma = prisma;
-}
-
 type KnowledgeItem = {
   type: string;
   title: string;
   content: string;
   relevance: number;
 };
+
+type FaqRecord = {
+  question: string;
+  answer: string;
+  isActive?: boolean;
+};
+
+type EventRecord = {
+  title: string;
+  description?: string | null;
+  date: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  location?: string | null;
+  isPublished?: boolean;
+};
+
+type ServiceRecord = {
+  title: string;
+  description?: string | null;
+  dayOfWeek: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  location?: string | null;
+  isActive?: boolean;
+};
+
+type SermonRecord = {
+  title: string;
+  description?: string | null;
+  pastor?: string | null;
+  speaker?: string | null;
+  series?: string | null;
+  topic?: string | null;
+  date: string;
+  videoUrl?: string | null;
+  youtubeUrl?: string | null;
+  audioUrl?: string | null;
+  isPublished?: boolean;
+};
+
+async function fetchJson<T>(path: string): Promise<T | null> {
+  try {
+    const response = await apiFetch(path);
+    if (!response.ok) return null;
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
 
 function scoreText(query: string, text: string): number {
   const queryWords = query
@@ -67,7 +105,6 @@ function scoreText(query: string, text: string): number {
     .filter((word) => word.length >= 3);
 
   const searchableText = text.toLowerCase();
-
   let score = 0;
 
   for (const word of queryWords) {
@@ -79,58 +116,37 @@ function scoreText(query: string, text: string): number {
   return score;
 }
 
+function parseDate(value: string): Date {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+}
+
 export async function getPICCContext(question: string): Promise<string> {
   const now = new Date();
 
-  const [
-    faqs,
-    events,
-    services,
-    sermons,
-  ] = await Promise.all([
-    prisma.fAQ.findMany({
-      where: {
-        isActive: true,
-      },
-      orderBy: {
-        order: 'asc',
-      },
-      take: 100,
-    }),
-
-    prisma.event.findMany({
-      where: {
-        isPublished: true,
-        date: {
-          gte: now,
-        },
-      },
-      orderBy: {
-        date: 'asc',
-      },
-      take: 20,
-    }),
-
-    prisma.service.findMany({
-      where: {
-        isActive: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 50,
-    }),
-
-    prisma.sermon.findMany({
-      where: {
-        isPublished: true,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-      take: 50,
-    }),
+  const [faqsRaw, eventsPayload, servicesRaw, sermonsPayload] = await Promise.all([
+    fetchJson<FaqRecord[]>('/api/faqs'),
+    fetchJson<{ events?: EventRecord[] }>('/api/events?take=50'),
+    fetchJson<ServiceRecord[]>('/api/services'),
+    fetchJson<{ sermons?: SermonRecord[] }>('/api/sermons?take=50'),
   ]);
+
+  const faqs = (Array.isArray(faqsRaw) ? faqsRaw : []).filter(
+    (faq) => faq.isActive !== false,
+  );
+
+  const events = (eventsPayload?.events ?? []).filter((event) => {
+    if (event.isPublished === false) return false;
+    return parseDate(event.date) >= now;
+  });
+
+  const services = (Array.isArray(servicesRaw) ? servicesRaw : []).filter(
+    (service) => service.isActive !== false,
+  );
+
+  const sermons = (sermonsPayload?.sermons ?? []).filter(
+    (sermon) => sermon.isPublished !== false,
+  );
 
   const items: KnowledgeItem[] = [];
 
@@ -166,7 +182,7 @@ export async function getPICCContext(question: string): Promise<string> {
       title: event.title,
       content: [
         event.description ? `Description: ${event.description}` : '',
-        `Date: ${event.date.toLocaleDateString()}`,
+        `Date: ${parseDate(event.date).toLocaleDateString()}`,
         event.startTime ? `Start: ${event.startTime}` : '',
         event.endTime ? `End: ${event.endTime}` : '',
         event.location ? `Location: ${event.location}` : '',
@@ -182,7 +198,7 @@ export async function getPICCContext(question: string): Promise<string> {
       service.title,
       service.description ?? '',
       service.dayOfWeek,
-      service.startTime,
+      service.startTime ?? '',
       service.endTime ?? '',
       service.location ?? '',
     ].join(' ');
@@ -193,7 +209,7 @@ export async function getPICCContext(question: string): Promise<string> {
       content: [
         service.description ? `Description: ${service.description}` : '',
         `Day: ${service.dayOfWeek}`,
-        `Start: ${service.startTime}`,
+        service.startTime ? `Start: ${service.startTime}` : '',
         service.endTime ? `End: ${service.endTime}` : '',
         service.location ? `Location: ${service.location}` : '',
       ]
@@ -204,10 +220,12 @@ export async function getPICCContext(question: string): Promise<string> {
   }
 
   for (const sermon of sermons) {
+    const pastor = sermon.pastor ?? sermon.speaker ?? '';
+    const videoUrl = sermon.videoUrl ?? sermon.youtubeUrl ?? '';
     const content = [
       sermon.title,
       sermon.description ?? '',
-      sermon.pastor ?? '',
+      pastor,
       sermon.series ?? '',
       sermon.topic ?? '',
     ].join(' ');
@@ -217,11 +235,11 @@ export async function getPICCContext(question: string): Promise<string> {
       title: sermon.title,
       content: [
         sermon.description ? `Description: ${sermon.description}` : '',
-        sermon.pastor ? `Pastor: ${sermon.pastor}` : '',
+        pastor ? `Pastor: ${pastor}` : '',
         sermon.series ? `Series: ${sermon.series}` : '',
         sermon.topic ? `Topic: ${sermon.topic}` : '',
-        `Date: ${sermon.date.toLocaleDateString()}`,
-        sermon.videoUrl ? `Video: ${sermon.videoUrl}` : '',
+        `Date: ${parseDate(sermon.date).toLocaleDateString()}`,
+        videoUrl ? `Video: ${videoUrl}` : '',
         sermon.audioUrl ? `Audio: ${sermon.audioUrl}` : '',
       ]
         .filter(Boolean)
@@ -239,9 +257,6 @@ export async function getPICCContext(question: string): Promise<string> {
   }
 
   return sortedItems
-    .map(
-      (item) =>
-        `[${item.type}] ${item.title}\n${item.content}`
-    )
+    .map((item) => `[${item.type}] ${item.title}\n${item.content}`)
     .join('\n\n---\n\n');
 }

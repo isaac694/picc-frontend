@@ -484,7 +484,7 @@ export default async function HopeSchoolPage() {
                     </a>
                   ) : label === 'Phone' ? (
                     <a
-                      href={`https://wa.me/${line.replace(/[^0-9]/g, '')}`}
+                      href={`tel:${line.replace(/\s/g, '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:text-[#25D366] transition-colors"

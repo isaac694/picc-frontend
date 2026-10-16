@@ -34,7 +34,7 @@ const wailingWomanFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   email: 'wailingwoman@piccworldwide.org',
   location: 'P.O Box 31841, Lilongwe, Malawi',
   contactIntro:
-    'If you are a mother or guardian ready to contend for your children, contact us to join our WhatsApp forum.',
+    'If you are a mother or guardian ready to contend for your children, contact us to join our online forum.',
 };
 
 const pillars: Array<Partial<MinistryItem> & { title: string }> = [
@@ -95,7 +95,7 @@ export default function WailingWomanAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -130,7 +130,7 @@ export default function WailingWomanAdminPage() {
             Manage logo, motto, hero picture, about text, prosperity arrows, weekly devotionals, highlights gallery,
             events, partnership details, phone number, and email.
           </p>
-        </div>
+        </div>
       </div>
 
       <div className="border-b border-border/60">

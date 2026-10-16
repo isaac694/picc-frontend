@@ -1664,8 +1664,10 @@ export default function StorePage() {
                         <p className="text-sm font-medium text-center px-4">
                           Keep this reference for your records. You may contact the Hope Stores team if you need help with the payment:
                         </p>
-                        <Button className="w-full gap-2 bg-[#25D366] text-white hover:bg-[#25D366]/90 border-0 py-6" onClick={() => window.open(`https://wa.me/265888000000?text=Hello, I have made a payment for my Hope Stores ${cartMode === 'soft' ? 'soft copy' : 'hard copy'} order. Name: `, '_blank')}>
-                          <MessageCircle className="w-5 h-5" /> Contact Hope Stores
+                        <Button className="w-full gap-2 py-6" variant="secondary" asChild>
+                          <a href="tel:+265888000000">
+                            <MessageCircle className="w-5 h-5" /> Contact Hope Stores
+                          </a>
                         </Button>
                         <p className="text-xs text-black/40 text-center">
                           {cartMode === 'soft'

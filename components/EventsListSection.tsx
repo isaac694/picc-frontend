@@ -582,7 +582,7 @@ export default function EventsListSection({
         throw new Error(givingData?.error || 'Failed to save payment record.');
       }
 
-      const paymentResponse = await fetch('/api/paychangu/initialize', {
+      const paymentResponse = await apiFetch('/api/paychangu/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
