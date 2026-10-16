@@ -172,6 +172,13 @@ html.admin-compact input:not([type='checkbox']):not([type='radio']):not([type='h
   border-radius: 0.35rem;
 }
 
+/* Search fields with a leading icon: compact padding-inline must not wipe pl-* utilities */
+html.admin-compact .relative:has(> svg.absolute) input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']):not([type='color']),
+html.admin-compact .relative:has(> svg.absolute) [data-slot='input'] {
+  padding-inline-start: 2.75rem !important;
+  padding-inline-end: 0.5rem !important;
+}
+
 html.admin-compact [data-slot='textarea'],
 html.admin-compact textarea {
   min-height: 4.25rem !important;

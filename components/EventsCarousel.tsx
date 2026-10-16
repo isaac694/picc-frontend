@@ -200,14 +200,14 @@ export default function EventsCarousel({
               {extended.map((slide, i) => (
                 <div
                   key={`${slide.src}-${i}`}
-                  className="min-w-full h-[320px] sm:h-[420px] md:h-[520px] lg:h-[640px] relative"
+                  className="relative min-w-full h-[320px] bg-muted/40 sm:h-[420px] md:h-[520px] lg:h-[640px]"
                 >
                   <Image
                     src={slide.src}
                     alt={slide.alt}
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
+                    className="object-contain object-center"
                     priority={i === 1}
                   />
                 </div>
