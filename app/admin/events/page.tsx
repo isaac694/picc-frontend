@@ -8,7 +8,15 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
-import { Search } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 
 type EventScope = 'general' | 'discipleship' | 'hope-school';
@@ -99,6 +107,7 @@ export default function EventsAdminPage() {
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { runUpload, progress, uploading } = useMediaUpload();
 
   const updateUploadName = (key: string, name: string) => {
@@ -242,6 +251,21 @@ export default function EventsAdminPage() {
     updateUploadName('event-draft', '');
   };
 
+  const openAddDialog = () => {
+    handleClearSelection();
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (event: AdminEvent) => {
+    handleSelectEvent(event);
+    setDialogOpen(true);
+  };
+
+  const closeEventDialog = () => {
+    setDialogOpen(false);
+    handleClearSelection();
+  };
+
   const handleSearch = () => {
     setSearchQuery(searchInput);
   };
@@ -294,12 +318,12 @@ export default function EventsAdminPage() {
         return;
       }
       if (!selectedEventId) {
-        setEventDraft(DEFAULT_EVENT_DRAFT);
-        updateUploadName('event-draft', '');
         setStatus('Event added.');
       } else {
         setStatus('Event updated.');
       }
+      setDialogOpen(false);
+      handleClearSelection();
       await refreshEvents();
     } catch {
       setStatus(selectedEventId ? 'Unable to update event.' : 'Unable to add event.');
@@ -320,6 +344,10 @@ export default function EventsAdminPage() {
         return;
       }
       await refreshEvents();
+      if (selectedEventId === eventId) {
+        setDialogOpen(false);
+        handleClearSelection();
+      }
       setStatus('Event deleted.');
     } catch {
       setStatus('Unable to delete event.');
@@ -331,9 +359,189 @@ export default function EventsAdminPage() {
     confirmDeleteToast({
       title: 'Delete this event?',
       description: eventTitle || 'This event will be permanently removed.',
-      onConfirm: () => handleDeleteEvent(eventId),
+      onConfirm: () => void handleDeleteEvent(eventId),
     });
   };
+
+  const eventFormFields = (
+    <div className="space-y-4">
+      <input
+        type="text"
+        placeholder="Event title"
+        value={eventDraft.title}
+        onChange={(event) => setEventDraft((prev) => ({ ...prev, title: event.target.value }))}
+        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <label className="grid gap-2 text-sm text-foreground/70">
+          <span>Start date</span>
+          <input
+            type="date"
+            value={eventDraft.startDate}
+            onChange={(event) => setEventDraft((prev) => ({ ...prev, startDate: event.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            aria-label="Start date"
+          />
+        </label>
+        <label className="grid gap-2 text-sm text-foreground/70">
+          <span>End date</span>
+          <input
+            type="date"
+            value={eventDraft.endDate}
+            onChange={(event) => setEventDraft((prev) => ({ ...prev, endDate: event.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            aria-label="End date"
+          />
+        </label>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input
+          type="text"
+          placeholder="Time (e.g., 8:00 AM - 4:00 PM)"
+          value={eventDraft.time}
+          onChange={(event) => setEventDraft((prev) => ({ ...prev, time: event.target.value }))}
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+        />
+        <select
+          value={eventDraft.scope}
+          onChange={(event) => setEventDraft((prev) => ({ ...prev, scope: normalizeScope(event.target.value) }))}
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+          aria-label="Event scope"
+        >
+          <option value="general">General</option>
+          <option value="discipleship">Discipleship</option>
+          <option value="hope-school">Hope School</option>
+        </select>
+        <input
+          type="text"
+          placeholder="Location"
+          value={eventDraft.location}
+          onChange={(event) => setEventDraft((prev) => ({ ...prev, location: event.target.value }))}
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground md:col-span-2"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Upload Event Image <span className="text-[11px] font-normal text-foreground/50">(Max 1MB allowed)</span>
+        </label>
+        <input
+          type="file"
+          accept="image/*,.heic,.heif,.avif"
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const url = await uploadImage(file);
+            if (url) {
+              setEventDraft((prev) => ({ ...prev, image: normalizeEventImageUrl(url) }));
+              updateUploadName('event-draft', file.name);
+            }
+          }}
+          className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+        />
+        <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
+      </div>
+      {uploadNames['event-draft'] ? (
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setEventDraft((prev) => ({ ...prev, image: '' }));
+              updateUploadName('event-draft', '');
+            }}
+          >
+            Remove Uploaded Image
+          </Button>
+        </div>
+      ) : null}
+      {eventDraft.image ? (
+        <div className="rounded-xl border border-border/60 bg-background p-3">
+          <div className="relative h-32 overflow-hidden rounded-lg">
+            <Image
+              src={eventDraft.image}
+              alt={eventDraft.title ? `${eventDraft.title} event image` : 'Current event image'}
+              fill
+              sizes="(max-width: 768px) 100vw, 520px"
+              className="object-cover"
+              unoptimized
+            />
+          </div>
+          <p className="mt-2 text-xs text-foreground/60">
+            {uploadNames['event-draft'] ? `Selected: ${uploadNames['event-draft']}` : 'Current image'}
+          </p>
+        </div>
+      ) : null}
+      <textarea
+        placeholder="Description"
+        value={eventDraft.description}
+        onChange={(event) => setEventDraft((prev) => ({ ...prev, description: event.target.value }))}
+        rows={3}
+        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+      />
+      <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground">
+        <input
+          type="checkbox"
+          checked={eventDraft.requiresRegistration}
+          onChange={(event) =>
+            setEventDraft((prev) => ({
+              ...prev,
+              requiresRegistration: event.target.checked,
+              registrationEmail: event.target.checked ? prev.registrationEmail : '',
+            }))
+          }
+          className="h-4 w-4"
+        />
+        <span>This event requires registration</span>
+      </label>
+      {eventDraft.requiresRegistration ? (
+        <input
+          type="email"
+          placeholder="Registration email recipient"
+          value={eventDraft.registrationEmail}
+          onChange={(event) => setEventDraft((prev) => ({ ...prev, registrationEmail: event.target.value }))}
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+        />
+      ) : null}
+      <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground">
+        <input
+          type="checkbox"
+          checked={eventDraft.acceptsOnlinePayment}
+          onChange={(event) =>
+            setEventDraft((prev) => ({
+              ...prev,
+              acceptsOnlinePayment: event.target.checked,
+              paymentAmount: event.target.checked ? prev.paymentAmount : '',
+              paymentCurrency: event.target.checked ? prev.paymentCurrency : 'MWK',
+            }))
+          }
+          className="h-4 w-4"
+        />
+        <span>Allow users to pay for this event on the website</span>
+      </label>
+      {eventDraft.acceptsOnlinePayment ? (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr]">
+          <select
+            value={eventDraft.paymentCurrency}
+            onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentCurrency: event.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            aria-label="Event payment currency"
+          >
+            <option value="MWK">MWK</option>
+            <option value="USD">USD</option>
+          </select>
+          <input
+            type="number"
+            min="1"
+            step="any"
+            placeholder="Event payment amount"
+            value={eventDraft.paymentAmount}
+            onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentAmount: event.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
 
   if (!token) {
     return (
@@ -362,222 +570,43 @@ export default function EventsAdminPage() {
             Publish upcoming events and update visuals.
           </p>
         </div>
+        <Button type="button" onClick={openAddDialog} className="gap-2 shrink-0">
+          <Plus className="h-4 w-4" />
+          Add event
+        </Button>
       </div>
 
-      {status && <p className="text-sm text-foreground/70">{status}</p>}
+      {status ? <p className="text-sm text-foreground/70">{status}</p> : null}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1fr] gap-6">
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">
-                {selectedEventId ? 'Edit Event' : 'Add Event'}
-              </h2>
-              <p className="text-sm text-foreground/60">
-                {selectedEventId
-                  ? 'Update the selected event and save your changes.'
-                  : 'Create a new event and publish it to the site.'}
-              </p>
-            </div>
-            {selectedEventId && (
-              <Button variant="outline" onClick={handleClearSelection}>
-                Clear selection
-              </Button>
-            )}
-          </div>
-
-          <input
-            type="text"
-            placeholder="Event title"
-            value={eventDraft.title}
-            onChange={(event) => setEventDraft((prev) => ({ ...prev, title: event.target.value }))}
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="grid gap-2 text-sm text-foreground/70">
-              <span>Start date</span>
-              <input
-                type="date"
-                value={eventDraft.startDate}
-                onChange={(event) => setEventDraft((prev) => ({ ...prev, startDate: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                aria-label="Start date"
-              />
-            </label>
-            <label className="grid gap-2 text-sm text-foreground/70">
-              <span>End date</span>
-              <input
-                type="date"
-                value={eventDraft.endDate}
-                onChange={(event) => setEventDraft((prev) => ({ ...prev, endDate: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                aria-label="End date"
-              />
-            </label>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input
-              type="text"
-              placeholder="Time (e.g., 8:00 AM - 4:00 PM)"
-              value={eventDraft.time}
-              onChange={(event) => setEventDraft((prev) => ({ ...prev, time: event.target.value }))}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-            />
-            <select
-              value={eventDraft.scope}
-              onChange={(event) => setEventDraft((prev) => ({ ...prev, scope: normalizeScope(event.target.value) }))}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              aria-label="Event scope"
-            >
-              <option value="general">General</option>
-              <option value="discipleship">Discipleship</option>
-              <option value="hope-school">Hope School</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Location"
-              value={eventDraft.location}
-              onChange={(event) => setEventDraft((prev) => ({ ...prev, location: event.target.value }))}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Upload Event Image <span className="text-[11px] font-normal text-foreground/50">(Max 1MB allowed)</span>
-            </label>
-            <input
-              type="file"
-              accept="image/*,.heic,.heif,.avif"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                const url = await uploadImage(file);
-                if (url) {
-                  setEventDraft((prev) => ({ ...prev, image: normalizeEventImageUrl(url) }));
-                  updateUploadName('event-draft', file.name);
-                }
-              }}
-              className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-            />
-            <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
-          </div>
-          {uploadNames['event-draft'] ? (
-            <div>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setEventDraft((prev) => ({ ...prev, image: '' }));
-                  updateUploadName('event-draft', '');
-                }}
-              >
-                Remove Uploaded Image
-              </Button>
-            </div>
-          ) : null}
-          {eventDraft.image && (
-            <div className="rounded-xl border border-border/60 bg-background p-3">
-              <div className="relative h-32 overflow-hidden rounded-lg">
-                <Image
-                  src={eventDraft.image}
-                  alt={eventDraft.title ? `${eventDraft.title} event image` : 'Current event image'}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 520px"
-                  className="object-cover"
-                  unoptimized
-                />
-              </div>
-              <p className="mt-2 text-xs text-foreground/60">
-                {uploadNames['event-draft'] ? `Selected: ${uploadNames['event-draft']}` : 'Current image'}
-              </p>
-            </div>
-          )}
-          <textarea
-            placeholder="Description"
-            value={eventDraft.description}
-            onChange={(event) => setEventDraft((prev) => ({ ...prev, description: event.target.value }))}
-            rows={3}
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-          />
-          <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground">
-            <input
-              type="checkbox"
-              checked={eventDraft.requiresRegistration}
-              onChange={(event) =>
-                setEventDraft((prev) => ({
-                  ...prev,
-                  requiresRegistration: event.target.checked,
-                  registrationEmail: event.target.checked ? prev.registrationEmail : '',
-                }))
-              }
-              className="h-4 w-4"
-            />
-            <span>This event requires registration</span>
-          </label>
-          {eventDraft.requiresRegistration ? (
-            <input
-              type="email"
-              placeholder="Registration email recipient"
-              value={eventDraft.registrationEmail}
-              onChange={(event) => setEventDraft((prev) => ({ ...prev, registrationEmail: event.target.value }))}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-            />
-          ) : null}
-          <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground">
-            <input
-              type="checkbox"
-              checked={eventDraft.acceptsOnlinePayment}
-              onChange={(event) =>
-                setEventDraft((prev) => ({
-                  ...prev,
-                  acceptsOnlinePayment: event.target.checked,
-                  paymentAmount: event.target.checked ? prev.paymentAmount : '',
-                  paymentCurrency: event.target.checked ? prev.paymentCurrency : 'MWK',
-                }))
-              }
-              className="h-4 w-4"
-            />
-            <span>Allow users to pay for this event on the website</span>
-          </label>
-          {eventDraft.acceptsOnlinePayment ? (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr]">
-              <select
-                value={eventDraft.paymentCurrency}
-                onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentCurrency: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                aria-label="Event payment currency"
-              >
-                <option value="MWK">MWK</option>
-                <option value="USD">USD</option>
-              </select>
-              <input
-                type="number"
-                min="1"
-                step="any"
-                placeholder="Event payment amount"
-                value={eventDraft.paymentAmount}
-                onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentAmount: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-            </div>
-          ) : null}
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={handleSaveEvent}>
-              {selectedEventId ? 'Save Event' : 'Add Event'}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) handleClearSelection();
+        }}
+      >
+        <DialogContent className="max-h-[90vh] gap-0 overflow-hidden p-0 sm:max-w-2xl">
+          <DialogHeader className="border-b border-border/70 bg-muted/30 px-6 py-5">
+            <DialogTitle>{selectedEventId ? 'Edit event' : 'Add event'}</DialogTitle>
+            <DialogDescription>
+              {selectedEventId
+                ? 'Update the event details and save your changes.'
+                : 'Create a new event and publish it to the site.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[min(60vh,520px)] overflow-y-auto px-6 py-5">{eventFormFields}</div>
+          <DialogFooter className="border-t border-border/70 bg-muted/20 px-6 py-4 gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={closeEventDialog}>
+              Cancel
             </Button>
-            {selectedEventId && (
-              <Button variant="outline" onClick={handleClearSelection}>
-                Cancel
-              </Button>
-            )}
-            {selectedEventId && (
-              <Button variant="destructive" onClick={() => requestDeleteEvent(selectedEventId)}>
-                Delete Event
-              </Button>
-            )}
-          </div>
-        </div>
+            <Button type="button" onClick={() => void handleSaveEvent()}>
+              {selectedEventId ? 'Save changes' : 'Add event'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground mb-4">
             Current Events
           </h2>
@@ -615,23 +644,44 @@ export default function EventsAdminPage() {
           ) : (
             <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
               {filteredEvents.map((event) => (
-                <button
+                <div
                   key={event.id}
-                  type="button"
-                  onClick={() => handleSelectEvent(event)}
-                  className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-left hover:border-primary/60 transition"
+                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
                 >
-                  <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                    {formatEventDateLabel(event)}
-                  </p>
-                  <p className="text-sm font-semibold text-foreground mt-1">
-                    {event.title || 'Untitled event'}
-                  </p>
-                </button>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                      {formatEventDateLabel(event)}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground truncate">
+                      {event.title || 'Untitled event'}
+                    </p>
+                    <p className="mt-0.5 text-xs text-foreground/50 capitalize">{event.scope.replace('-', ' ')}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Edit ${event.title || 'event'}`}
+                      onClick={() => openEditDialog(event)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete ${event.title || 'event'}`}
+                      onClick={() => requestDeleteEvent(event.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
-        </div>
       </div>
     </div>
   );

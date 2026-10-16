@@ -801,12 +801,12 @@ export default function EventsListSection({
                                     ) : null}
                                   </div>
                                 </div>
-                                <div className="relative aspect-video max-w-[320px] w-full justify-self-center md:justify-self-end overflow-hidden rounded-xl border border-border/40 bg-white shadow-sm">
+                                <div className="relative aspect-video max-w-[320px] w-full justify-self-center overflow-hidden rounded-xl border border-border/40 bg-muted/40 shadow-sm md:justify-self-end">
                                   <Image
                                     src={event.image}
                                     alt={event.title}
                                     fill
-                                    className="object-cover"
+                                    className="object-contain object-center"
                                     unoptimized={isLocalUpstreamImage(event.image)}
                                   />
                                 </div>
@@ -880,13 +880,13 @@ export default function EventsListSection({
                                       </span>
                                     </div>
                                   </div>
-                                  <div className="h-full min-h-[300px] overflow-hidden rounded-2xl border border-border/50 bg-white shadow-sm">
+                                  <div className="h-full min-h-[300px] overflow-hidden rounded-2xl border border-border/50 bg-muted/40 shadow-sm">
                                     <div className="relative h-full w-full">
                                       <Image
                                         src={event.image}
                                         alt={event.title}
                                         fill
-                                        className="object-cover"
+                                        className="object-contain object-center"
                                         unoptimized={isLocalUpstreamImage(event.image)}
                                       />
                                     </div>
