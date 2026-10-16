@@ -1,4 +1,4 @@
-import { apiUrl } from '@/lib/api';
+import { apiFetch, apiUrl } from '@/lib/api';
 import { htmlToText, normalizePortalConfig, type PortalConfig } from '@/lib/hr-portal';
 
 export type Vacancy = {
@@ -139,14 +139,29 @@ export function parseVacanciesResponse(data: unknown): ApiVacancy[] {
   return [];
 }
 
+export async function vacanciesFromApiResponse(response: Response): Promise<Vacancy[]> {
+  const data: unknown = await response.json().catch(() => null);
+  if (!response.ok || data === null) return [];
+  return parseVacanciesResponse(data).map(normalizeVacancy);
+}
+
+/** Browser: calls backend directly via apiFetch (visible in DevTools Network). */
+export async function loadPublicVacanciesFromApi(): Promise<Vacancy[]> {
+  try {
+    const response = await apiFetch('/api/hr/vacancies');
+    return vacanciesFromApiResponse(response);
+  } catch {
+    return [];
+  }
+}
+
+/** Server components / SSR */
 export async function getPublicVacancies(): Promise<Vacancy[]> {
   try {
     const response = await fetch(apiUrl('/api/hr/vacancies'), {
       cache: 'no-store',
     });
-    const data: unknown = await response.json().catch(() => null);
-    if (!response.ok || data === null) return [];
-    return parseVacanciesResponse(data).map(normalizeVacancy);
+    return vacanciesFromApiResponse(response);
   } catch {
     return [];
   }
