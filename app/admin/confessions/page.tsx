@@ -118,57 +118,51 @@ export default function ConfessionsAdminPage() {
     }
   };
 
-  useEffect(() => {
-    if (!token) return;
+  const handleEditConfession = (confession: ConfessionRecord) => {
 
-    const fetchConfession = async () => {
-      setLoading(true);
-      clearStatus();
-      try {
-        const response = await apiFetch(`/api/confessions?date=${date}`);
-        if (response.ok) {
-          const data = (await response.json().catch(() => null)) as unknown;
-          const confession = normalizeConfession(data);
-          if (!confession) {
-            setErrorStatus('Unable to load confession for that date.');
-            setConfessionId(null);
-            setTitle('');
-            setImageUrl('');
-            setUploadName('');
-            return;
-          }
+    clearStatus();
 
-          setConfessionId(confession.id);
-          setTitle(confession.title || '');
-          setImageUrl(confession.imageUrl);
-          setUploadName('');
-          if (confession.publishAt) {
-            const parsed = new Date(confession.publishAt);
-            if (!Number.isNaN(parsed.getTime())) {
-              const malawiDateTime = getDateTimeInputValueInMalawi(confession.publishAt);
-              if (malawiDateTime) {
-                setDate(malawiDateTime.date);
-                setPublishTime(malawiDateTime.time);
-              }
-            }
-          }
-        } else if (response.status === 404) {
-          setConfessionId(null);
-          setTitle('');
-          setImageUrl('');
-          setUploadName('');
-        } else {
-          setErrorStatus('Unable to load confession for that date.');
-        }
-      } catch {
-        setErrorStatus('Unable to load confession for that date.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Convert stored UTC date to Malawi date and time
+    const malawiDateTime = getDateTimeInputValueInMalawi(
+      confession.publishAt
+    );
 
-    fetchConfession();
-  }, [token, date]);
+    if (!malawiDateTime) {
+      setErrorStatus('Invalid confession publication date.');
+      return;
+    }
+
+    // Store selected confession ID
+    setConfessionId(confession.id);
+
+    // Populate form
+    setTitle(confession.title || '');
+    setImageUrl(confession.imageUrl);
+
+    setDate(malawiDateTime.date);
+    setPublishTime(malawiDateTime.time);
+
+    setUploadName('');
+
+  };
+
+const handleNewConfession = () => {
+
+  clearStatus();
+
+  // Exit edit mode
+  setConfessionId(null);
+
+  // Reset fields
+  setTitle('');
+  setImageUrl('');
+  setUploadName('');
+
+  // Reset date and time
+  setDate(getTomorrowDateInputValueInMalawi());
+  setPublishTime('01:00');
+
+};
 
   useEffect(() => {
     if (!token) return;
@@ -200,10 +194,12 @@ export default function ConfessionsAdminPage() {
     }
 
     const todayStr = getDateTimeInputValueInMalawi(new Date().toISOString())?.date || new Date().toISOString().slice(0, 10);
-    if (date < todayStr) {
-      setErrorStatus('You cannot post confessions for past dates. Please select today or a future date.');
-      return;
-    }
+    if (!confessionId && date < todayStr) {
+  setErrorStatus(
+    'You cannot create confessions for past dates. Please select today or a future date.'
+  );
+  return;
+}
 
     const publishAt = toMalawiIsoInstant(date, publishTime);
     setPendingPublishAt(publishAt);
@@ -213,41 +209,88 @@ export default function ConfessionsAdminPage() {
   };
 
   const handleConfirmPost = async () => {
-    if (!pendingPublishAt) return;
 
-    clearStatus();
-    setLoading(true);
-    setConfirmOpen(false);
+  if (!pendingPublishAt) return;
 
-    try {
-      const response = await apiFetch('/api/confessions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ date, title, imageUrl, publishAt: pendingPublishAt }),
-      });
+  clearStatus();
+  setLoading(true);
+  setConfirmOpen(false);
 
-      if (!response.ok) {
-        setErrorStatus('Unable to save confession. Please try again.');
-        return;
-      }
+  try {
 
-      const payload = (await response.json().catch(() => null)) as unknown;
-      const saved = normalizeConfession(payload);
-      if (saved) {
-        setConfessionId(saved.id);
-      }
+    // Determine whether creating or editing
+    const isEditing = Boolean(confessionId);
 
-      setSuccessStatus('Confession saved.');
-    } catch {
-      setErrorStatus('Unable to save confession. Please try again.');
-    } finally {
-      setLoading(false);
+    // Use PUT for editing and POST for creating
+    const endpoint = isEditing
+      ? `/api/confessions/${encodeURIComponent(confessionId!)}`
+      : '/api/confessions';
+
+    const method = isEditing ? 'PUT' : 'POST';
+
+    const response = await apiFetch(endpoint, {
+      method,
+
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+
+      body: JSON.stringify({
+        title,
+        imageUrl,
+        publishAt: pendingPublishAt,
+      }),
+    });
+
+    // Handle failed requests
+    if (!response.ok) {
+
+      const errorData = await response
+        .json()
+        .catch(() => null);
+
+      const message =
+        errorData &&
+        typeof errorData.error === 'string'
+          ? errorData.error
+          : 'Unable to save confession. Please try again.';
+
+      setErrorStatus(message);
+      return;
     }
-  };
 
+    const payload = (await response.json().catch(
+      () => null
+    )) as unknown;
+
+    const saved = normalizeConfession(payload);
+
+    if (saved) {
+      setConfessionId(saved.id);
+    }
+
+    setSuccessStatus(
+      isEditing
+        ? 'Confession updated successfully.'
+        : 'Confession created successfully.'
+    );
+
+  } catch (error) {
+
+    console.error('Confession save error:', error);
+
+    setErrorStatus(
+      error instanceof Error
+        ? error.message
+        : 'Unable to save confession.'
+    );
+
+  } finally {
+    setLoading(false);
+  }
+
+};
   const requestDeleteConfirmation = () => {
     if (!confessionId) return;
     confirmDeleteToast({
@@ -256,6 +299,13 @@ export default function ConfessionsAdminPage() {
       onConfirm: () => handleConfirmDelete(confessionId),
     });
   };
+const getConfessionDate = (publishAt: string) => {
+  return (
+    getDateTimeInputValueInMalawi(publishAt)?.date ||
+    publishAt.slice(0, 10)
+  );
+};
+
 
   const handleConfirmDelete = async (deleteId: string) => {
     clearStatus();
@@ -417,6 +467,14 @@ export default function ConfessionsAdminPage() {
             >
               Clear Image
             </Button>
+
+            <Button
+  variant="outline"
+  onClick={handleNewConfession}
+  disabled={loading}
+>
+  + New Confession
+</Button>
           </div>
         </div>
 
@@ -441,10 +499,10 @@ export default function ConfessionsAdminPage() {
             const query = confessionSearch.trim().toLowerCase();
             const filtered = query
               ? allConfessions.filter(
-                  (c) =>
-                    c.publishAt.slice(0, 10).includes(query) ||
-                    (c.title || '').toLowerCase().includes(query)
-                )
+                (c) =>
+                  c.publishAt.slice(0, 10).includes(query) ||
+                  (c.title || '').toLowerCase().includes(query)
+              )
               : allConfessions;
 
             return filtered.length === 0 ? (
@@ -455,7 +513,7 @@ export default function ConfessionsAdminPage() {
                   <button
                     key={confession.id}
                     type="button"
-                    onClick={() => setDate(confession.publishAt.slice(0, 10))}
+                    onClick={() => handleEditConfession(confession)}
                     className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-left hover:border-primary/60 transition"
                   >
                     <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
