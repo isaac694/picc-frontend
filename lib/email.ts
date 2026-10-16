@@ -62,7 +62,7 @@ export interface EventRegistrationNotificationPayload {
 }
 
 export async function sendGivingNotification(payload: GivingNotificationPayload) {
-  const response = await fetch('/api/send-giving-email', {
+  const response = await apiFetch('/api/send-giving-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -122,7 +122,7 @@ export async function sendPrayerNotification(payload: PrayerNotificationPayload)
 }
 
 export async function sendEventRegistrationNotification(payload: EventRegistrationNotificationPayload) {
-  const response = await fetch('/api/send-event-registration-email', {
+  const response = await apiFetch('/api/send-event-registration-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

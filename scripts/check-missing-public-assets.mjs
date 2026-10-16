@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const rootDir = process.cwd();
 const publicDir = path.join(rootDir, 'public');
-const sourceRoots = ['app', 'components', 'lib', 'hooks', 'prisma', 'scripts'];
+const sourceRoots = ['app', 'components', 'lib', 'hooks', 'scripts'];
 const fileExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.css', '.scss']);
 
 const publicPathRegexes = [

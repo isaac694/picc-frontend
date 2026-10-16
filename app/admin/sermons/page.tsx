@@ -227,7 +227,7 @@ export default function AdminSermonsPage() {
         if (notifySubscribers && draftSermon.title) {
           try {
             const sermonUrl = draftSermon.youtubeUrl || `/sermons/${Date.now()}`; // Fallback URL
-            const notifyResponse = await fetch('/api/admin/notify-subscribers', {
+            const notifyResponse = await apiFetch('/api/admin/notify-subscribers', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
