@@ -18,26 +18,34 @@ export type Vacancy = {
   portalConfig?: PortalConfig | null;
 };
 
-type ApiVacancy = Partial<{
-  id: string;
-  slug: string;
-  title: string;
-  department: string;
-  location: string;
-  employmentType: string;
-  type: string;
-  postedAt: string;
-  createdAt: string;
-  closesAt: string;
-  closingDate: string;
-  summary: string;
-  description: string;
-  requirements: string[];
-  responsibilities: string[];
-  requiredDocuments: Array<string | { label?: string; name?: string; description?: string }>;
-  documents: string[];
+/** Public list: GET /api/hr/vacancies → { vacancies: ApiVacancy[] } */
+export type ApiVacancy = {
+  id?: string;
+  slug?: string;
+  title?: string;
+  department?: string;
+  location?: string;
+  employmentType?: string;
+  type?: string;
+  summary?: string;
+  description?: string;
+  responsibilities?: string[];
+  requirements?: string[];
+  requiredDocuments?: Array<string | { label?: string; name?: string; description?: string }>;
+  documents?: string[];
+  status?: string;
+  closesAt?: string;
+  closingDate?: string;
+  publishedAt?: string;
+  postedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
   portalConfig?: PortalConfig | null;
-}>;
+};
+
+export type HrVacanciesListResponse = {
+  vacancies?: ApiVacancy[];
+};
 
 function formatDate(value?: string) {
   if (!value) return 'Not specified';
@@ -56,6 +64,12 @@ function firstText(...values: Array<string | undefined>) {
 
 function firstList(...values: Array<string[] | undefined>) {
   return values.find((value) => Array.isArray(value) && value.length) || [];
+}
+
+function isPublicOpenVacancy(vacancy: ApiVacancy): boolean {
+  const status = vacancy.status?.trim().toUpperCase();
+  if (!status) return true;
+  return status === 'OPEN';
 }
 
 function mergeVacancyPayload(detail: ApiVacancy, portal: ApiVacancy, portalConfig?: PortalConfig | null) {
@@ -94,9 +108,11 @@ export function normalizeVacancy(vacancy: ApiVacancy): Vacancy {
     department: display?.department || vacancy.department || 'PICC',
     location: display?.location || vacancy.location || 'Lilongwe',
     type: display?.employmentType || vacancy.employmentType || vacancy.type || 'Full Time',
-    posted: formatDate(vacancy.postedAt || vacancy.createdAt),
+    posted: formatDate(vacancy.publishedAt || vacancy.postedAt || vacancy.createdAt),
     closingDate: formatDate(vacancy.closesAt || vacancy.closingDate),
-    summary: htmlToText(display?.summary || display?.subtitle || vacancy.summary || vacancy.description) || 'Vacancy details will be shared soon.',
+    summary:
+      htmlToText(display?.summary || display?.subtitle || vacancy.summary || vacancy.description) ||
+      'Vacancy details will be shared soon.',
     description: description || undefined,
     requirements: vacancy.requirements || [],
     responsibilities: vacancy.responsibilities || [],
@@ -108,98 +124,19 @@ export function normalizeVacancy(vacancy: ApiVacancy): Vacancy {
   };
 }
 
-export const vacancies: Vacancy[] = [
-  {
-    slug: 'secondary-school-teacher',
-    title: 'Secondary School Teacher',
-    department: 'PICC Secondary School',
-    location: 'Area 49, Lilongwe',
-    type: 'Full Time',
-    posted: 'Oct 6, 2026',
-    closingDate: 'Nov 15, 2026',
-    summary:
-      'PICC Secondary School is looking for a passionate teacher to support academic excellence, discipline, and Christ-centered student formation.',
-    requirements: [
-      'Bachelor of Education or relevant teaching qualification.',
-      'Experience teaching secondary school learners.',
-      'Strong classroom management and communication skills.',
-      'Commitment to Christian values and student mentorship.',
-    ],
-    responsibilities: [
-      'Prepare engaging lessons that meet secondary school curriculum standards.',
-      'Assess learners regularly and provide timely academic feedback.',
-      'Maintain discipline and a positive classroom learning environment.',
-      'Support student mentorship, chapel activities, and school programs.',
-    ],
-    documents: [
-      'Updated CV',
-      'Cover letter',
-      'Copies of academic and professional certificates',
-      'Two professional references',
-    ],
-  },
-  {
-    slug: 'mathematics-teacher',
-    title: 'Mathematics Teacher',
-    department: 'PICC Secondary School',
-    location: 'Area 49, Lilongwe',
-    type: 'Full Time',
-    posted: 'Oct 6, 2026',
-    closingDate: 'Nov 20, 2026',
-    summary:
-      'PICC Secondary School is seeking a Mathematics Teacher who can help learners build strong analytical, problem-solving, and exam preparation skills.',
-    requirements: [
-      'Bachelor of Education with Mathematics or related qualification.',
-      'Experience teaching mathematics at secondary school level.',
-      'Ability to prepare lesson plans, assessments, and learner progress reports.',
-      'Passion for mentoring students in a Christian learning environment.',
-    ],
-    responsibilities: [
-      'Teach mathematics lessons that build learner confidence and mastery.',
-      'Prepare exercises, tests, assignments, and examination revision plans.',
-      'Track learner performance and support students who need extra help.',
-      'Work with other teachers to improve academic outcomes.',
-    ],
-    documents: [
-      'Updated CV',
-      'Cover letter',
-      'Copies of teaching certificates',
-      'Evidence of mathematics teaching experience',
-    ],
-  },
-  {
-    slug: 'english-teacher',
-    title: 'English Teacher',
-    department: 'PICC Secondary School',
-    location: 'Area 49, Lilongwe',
-    type: 'Full Time',
-    posted: 'Oct 6, 2026',
-    closingDate: 'Nov 20, 2026',
-    summary:
-      'PICC Secondary School is looking for an English Teacher to strengthen learners in reading, writing, grammar, literature, and confident communication.',
-    requirements: [
-      'Bachelor of Education with English or related qualification.',
-      'Experience teaching English language or literature to secondary learners.',
-      'Strong written and verbal communication skills.',
-      'Commitment to academic excellence, discipline, and student growth.',
-    ],
-    responsibilities: [
-      'Teach English language, grammar, writing, and literature lessons.',
-      'Help learners improve reading comprehension and public speaking.',
-      'Prepare class assignments, tests, and examination revision materials.',
-      'Promote a culture of reading and clear communication.',
-    ],
-    documents: [
-      'Updated CV',
-      'Cover letter',
-      'Copies of English or teaching certificates',
-      'Two professional references',
-    ],
-  },
-];
+export function parseVacanciesResponse(data: unknown): ApiVacancy[] {
+  if (Array.isArray(data)) {
+    return data.filter(isPublicOpenVacancy);
+  }
 
-export function getVacancyBySlug(slug: string) {
-  return vacancies.find((vacancy) => vacancy.slug === slug);
+  if (data && typeof data === 'object') {
+    const list = (data as HrVacanciesListResponse).vacancies;
+    if (Array.isArray(list)) {
+      return list.filter(isPublicOpenVacancy);
+    }
+  }
+
+  return [];
 }
 
 export async function getPublicVacancies(): Promise<Vacancy[]> {
@@ -207,25 +144,29 @@ export async function getPublicVacancies(): Promise<Vacancy[]> {
     const response = await fetch(apiUrl('/api/hr/vacancies'), {
       cache: 'no-store',
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) return vacancies;
-    const list: ApiVacancy[] = Array.isArray(data) ? data : data.vacancies || [];
-    return list.length ? list.map(normalizeVacancy) : vacancies;
+    const data: unknown = await response.json().catch(() => null);
+    if (!response.ok || data === null) return [];
+    return parseVacanciesResponse(data).map(normalizeVacancy);
   } catch {
-    return vacancies;
+    return [];
   }
 }
 
 export async function getPublicVacancyBySlug(slug: string): Promise<Vacancy | undefined> {
   try {
     const [detailResponse, portalResponse] = await Promise.all([
-      fetch(apiUrl(`/api/hr/vacancies/${slug}`), { cache: 'no-store' }),
-      fetch(apiUrl(`/api/hr/vacancies/${slug}/portal`), { cache: 'no-store' }),
+      fetch(apiUrl(`/api/hr/vacancies/${encodeURIComponent(slug)}`), { cache: 'no-store' }),
+      fetch(apiUrl(`/api/hr/vacancies/${encodeURIComponent(slug)}/portal`), { cache: 'no-store' }),
     ]);
     const detailData = await detailResponse.json().catch(() => ({}));
     const portalData = await portalResponse.json().catch(() => ({}));
     const detailVacancy: ApiVacancy = detailResponse.ok ? (detailData.vacancy || detailData) : {};
     const portalVacancy: ApiVacancy = portalResponse.ok ? (portalData.vacancy || {}) : {};
+
+    if (!isPublicOpenVacancy(detailVacancy) && !isPublicOpenVacancy(portalVacancy)) {
+      return undefined;
+    }
+
     const portalConfig = portalResponse.ok
       ? portalData.portalConfig || portalVacancy.portalConfig || detailVacancy.portalConfig
       : detailVacancy.portalConfig;
@@ -234,8 +175,8 @@ export async function getPublicVacancyBySlug(slug: string): Promise<Vacancy | un
       return normalizeVacancy(mergeVacancyPayload(detailVacancy, portalVacancy, portalConfig));
     }
   } catch {
-    // Fall through to the local dummy vacancies when the backend is unavailable.
+    return undefined;
   }
 
-  return getVacancyBySlug(slug);
+  return undefined;
 }

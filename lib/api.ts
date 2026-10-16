@@ -1,4 +1,4 @@
-const LOCAL_API_BASE_URL = 'http://localhost:5000';
+const LOCAL_API_BASE_URL = 'https://backend.piccworldwide.org';
 const PROD_API_BASE_URL = 'https://backend.piccworldwide.org';
 const ALLOWED_API_HOSTS = new Set(['localhost', '127.0.0.1', 'backend.piccworldwide.org']);
 
