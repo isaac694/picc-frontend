@@ -1558,11 +1558,16 @@ app.post('/api/paychangu/initialize', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields.' });
     }
 
-    const mappedRefId = paymentMethod === 'airtel'
-      ? process.env.PAYCHANGU_AIRTEL_REF_ID
-      : paymentMethod === 'mpamba'
-        ? process.env.PAYCHANGU_MPAMBA_REF_ID
-        : operatorRefId;
+    const operatorRefFromClient =
+      typeof operatorRefId === 'string' && operatorRefId.trim() ? operatorRefId.trim() : '';
+
+    const mappedRefId =
+      operatorRefFromClient ||
+      (paymentMethod === 'airtel'
+        ? process.env.PAYCHANGU_AIRTEL_REF_ID
+        : paymentMethod === 'mpamba'
+          ? process.env.PAYCHANGU_MPAMBA_REF_ID
+          : '');
 
     if (!mappedRefId) {
       return res.status(400).json({ error: 'Missing mobile money operator reference ID.' });

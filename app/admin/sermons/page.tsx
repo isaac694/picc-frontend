@@ -11,7 +11,8 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
-import { Plus } from 'lucide-react';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 
 interface Sermon {
   id: string;
@@ -61,6 +62,8 @@ export default function AdminSermonsPage() {
   const [notifySubscribers, setNotifySubscribers] = useState(false);
   const [sermonSearch, setSermonSearch] = useState('');
   const [sermonFilter, setSermonFilter] = useState<'all' | 'week' | 'month' | 'year'>('all');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const normalizeRemoteUrl = (value: string) => {
     if (!value) return '';
@@ -205,66 +208,41 @@ export default function AdminSermonsPage() {
     }
   };
 
-  const handleAddSermon = async () => {
-    if (!token) return;
-
-    try {
-      const response = await apiFetch('/api/sermons', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(normalizeSermonDraft(draftSermon)),
-      });
-
-      if (response.ok) {
-        setStatus('Sermon added successfully.');
-        setDraftSermon(DEFAULT_SERMON);
-        void fetchSermons();
-
-        // Send notification to subscribers if requested
-        if (notifySubscribers && draftSermon.title) {
-          try {
-            const sermonUrl = draftSermon.youtubeUrl || `/sermons/${Date.now()}`; // Fallback URL
-            const notifyResponse = await apiFetch('/api/admin/notify-subscribers', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                sermonTitle: draftSermon.title,
-                sermonUrl: sermonUrl,
-              }),
-            });
-
-            if (notifyResponse.ok) {
-              setStatus('Sermon added successfully and subscribers notified.');
-            } else {
-              setStatus('Sermon added successfully, but failed to notify subscribers.');
-            }
-          } catch (notifyError) {
-            console.error('Failed to notify subscribers:', notifyError);
-            setStatus('Sermon added successfully, but failed to notify subscribers.');
-          }
-        }
-
-        setNotifySubscribers(false); // Reset checkbox
-      } else {
-        setStatus('Failed to add sermon.');
-      }
-    } catch {
-      setStatus('Failed to add sermon.');
-    }
+  const handleClearSelection = () => {
+    setDraftSermon(DEFAULT_SERMON);
+    setEditingId(null);
+    setNotifySubscribers(false);
   };
 
-  const handleUpdateSermon = async (id: string) => {
+  const closeSermonDialog = () => {
+    setDialogOpen(false);
+    handleClearSelection();
+  };
+
+  const openAddDialog = () => {
+    handleClearSelection();
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (sermon: Sermon) => {
+    startEditing(sermon);
+    setDialogOpen(true);
+  };
+
+  const handleSaveSermon = async () => {
     if (!token) return;
+    if (!draftSermon.title || !draftSermon.date) {
+      setStatus('Please fill in title and date.');
+      return;
+    }
+
+    setIsSaving(true);
+    setStatus('');
 
     try {
-      const response = await apiFetch(`/api/sermons/${id}`, {
-        method: 'PUT',
+      const isEdit = Boolean(editingId);
+      const response = await apiFetch(isEdit ? `/api/sermons/${editingId}` : '/api/sermons', {
+        method: isEdit ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -272,18 +250,49 @@ export default function AdminSermonsPage() {
         body: JSON.stringify(normalizeSermonDraft(draftSermon)),
       });
 
-      if (response.ok) {
-        setStatus('Sermon updated successfully.');
-        setDraftSermon(DEFAULT_SERMON);
-        setEditingId(null);
-        void fetchSermons();
-      } else if (response.status === 401) {
-        setStatus('Your admin session expired. Please log out and log in again.');
-      } else {
-        setStatus('Failed to update sermon.');
+      if (!response.ok) {
+        if (response.status === 401) {
+          setStatus('Your admin session expired. Please log out and log in again.');
+        } else {
+          setStatus(isEdit ? 'Failed to update sermon.' : 'Failed to add sermon.');
+        }
+        return;
+      }
+
+      setStatus(isEdit ? 'Sermon updated successfully.' : 'Sermon added successfully.');
+      setDialogOpen(false);
+      handleClearSelection();
+      void fetchSermons();
+
+      if (!isEdit && notifySubscribers && draftSermon.title) {
+        try {
+          const sermonUrl = draftSermon.youtubeUrl || `/sermons/${Date.now()}`;
+          const notifyResponse = await apiFetch('/api/admin/notify-subscribers', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              sermonTitle: draftSermon.title,
+              sermonUrl,
+            }),
+          });
+
+          if (notifyResponse.ok) {
+            setStatus('Sermon added successfully and subscribers notified.');
+          } else {
+            setStatus('Sermon added successfully, but failed to notify subscribers.');
+          }
+        } catch (notifyError) {
+          console.error('Failed to notify subscribers:', notifyError);
+          setStatus('Sermon added successfully, but failed to notify subscribers.');
+        }
       }
     } catch {
-      setStatus('Failed to update sermon.');
+      setStatus(editingId ? 'Failed to update sermon.' : 'Failed to add sermon.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -300,6 +309,10 @@ export default function AdminSermonsPage() {
 
       if (response.ok) {
         setStatus('Sermon deleted successfully.');
+        if (editingId === id) {
+          setDialogOpen(false);
+          handleClearSelection();
+        }
         void fetchSermons();
       } else {
         setStatus('Failed to delete sermon.');
@@ -331,12 +344,6 @@ export default function AdminSermonsPage() {
       topic: sermon.topic || '',
     });
     setEditingId(sermon.id);
-  };
-
-  const cancelEditing = () => {
-    setDraftSermon(DEFAULT_SERMON);
-    setEditingId(null);
-    setNotifySubscribers(false);
   };
 
   useEffect(() => {
@@ -400,6 +407,10 @@ export default function AdminSermonsPage() {
             Upload and manage sermons with real audio files, update the header image, and notify subscribers.
           </p>
         </div>
+        <Button type="button" onClick={openAddDialog} className="gap-2 shrink-0">
+          <Plus className="h-4 w-4" />
+          Add sermon
+        </Button>
       </div>
 
       {status && (
@@ -457,26 +468,24 @@ export default function AdminSermonsPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
-        {/* Left Side: Form */}
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                {editingId ? 'Edit Sermon' : 'Add New Sermon'}
-              </h2>
-              <p className="text-sm text-foreground/60">
-                {editingId ? 'Update the details for this sermon.' : 'Create a new sermon entry.'}
-              </p>
-            </div>
-            {editingId && (
-              <Button variant="outline" onClick={cancelEditing}>
-                <Plus className="w-4 h-4 mr-2" />
-                New Sermon
-              </Button>
-            )}
-          </div>
-
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) handleClearSelection();
+        }}
+        title={editingId ? 'Edit sermon' : 'Add sermon'}
+        description={
+          editingId
+            ? 'Update the details for this sermon.'
+            : 'Create a new sermon entry and publish it to the site.'
+        }
+        saving={isSaving}
+        saveLabel={editingId ? 'Save changes' : 'Add sermon'}
+        onSave={() => void handleSaveSermon()}
+        onCancel={closeSermonDialog}
+        maxWidthClass="sm:max-w-2xl"
+      >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <Label htmlFor="title">Title</Label>
@@ -612,42 +621,23 @@ export default function AdminSermonsPage() {
                 />
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center space-x-3 p-4 rounded-xl border border-primary/20 bg-primary/5">
-            <Checkbox
-              id="notify-subscribers"
-              checked={notifySubscribers}
-              onCheckedChange={(checked) => setNotifySubscribers(checked as boolean)}
-              className="h-5 w-5 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-            />
-            <Label htmlFor="notify-subscribers" className="text-sm font-semibold text-foreground cursor-pointer">
-              Notify subscribers about this new sermon
-            </Label>
+            {!editingId ? (
+              <div className="flex items-center space-x-3 p-4 rounded-xl border border-primary/20 bg-primary/5 md:col-span-2">
+                <Checkbox
+                  id="notify-subscribers"
+                  checked={notifySubscribers}
+                  onCheckedChange={(checked) => setNotifySubscribers(checked as boolean)}
+                  className="h-5 w-5 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                />
+                <Label htmlFor="notify-subscribers" className="text-sm font-semibold text-foreground cursor-pointer">
+                  Notify subscribers about this new sermon
+                </Label>
+              </div>
+            ) : null}
           </div>
+      </SchoolAdminDialogShell>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {editingId ? (
-              <>
-                <Button onClick={() => handleUpdateSermon(editingId)}>
-                  Update Sermon
-                </Button>
-                <Button variant="destructive" onClick={() => requestDeleteSermon(editingId)}>
-                  Delete
-                </Button>
-                <Button variant="outline" onClick={cancelEditing}>
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button onClick={handleAddSermon} disabled={!draftSermon.title || !draftSermon.date}>
-                Add Sermon
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Right Side: Searchable List */}
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground mb-4">
             Existing Sermons
@@ -716,29 +706,45 @@ export default function AdminSermonsPage() {
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                 {filtered.map((sermon) => (
-                  <button
+                  <div
                     key={sermon.id}
-                    type="button"
-                    onClick={() => startEditing(sermon)}
-                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                      editingId === sermon.id
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                        : 'border-border/60 bg-background hover:border-primary/60'
-                    }`}
+                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
                   >
-                    <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                      {sermon.date || 'No date'}
-                    </p>
-                    <p className="text-sm font-semibold text-foreground mt-1">
-                      {sermon.title || 'Untitled'}
-                    </p>
-                  </button>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                        {sermon.date || 'No date'}
+                      </p>
+                      <p className="text-sm font-semibold text-foreground mt-1 truncate">
+                        {sermon.title || 'Untitled'}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Edit ${sermon.title || 'sermon'}`}
+                        onClick={() => openEditDialog(sermon)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={`Delete ${sermon.title || 'sermon'}`}
+                        onClick={() => requestDeleteSermon(sermon.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             );
           })()}
         </div>
-      </div>
     </div>
   );
 }

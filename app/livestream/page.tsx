@@ -14,6 +14,8 @@ import BibleTool from '@/components/livestream/BibleTool';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
+import { useYouTubeVideoTitle } from '@/hooks/use-youtube-video-title';
+import { pickYouTubeVideoTitle } from '@/lib/youtube-client';
 
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "prayer" | "give" | null;
 
@@ -124,6 +126,14 @@ export default function LivestreamPage() {
   const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
 
   const featuredVideo = videos[0] || null;
+  const primaryVideoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
+  const { title: youTubeHeroTitle, isLoading: heroTitleLoading } =
+    useYouTubeVideoTitle(primaryVideoId);
+  const heroStreamTitle =
+    pickYouTubeVideoTitle(featuredVideo?.title, youTubeHeroTitle) ||
+    (isLoading || heroTitleLoading ? 'Loading stream title…' : 'Live stream');
+  const heroChatTitle = pickYouTubeVideoTitle(featuredVideo?.title, youTubeHeroTitle);
+
   const gridVideos = videos.slice(1, 4);
   const fallbackGridVideos: YouTubeVideo[] = RELATED_CHANNELS.map((channel) => ({
     videoId: channel.channelId,
@@ -479,10 +489,10 @@ export default function LivestreamPage() {
                   <div className="relative aspect-video bg-black">
                     <iframe
                       className="h-full w-full"
-                      data-yt-id={featuredVideo?.videoId || FALLBACK_HERO_ID}
+                      data-yt-id={primaryVideoId}
                       id="yt-hero"
                       src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0`}
-                      title={featuredVideo?.title || "Sunday Livestream"}
+                      title={heroStreamTitle}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
                     />
@@ -490,9 +500,7 @@ export default function LivestreamPage() {
                   <div className="bg-white text-black px-6 py-5">
                     <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(360px,auto)] md:items-center">
                       <div className="min-w-0">
-                        <h3 className="text-lg font-semibold">
-                          {featuredVideo?.title || "Stream in English"}
-                        </h3>
+                        <h3 className="text-lg font-semibold">{heroStreamTitle}</h3>
                         {featuredVideo?.publishedAt && (
                           <p className="text-xs text-black/60 mt-1">
                             {formatDate(featuredVideo.publishedAt)}
@@ -585,8 +593,8 @@ export default function LivestreamPage() {
                   {activeTool === "chat" && (
                     <div className="h-[400px] w-full bg-black">
                       <LiveChat
-                        videoId={featuredVideo?.videoId || FALLBACK_HERO_ID}
-                        videoTitle={featuredVideo?.title || 'Sunday Livestream'}
+                        videoId={primaryVideoId}
+                        videoTitle={heroChatTitle}
                       />
                     </div>
                   )}
@@ -638,7 +646,7 @@ export default function LivestreamPage() {
                       data-yt-id={mobileVideoId}
                       id="yt-hero-mobile"
                       src={`${featuredVideo?.embedUrl || `https://www.youtube.com/embed/${FALLBACK_HERO_ID}`}?enablejsapi=1&rel=0&autoplay=1&playsinline=1${mobileVideoStart}`}
-                      title={featuredVideo?.title || 'Sunday Livestream'}
+                      title={heroStreamTitle}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
                     />
@@ -682,8 +690,8 @@ export default function LivestreamPage() {
                     {activeTool === "chat" && (
                       <div className="h-[300px] w-full bg-black mb-4">
                         <LiveChat
-                          videoId={featuredVideo?.videoId || FALLBACK_HERO_ID}
-                          videoTitle={featuredVideo?.title || 'Sunday Livestream'}
+                          videoId={primaryVideoId}
+                          videoTitle={heroChatTitle}
                         />
                       </div>
                     )}
@@ -758,8 +766,8 @@ export default function LivestreamPage() {
                       {activeTool === 'chat' && (
                         <div className="h-[300px] w-full bg-black mb-4">
                           <LiveChat
-                            videoId={featuredVideo?.videoId || FALLBACK_HERO_ID}
-                            videoTitle={featuredVideo?.title || 'Sunday Livestream'}
+                            videoId={primaryVideoId}
+                            videoTitle={heroChatTitle}
                           />
                         </div>
                       )}

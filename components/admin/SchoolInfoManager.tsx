@@ -6,7 +6,15 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Loader2, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 
 type SchoolLesson = {
   title: string;
@@ -219,6 +227,7 @@ export default function SchoolInfoManager({
   const [savedInfo, setSavedInfo] = useState<SchoolInfo>(buildEmptyInfo(schoolKey));
   const [draft, setDraft] = useState<SchoolInfo>(buildEmptyInfo(schoolKey));
   const [selection, setSelection] = useState<EditorSelection | null>(null);
+  const [editorDialogOpen, setEditorDialogOpen] = useState(false);
   const [uploadNames, setUploadNames] = useState<Partial<Record<FocusableSchoolInfoField, string>>>({});
   const { runUpload, progress, uploading } = useMediaUpload();
 
@@ -456,8 +465,9 @@ export default function SchoolInfoManager({
       setSavedInfo(mergedInfo);
       setDraft(mergedInfo);
       setSelection(null);
+      setEditorDialogOpen(false);
       setUploadNames({});
-      setStatus('School info has been saved. Select any item on the right to continue editing.');
+      setStatus('School info has been saved. Select any item below to continue editing.');
     } catch {
       setStatus('Unable to save school info.');
     } finally {
@@ -469,15 +479,26 @@ export default function SchoolInfoManager({
     setDraft((prev) => ({ ...prev, [field]: toNullable(value) }));
   };
 
+  const openSelection = (next: EditorSelection) => {
+    setSelection(next);
+    setEditorDialogOpen(true);
+  };
+
+  const closeEditorDialog = () => {
+    setEditorDialogOpen(false);
+    setSelection(null);
+  };
+
   const addLesson = () => {
-    setDraft((prev) => {
-      const nextLessons = [
+    const nextIndex = draft.lessons?.length ?? 0;
+    setDraft((prev) => ({
+      ...prev,
+      lessons: [
         ...(prev.lessons ?? []),
-        { title: '', description: '', num: String((prev.lessons?.length ?? 0) + 1).padStart(2, '0') },
-      ];
-      return { ...prev, lessons: nextLessons };
-    });
-    setSelection({ kind: 'lesson', index: draft.lessons?.length ?? 0 });
+        { title: '', description: '', num: String(nextIndex + 1).padStart(2, '0') },
+      ],
+    }));
+    openSelection({ kind: 'lesson', index: nextIndex });
   };
 
   const updateLesson = (index: number, field: keyof SchoolLesson, value: string) => {
@@ -505,11 +526,12 @@ export default function SchoolInfoManager({
   };
 
   const addCoreValue = () => {
+    const nextIndex = draft.coreValues?.length ?? 0;
     setDraft((prev) => ({
       ...prev,
       coreValues: [...(prev.coreValues ?? []), { name: '' }],
     }));
-    setSelection({ kind: 'coreValue', index: draft.coreValues?.length ?? 0 });
+    openSelection({ kind: 'coreValue', index: nextIndex });
   };
 
   const updateCoreValue = (index: number, field: keyof SchoolCoreValue, value: string) => {
@@ -586,32 +608,188 @@ export default function SchoolInfoManager({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
-        <div className="space-y-6 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">Edit {schoolName} Information</h2>
-              <p className="mt-1 text-sm text-foreground/70">
-                {config?.editorDescription || 'Choose an item from the right and edit it here.'}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={save} disabled={isSaving} className="gap-2">
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {isSaving ? 'Saving...' : 'Save Changes'}
+      <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Edit {schoolName} information</h2>
+          <p className="mt-1 text-sm text-foreground/70">
+            {config?.editorDescription || 'Select an item below to edit. Save when you are ready to publish.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" onClick={() => void save()} disabled={isSaving} className="gap-2">
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {isSaving ? 'Saving...' : 'Save changes'}
+          </Button>
+          <Button type="button" variant="outline" onClick={resetDraft}>
+            Reset to current
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-6 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Current information</h2>
+          <p className="mt-1 text-sm text-foreground/60">Use the edit button on any row to open the editor.</p>
+        </div>
+
+        <div className="space-y-3">
+          {visibleInfoFields.map((item) => {
+            const previewUrl = isImageField(item.field) ? toPreviewUrl(item.value) : '';
+            return (
+              <div
+                key={item.field}
+                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">{item.label}</p>
+                  {isImageField(item.field) ? (
+                    <div className="mt-3 overflow-hidden rounded-xl border border-border/60 bg-background">
+                      {previewUrl ? (
+                        <div className="relative h-28 w-full">
+                          <Image src={previewUrl} alt={item.label} fill className="object-cover" unoptimized />
+                        </div>
+                      ) : (
+                        <div className="flex h-28 items-center justify-center text-xs text-foreground/50">
+                          No image selected
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-foreground">{buildSnippet(item.value)}</p>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label={`Edit ${item.label}`}
+                  onClick={() => openSelection({ kind: 'field', field: item.field })}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+
+        {lessonEditor && (
+          <div className="space-y-3 border-t border-border/60 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">{lessonEditor.label}</h3>
+                {lessonEditor.description ? (
+                  <p className="text-xs text-foreground/60">{lessonEditor.description}</p>
+                ) : null}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addLesson} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add
               </Button>
-              <Button variant="outline" onClick={resetDraft}>
-                Reset to Current
-              </Button>
             </div>
+            {(draft.lessons ?? []).length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/60 p-4 text-sm text-foreground/60">
+                No lessons added yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(draft.lessons ?? []).map((lesson, index) => (
+                  <div
+                    key={`lesson-item-${index}`}
+                    className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">
+                        Lesson {lesson.num || String(index + 1).padStart(2, '0')}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">{lesson.title || 'Untitled lesson'}</p>
+                      <p className="mt-1 text-sm text-foreground/70">{buildSnippet(lesson.description)}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Edit lesson ${index + 1}`}
+                      onClick={() => openSelection({ kind: 'lesson', index })}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+        )}
 
-          {selection === null && (
-            <div className="rounded-xl border border-dashed border-border/60 bg-background/40 p-6 text-sm text-foreground/60">
-              Changes saved successfully. Choose any item from the right to load it back into the editor.
+        {coreValuesEditor && (
+          <div className="space-y-3 border-t border-border/60 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">{coreValuesEditor.label}</h3>
+                {coreValuesEditor.description ? (
+                  <p className="text-xs text-foreground/60">{coreValuesEditor.description}</p>
+                ) : null}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addCoreValue} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add
+              </Button>
             </div>
-          )}
+            {(draft.coreValues ?? []).length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/60 p-4 text-sm text-foreground/60">
+                No core values added yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(draft.coreValues ?? []).map((coreValue, index) => (
+                  <div
+                    key={`core-value-item-${index}`}
+                    className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">
+                        Core value {index + 1}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
+                        {coreValue.name || 'Untitled core value'}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Edit core value ${index + 1}`}
+                      onClick={() => openSelection({ kind: 'coreValue', index })}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
+      <Dialog
+        open={editorDialogOpen && selection !== null}
+        onOpenChange={(open) => {
+          if (!open) closeEditorDialog();
+        }}
+      >
+        <DialogContent className="max-h-[90vh] gap-0 overflow-hidden p-0 sm:max-w-2xl">
+          <DialogHeader className="border-b border-border/70 bg-muted/30 px-6 py-5">
+            <DialogTitle>
+              {selection?.kind === 'field'
+                ? fieldLabels[selection.field]
+                : selection?.kind === 'lesson'
+                  ? `Lesson ${selection.index + 1}`
+                  : selection?.kind === 'coreValue'
+                    ? `Core value ${selection.index + 1}`
+                    : 'Edit'}
+            </DialogTitle>
+            <DialogDescription>Changes apply to the draft until you save school information.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[min(60vh,560px)] overflow-y-auto px-6 py-5">
           {selection?.kind === 'field' && (
             <div className="space-y-4">
               <div>
@@ -819,148 +997,14 @@ export default function SchoolInfoManager({
               </div>
             </div>
           )}
-        </div>
-
-        <div className="space-y-6 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Current Information</h2>
-            <p className="mt-1 text-sm text-foreground/60">
-              Click any highlight to load it into the editor.
-            </p>
           </div>
-
-          <div className="space-y-3">
-            {visibleInfoFields.map((item) => {
-              const isActive = selection?.kind === 'field' && selection.field === item.field;
-              const previewUrl = isImageField(item.field) ? toPreviewUrl(item.value) : '';
-              return (
-                <button
-                  key={item.field}
-                  type="button"
-                  onClick={() => setSelection({ kind: 'field', field: item.field })}
-                  className={`w-full rounded-xl border p-4 text-left transition ${
-                    isActive
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border/60 bg-background hover:border-primary/60 hover:bg-primary/5'
-                  }`}
-                >
-                  <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">{item.label}</p>
-                  {isImageField(item.field) ? (
-                    <div className="mt-3 overflow-hidden rounded-xl border border-border/60 bg-background">
-                      {previewUrl ? (
-                        <div className="relative h-28 w-full">
-                          <Image
-                            src={previewUrl}
-                            alt={item.label}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex h-28 items-center justify-center text-xs text-foreground/50">
-                          No image selected
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-sm text-foreground">{buildSnippet(item.value)}</p>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {lessonEditor && (
-            <div className="space-y-3 border-t border-border/60 pt-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">{lessonEditor.label}</h3>
-                  {lessonEditor.description && <p className="text-xs text-foreground/60">{lessonEditor.description}</p>}
-                </div>
-                <Button variant="outline" size="sm" onClick={addLesson}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add
-                </Button>
-              </div>
-
-              {(draft.lessons ?? []).length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border/60 p-4 text-sm text-foreground/60">
-                  No lessons added yet.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {(draft.lessons ?? []).map((lesson, index) => {
-                    const isActive = selection?.kind === 'lesson' && selection.index === index;
-                    return (
-                      <button
-                        key={`lesson-item-${index}`}
-                        type="button"
-                        onClick={() => setSelection({ kind: 'lesson', index })}
-                        className={`w-full rounded-xl border p-4 text-left transition ${
-                          isActive
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border/60 bg-background hover:border-primary/60 hover:bg-primary/5'
-                        }`}
-                      >
-                        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">
-                          Lesson {lesson.num || String(index + 1).padStart(2, '0')}
-                        </p>
-                        <p className="mt-2 text-sm font-semibold text-foreground">{lesson.title || 'Untitled lesson'}</p>
-                        <p className="mt-1 text-sm text-foreground/70">{buildSnippet(lesson.description)}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {coreValuesEditor && (
-            <div className="space-y-3 border-t border-border/60 pt-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">{coreValuesEditor.label}</h3>
-                  {coreValuesEditor.description && <p className="text-xs text-foreground/60">{coreValuesEditor.description}</p>}
-                </div>
-                <Button variant="outline" size="sm" onClick={addCoreValue}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add
-                </Button>
-              </div>
-
-              {(draft.coreValues ?? []).length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border/60 p-4 text-sm text-foreground/60">
-                  No core values added yet.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {(draft.coreValues ?? []).map((coreValue, index) => {
-                    const isActive = selection?.kind === 'coreValue' && selection.index === index;
-                    return (
-                      <button
-                        key={`core-value-item-${index}`}
-                        type="button"
-                        onClick={() => setSelection({ kind: 'coreValue', index })}
-                        className={`w-full rounded-xl border p-4 text-left transition ${
-                          isActive
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border/60 bg-background hover:border-primary/60 hover:bg-primary/5'
-                        }`}
-                      >
-                        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">
-                          Core Value {index + 1}
-                        </p>
-                        <p className="mt-2 text-sm font-semibold text-foreground">{coreValue.name || 'Untitled core value'}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+          <DialogFooter className="gap-2 border-t border-border/70 bg-muted/20 px-6 py-4 sm:gap-0">
+            <Button type="button" onClick={closeEditorDialog}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

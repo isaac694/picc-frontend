@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { PROJECT_PAGE_IMAGES_UPLOAD_PREFIX } from '@/lib/project-page-images-upload';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
-import { useMediaUpload } from '@/hooks/use-media-upload';
-import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
-import { BookOpen, ImageIcon, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { BookOpen, ImageIcon, RefreshCw, Search, Trash2, UploadCloud } from 'lucide-react';
 
 const IMAGE_SECTIONS = [
   {
@@ -67,6 +66,38 @@ const getImageSearchText = (item: { key: string; label: string }, section: { tit
 
 const getDisplayImageLabel = (label: string) => label.replace('Hero Image', 'Hero Banner');
 
+/** Display URL in admin preview (backend `/uploads` or site static paths). */
+function resolvePreviewImageUrl(stored: string) {
+  if (!stored || stored === REMOVED_IMAGE_VALUE) return '';
+  const trimmed = stored.trim();
+  if (trimmed.startsWith(PROJECT_PAGE_IMAGES_UPLOAD_PREFIX)) return trimmed;
+  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  if (trimmed.startsWith('/')) return trimmed;
+  return apiUrl(`/${trimmed.replace(/^\/+/, '')}`);
+}
+
+/** Persist `/uploads/...` in site content (not full backend URL or Cloudinary). */
+function toPersistedImageUrl(stored: string) {
+  if (!stored || stored === REMOVED_IMAGE_VALUE) return stored;
+  const trimmed = stored.trim();
+  if (trimmed.startsWith(PROJECT_PAGE_IMAGES_UPLOAD_PREFIX) || trimmed.startsWith('/uploads/')) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.pathname.startsWith(PROJECT_PAGE_IMAGES_UPLOAD_PREFIX)) {
+      return parsed.pathname;
+    }
+    if (parsed.pathname.startsWith('/uploads/')) {
+      return parsed.pathname;
+    }
+  } catch {
+    // not an absolute URL
+  }
+  return trimmed;
+}
+
 export default function PageImagesAdminPage() {
   const {
     token,
@@ -76,10 +107,10 @@ export default function PageImagesAdminPage() {
     setEmail,
     setPassword,
     handleLogin,
+    handleLogout,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
-  const { runUpload, progress, uploading } = useMediaUpload();
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [savingImages, setSavingImages] = useState(false);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
@@ -89,6 +120,8 @@ export default function PageImagesAdminPage() {
   const [verseText, setVerseText] = useState('');
   const [verseReference, setVerseReference] = useState('');
   const [savingVerse, setSavingVerse] = useState(false);
+  const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null);
+  const [dragOverImageKey, setDragOverImageKey] = useState<string | null>(null);
 
   const updatePageImage = (key: string, value: string) => {
     setPageImages((prev) => ({ ...prev, [key]: value }));
@@ -117,19 +150,94 @@ export default function PageImagesAdminPage() {
     0,
   );
 
-  const uploadImage = async (file: File) => {
-    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
-      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+  const uploadImage = useCallback(async (file: File) => {
+    if (!token) return null;
+
+    const isImage =
+      file.type.startsWith('image/') ||
+      /\.(jpe?g|png|gif|webp|avif|heic|heif)$/i.test(file.name);
+
+    if (!isImage) {
+      setStatus('Please upload an image file.');
       return null;
     }
 
-    try {
-      const url = await runUpload(file, 'page-images');
-      return url.startsWith('http') ? url : apiUrl(url);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
+    if (file.size > 1024 * 1024) {
+      setStatus(
+        'Your image file size is too big. Please compress it first before re-uploading. Only pictures less than 1MB are allowed.',
+      );
       return null;
     }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('purpose', 'page-images');
+    try {
+      const response = await fetch('/api/uploads', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        setStatus(data?.error || 'Image upload failed.');
+        return null;
+      }
+      const data = (await response.json()) as { url?: string };
+      const path = typeof data.url === 'string' ? data.url.trim() : '';
+      if (!path.startsWith(PROJECT_PAGE_IMAGES_UPLOAD_PREFIX)) {
+        setStatus('Upload did not return a project uploads path.');
+        return null;
+      }
+      return path;
+    } catch {
+      setStatus('Image upload failed.');
+      return null;
+    }
+  }, [token]);
+
+  const applyUploadedFile = async (itemKey: string, file: File) => {
+    setUploadingImageKey(itemKey);
+    setStatus('');
+    try {
+      const path = await uploadImage(file);
+      if (!path) return;
+      updatePageImage(itemKey, path);
+      updateUploadName(`page-${itemKey}`, file.name);
+      setStatus('Image uploaded. Click Save Homepage Images to publish.');
+    } finally {
+      setUploadingImageKey(null);
+      setDragOverImageKey(null);
+    }
+  };
+
+  const handleImageDragOver = (event: DragEvent<HTMLDivElement>, itemKey: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverImageKey(itemKey);
+  };
+
+  const handleImageDragLeave = (event: DragEvent<HTMLDivElement>, itemKey: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const related = event.relatedTarget;
+    if (related instanceof Node && event.currentTarget.contains(related)) {
+      return;
+    }
+    if (dragOverImageKey === itemKey) {
+      setDragOverImageKey(null);
+    }
+  };
+
+  const handleImageDrop = (event: DragEvent<HTMLDivElement>, itemKey: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverImageKey(null);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    void applyUploadedFile(itemKey, file);
   };
 
   const loadHomeVerse = async () => {
@@ -212,7 +320,9 @@ export default function PageImagesAdminPage() {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
-              imageUrl: pageImages[item.key] || null,
+              imageUrl: pageImages[item.key]
+                ? toPersistedImageUrl(pageImages[item.key])
+                : null,
             }),
           })
         )
@@ -275,13 +385,13 @@ export default function PageImagesAdminPage() {
               return [key, ''] as const;
             }
             const data = await response.json();
-            const imageUrl = data.imageUrl === REMOVED_IMAGE_VALUE
-              ? REMOVED_IMAGE_VALUE
-              : data.imageUrl
-              ? data.imageUrl.startsWith('http')
-                ? data.imageUrl
-                : apiUrl(data.imageUrl)
-              : '';
+            const raw = typeof data.imageUrl === 'string' ? data.imageUrl : '';
+            const imageUrl =
+              raw === REMOVED_IMAGE_VALUE
+                ? REMOVED_IMAGE_VALUE
+                : raw
+                  ? toPersistedImageUrl(raw)
+                  : '';
             return [key, imageUrl] as const;
           } catch {
             return [key, ''] as const;
@@ -290,10 +400,10 @@ export default function PageImagesAdminPage() {
       );
 
       setPageImages(Object.fromEntries(imageEntries));
+      await loadHomeVerse();
     };
 
-    fetchImages();
-    void loadHomeVerse();
+    void fetchImages();
   }, [token]);
 
   if (!token) {
@@ -323,10 +433,12 @@ export default function PageImagesAdminPage() {
             Upload and manage homepage visuals.
           </p>
         </div>
+        <Button variant="outline" onClick={handleLogout}>
+          Log out
+        </Button>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
-      <MediaUploadProgress uploading={uploading} progress={progress} />
 
       <div className="rounded-[24px] border border-border/60 bg-card p-6 shadow-sm md:p-8">
         <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.7fr_0.8fr]">
@@ -494,8 +606,15 @@ export default function PageImagesAdminPage() {
                 {section.items.map((item) => {
                   const currentUrl = pageImages[item.key] || '';
                   const isRemoved = currentUrl === REMOVED_IMAGE_VALUE;
-                  const previewUrl = isRemoved ? '' : currentUrl || item.fallback;
+                  const previewUrl = isRemoved
+                    ? ''
+                    : currentUrl
+                      ? resolvePreviewImageUrl(currentUrl)
+                      : item.fallback;
                   const uploadInputId = `page-image-upload-${item.key}`;
+                  const isUploading = uploadingImageKey === item.key;
+                  const isDragOver = dragOverImageKey === item.key;
+                  const usesLocalUpload = currentUrl.startsWith(PROJECT_PAGE_IMAGES_UPLOAD_PREFIX);
                   return (
                     <div key={item.key} className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
                       <div className="mb-3 flex items-start justify-between gap-3">
@@ -504,41 +623,70 @@ export default function PageImagesAdminPage() {
                           <p className="mt-1 text-[11px] text-foreground/50">Homepage visual</p>
                         </div>
                         <span className="text-[10px] uppercase tracking-[0.2em] text-foreground/40">
-                          {isRemoved ? 'Removed' : currentUrl ? 'Custom' : 'Default'}
+                          {isRemoved ? 'Removed' : usesLocalUpload ? 'Uploaded' : currentUrl ? 'Custom' : 'Default'}
                         </span>
                       </div>
-                      {previewUrl ? (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onDragOver={(event) => handleImageDragOver(event, item.key)}
+                        onDragEnter={(event) => handleImageDragOver(event, item.key)}
+                        onDragLeave={(event) => handleImageDragLeave(event, item.key)}
+                        onDrop={(event) => handleImageDrop(event, item.key)}
+                        className={`relative h-40 overflow-hidden rounded-xl border-2 border-dashed transition ${
+                          isDragOver
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border/60 bg-background'
+                        } ${isUploading ? 'opacity-70' : ''}`}
+                      >
+                        {previewUrl ? (
+                          <div
+                            className="absolute inset-0 bg-cover bg-center"
+                            style={{ backgroundImage: `url(${previewUrl})` }}
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-sm text-foreground/50">
+                            {isRemoved ? 'Image removed' : 'No preview'}
+                          </div>
+                        )}
                         <div
-                          className="h-40 rounded-xl border border-border/60 bg-cover bg-center"
-                          style={{ backgroundImage: `url(${previewUrl})` }}
-                        />
-                      ) : (
-                        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border/80 bg-background text-sm text-foreground/50">
-                          Image removed
+                          className={`absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/45 px-4 text-center transition ${
+                            isDragOver || isUploading
+                              ? 'opacity-100'
+                              : 'opacity-0 hover:opacity-100 focus-within:opacity-100'
+                          }`}
+                        >
+                          <UploadCloud className="h-6 w-6 text-white" />
+                          <p className="text-xs font-medium text-white">
+                            {isUploading
+                              ? 'Uploading…'
+                              : isDragOver
+                                ? 'Drop image to upload'
+                                : 'Drag & drop an image here'}
+                          </p>
+                          <p className="text-[10px] text-white/80">Saved to public/uploads/page-images · max 1MB</p>
                         </div>
-                      )}
+                      </div>
                       <div className="mt-4 grid grid-cols-2 gap-3">
                         <input
                           id={uploadInputId}
                           type="file"
                           accept="image/*,.heic,.heif,.avif"
+                          disabled={isUploading}
                           onChange={async (event) => {
                             const file = event.target.files?.[0];
                             event.currentTarget.value = '';
                             if (!file) return;
-                            const url = await uploadImage(file);
-                            if (!url) return;
-                            updatePageImage(item.key, url);
-                            updateUploadName(`page-${item.key}`, file.name);
+                            await applyUploadedFile(item.key, file);
                           }}
                           className="sr-only"
                         />
                         <label
                           htmlFor={uploadInputId}
-                          className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-primary transition hover:bg-primary/5"
+                          className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-primary transition hover:bg-primary/5 ${isUploading ? 'pointer-events-none opacity-60' : ''}`}
                         >
-                          <RefreshCw className="h-4 w-4" />
-                          Replace
+                          <RefreshCw className={`h-4 w-4 ${isUploading ? 'animate-spin' : ''}`} />
+                          {isUploading ? 'Uploading…' : 'Replace'}
                         </label>
                         <Button
                           variant="outline"

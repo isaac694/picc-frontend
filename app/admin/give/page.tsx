@@ -5,8 +5,10 @@ import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
-import { toast } from 'sonner';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 
 const DEFAULT_GIVING_TYPES = [
   'First Fruit',
@@ -25,35 +27,16 @@ export default function AdminGivePage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [status, setStatus] = useState('');
   const [givingTypes, setGivingTypes] = useState<string[]>([]);
-  const [newType, setNewType] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingType, setEditingType] = useState('');
+  const [draftName, setDraftName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [savingAction, setSavingAction] = useState<string | null>(null);
-
-  const fetchGivingTypes = async () => {
-    setIsLoading(true);
-    try {
-      const response = await apiFetch('/api/giving-types');
-      if (response.ok) {
-        const data = await response.json();
-        const types = Array.isArray(data) ? data : data.types || [];
-        setGivingTypes(types.length > 0 ? types : DEFAULT_GIVING_TYPES);
-      } else {
-        setGivingTypes(DEFAULT_GIVING_TYPES);
-      }
-    } catch {
-      setStatus('Failed to fetch giving types.');
-      setGivingTypes(DEFAULT_GIVING_TYPES);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [saving, setSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const applyTypesResponse = async (response: Response, fallbackMessage: string) => {
     const data = await response.json().catch(() => null);
@@ -67,100 +50,84 @@ export default function AdminGivePage() {
     return true;
   };
 
-  const handleAddType = async () => {
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingIndex(null);
+    setDraftName('');
+  };
+
+  const openAddDialog = () => {
+    setEditingIndex(null);
+    setDraftName('');
+    setStatus('');
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (index: number) => {
+    setEditingIndex(index);
+    setDraftName(givingTypes[index] || '');
+    setStatus('');
+    setDialogOpen(true);
+  };
+
+  const handleSaveType = async () => {
     if (!token) return;
 
-    const name = newType.trim();
+    const name = draftName.trim();
     if (!name) {
       setStatus('Please enter a giving type.');
       return;
     }
 
-    if (givingTypes.some((type) => type.toLowerCase() === name.toLowerCase())) {
+    if (
+      givingTypes.some((type, index) => index !== editingIndex && type.toLowerCase() === name.toLowerCase())
+    ) {
       setStatus('This giving type already exists.');
       return;
     }
 
-    setSavingAction('add');
-    try {
-      const response = await apiFetch('/api/giving-types', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name }),
-      });
+    setSaving(true);
+    setStatus('');
 
-      if (await applyTypesResponse(response, 'Failed to add giving type.')) {
-        setNewType('');
-        setStatus('Giving type added.');
+    try {
+      if (editingIndex === null) {
+        const response = await apiFetch('/api/giving-types', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name }),
+        });
+        if (await applyTypesResponse(response, 'Failed to add giving type.')) {
+          closeDialog();
+          setStatus('Giving type added.');
+        }
+      } else {
+        const response = await apiFetch(`/api/giving-types/${editingIndex}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name }),
+        });
+        if (await applyTypesResponse(response, 'Failed to update giving type.')) {
+          closeDialog();
+          setStatus('Giving type updated.');
+        }
       }
     } catch {
-      setStatus('Failed to add giving type.');
+      setStatus(editingIndex === null ? 'Failed to add giving type.' : 'Failed to update giving type.');
     } finally {
-      setSavingAction(null);
-    }
-  };
-
-  const startEdit = (index: number) => {
-    setEditingIndex(index);
-    setEditingType(givingTypes[index] || '');
-    setStatus('');
-  };
-
-  const cancelEdit = () => {
-    setEditingIndex(null);
-    setEditingType('');
-    setStatus('');
-  };
-
-  const clearForm = () => {
-    setNewType('');
-    cancelEdit();
-  };
-
-  const handleUpdateType = async () => {
-    if (!token || editingIndex === null) return;
-
-    const name = editingType.trim();
-    if (!name) {
-      setStatus('Please enter a giving type.');
-      return;
-    }
-
-    if (givingTypes.some((type, index) => index !== editingIndex && type.toLowerCase() === name.toLowerCase())) {
-      setStatus('This giving type already exists.');
-      return;
-    }
-
-    setSavingAction(`edit-${editingIndex}`);
-    try {
-      const response = await apiFetch(`/api/giving-types/${editingIndex}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name }),
-      });
-
-      if (await applyTypesResponse(response, 'Failed to update giving type.')) {
-        setEditingIndex(null);
-        setEditingType('');
-        setStatus('Giving type updated.');
-      }
-    } catch {
-      setStatus('Failed to update giving type.');
-    } finally {
-      setSavingAction(null);
+      setSaving(false);
     }
   };
 
   const handleRemoveType = async (index: number) => {
     if (!token) return;
 
-    setSavingAction(`remove-${index}`);
+    setSaving(true);
     try {
       const response = await apiFetch(`/api/giving-types/${index}`, {
         method: 'DELETE',
@@ -168,39 +135,55 @@ export default function AdminGivePage() {
       });
 
       if (await applyTypesResponse(response, 'Failed to remove giving type.')) {
-        if (editingIndex === index) cancelEdit();
+        if (editingIndex === index) closeDialog();
         setStatus('Giving type removed.');
       }
     } catch {
       setStatus('Failed to remove giving type.');
     } finally {
-      setSavingAction(null);
+      setSaving(false);
     }
   };
 
   const requestRemoveType = (index: number) => {
     const type = givingTypes[index];
-    const toastId = toast(`Remove "${type}"?`, {
+    confirmDeleteToast({
+      title: `Remove "${type}"?`,
       description: 'This giving type will no longer appear on the public Give page.',
-      duration: Infinity,
-      action: {
-        label: 'Remove',
-        onClick: () => {
-          toast.dismiss(toastId);
-          void handleRemoveType(index);
-        },
-      },
-      cancel: {
-        label: 'Cancel',
-        onClick: () => toast.dismiss(toastId),
-      },
+      onConfirm: () => void handleRemoveType(index),
     });
   };
 
   useEffect(() => {
-    if (token) {
-      fetchGivingTypes();
-    }
+    if (!token) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      setIsLoading(true);
+      try {
+        const response = await apiFetch('/api/giving-types');
+        if (cancelled) return;
+        if (response.ok) {
+          const data = await response.json();
+          const types = Array.isArray(data) ? data : data.types || [];
+          setGivingTypes(types.length > 0 ? types : DEFAULT_GIVING_TYPES);
+        } else {
+          setGivingTypes(DEFAULT_GIVING_TYPES);
+        }
+      } catch {
+        if (!cancelled) {
+          setStatus('Failed to fetch giving types.');
+          setGivingTypes(DEFAULT_GIVING_TYPES);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   if (!token) {
@@ -220,134 +203,94 @@ export default function AdminGivePage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">
-            Admin
-          </p>
-          <h1 className="text-3xl font-semibold text-foreground md:text-5xl">
-            Give Page
-          </h1>
-          <p className="mt-3 max-w-2xl text-foreground/70">
-            Manage the giving types shown on the public Give form.
-          </p>
-        </div>
+          <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Admin</p>
+          <h1 className="text-3xl font-semibold text-foreground md:text-5xl">Give Page</h1>
+          <p className="mt-3 max-w-2xl text-foreground/70">Manage the giving types shown on the public Give form.</p>
+        </div>
+        <Button type="button" onClick={openAddDialog} className="shrink-0 gap-2">
+          <Plus className="h-4 w-4" />
+          Add type
+        </Button>
       </div>
 
-      {status && <p className="text-sm text-foreground/70">{status}</p>}
+      {status ? <p className="text-sm text-foreground/70">{status}</p> : null}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
-        <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">
-                {editingIndex === null ? 'Add Giving Type' : 'Edit Giving Type'}
-              </h2>
-              <p className="text-sm text-foreground/60">
-                {editingIndex === null
-                  ? 'Create a new giving type and publish it to the Give page.'
-                  : 'Update the selected giving type and save your changes.'}
-              </p>
-            </div>
-            {editingIndex !== null ? (
-              <Button variant="outline" onClick={clearForm} disabled={savingAction !== null}>
-                Clear selection
-              </Button>
-            ) : null}
-          </div>
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setEditingIndex(null);
+            setDraftName('');
+          }
+        }}
+        title={editingIndex === null ? 'Add giving type' : 'Edit giving type'}
+        description="Names appear in the dropdown on the public Give page."
+        saving={saving}
+        saveLabel={editingIndex === null ? 'Add type' : 'Save changes'}
+        onSave={() => void handleSaveType()}
+        onCancel={closeDialog}
+      >
+        <label htmlFor="giving-type-name" className="block text-sm font-medium text-foreground">
+          Giving type name
+        </label>
+        <Input
+          id="giving-type-name"
+          value={draftName}
+          onChange={(event) => setDraftName(event.target.value)}
+          placeholder="e.g., Building Fund"
+          className="mt-2"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              void handleSaveType();
+            }
+          }}
+        />
+      </SchoolAdminDialogShell>
 
-          <div className="space-y-3">
-            <label htmlFor="giving-type-name" className="block text-sm font-medium text-foreground">
-              Giving Type Name
-            </label>
-            <Input
-              id="giving-type-name"
-              value={editingIndex === null ? newType : editingType}
-              onChange={(event) => {
-                if (editingIndex === null) {
-                  setNewType(event.target.value);
-                } else {
-                  setEditingType(event.target.value);
-                }
-              }}
-              placeholder="e.g., Building Fund"
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  if (editingIndex === null) {
-                    void handleAddType();
-                  } else {
-                    void handleUpdateType();
-                  }
-                }
-                if (event.key === 'Escape' && editingIndex !== null) {
-                  clearForm();
-                }
-              }}
-            />
-          </div>
+      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Existing giving types</h2>
 
-          <div className="flex flex-wrap gap-3 border-t border-border/60 pt-4">
-            {editingIndex === null ? (
-              <Button onClick={handleAddType} disabled={!newType.trim() || savingAction !== null}>
-                {savingAction === 'add' ? 'Adding...' : 'Add Type'}
-              </Button>
-            ) : (
-              <>
-                <Button onClick={handleUpdateType} disabled={!editingType.trim() || savingAction !== null}>
-                  {savingAction === `edit-${editingIndex}` ? 'Saving...' : 'Save Type'}
-                </Button>
-                <Button variant="outline" onClick={clearForm} disabled={savingAction !== null}>
-                  Cancel
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">
-            Existing Giving Types
-          </h2>
-
-          {isLoading ? (
-            <p className="text-sm text-foreground/60">Loading giving types...</p>
-          ) : givingTypes.length > 0 ? (
-            <div className="max-h-[520px] space-y-3 overflow-y-auto pr-2">
-              {givingTypes.map((type, index) => (
-                <div
-                  key={`${type}-${index}`}
-                  className={`rounded-xl border bg-background px-4 py-3 transition ${
-                    editingIndex === index ? 'border-primary bg-primary/5' : 'border-border/60'
-                  }`}
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(index)}
-                      className="text-left text-sm font-semibold text-foreground"
-                    >
-                      {type}
-                    </button>
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" size="sm" onClick={() => startEdit(index)} disabled={savingAction !== null}>
-                        {editingIndex === index ? 'Editing' : 'Edit'}
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => requestRemoveType(index)}
-                        disabled={savingAction !== null || givingTypes.length <= 1}
-                      >
-                        {savingAction === `remove-${index}` ? 'Removing...' : 'Remove'}
-                      </Button>
-                    </div>
-                  </div>
+        {isLoading ? (
+          <p className="text-sm text-foreground/60">Loading giving types...</p>
+        ) : givingTypes.length > 0 ? (
+          <div className="max-h-[520px] space-y-3 overflow-y-auto pr-2">
+            {givingTypes.map((type, index) => (
+              <div
+                key={`${type}-${index}`}
+                className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
+              >
+                <p className="min-w-0 flex-1 text-sm font-semibold text-foreground">{type}</p>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Edit ${type}`}
+                    onClick={() => openEditDialog(index)}
+                    disabled={saving}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    aria-label={`Remove ${type}`}
+                    onClick={() => requestRemoveType(index)}
+                    disabled={saving || givingTypes.length <= 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-foreground/60">No giving types found.</p>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-foreground/60">No giving types found.</p>
+        )}
       </div>
     </div>
   );

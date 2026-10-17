@@ -42,7 +42,11 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/about-page': { title: 'About Page', subtitle: 'Update about page content.' },
   '/admin/contact': { title: 'Contact Page', subtitle: 'Manage contact page details.' },
   '/admin/media': { title: 'Media Page', subtitle: 'Manage media page content.' },
+  '/admin/store/dashboard': { title: 'Store dashboard', subtitle: 'Bookshop payment KPIs and recent sales.' },
+  '/admin/store/payments': { title: 'Book store payments', subtitle: 'All store PayChangu purchase records.' },
   '/admin/store': { title: 'Store Page', subtitle: 'Manage store content and products.' },
+  '/admin/giving/dashboard': { title: 'Giving dashboard', subtitle: 'Donation KPIs and recent giving activity.' },
+  '/admin/giving/payments': { title: 'Giving payments', subtitle: 'All giving and PayChangu donation records.' },
   '/admin/forms': { title: 'Forms Page', subtitle: 'Review submitted forms.' },
   '/admin/sermons': { title: 'Sermons Page', subtitle: 'Publish sermon content.' },
   '/admin/give': { title: 'Give Page', subtitle: 'Manage giving page content.' },
@@ -69,6 +73,10 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/about-page')) return ADMIN_PAGE.ABOUT_PAGE;
   if (path.startsWith('/admin/contact')) return ADMIN_PAGE.CONTACT_PAGE;
   if (path.startsWith('/admin/media')) return ADMIN_PAGE.MEDIA_PAGE;
+  if (path.startsWith('/admin/giving')) return ADMIN_PAGE.GIVE_PAGE;
+  if (path.startsWith('/admin/store/dashboard') || path.startsWith('/admin/store/payments')) {
+    return ADMIN_PAGE.STORE_PAGE;
+  }
   if (path.startsWith('/admin/store')) return ADMIN_PAGE.STORE_PAGE;
   if (path.startsWith('/admin/forms')) return ADMIN_PAGE.FORMS_PAGE;
   if (path.startsWith('/admin/sermons')) return ADMIN_PAGE.SERMONS_PAGE;
@@ -127,9 +135,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const isUsersPage = (pathname || '').startsWith('/admin/users');
   const isRolesPage = (pathname || '').startsWith('/admin/roles');
   const meta =
-    Object.entries(PAGE_META).find(([path]) =>
-      path === '/admin' ? pathname === path : pathname?.startsWith(path)
-    )?.[1] || { title: 'Admin Portal', subtitle: 'Manage PICC website content.' };
+    Object.entries(PAGE_META)
+      .filter(([path]) => (path === '/admin' ? pathname === path : pathname?.startsWith(path)))
+      .sort(([a], [b]) => b.length - a.length)[0]?.[1] || {
+      title: 'Admin Portal',
+      subtitle: 'Manage PICC website content.',
+    };
 
   const isAuthorized = (() => {
     if (isUsersPage) return canAccessRight(user, ADMIN_ACCESS_RIGHT.USER_LIST);

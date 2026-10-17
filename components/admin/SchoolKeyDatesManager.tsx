@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { SchoolAdminDialogShell, SchoolAdminStatusBanner } from '@/components/admin/school-admin-dialog-shell';
+import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 
 type KeyDateRecord = {
   id: string;
@@ -143,13 +144,17 @@ export default function SchoolKeyDatesManager({
 }) {
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [keyDates, setKeyDates] = useState<KeyDateRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingItem, setEditingItem] = useState<KeyDateRecord | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
 
   const baseUrl = useMemo(() => `/api/admin/schools/${encodeURIComponent(schoolKey)}/key-dates`, [schoolKey]);
+
+  const nextSortOrder = () =>
+    keyDates.length > 0 ? Math.max(...keyDates.map((d) => d.sortOrder)) + 1 : 0;
 
   const refresh = async () => {
     setIsLoading(true);
@@ -174,11 +179,24 @@ export default function SchoolKeyDatesManager({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial list fetch
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl, token]);
 
-  const handleEdit = (item: KeyDateRecord) => {
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingItem(null);
+    setDraft(EMPTY_DRAFT);
+  };
+
+  const openAddDialog = () => {
+    setEditingItem(null);
+    setDraft({ ...EMPTY_DRAFT, sortOrder: nextSortOrder() });
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (item: KeyDateRecord) => {
     const parsed = parseDateText(item.dateText);
     setEditingItem(item);
     setDraft({
@@ -188,14 +206,7 @@ export default function SchoolKeyDatesManager({
       isActive: item.isActive,
       sortOrder: item.sortOrder,
     });
-  };
-
-  const handleAddNew = () => {
-    setEditingItem(null);
-    setDraft({
-      ...EMPTY_DRAFT,
-      sortOrder: keyDates.length > 0 ? Math.max(...keyDates.map((d) => d.sortOrder)) + 1 : 0,
-    });
+    setDialogOpen(true);
   };
 
   const save = async () => {
@@ -210,7 +221,7 @@ export default function SchoolKeyDatesManager({
       return;
     }
 
-    setSavingId(editingItem ? editingItem.id : 'new');
+    setSaving(true);
     setStatus('');
 
     try {
@@ -236,13 +247,14 @@ export default function SchoolKeyDatesManager({
         return;
       }
 
+      const wasEdit = Boolean(editingItem);
+      closeDialog();
       await refresh();
-      handleAddNew();
-      setStatus(`Key date ${editingItem ? 'updated' : 'added'}.`);
+      setStatus(`Key date ${wasEdit ? 'updated' : 'added'}.`);
     } catch {
       setStatus(`Unable to ${editingItem ? 'update' : 'add'} key date.`);
     } finally {
-      setSavingId(null);
+      setSaving(false);
     }
   };
 
@@ -258,10 +270,7 @@ export default function SchoolKeyDatesManager({
         return;
       }
 
-      if (editingItem?.id === id) {
-        handleAddNew();
-      }
-
+      if (editingItem?.id === id) closeDialog();
       await refresh();
       setStatus('Key date deleted.');
     } catch {
@@ -270,20 +279,10 @@ export default function SchoolKeyDatesManager({
   };
 
   const requestRemove = (item: KeyDateRecord) => {
-    const toastId = toast('Delete this key date?', {
+    confirmDeleteToast({
+      title: 'Delete this key date?',
       description: item.label,
-      duration: Infinity,
-      action: {
-        label: 'Delete',
-        onClick: () => {
-          toast.dismiss(toastId);
-          void remove(item.id);
-        },
-      },
-      cancel: {
-        label: 'Cancel',
-        onClick: () => toast.dismiss(toastId),
-      },
+      onConfirm: () => void remove(item.id),
     });
   };
 
@@ -291,11 +290,60 @@ export default function SchoolKeyDatesManager({
     if (!searchTerm.trim()) return keyDates;
     const lower = searchTerm.toLowerCase();
     return keyDates.filter(
-      (item) =>
-        item.label.toLowerCase().includes(lower) ||
-        item.dateText.toLowerCase().includes(lower),
+      (item) => item.label.toLowerCase().includes(lower) || item.dateText.toLowerCase().includes(lower),
     );
   }, [keyDates, searchTerm]);
+
+  const formFields = (
+    <div className="space-y-4">
+      <div>
+        <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">Label *</label>
+        <input
+          type="text"
+          value={draft.label}
+          onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
+          placeholder="e.g., Entrance Exams"
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">Start date *</label>
+          <input
+            type="date"
+            value={draft.startDate}
+            onChange={(e) => setDraft((prev) => ({ ...prev, startDate: e.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">End date</label>
+          <input
+            type="date"
+            value={draft.endDate}
+            min={draft.startDate || undefined}
+            onChange={(e) => setDraft((prev) => ({ ...prev, endDate: e.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+      </div>
+      {draft.startDate ? (
+        <p className="text-xs text-foreground/60">Preview: {formatDateText(draft.startDate, draft.endDate)}</p>
+      ) : null}
+      <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/50 p-3">
+        <input
+          type="checkbox"
+          id="keydate-isActive"
+          checked={draft.isActive}
+          onChange={(e) => setDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
+          className="rounded border-border"
+        />
+        <label htmlFor="keydate-isActive" className="cursor-pointer text-sm font-medium text-foreground">
+          Active (visible on site)
+        </label>
+      </div>
+    </div>
+  );
 
   if (isLoading && keyDates.length === 0) {
     return (
@@ -307,164 +355,88 @@ export default function SchoolKeyDatesManager({
 
   return (
     <div className="space-y-6">
-      {status && (
-        <div
-          className={`rounded-xl p-4 text-sm ${
-            status.includes('Unable') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
-          }`}
-        >
-          {status}
-        </div>
-      )}
+      <SchoolAdminStatusBanner status={status} />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-6 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                {editingItem ? 'Update Key Date' : 'Add New Key Date'}
-              </h2>
-              <p className="mt-1 text-sm text-foreground/70">
-                {editingItem ? 'Update the details for this key date.' : 'Create a new key date entry for your school.'}
-              </p>
-            </div>
-            {editingItem && (
-              <Button variant="outline" onClick={handleAddNew}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Key Date
-              </Button>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
-                Label *
-              </label>
-              <input
-                type="text"
-                value={draft.label}
-                onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
-                placeholder="e.g., Entrance Exams"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
-                  Start Date *
-                </label>
-                <input
-                  type="date"
-                  value={draft.startDate}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, startDate: e.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={draft.endDate}
-                  min={draft.startDate || undefined}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, endDate: e.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            </div>
-
-            {draft.startDate && (
-              <p className="text-xs text-foreground/60">
-                Preview: {formatDateText(draft.startDate, draft.endDate)}
-              </p>
-            )}
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="self-end rounded-xl border border-border/60 bg-background/50 p-3 md:col-span-2">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={draft.isActive}
-                    onChange={(e) => setDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
-                    className="rounded border-border"
-                  />
-                  <label htmlFor="isActive" className="cursor-pointer text-sm font-medium text-foreground">
-                    Active (Visible on site)
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 border-t border-border/60 pt-4">
-              <Button onClick={save} disabled={savingId !== null} className="gap-2">
-                {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {editingItem ? 'Update Key Date' : 'Add Key Date'}
-              </Button>
-              {editingItem && (
-                <Button variant="destructive" onClick={() => requestRemove(editingItem)} className="gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-              )}
-              {(editingItem || draft.label || draft.startDate || draft.endDate) && (
-                <Button variant="outline" onClick={handleAddNew}>
-                  Cancel
-                </Button>
-              )}
-            </div>
-          </div>
+      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Current key dates</h2>
+          <Button type="button" className="gap-2 shrink-0" onClick={openAddDialog}>
+            <Plus className="h-4 w-4" />
+            Add key date
+          </Button>
         </div>
 
-        <div className="flex h-fit max-h-[800px] flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Current Key Dates</h2>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search key dates..."
+          className="mb-4 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-primary/20"
+        />
 
-          <div className="relative mb-4">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search key dates..."
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
-          <div className="custom-scrollbar space-y-3 overflow-y-auto pr-2">
-            {filteredDates.length === 0 ? (
-              <div className="rounded-xl border border-border/60 border-dashed py-12 text-center">
-                <p className="text-sm text-foreground/60">
-                  {searchTerm ? 'No key dates match your search.' : 'No key dates yet.'}
-                </p>
-              </div>
-            ) : (
-              filteredDates.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleEdit(item)}
-                  className={`w-full rounded-xl border p-4 text-left transition-all ${
-                    editingItem?.id === item.id
-                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                      : 'border-border/60 bg-background hover:border-primary/60'
-                  }`}
-                >
-                  <div className="mb-1 flex items-center justify-between gap-2">
+        {filteredDates.length === 0 ? (
+          <p className="py-8 text-center text-sm text-foreground/60">
+            {searchTerm ? 'No key dates match your search.' : 'No key dates yet.'}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {filteredDates.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
                     <h3 className="truncate text-sm font-semibold text-foreground">{item.label}</h3>
-                    {!item.isActive && (
-                      <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-destructive">
+                    {!item.isActive ? (
+                      <span className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-destructive">
                         Inactive
                       </span>
-                    )}
+                    ) : null}
                   </div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-primary">{item.dateText}</p>
-                </button>
-              ))
-            )}
+                  <p className="mt-1 text-xs font-bold uppercase tracking-wider text-primary">{item.dateText}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button type="button" size="icon" variant="ghost" aria-label={`Edit ${item.label}`} onClick={() => openEditDialog(item)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    aria-label={`Delete ${item.label}`}
+                    onClick={() => requestRemove(item)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
+
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setEditingItem(null);
+            setDraft(EMPTY_DRAFT);
+          }
+        }}
+        title={editingItem ? 'Edit key date' : 'Add key date'}
+        description={
+          editingItem ? 'Update this key date for your school.' : 'Create a new key date entry for your school.'
+        }
+        saving={saving}
+        saveLabel={editingItem ? 'Save changes' : 'Add key date'}
+        onSave={() => void save()}
+        onCancel={closeDialog}
+      >
+        {formFields}
+      </SchoolAdminDialogShell>
     </div>
   );
 }

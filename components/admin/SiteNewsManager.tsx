@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { Loader2, Save, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
@@ -90,12 +91,35 @@ export default function SiteNewsManager({
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [uploadName, setUploadName] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { runUpload, progress, uploading } = useMediaUpload();
 
   const resetDraft = () => {
     setDraft(emptyDraft);
     setEditingId(null);
     setUploadName('');
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    resetDraft();
+  };
+
+  const openAddDialog = () => {
+    if (typeof maxItems === 'number' && items.length >= maxItems) {
+      setStatus(`Only ${maxItems} news items can be shown on this page. Delete one before adding another.`);
+      return;
+    }
+    resetDraft();
+    setStatus('');
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (item: EditableNewsItem) => {
+    edit(item);
+    setStatus('');
+    setDialogOpen(true);
   };
 
   const saveAll = async (nextItems: EditableNewsItem[]) => {
@@ -186,7 +210,9 @@ export default function SiteNewsManager({
       return;
     }
 
+    setSaving(true);
     setStatus('');
+    const wasEdit = Boolean(editingId && !editingId.startsWith('fallback-'));
     const nextItem: EditableNewsItem = {
       id: editingId && !editingId.startsWith('fallback-') ? editingId : newId(),
       ...draft,
@@ -201,14 +227,18 @@ export default function SiteNewsManager({
         ? items.map((item) => (item.id === editingId ? nextItem : item))
         : [...items.filter((item) => item.id !== editingId), nextItem];
 
-    const ok = await saveAll(nextItems);
-    if (!ok) {
-      setStatus(editingId ? 'Unable to update news.' : 'Unable to add news.');
-      return;
+    try {
+      const ok = await saveAll(nextItems);
+      if (!ok) {
+        setStatus(wasEdit ? 'Unable to update news.' : 'Unable to add news.');
+        return;
+      }
+      setItems(nextItems);
+      closeDialog();
+      setStatus(wasEdit ? 'News updated.' : 'News added.');
+    } finally {
+      setSaving(false);
     }
-    setItems(nextItems);
-    resetDraft();
-    setStatus(editingId ? 'News updated.' : 'News added.');
   };
 
   const remove = async (item: EditableNewsItem) => {
@@ -219,7 +249,7 @@ export default function SiteNewsManager({
       return;
     }
     setItems(nextItems);
-    if (editingId === item.id) resetDraft();
+    if (editingId === item.id) closeDialog();
     setStatus('News deleted.');
   };
 
@@ -239,35 +269,11 @@ export default function SiteNewsManager({
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-foreground">{title}</h2>
-        <p className="mt-1 text-sm text-foreground/70">{description}</p>
-      </div>
-      {status ? (
-        <div className={`rounded-xl p-4 text-sm ${status.includes('Unable') || status.includes('Please') || status.includes('Only') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
-          {status}
-        </div>
-      ) : null}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
-        <div className="space-y-5 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-                  <h3 className="text-lg font-semibold text-foreground">{editingId ? 'Edit News Item' : 'Create News Item'}</h3>
-                  <p className="text-sm text-foreground/60">{imageHelpText}</p>
-                  {typeof maxItems === 'number' ? (
-                    <p className={`mt-2 text-xs font-semibold ${items.length >= maxItems ? 'text-destructive' : 'text-primary'}`}>
-                      {Math.min(items.length, maxItems)} / {maxItems} news items used. {items.length >= maxItems ? 'Delete one before adding another.' : `Up to ${maxItems} news items can be shown.`}
-                    </p>
-                  ) : null}
-                </div>
-                {editingId ? (
-              <Button variant="outline" onClick={resetDraft} disabled={typeof maxItems === 'number' && items.length >= maxItems}>
-                New Item
-              </Button>
-            ) : null}
-          </div>
+  const limitReached = typeof maxItems === 'number' && items.length >= maxItems;
+
+  const newsFormFields = (
+    <div className="space-y-5">
+          <p className="text-sm text-foreground/60">{imageHelpText}</p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[0.8fr_1fr_1.4fr]">
             <input
               type="text"
@@ -343,23 +349,57 @@ export default function SiteNewsManager({
               )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-3 border-t border-border/60 pt-4">
-            <Button onClick={save} className="gap-2" disabled={!editingId && typeof maxItems === 'number' && items.length >= maxItems}>
-              <Save className="h-4 w-4" />
-              {editingId ? 'Save News Item' : 'Add News Item'}
-            </Button>
-            <Button variant="outline" onClick={resetDraft}>
-              Clear
-            </Button>
-          </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+          <p className="mt-1 text-sm text-foreground/70">{description}</p>
+          {typeof maxItems === 'number' ? (
+            <p className={`mt-2 text-xs font-semibold ${limitReached ? 'text-destructive' : 'text-primary'}`}>
+              {Math.min(items.length, maxItems)} / {maxItems} news items used.{' '}
+              {limitReached ? 'Delete one before adding another.' : `Up to ${maxItems} news items can be shown.`}
+            </p>
+          ) : null}
         </div>
-        <div className="h-fit max-h-[780px] space-y-3 overflow-y-auto rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-foreground">Current News</h3>
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className={`rounded-2xl border p-4 transition ${editingId === item.id ? 'border-primary bg-primary/5' : 'border-border/60 bg-background'}`}
-            >
+        <Button type="button" onClick={openAddDialog} disabled={limitReached} className="shrink-0 gap-2">
+          <Plus className="h-4 w-4" />
+          Add news
+        </Button>
+      </div>
+      {status ? (
+        <div
+          className={`rounded-xl p-4 text-sm ${status.includes('Unable') || status.includes('Please') || status.includes('Only') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}
+        >
+          {status}
+        </div>
+      ) : null}
+
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) resetDraft();
+        }}
+        title={editingId ? 'Edit news item' : 'Add news item'}
+        description={imageHelpText}
+        saving={saving}
+        saveLabel={editingId ? 'Save changes' : 'Add news'}
+        onSave={() => void save()}
+        onCancel={closeDialog}
+        maxWidthClass="sm:max-w-2xl"
+      >
+        {newsFormFields}
+      </SchoolAdminDialogShell>
+
+      <div className="max-h-[780px] space-y-3 overflow-y-auto rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-foreground">Current news</h3>
+        {items.map((item) => (
+          <div key={item.id} className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4">
+            <div className="min-w-0 flex-1">
               {item.imageUrl ? (
                 <div className="relative mb-3 h-28 overflow-hidden rounded-lg border border-border/60">
                   <Image src={toPreviewUrl(item.imageUrl)} alt={item.title} fill className="object-cover" unoptimized />
@@ -370,18 +410,30 @@ export default function SiteNewsManager({
               </p>
               <p className="mt-2 text-sm font-semibold text-foreground">{item.title || 'Untitled news item'}</p>
               {item.description ? <p className="mt-2 line-clamp-2 text-xs text-foreground/60">{item.description}</p> : null}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => edit(item)}>
-                  {editingId === item.id ? 'Editing' : 'Edit'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => requestRemove(item)} className="gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-              </div>
             </div>
-          ))}
-        </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label={`Edit ${item.title || 'news item'}`}
+                onClick={() => openEditDialog(item)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                aria-label={`Delete ${item.title || 'news item'}`}
+                onClick={() => requestRemove(item)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -8,6 +8,8 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   getDateTimeInputValueInMalawi,
   getTomorrowDateInputValueInMalawi,
@@ -80,6 +82,7 @@ export default function ConfessionsAdminPage() {
   const [pendingPublishAt, setPendingPublishAt] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<string | null>(null);
   const [pendingTime, setPendingTime] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const hasExistingConfession = Boolean(confessionId);
 
@@ -241,6 +244,7 @@ export default function ConfessionsAdminPage() {
       }
 
       setSuccessStatus('Confession saved.');
+      setDialogOpen(false);
     } catch {
       setErrorStatus('Unable to save confession. Please try again.');
     } finally {
@@ -248,12 +252,42 @@ export default function ConfessionsAdminPage() {
     }
   };
 
-  const requestDeleteConfirmation = () => {
-    if (!confessionId) return;
+  const openNewDialog = () => {
+    setDate(getTomorrowDateInputValueInMalawi());
+    setPublishTime('01:00');
+    setConfessionId(null);
+    setTitle('');
+    setImageUrl('');
+    setUploadName('');
+    clearStatus();
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (confession: ConfessionRecord) => {
+    clearStatus();
+    const malawiDateTime = getDateTimeInputValueInMalawi(confession.publishAt);
+    if (malawiDateTime) {
+      setDate(malawiDateTime.date);
+      setPublishTime(malawiDateTime.time);
+    } else {
+      setDate(confession.publishAt.slice(0, 10));
+    }
+    setConfessionId(confession.id);
+    setTitle(confession.title || '');
+    setImageUrl(confession.imageUrl);
+    setUploadName('');
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+  };
+
+  const requestDeleteConfirmation = (deleteId: string, labelDate?: string) => {
     confirmDeleteToast({
       title: 'Delete this confession?',
-      description: date ? `Confession for ${date}` : 'This confession will be permanently removed.',
-      onConfirm: () => handleConfirmDelete(confessionId),
+      description: labelDate ? `Confession for ${labelDate}` : 'This confession will be permanently removed.',
+      onConfirm: () => handleConfirmDelete(deleteId),
     });
   };
 
@@ -283,6 +317,7 @@ export default function ConfessionsAdminPage() {
       setImageUrl('');
       setUploadName('');
       setSuccessStatus('Confession deleted.');
+      setDialogOpen(false);
     } catch {
       setErrorStatus('Unable to delete confession. Please try again.');
     } finally {
@@ -317,6 +352,10 @@ export default function ConfessionsAdminPage() {
             Upload and schedule daily confession declarations.
           </p>
         </div>
+        <Button type="button" onClick={openNewDialog} className="gap-2 shrink-0">
+          <Plus className="h-4 w-4" />
+          Add confession
+        </Button>
       </div>
 
       {status && (
@@ -325,13 +364,23 @@ export default function ConfessionsAdminPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-6">
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-5">
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+        }}
+        title={hasExistingConfession ? 'Edit confession' : 'Add confession'}
+        description="Upload and schedule a daily confession declaration."
+        saving={loading}
+        saveLabel={hasExistingConfession ? 'Save confession' : 'Post confession'}
+        onSave={requestPostConfirmation}
+        onCancel={closeDialog}
+        maxWidthClass="sm:max-w-2xl"
+      >
+        <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Date
-              </label>
+              <label className="block text-sm font-medium text-foreground mb-2">Date</label>
               <input
                 type="date"
                 value={date}
@@ -340,9 +389,7 @@ export default function ConfessionsAdminPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Publish Time
-              </label>
+              <label className="block text-sm font-medium text-foreground mb-2">Publish Time</label>
               <input
                 type="time"
                 value={publishTime}
@@ -351,11 +398,8 @@ export default function ConfessionsAdminPage() {
               />
             </div>
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Title
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-2">Title</label>
             <input
               type="text"
               value={title}
@@ -364,11 +408,8 @@ export default function ConfessionsAdminPage() {
               placeholder="Confession title (optional)"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Upload Confession Image
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-2">Upload Confession Image</label>
             <input
               type="file"
               accept="image/*,.heic,.heif,.avif"
@@ -385,91 +426,92 @@ export default function ConfessionsAdminPage() {
             />
             <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
             {uploadName ? (
-              <p className="mt-2 text-xs text-foreground/60">
-                Selected: {uploadName}
-              </p>
-            ) : null}
-            {imageUrl ? (
-              <p className="mt-2 text-xs text-foreground/60 break-all">
-                Image URL: {imageUrl}
-              </p>
+              <p className="mt-2 text-xs text-foreground/60">Selected: {uploadName}</p>
             ) : null}
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={requestPostConfirmation} disabled={loading}>
-              {loading ? 'Saving...' : hasExistingConfession ? 'Save Confession' : 'Post Confession'}
-            </Button>
+          {hasExistingConfession ? (
             <Button
+              type="button"
               variant="destructive"
-              onClick={requestDeleteConfirmation}
-              disabled={loading || !hasExistingConfession}
-            >
-              Delete
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setImageUrl('');
-                setUploadName('');
-              }}
+              className="gap-2"
+              onClick={() => requestDeleteConfirmation(confessionId!)}
               disabled={loading}
             >
-              Clear Image
+              <Trash2 className="h-4 w-4" />
+              Delete confession
             </Button>
-          </div>
+          ) : null}
         </div>
+      </SchoolAdminDialogShell>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Recent Confessions
-          </h2>
+      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Recent Confessions</h2>
+        <div className="mb-4">
+          <input
+            type="search"
+            value={confessionSearch}
+            onChange={(e) => setConfessionSearch(e.target.value)}
+            placeholder="Search by title or date..."
+            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-foreground/40"
+          />
+        </div>
+        {allConfessions.length === 0 ? (
+          <p className="text-sm text-foreground/60">No confessions yet.</p>
+        ) : (() => {
+          const query = confessionSearch.trim().toLowerCase();
+          const filtered = query
+            ? allConfessions.filter(
+                (c) =>
+                  c.publishAt.slice(0, 10).includes(query) ||
+                  (c.title || '').toLowerCase().includes(query),
+              )
+            : allConfessions;
 
-          <div className="mb-4">
-            <input
-              type="search"
-              value={confessionSearch}
-              onChange={(e) => setConfessionSearch(e.target.value)}
-              placeholder="Search by title or date..."
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-foreground/40"
-            />
-          </div>
-
-          {allConfessions.length === 0 ? (
-            <p className="text-sm text-foreground/60">No confessions yet.</p>
-          ) : (() => {
-            const query = confessionSearch.trim().toLowerCase();
-            const filtered = query
-              ? allConfessions.filter(
-                  (c) =>
-                    c.publishAt.slice(0, 10).includes(query) ||
-                    (c.title || '').toLowerCase().includes(query)
-                )
-              : allConfessions;
-
-            return filtered.length === 0 ? (
-              <p className="text-sm text-foreground/60">No confessions match your search.</p>
-            ) : (
-              <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
-                {filtered.map((confession) => (
-                  <button
-                    key={confession.id}
-                    type="button"
-                    onClick={() => setDate(confession.publishAt.slice(0, 10))}
-                    className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-left hover:border-primary/60 transition"
-                  >
+          return filtered.length === 0 ? (
+            <p className="text-sm text-foreground/60">No confessions match your search.</p>
+          ) : (
+            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
+              {filtered.map((confession) => (
+                <div
+                  key={confession.id}
+                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
                       {confession.publishAt.slice(0, 10)}
                     </p>
-                    <p className="text-sm font-semibold text-foreground mt-1">
+                    <p className="mt-1 text-sm font-semibold text-foreground truncate">
                       {confession.title || 'Daily Confession'}
                     </p>
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Edit confession for ${confession.publishAt.slice(0, 10)}`}
+                      onClick={() => openEditDialog(confession)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete confession for ${confession.publishAt.slice(0, 10)}`}
+                      onClick={() =>
+                        requestDeleteConfirmation(confession.id, confession.publishAt.slice(0, 10))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       <AlertDialog

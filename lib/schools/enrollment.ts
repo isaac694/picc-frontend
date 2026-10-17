@@ -44,6 +44,7 @@ export function isIntakeOpen(intake: IntakeWindow, now = new Date()): boolean {
 export function upcomingIntakes(intakes: IntakeWindow[], now = new Date()): IntakeWindow[] {
   return intakes
     .filter((intake) => {
+      if (intake.isActive === false) return false;
       const opens = parseDate(intake.opensOn);
       if (!opens) return false;
       return opens > now;

@@ -28,6 +28,8 @@ import {
   Sun,
   Users,
   Video,
+  Wallet,
+  Receipt,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ADMIN_ACCESS_RIGHT, ADMIN_PAGE, canAccessAdminPage, canAccessMinistry, canAccessRight } from '@/lib/admin-pages';
@@ -62,6 +64,13 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Discipleship', href: '/admin/schools/discipleship', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT, icon: School },
   { label: 'PICC Secondary', href: '/admin/schools/picc-secondary', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT, icon: School },
   { label: 'Live Chat Archive', href: '/admin/livechat', pageKey: ADMIN_PAGE.LIVECHAT, icon: MessageSquareText },
+];
+
+const PAYMENTS_ITEMS: NavItem[] = [
+  { label: 'Giving dashboard', href: '/admin/giving/dashboard', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Wallet },
+  { label: 'Giving payments', href: '/admin/giving/payments', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Receipt },
+  { label: 'Store dashboard', href: '/admin/store/dashboard', pageKey: ADMIN_PAGE.STORE_PAGE, icon: LayoutDashboard },
+  { label: 'Book store payments', href: '/admin/store/payments', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
 ];
 
 const SITE_PAGE_ITEMS: NavItem[] = [
@@ -155,6 +164,8 @@ export default function AdminSidebar() {
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === href;
     if (href === '/admin/hr') return pathname === href || Boolean(pathname?.startsWith('/admin/hr/applications'));
+    if (href === '/admin/store') return pathname === href;
+    if (href === '/admin/give') return pathname === href;
     return pathname?.startsWith(href);
   };
 
@@ -166,6 +177,7 @@ export default function AdminSidebar() {
       return {
         nav: [{ label: 'Admin Hub', href: '/admin', icon: LayoutDashboard }],
         site: [] as NavItem[],
+        payments: [] as NavItem[],
         settings: [] as NavItem[],
         ministries: [] as NavItem[],
         showArchives: false,
@@ -179,6 +191,7 @@ export default function AdminSidebar() {
 
     const nav = NAV_ITEMS.filter(canSee);
     const site = SITE_PAGE_ITEMS.filter(canSee);
+    const payments = PAYMENTS_ITEMS.filter(canSee);
 
     const settings: NavItem[] = [];
 
@@ -193,6 +206,7 @@ export default function AdminSidebar() {
     return {
       nav,
       site,
+      payments,
       settings,
       ministries: MINISTRIES_ITEMS.filter((item) => canAccessMinistry(user, item.ministryKey)),
       showArchives: user.role === 'SUPER_ADMIN' || Boolean(user.isSystem),
@@ -248,6 +262,7 @@ export default function AdminSidebar() {
           </button>
         ) : null}
         <SidebarSection title="Main" items={filtered.nav} isActive={isActive} collapsed={collapsed} />
+        <SidebarSection title="Payments" items={filtered.payments} isActive={isActive} collapsed={collapsed} />
         <SidebarSection title="Settings" items={filtered.settings} isActive={isActive} collapsed={collapsed} />
         <SidebarSection title="Site Pages" items={filtered.site} isActive={isActive} collapsed={collapsed} />
         <SidebarSection title="Ministries" items={filtered.ministries} isActive={isActive} collapsed={collapsed} />

@@ -28,6 +28,7 @@ const projectRoot = process.cwd();
 
 const nextConfig = {
   outputFileTracingRoot: projectRoot,
+  transpilePackages: ["paychangu-js"],
   turbopack: {
     root: projectRoot,
   },
@@ -77,14 +78,25 @@ const nextConfig = {
     ],
   },
   async headers() {
+    const paychanguFrameHosts =
+      "https://in.paychangu.com https://*.paychangu.com https://paychangu.com https://checkout.paychangu.com";
     return [
+      {
+        source: "/paychangu/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: `frame-ancestors 'self' ${paychanguFrameHosts};`,
+          },
+        ],
+      },
       {
         source: "/(.*)",
         headers: [
           {
             key: "Content-Security-Policy",
             value:
-              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://www.google.com https://www.podbean.com https://*.podbean.com;",
+              `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://www.google.com https://www.podbean.com https://*.podbean.com ${paychanguFrameHosts};`,
           },
         ],
       },

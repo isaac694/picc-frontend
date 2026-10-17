@@ -15,6 +15,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { bookGenres, products, type Product } from '@/components/data/products';
 import { apiFetch } from '@/lib/api';
+import {
+  openStorePaychanguPopup,
+  PAYCHANGU_CHECKOUT_METHOD,
+  resolveStoreOrderReference,
+} from '@/lib/store-paychangu-checkout';
 
 type StoreUser = {
   id: string;
@@ -92,7 +97,6 @@ export default function StorePage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'checkout' | 'success'>('cart');
   const [cartMode, setCartMode] = useState<'hard' | 'soft'>('hard');
-  const [paymentMethod, setPaymentMethod] = useState('');
   const [storeToken, setStoreToken] = useState<string | null>(null);
   const [storeUser, setStoreUser] = useState<StoreUser | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
@@ -420,12 +424,16 @@ export default function StorePage() {
 
       if (pendingSoftCopyBook) {
         addSoftCopyToCart(pendingSoftCopyBook);
-        router.push('/store/checkout');
+        setPendingSoftCopyBook(null);
+        setCartMode('soft');
+        setIsCartOpen(true);
+        setCheckoutStep('checkout');
         return;
       }
 
       if (cartMode === 'soft' && digitalCart.length > 0) {
-        router.push('/store/checkout');
+        setIsCartOpen(true);
+        setCheckoutStep('checkout');
         return;
       }
 
@@ -458,17 +466,17 @@ export default function StorePage() {
   };
 
   const completeDigitalCheckout = async () => {
-    const checkoutItems = cartMode === 'soft' ? digitalCart : cart;
+    const isSoftCopy = cartMode === 'soft';
+    const checkoutItems = isSoftCopy ? digitalCart : cart;
 
-    if (cartMode === 'soft') {
-      if (!storeToken || !storeUser) {
-        setPendingSoftCopyBook(null);
-        setAuthMode('signin');
-        setIsAuthOpen(true);
-        return;
-      }
+    if (isSoftCopy && (!storeToken || !storeUser)) {
+      setAuthMode('signin');
+      setIsAuthOpen(true);
+      return;
+    }
 
-      router.push('/store/checkout');
+    if (checkoutItems.length === 0) {
+      setCheckoutError('Your cart is empty.');
       return;
     }
 
@@ -481,20 +489,26 @@ export default function StorePage() {
       const checkoutHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
       };
+      if (storeToken) {
+        checkoutHeaders.Authorization = `Bearer ${storeToken}`;
+      }
+
+      const orderTotal = isSoftCopy ? digitalCartTotal : cartTotal;
+
       const response = await apiFetch('/api/store/purchases', {
         method: 'POST',
         headers: checkoutHeaders,
         body: JSON.stringify({
-          paymentMethod,
+          paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
           phone: checkoutPhone,
           phoneCountry: '+265',
-          format: 'hard',
+          format: isSoftCopy ? 'soft' : 'hard',
           customerEmail: checkoutEmail,
           cartToken,
           items: checkoutItems.map((item) => ({
             product: item.product,
             quantity: item.quantity,
-            price: item.product.price,
+            price: isSoftCopy ? getSoftCopyPrice(item.product) : item.product.price,
             currency: 'MWK',
           })),
         }),
@@ -503,20 +517,34 @@ export default function StorePage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        setCheckoutError(data?.error || 'Unable to save this digital order.');
+        setCheckoutError(data?.error || 'Unable to save this order.');
         return;
       }
 
-      const purchases = Array.isArray(data?.purchases) ? data.purchases.map(mapStorePurchase) : [];
-      setPaymentChargeId(String(data?.chargeId || data?.payment?.chargeId || ''));
+      const orderReference = resolveStoreOrderReference(data as Record<string, unknown>);
+      setPaymentChargeId(orderReference);
       setCheckoutBankTransfer(data?.payment?.bankTransfer || null);
-      if (data?.payment?.checkoutUrl) {
-        window.location.href = data.payment.checkoutUrl;
-        return;
+
+      await openStorePaychanguPopup({
+        orderReference,
+        amount: orderTotal,
+        email: checkoutEmail.trim(),
+        customerName: storeUser?.name || checkoutEmail,
+        phone: checkoutPhone,
+        reason: isSoftCopy ? 'Hope Stores — soft copy' : 'Hope Stores — hard copy',
+        returnPath: '/store',
+        format: isSoftCopy ? 'soft' : 'hard',
+      });
+
+      if (isSoftCopy) {
+        setDigitalCart([]);
       }
+
       setCheckoutStep('success');
-    } catch {
-      setCheckoutError('Unable to start the store payment right now.');
+    } catch (checkoutError) {
+      setCheckoutError(
+        checkoutError instanceof Error ? checkoutError.message : 'Unable to start the store payment right now.',
+      );
     } finally {
       setIsDigitalCheckoutSubmitting(false);
     }
@@ -1553,20 +1581,22 @@ export default function StorePage() {
                         <p className="mt-1 text-xs text-black/50">{activeCartLabel} order</p>
                       </div>
 
-                      <div className="p-4 border border-black/10 rounded-xl space-y-3">
-                        <h3 className="font-bold flex items-center gap-2">
-                          <Building2 className="w-4 h-4" /> Bank Account Details
-                        </h3>
-                        <div className="text-sm space-y-1">
-                          <div className="flex justify-between gap-4"><span className="text-black/50">Bank:</span> <span className="font-medium">National Bank</span></div>
-                          <div className="flex justify-between gap-4"><span className="text-black/50">Account Name:</span> <span className="text-right font-medium">PICC AUDITORIUM</span></div>
-                          <div className="flex justify-between gap-4"><span className="text-black/50">Account Number:</span> <span className="font-medium">1008844948</span></div>
-                          <div className="flex justify-between gap-4"><span className="text-black/50">Branch:</span> <span className="font-medium">Capital City</span></div>
+                      {cartMode === 'hard' && (
+                        <div className="p-4 border border-black/10 rounded-xl space-y-3">
+                          <h3 className="font-bold flex items-center gap-2">
+                            <Building2 className="w-4 h-4" /> Bank transfer (optional)
+                          </h3>
+                          <div className="text-sm space-y-1">
+                            <div className="flex justify-between gap-4"><span className="text-black/50">Bank:</span> <span className="font-medium">National Bank</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-black/50">Account Name:</span> <span className="text-right font-medium">PICC AUDITORIUM</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-black/50">Account Number:</span> <span className="font-medium">1008844948</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-black/50">Branch:</span> <span className="font-medium">Capital City</span></div>
+                          </div>
+                          <p className="text-[10px] bg-black text-white p-2 rounded text-center font-bold">
+                            Or pay online below with PayChangu
+                          </p>
                         </div>
-                        <p className="text-[10px] bg-black text-white p-2 rounded text-center font-bold">
-                          IMPORTANT: INCLUDE YOUR NAME IN THE DESCRIPTION
-                        </p>
-                      </div>
+                      )}
 
                       {cartMode === 'soft' && (
                         <div className="rounded-xl border border-[#1688b4]/25 bg-[#e9f6fb] p-4 text-sm leading-6 text-slate-800">
@@ -1610,21 +1640,17 @@ export default function StorePage() {
                         </div>
                       </div>
 
-                      <div>
-                        <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-black/40">Select Payment Method</h3>
-                        <div className="space-y-2">
-                          {['Airtel Money', 'TNM Mpamba', 'Bank Transfer'].map(m => (
-                            <label key={m} className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === m ? 'border-black bg-black/5' : 'border-black/10'}`}>
-                              <input type="radio" checked={paymentMethod === m} onChange={() => setPaymentMethod(m)} className="mr-3" />
-                              <span className="text-sm font-medium">{m}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+                      <p className="rounded-lg border border-black/10 bg-black/[0.03] px-3 py-3 text-sm leading-6 text-black/70">
+                        Pay with PayChangu to choose Airtel Money, TNM Mpamba, bank transfer, or card in the checkout window.
+                      </p>
 
                       <div className="flex gap-2 pt-1">
                         <Button variant="outline" onClick={() => setCheckoutStep('cart')}>Back</Button>
-                        <Button className="flex-1" disabled={!paymentMethod || !checkoutPhone.trim() || !checkoutEmail.trim() || isDigitalCheckoutSubmitting} onClick={completeDigitalCheckout}>
+                        <Button
+                          className="flex-1"
+                          disabled={!checkoutPhone.trim() || !checkoutEmail.trim() || isDigitalCheckoutSubmitting}
+                          onClick={completeDigitalCheckout}
+                        >
                           {isDigitalCheckoutSubmitting ? 'Processing...' : 'Pay with PayChangu'}
                         </Button>
                       </div>
@@ -1637,9 +1663,10 @@ export default function StorePage() {
                         <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
                         <h3 className="text-xl font-bold mb-2">Order Submitted!</h3>
                         <p className="text-sm text-black/60">
+                          Complete your payment in the PayChangu window.
                           {cartMode === 'soft'
-                            ? 'Please complete your PayChangu payment. Your soft copy will unlock automatically after confirmation.'
-                            : 'Please complete your PayChangu payment. We will organize collection after confirmation.'}
+                            ? ' Your soft copy will unlock after confirmation.'
+                            : ' We will organize collection after confirmation.'}
                         </p>
                       </div>
 

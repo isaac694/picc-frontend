@@ -13,7 +13,7 @@ export default function ServicesAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   if (!token) {
@@ -31,18 +31,14 @@ export default function ServicesAdminPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
-            Admin
-          </p>
-          <h1 className="text-3xl md:text-5xl font-semibold text-foreground">
-            Service Times
-          </h1>
-          <p className="text-foreground/70 mt-3 max-w-2xl">
+          <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Admin</p>
+          <h1 className="text-3xl font-semibold text-foreground md:text-5xl">Service Times</h1>
+          <p className="mt-3 max-w-2xl text-foreground/70">
             Keep the Contact page Locate Us service times up to date.
           </p>
-        </div>
+        </div>
       </div>
 
       <ServiceTimesManager token={token} />

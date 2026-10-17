@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   getDateTimeInputValueInMalawi,
   getTomorrowDateInputValueInMalawi,
@@ -52,7 +54,7 @@ export default function DevotionsAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
 
   const [devotionSearch, setDevotionSearch] = useState('');
@@ -68,6 +70,7 @@ export default function DevotionsAdminPage() {
   const [pendingPublishAt, setPendingPublishAt] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<string | null>(null);
   const [pendingTime, setPendingTime] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const hasExistingDevotion = Boolean(devotionId);
 
@@ -192,6 +195,7 @@ export default function DevotionsAdminPage() {
       }
 
       setStatus('Devotion saved.');
+      setDialogOpen(false);
     } catch {
       setStatus('Unable to save devotion. Please try again.');
     } finally {
@@ -199,12 +203,40 @@ export default function DevotionsAdminPage() {
     }
   };
 
-  const requestDeleteConfirmation = () => {
-    if (!devotionId) return;
+  const openNewDialog = () => {
+    setDate(getTomorrowDateInputValueInMalawi());
+    setPublishTime('01:00');
+    setDevotionId(null);
+    setTitle('');
+    setContent('');
+    setStatus('');
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (devotion: DevotionRecord) => {
+    setStatus('');
+    const malawiDateTime = getDateTimeInputValueInMalawi(devotion.publishAt);
+    if (malawiDateTime) {
+      setDate(malawiDateTime.date);
+      setPublishTime(malawiDateTime.time);
+    } else {
+      setDate(devotion.publishAt.slice(0, 10));
+    }
+    setDevotionId(devotion.id);
+    setTitle(devotion.title || '');
+    setContent(devotion.content || '');
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+  };
+
+  const requestDeleteConfirmation = (deleteId: string, labelDate?: string) => {
     confirmDeleteToast({
       title: 'Delete this devotion?',
-      description: date ? `Devotion for ${date}` : 'This devotion will be permanently removed.',
-      onConfirm: () => handleConfirmDelete(devotionId),
+      description: labelDate ? `Devotion for ${labelDate}` : 'This devotion will be permanently removed.',
+      onConfirm: () => handleConfirmDelete(deleteId),
     });
   };
 
@@ -233,6 +265,7 @@ export default function DevotionsAdminPage() {
       setTitle('');
       setContent('');
       setStatus('Devotion deleted.');
+      setDialogOpen(false);
     } catch {
       setStatus('Unable to delete devotion. Please try again.');
     } finally {
@@ -266,20 +299,32 @@ export default function DevotionsAdminPage() {
           <p className="text-foreground/70 mt-3 max-w-2xl">
             Write and schedule devotionals for the church family.
           </p>
-        </div>
+        </div>
+        <Button type="button" onClick={openNewDialog} className="gap-2 shrink-0">
+          <Plus className="h-4 w-4" />
+          Add devotion
+        </Button>
       </div>
 
       {status && (
         <p className="text-sm text-foreground/70">{status}</p>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-5">
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={hasExistingDevotion ? 'Edit devotion' : 'Add devotion'}
+        description="Write and schedule a devotional for the church family."
+        saving={loading}
+        saveLabel={hasExistingDevotion ? 'Save devotion' : 'Post devotion'}
+        onSave={requestPostConfirmation}
+        onCancel={closeDialog}
+        maxWidthClass="sm:max-w-2xl"
+      >
+        <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Date
-              </label>
+              <label className="block text-sm font-medium text-foreground mb-2">Date</label>
               <input
                 type="date"
                 value={date}
@@ -288,9 +333,7 @@ export default function DevotionsAdminPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Publish Time
-              </label>
+              <label className="block text-sm font-medium text-foreground mb-2">Publish Time</label>
               <input
                 type="time"
                 value={publishTime}
@@ -299,11 +342,8 @@ export default function DevotionsAdminPage() {
               />
             </div>
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Title
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-2">Title</label>
             <input
               type="text"
               value={title}
@@ -312,84 +352,99 @@ export default function DevotionsAdminPage() {
               placeholder="Devotion title"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Content
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-2">Content</label>
             <textarea
               value={content}
               onChange={(event) => setContent(event.target.value)}
               rows={10}
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              placeholder="Write today’s devotion..."
+              placeholder="Write today's devotion..."
             />
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={requestPostConfirmation} disabled={loading}>
-              {loading ? 'Saving...' : hasExistingDevotion ? 'Save Devotion' : 'Post Devotion'}
-            </Button>
+          {hasExistingDevotion ? (
             <Button
+              type="button"
               variant="destructive"
-              onClick={requestDeleteConfirmation}
-              disabled={loading || !hasExistingDevotion}
+              className="gap-2"
+              onClick={() => requestDeleteConfirmation(devotionId!)}
+              disabled={loading}
             >
-              Delete
+              <Trash2 className="h-4 w-4" />
+              Delete devotion
             </Button>
-          </div>
+          ) : null}
         </div>
+      </SchoolAdminDialogShell>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Recent Devotions
-          </h2>
+      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Recent Devotions</h2>
+        <div className="mb-4">
+          <input
+            type="search"
+            value={devotionSearch}
+            onChange={(e) => setDevotionSearch(e.target.value)}
+            placeholder="Search by title or date..."
+            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-foreground/40"
+          />
+        </div>
+        {allDevotions.length === 0 ? (
+          <p className="text-sm text-foreground/60">No devotions yet.</p>
+        ) : (() => {
+          const query = devotionSearch.trim().toLowerCase();
+          const filtered = query
+            ? allDevotions.filter(
+                (d) =>
+                  d.publishAt.slice(0, 10).includes(query) ||
+                  (d.title || '').toLowerCase().includes(query),
+              )
+            : allDevotions;
 
-          <div className="mb-4">
-            <input
-              type="search"
-              value={devotionSearch}
-              onChange={(e) => setDevotionSearch(e.target.value)}
-              placeholder="Search by title or date..."
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-foreground/40"
-            />
-          </div>
-
-          {allDevotions.length === 0 ? (
-            <p className="text-sm text-foreground/60">No devotions yet.</p>
-          ) : (() => {
-            const query = devotionSearch.trim().toLowerCase();
-            const filtered = query
-              ? allDevotions.filter(
-                  (d) =>
-                    d.publishAt.slice(0, 10).includes(query) ||
-                    (d.title || '').toLowerCase().includes(query)
-                )
-              : allDevotions;
-
-            return filtered.length === 0 ? (
-              <p className="text-sm text-foreground/60">No devotions match your search.</p>
-            ) : (
-              <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
-                {filtered.map((devotion) => (
-                  <button
-                    key={devotion.id}
-                    type="button"
-                    onClick={() => setDate(devotion.publishAt.slice(0, 10))}
-                    className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-left hover:border-primary/60 transition"
-                  >
+          return filtered.length === 0 ? (
+            <p className="text-sm text-foreground/60">No devotions match your search.</p>
+          ) : (
+            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
+              {filtered.map((devotion) => (
+                <div
+                  key={devotion.id}
+                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
                       {devotion.publishAt.slice(0, 10)}
                     </p>
-                    <p className="text-sm font-semibold text-foreground mt-1">
+                    <p className="mt-1 text-sm font-semibold text-foreground truncate">
                       {devotion.title || 'Untitled devotion'}
                     </p>
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Edit devotion for ${devotion.publishAt.slice(0, 10)}`}
+                      onClick={() => openEditDialog(devotion)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete devotion for ${devotion.publishAt.slice(0, 10)}`}
+                      onClick={() =>
+                        requestDeleteConfirmation(devotion.id, devotion.publishAt.slice(0, 10))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       <AlertDialog

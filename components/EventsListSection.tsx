@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { sendEventRegistrationNotification } from '@/lib/email';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { PAYCHANGU_CHECKOUT_METHOD, processPaychanguPayment } from '@/lib/paychangu-initialize';
 
 interface Event {
   id: number | string;
@@ -34,13 +35,6 @@ interface Event {
   imageUrl?: string | null;
   scope?: string | null;
 }
-
-type BankTransferDetails = {
-  bank_name?: string;
-  account_number?: string;
-  account_name?: string;
-  account_expiration_timestamp?: number;
-};
 
 const isValidDate = (value: Date) => !Number.isNaN(value.getTime());
 
@@ -255,12 +249,11 @@ export default function EventsListSection({
     phone: '',
     phoneCountry: '+265',
     email: '',
-    paymentMethod: 'airtel',
+    paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
   });
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
-  const [bankTransferDetails, setBankTransferDetails] = useState<BankTransferDetails | null>(null);
   const pageSize = 3;
 
   useEffect(() => {
@@ -525,7 +518,6 @@ export default function EventsListSection({
     setPaymentEvent(event);
     setPaymentError(null);
     setPaymentSuccess(null);
-    setBankTransferDetails(null);
     setIsPaymentOpen(true);
   };
 
@@ -533,7 +525,6 @@ export default function EventsListSection({
     if (!paymentEvent) return;
     setPaymentError(null);
     setPaymentSuccess(null);
-    setBankTransferDetails(null);
 
     if (!paymentForm.fullName || !paymentForm.phone || !paymentForm.email) {
       setPaymentError('Please enter your name, phone number, and email.');
@@ -582,38 +573,20 @@ export default function EventsListSection({
         throw new Error(givingData?.error || 'Failed to save payment record.');
       }
 
-      const paymentResponse = await apiFetch('/api/paychangu/initialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount,
-          currency,
-          email: paymentForm.email,
-          firstName,
-          lastName,
-          phone: normalizedPhone,
-          paymentMethod: paymentForm.paymentMethod,
-          reason,
-          givingId: givingData.id,
-          account: paymentAccount,
-        }),
+      await processPaychanguPayment({
+        amount,
+        currency,
+        email: paymentForm.email,
+        firstName,
+        lastName,
+        phone: normalizedPhone,
+        reason,
+        givingId: givingData.id,
+        account: paymentAccount,
+        returnPath: typeof window !== 'undefined' ? window.location.pathname : '/events',
       });
-      const paymentData = await paymentResponse.json().catch(() => null);
-      if (!paymentResponse.ok) {
-        throw new Error(paymentData?.error || paymentData?.message || 'Payment initialization failed.');
-      }
 
-      if (paymentForm.paymentMethod === 'card' && paymentData?.checkoutUrl) {
-        window.location.href = paymentData.checkoutUrl;
-        return;
-      }
-
-      if (paymentForm.paymentMethod === 'bank') {
-        setBankTransferDetails(paymentData?.bankTransfer || null);
-        setPaymentSuccess('Your bank transfer account has been generated. Use the details below to complete payment.');
-      } else {
-        setPaymentSuccess('Payment request sent. Please follow the mobile prompt to complete payment.');
-      }
+      setPaymentSuccess('Complete your payment in the PayChangu window.');
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : 'Failed to initialize payment.');
     } finally {
@@ -1097,7 +1070,6 @@ export default function EventsListSection({
             setPaymentEvent(null);
             setPaymentError(null);
             setPaymentSuccess(null);
-            setBankTransferDetails(null);
           }
         }}
       >
@@ -1169,37 +1141,10 @@ export default function EventsListSection({
                 />
               </label>
             </div>
-            <div className="grid gap-2">
-              <span className="text-foreground/80">Payment method</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {[
-                  ['airtel', 'Airtel Money'],
-                  ['mpamba', 'Mpamba'],
-                  ['bank', 'Bank Transfer'],
-                  ['card', 'Card Payment'],
-                ].map(([value, label]) => (
-                  <label key={value} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
-                    <input
-                      type="radio"
-                      name="eventPaymentMethod"
-                      value={value}
-                      checked={paymentForm.paymentMethod === value}
-                      onChange={(event) => setPaymentForm((prev) => ({ ...prev, paymentMethod: event.target.value }))}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            <p className="text-sm text-foreground/70">
+              PayChangu checkout opens when you tap Pay Now — choose Airtel, Mpamba, bank, or card there.
+            </p>
           </div>
-          {bankTransferDetails && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-              <p className="font-semibold">Bank transfer details</p>
-              <p className="mt-2">Bank: {bankTransferDetails.bank_name || 'N/A'}</p>
-              <p>Account Name: {bankTransferDetails.account_name || 'N/A'}</p>
-              <p>Account Number: {bankTransferDetails.account_number || 'N/A'}</p>
-            </div>
-          )}
           <DialogFooter>
             <Button
               className="rounded-full px-5"
