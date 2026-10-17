@@ -121,57 +121,51 @@ export default function ConfessionsAdminPage() {
     }
   };
 
-  useEffect(() => {
-    if (!token) return;
+  const handleEditConfession = (confession: ConfessionRecord) => {
 
-    const fetchConfession = async () => {
-      setLoading(true);
-      clearStatus();
-      try {
-        const response = await apiFetch(`/api/confessions?date=${date}`);
-        if (response.ok) {
-          const data = (await response.json().catch(() => null)) as unknown;
-          const confession = normalizeConfession(data);
-          if (!confession) {
-            setErrorStatus('Unable to load confession for that date.');
-            setConfessionId(null);
-            setTitle('');
-            setImageUrl('');
-            setUploadName('');
-            return;
-          }
+    clearStatus();
 
-          setConfessionId(confession.id);
-          setTitle(confession.title || '');
-          setImageUrl(confession.imageUrl);
-          setUploadName('');
-          if (confession.publishAt) {
-            const parsed = new Date(confession.publishAt);
-            if (!Number.isNaN(parsed.getTime())) {
-              const malawiDateTime = getDateTimeInputValueInMalawi(confession.publishAt);
-              if (malawiDateTime) {
-                setDate(malawiDateTime.date);
-                setPublishTime(malawiDateTime.time);
-              }
-            }
-          }
-        } else if (response.status === 404) {
-          setConfessionId(null);
-          setTitle('');
-          setImageUrl('');
-          setUploadName('');
-        } else {
-          setErrorStatus('Unable to load confession for that date.');
-        }
-      } catch {
-        setErrorStatus('Unable to load confession for that date.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Convert stored UTC date to Malawi date and time
+    const malawiDateTime = getDateTimeInputValueInMalawi(
+      confession.publishAt
+    );
 
-    fetchConfession();
-  }, [token, date]);
+    if (!malawiDateTime) {
+      setErrorStatus('Invalid confession publication date.');
+      return;
+    }
+
+    // Store selected confession ID
+    setConfessionId(confession.id);
+
+    // Populate form
+    setTitle(confession.title || '');
+    setImageUrl(confession.imageUrl);
+
+    setDate(malawiDateTime.date);
+    setPublishTime(malawiDateTime.time);
+
+    setUploadName('');
+
+  };
+
+const handleNewConfession = () => {
+
+  clearStatus();
+
+  // Exit edit mode
+  setConfessionId(null);
+
+  // Reset fields
+  setTitle('');
+  setImageUrl('');
+  setUploadName('');
+
+  // Reset date and time
+  setDate(getTomorrowDateInputValueInMalawi());
+  setPublishTime('01:00');
+
+};
 
   useEffect(() => {
     if (!token) return;
@@ -203,10 +197,12 @@ export default function ConfessionsAdminPage() {
     }
 
     const todayStr = getDateTimeInputValueInMalawi(new Date().toISOString())?.date || new Date().toISOString().slice(0, 10);
-    if (date < todayStr) {
-      setErrorStatus('You cannot post confessions for past dates. Please select today or a future date.');
-      return;
-    }
+    if (!confessionId && date < todayStr) {
+  setErrorStatus(
+    'You cannot create confessions for past dates. Please select today or a future date.'
+  );
+  return;
+}
 
     const publishAt = toMalawiIsoInstant(date, publishTime);
     setPendingPublishAt(publishAt);
@@ -216,32 +212,17 @@ export default function ConfessionsAdminPage() {
   };
 
   const handleConfirmPost = async () => {
-    if (!pendingPublishAt) return;
 
-    clearStatus();
-    setLoading(true);
-    setConfirmOpen(false);
+  if (!pendingPublishAt) return;
 
-    try {
-      const response = await apiFetch('/api/confessions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ date, title, imageUrl, publishAt: pendingPublishAt }),
-      });
+  clearStatus();
+  setLoading(true);
+  setConfirmOpen(false);
 
-      if (!response.ok) {
-        setErrorStatus('Unable to save confession. Please try again.');
-        return;
-      }
+  try {
 
-      const payload = (await response.json().catch(() => null)) as unknown;
-      const saved = normalizeConfession(payload);
-      if (saved) {
-        setConfessionId(saved.id);
-      }
+    // Determine whether creating or editing
+    const isEditing = Boolean(confessionId);
 
       setSuccessStatus('Confession saved.');
       setDialogOpen(false);
@@ -250,7 +231,6 @@ export default function ConfessionsAdminPage() {
     } finally {
       setLoading(false);
     }
-  };
 
   const openNewDialog = () => {
     setDate(getTomorrowDateInputValueInMalawi());
@@ -290,6 +270,13 @@ export default function ConfessionsAdminPage() {
       onConfirm: () => handleConfirmDelete(deleteId),
     });
   };
+const getConfessionDate = (publishAt: string) => {
+  return (
+    getDateTimeInputValueInMalawi(publishAt)?.date ||
+    publishAt.slice(0, 10)
+  );
+};
+
 
   const handleConfirmDelete = async (deleteId: string) => {
     clearStatus();
