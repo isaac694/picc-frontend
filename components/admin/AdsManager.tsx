@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Loader2, Plus, Power, PowerOff, Trash2 } from 'lucide-react';
+import { ExternalLink, Loader2, Pencil, Plus, Power, PowerOff, Trash2 } from 'lucide-react';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { apiFetch } from '@/lib/api';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
@@ -21,13 +22,33 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  findPublicSitePageByPath,
+  isKnownPublicSitePath,
+  normalizePublicPath,
+  PUBLIC_SITE_PAGE_GROUPS,
+  publicSitePagesByGroup,
+} from '@/lib/public-site-pages';
+import {
   ADMIN_WEBSITE_ADS_BASE,
-  isWebsiteAdImageUrl,
   normalizeWebsiteAdStoragePath,
   parseWebsiteAds,
+  websiteAdBannerUrlForApi,
+  websiteAdLinkForApi,
   websiteAdLinkUrl,
   type WebsiteAd,
 } from '@/lib/website-ads';
+
+const LINK_CUSTOM_VALUE = '__custom__';
+const LINK_NONE_VALUE = '__none__';
 
 type AdDraft = {
   name: string;
@@ -60,17 +81,45 @@ export default function AdsManager({ token }: { token: string }) {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [bannerUploadName, setBannerUploadName] = useState('');
   const [bannerPath, setBannerPath] = useState('');
+  const [linkMode, setLinkMode] = useState<'none' | 'page' | 'custom'>('none');
+  const [linkedPagePath, setLinkedPagePath] = useState('');
+
+  const pagesByGroup = useMemo(() => publicSitePagesByGroup(), []);
 
   const sortedAds = useMemo(
     () => [...ads].sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''))),
     [ads],
   );
 
+  const applyLinkToDraft = (url: string) => {
+    setDraft((prev) => ({ ...prev, url: url.trim() }));
+  };
+
+  const syncLinkModeFromUrl = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) {
+      setLinkMode('none');
+      setLinkedPagePath('');
+      return;
+    }
+    const normalized = normalizePublicPath(trimmed);
+    if (isKnownPublicSitePath(normalized)) {
+      setLinkMode('page');
+      setLinkedPagePath(normalized);
+      applyLinkToDraft(normalized);
+      return;
+    }
+    setLinkMode('custom');
+    setLinkedPagePath('');
+  };
+
   const resetModal = () => {
     setDraft(EMPTY_DRAFT);
     setEditingId(null);
     setBannerUploadName('');
     setBannerPath('');
+    setLinkMode('none');
+    setLinkedPagePath('');
     if (bannerInputRef.current) bannerInputRef.current.value = '';
   };
 
@@ -81,13 +130,14 @@ export default function AdsManager({ token }: { token: string }) {
 
   const openEditModal = (ad: WebsiteAd) => {
     setEditingId(ad.id);
-    const banner = ad.imageUrl || (isWebsiteAdImageUrl(ad.url) ? ad.url : '');
-    const link = websiteAdLinkUrl(ad) || (isWebsiteAdImageUrl(ad.url) ? '' : ad.url);
+    const banner = ad.url || ad.imageUrl;
+    const link = String(ad.link || '').trim();
     setDraft({
       name: ad.name,
       description: ad.description,
       url: link,
     });
+    syncLinkModeFromUrl(link);
     setBannerPath(normalizeWebsiteAdStoragePath(banner));
     setBannerUploadName('');
     setModalOpen(true);
@@ -148,8 +198,11 @@ export default function AdsManager({ token }: { token: string }) {
     }
     const linkUrl = draft.url.trim();
     const storedBanner = normalizeWebsiteAdStoragePath(bannerPath);
-    if (!linkUrl && !storedBanner) {
-      adminErrorToast('Add a link URL or upload a banner image.');
+    const bannerForApi = websiteAdBannerUrlForApi(storedBanner);
+    const linkForApi = websiteAdLinkForApi(linkUrl);
+
+    if (!bannerForApi && !linkForApi) {
+      adminErrorToast('Choose a page link or upload a banner image.');
       return;
     }
 
@@ -158,11 +211,9 @@ export default function AdsManager({ token }: { token: string }) {
       const payload: Record<string, string> = {
         name: draft.name.trim(),
         description: draft.description.trim(),
-        url: linkUrl || storedBanner,
       };
-      if (storedBanner && linkUrl) {
-        payload.imageUrl = storedBanner;
-      }
+      if (bannerForApi) payload.url = bannerForApi;
+      if (linkForApi) payload.link = linkForApi;
 
       const requestUrl = editingId
         ? `${ADMIN_WEBSITE_ADS_BASE}/${encodeURIComponent(editingId)}`
@@ -219,8 +270,6 @@ export default function AdsManager({ token }: { token: string }) {
   };
 
   const handleDelete = async (ad: WebsiteAd) => {
-    if (!window.confirm(`Delete "${ad.name || 'this ad'}"?`)) return;
-
     setDeletingId(ad.id);
     try {
       const response = await apiFetch(`${ADMIN_WEBSITE_ADS_BASE}/${encodeURIComponent(ad.id)}`, {
@@ -270,7 +319,7 @@ export default function AdsManager({ token }: { token: string }) {
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
           {sortedAds.map((ad) => {
-            const openLink = websiteAdLinkUrl(ad) || ad.url;
+            const openLink = websiteAdLinkUrl(ad);
             return (
             <article
               key={ad.id}
@@ -309,9 +358,15 @@ export default function AdsManager({ token }: { token: string }) {
                   <p className="text-xs text-muted-foreground">No description.</p>
                 )}
                 <p className="text-[10px] text-muted-foreground">Updated {formatWhen(ad.updatedAt || ad.createdAt)}</p>
-                <div className="mt-auto flex flex-wrap gap-1.5 pt-0.5">
-                  <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(ad)}>
-                    Edit
+                <div className="mt-auto flex flex-wrap items-center gap-1 pt-0.5">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Edit ${ad.name || 'ad'}`}
+                    onClick={() => openEditModal(ad)}
+                  >
+                    <Pencil className="h-4 w-4" />
                   </Button>
                   {ad.isActive ? (
                     <Button
@@ -338,13 +393,24 @@ export default function AdsManager({ token }: { token: string }) {
                   )}
                   <Button
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void handleDelete(ad)}
+                    size="icon"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    aria-label={`Delete ${ad.name || 'ad'}`}
+                    onClick={() =>
+                      confirmDeleteToast({
+                        title: 'Delete this ad?',
+                        description: ad.name || 'This popup ad will be permanently removed.',
+                        onConfirm: () => void handleDelete(ad),
+                      })
+                    }
                     disabled={deletingId === ad.id}
                   >
-                    {deletingId === ad.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    Delete
+                    {deletingId === ad.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -391,17 +457,80 @@ export default function AdsManager({ token }: { token: string }) {
               />
             </div>
 
-            {/* <div className="space-y-2">
-              <Label htmlFor="ad-url">Link URL</Label>
-              <Input
-                id="ad-url"
-                type="url"
-                value={draft.url}
-                onChange={(event) => setDraft((prev) => ({ ...prev, url: event.target.value }))}
-                placeholder="https://piccworldwide.org/events/easter-conference"
-              />
-              <p className="text-xs text-muted-foreground">Where visitors go when they tap the popup (optional if you only use a banner).</p>
-            </div> */}
+            <div className="space-y-2">
+              <Label htmlFor="ad-link-target">Link to page</Label>
+              <Select
+                value={
+                  linkMode === 'none'
+                    ? LINK_NONE_VALUE
+                    : linkMode === 'custom'
+                      ? LINK_CUSTOM_VALUE
+                      : linkedPagePath || LINK_NONE_VALUE
+                }
+                onValueChange={(value) => {
+                  if (value === LINK_NONE_VALUE) {
+                    setLinkMode('none');
+                    setLinkedPagePath('');
+                    applyLinkToDraft('');
+                    return;
+                  }
+                  if (value === LINK_CUSTOM_VALUE) {
+                    setLinkMode('custom');
+                    setLinkedPagePath('');
+                    return;
+                  }
+                  setLinkMode('page');
+                  setLinkedPagePath(value);
+                  applyLinkToDraft(value);
+                }}
+              >
+                <SelectTrigger id="ad-link-target" className="w-full">
+                  <SelectValue placeholder="Choose where the ad goes" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[min(320px,60vh)]">
+                  <SelectItem value={LINK_NONE_VALUE}>No link (banner only)</SelectItem>
+                  <SelectItem value={LINK_CUSTOM_VALUE}>Custom URL…</SelectItem>
+                  {PUBLIC_SITE_PAGE_GROUPS.map((group) => {
+                    const pages = pagesByGroup.get(group);
+                    if (!pages?.length) return null;
+                    return (
+                      <SelectGroup key={group}>
+                        <SelectLabel>{group}</SelectLabel>
+                        {pages.map((page) => (
+                          <SelectItem key={page.path} value={page.path}>
+                            {page.label} ({page.path})
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+
+              {linkMode === 'custom' ? (
+                <Input
+                  id="ad-url"
+                  type="url"
+                  value={draft.url}
+                  onChange={(event) => applyLinkToDraft(event.target.value)}
+                  placeholder="https://piccworldwide.org/events or /events"
+                />
+              ) : null}
+
+              {linkMode === 'page' && linkedPagePath ? (
+                <p className="text-xs text-muted-foreground">
+                  Visitors go to{' '}
+                  <span className="font-medium text-foreground">{linkedPagePath}</span>
+                  {findPublicSitePageByPath(linkedPagePath)
+                    ? ` — ${findPublicSitePageByPath(linkedPagePath)?.label}`
+                    : null}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Pick an on-site page, or use a custom URL for external links (optional if the ad is banner-only).
+                </p>
+              )}
+            </div>
 
             <div className="space-y-2">
               <Label>Card banner</Label>

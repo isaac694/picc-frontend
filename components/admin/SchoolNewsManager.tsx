@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { apiFetch, apiUrl } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { SchoolAdminDialogShell, SchoolAdminStatusBanner } from '@/components/admin/school-admin-dialog-shell';
+import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-import { toast } from 'sonner';
 
 type NewsItem = {
   id: string;
@@ -38,6 +39,14 @@ type FallbackNewsItem = {
   isPublished?: boolean;
 };
 
+const EMPTY_DRAFT: Draft = {
+  badge: 'Updates',
+  title: '',
+  content: '',
+  imageUrl: '',
+  isPublished: true,
+};
+
 export default function SchoolNewsManager({
   token,
   schoolKey,
@@ -51,19 +60,14 @@ export default function SchoolNewsManager({
 }) {
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingItem, setEditingItem] = useState<NewsItem | null>(null);
   const [uploadName, setUploadName] = useState('');
   const { runUpload, progress, uploading } = useMediaUpload();
-  const [draft, setDraft] = useState<Draft>({
-    badge: 'Updates',
-    title: '',
-    content: '',
-    imageUrl: '',
-    isPublished: true,
-  });
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
 
   const baseUrl = useMemo(() => `/api/admin/schools/${encodeURIComponent(schoolKey)}/news`, [schoolKey]);
   const normalizedFallbackNews = useMemo<NewsItem[]>(
@@ -106,11 +110,29 @@ export default function SchoolNewsManager({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial list fetch
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl, token]);
 
-  const handleEdit = (item: NewsItem) => {
+  const isPersistedEdit = Boolean(editingItem && !editingItem.isFallback);
+  const isFallbackSelection = Boolean(editingItem?.isFallback);
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingItem(null);
+    setUploadName('');
+    setDraft(EMPTY_DRAFT);
+  };
+
+  const openAddDialog = () => {
+    setEditingItem(null);
+    setUploadName('');
+    setDraft(EMPTY_DRAFT);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (item: NewsItem) => {
     setEditingItem(item);
     setUploadName('');
     setDraft({
@@ -120,18 +142,7 @@ export default function SchoolNewsManager({
       imageUrl: item.imageUrl || '',
       isPublished: item.isPublished,
     });
-  };
-
-  const handleAddNew = () => {
-    setEditingItem(null);
-    setUploadName('');
-    setDraft({
-      badge: 'Updates',
-      title: '',
-      content: '',
-      imageUrl: '',
-      isPublished: true,
-    });
+    setDialogOpen(true);
   };
 
   const uploadImage = async (file: File) => {
@@ -139,15 +150,14 @@ export default function SchoolNewsManager({
       setStatus('Please upload an image file.');
       return null;
     }
-
     if (file.size > 1_000_000) {
-      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      setStatus(
+        'Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.',
+      );
       return null;
     }
-
     setStatus('');
     setUploadName(file.name);
-
     try {
       return await runUpload(file, 'school');
     } catch (error) {
@@ -169,15 +179,14 @@ export default function SchoolNewsManager({
       setStatus('Please enter content.');
       return;
     }
-    
-    const isPersistedEdit = Boolean(editingItem && !editingItem.isFallback);
-    setSavingId(isPersistedEdit && editingItem ? editingItem.id : 'new');
+
+    setSaving(true);
     setStatus('');
-    
+
     try {
       const url = isPersistedEdit && editingItem ? `${baseUrl}/${encodeURIComponent(editingItem.id)}` : baseUrl;
       const method = isPersistedEdit ? 'PUT' : 'POST';
-      
+
       const response = await apiFetch(url, {
         method,
         headers: {
@@ -198,16 +207,14 @@ export default function SchoolNewsManager({
         return;
       }
 
-      setDraft({ badge: 'Updates', title: '', content: '', imageUrl: '', isPublished: true });
-      setUploadName('');
-      setEditingItem(null);
-      
+      const wasPersistedEdit = isPersistedEdit;
+      closeDialog();
       await refresh();
-      setStatus(`News ${isPersistedEdit ? 'updated' : 'added'}.`);
+      setStatus(`News ${wasPersistedEdit ? 'updated' : 'added'}.`);
     } catch {
       setStatus(`Unable to ${isPersistedEdit ? 'update' : 'add'} news.`);
     } finally {
-      setSavingId(null);
+      setSaving(false);
     }
   };
 
@@ -222,11 +229,7 @@ export default function SchoolNewsManager({
         setStatus('Unable to delete news.');
         return;
       }
-      
-      if (editingItem?.id === id) {
-        handleAddNew();
-      }
-      
+      if (editingItem?.id === id) closeDialog();
       await refresh();
       setStatus('News deleted.');
     } catch {
@@ -235,35 +238,98 @@ export default function SchoolNewsManager({
   };
 
   const requestRemove = (item: NewsItem) => {
-    const toastId = toast('Delete this news item?', {
+    if (item.isFallback) return;
+    confirmDeleteToast({
+      title: 'Delete this news item?',
       description: item.title,
-      duration: Infinity,
-      action: {
-        label: 'Delete',
-        onClick: () => {
-          toast.dismiss(toastId);
-          void remove(item.id);
-        },
-      },
-      cancel: {
-        label: 'Cancel',
-        onClick: () => toast.dismiss(toastId),
-      },
+      onConfirm: () => void remove(item.id),
     });
   };
 
   const filteredNews = useMemo(() => {
     if (!searchTerm.trim()) return news;
     const lower = searchTerm.toLowerCase();
-    return news.filter(n => 
-      (n.badge || '').toLowerCase().includes(lower) ||
-      n.title.toLowerCase().includes(lower) || 
-      n.content.toLowerCase().includes(lower)
+    return news.filter(
+      (n) =>
+        (n.badge || '').toLowerCase().includes(lower) ||
+        n.title.toLowerCase().includes(lower) ||
+        n.content.toLowerCase().includes(lower),
     );
   }, [news, searchTerm]);
 
-  const isPersistedEdit = Boolean(editingItem && !editingItem.isFallback);
-  const isFallbackSelection = Boolean(editingItem?.isFallback);
+  const formFields = (
+    <div className="space-y-4">
+      <div>
+        <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">Badge *</label>
+        <input
+          type="text"
+          value={draft.badge}
+          onChange={(e) => setDraft((prev) => ({ ...prev, badge: e.target.value }))}
+          placeholder="Updates"
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">Title *</label>
+        <input
+          type="text"
+          value={draft.title}
+          onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))}
+          placeholder="News title"
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">Content *</label>
+        <textarea
+          value={draft.content}
+          onChange={(e) => setDraft((prev) => ({ ...prev, content: e.target.value }))}
+          placeholder="News content..."
+          rows={8}
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+          News image <span className="font-normal normal-case text-foreground/50">(max 1MB)</span>
+        </label>
+        <input
+          type="file"
+          accept="image/*,.heic,.heif,.avif"
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary"
+          onChange={async (e) => {
+            const input = e.currentTarget;
+            const file = input.files?.[0];
+            if (!file) return;
+            const url = await uploadImage(file);
+            if (url) setDraft((prev) => ({ ...prev, imageUrl: url }));
+            input.value = '';
+          }}
+        />
+        {uploadName ? <p className="mt-2 text-xs text-foreground/60">Selected: {uploadName}</p> : null}
+        <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
+        {draft.imageUrl ? (
+          <div className="mt-3 overflow-hidden rounded-xl border border-border/60 bg-background">
+            <div className="relative h-40">
+              <Image src={draft.imageUrl} alt={draft.title || 'News preview'} fill className="object-cover" unoptimized />
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/50 p-3">
+        <input
+          type="checkbox"
+          id="news-isPublished"
+          checked={draft.isPublished}
+          onChange={(e) => setDraft((prev) => ({ ...prev, isPublished: e.target.checked }))}
+          className="rounded border-border"
+        />
+        <label htmlFor="news-isPublished" className="cursor-pointer text-sm font-medium text-foreground">
+          Published (visible on site)
+        </label>
+      </div>
+    </div>
+  );
 
   if (isLoading && news.length === 0) {
     return (
@@ -273,218 +339,117 @@ export default function SchoolNewsManager({
     );
   }
 
+  const dialogTitle = isPersistedEdit
+    ? 'Edit news'
+    : isFallbackSelection
+      ? 'Create news from template'
+      : 'Add news';
+  const dialogDescription = isPersistedEdit
+    ? `Update this ${schoolName} news item.`
+    : isFallbackSelection
+      ? `This fallback item is only a template. Saving will create a new ${schoolName} news entry.`
+      : `Create a new news entry for ${schoolName}.`;
+  const saveLabel = isPersistedEdit ? 'Save changes' : isFallbackSelection ? 'Create news' : 'Add news';
+
   return (
     <div className="space-y-6">
-      {status && (
-        <div
-          className={`p-4 rounded-xl text-sm ${
-            status.includes('Unable') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
-          }`}
-        >
-          {status}
-        </div>
-      )}
+      <SchoolAdminStatusBanner status={status} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
-        {/* Left Side: Form */}
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                {isPersistedEdit ? 'Update News' : isFallbackSelection ? 'Create News From Template' : 'Add New News'}
-              </h2>
-              <p className="text-sm text-foreground/70 mt-1">
-                {isPersistedEdit
-                  ? `Update the details for this ${schoolName} news item.`
-                  : isFallbackSelection
-                    ? `This fallback item is only a template. Saving will create a new ${schoolName} news entry.`
-                    : `Create a new news entry for ${schoolName}.`}
-              </p>
-            </div>
-            {editingItem && (
-              <Button variant="outline" onClick={handleAddNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                New News
-              </Button>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                Badge *
-              </label>
-              <input
-                type="text"
-                value={draft.badge}
-                onChange={(e) => setDraft((prev) => ({ ...prev, badge: e.target.value }))}
-                placeholder="Updates"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                Title *
-              </label>
-              <input
-                type="text"
-                value={draft.title}
-                onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="News title"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                Content *
-              </label>
-              <textarea
-                value={draft.content}
-                onChange={(e) => setDraft((prev) => ({ ...prev, content: e.target.value }))}
-                placeholder="News content..."
-                rows={8}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                News Image <span className="text-[11px] font-normal text-foreground/50">(Max 1MB allowed)</span>
-              </label>
-              <input
-                type="file"
-                accept="image/*,.heic,.heif,.avif"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary"
-                onChange={async (e) => {
-                  const input = e.currentTarget;
-                  const file = input.files?.[0];
-                  if (!file) return;
-                  const url = await uploadImage(file);
-                  if (url) {
-                    setDraft((prev) => ({ ...prev, imageUrl: url }));
-                  }
-                  input.value = '';
-                }}
-              />
-              {uploadName && (
-                <p className="mt-2 text-xs text-foreground/60">Selected: {uploadName}</p>
-              )}
-              <MediaUploadProgress uploading={uploading} progress={progress} className="mt-2" />
-              {draft.imageUrl && (
-                <div className="mt-3 overflow-hidden rounded-xl border border-border/60 bg-background">
-                  <div className="relative h-40">
-                    <Image
-                      src={draft.imageUrl}
-                      alt={draft.title || 'News preview'}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-                  <p className="break-all px-3 py-2 text-xs text-foreground/50">Current image: {draft.imageUrl}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-background/50">
-              <input
-                type="checkbox"
-                id="isPublished"
-                checked={draft.isPublished}
-                onChange={(e) => setDraft((prev) => ({ ...prev, isPublished: e.target.checked }))}
-                className="rounded border-border"
-              />
-              <label htmlFor="isPublished" className="text-sm font-medium text-foreground cursor-pointer">
-                Published (Visible on site)
-              </label>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/60">
-              <Button onClick={save} disabled={savingId !== null} className="gap-2">
-                {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {isPersistedEdit ? 'Update News' : isFallbackSelection ? 'Create News' : 'Add News'}
-              </Button>
-              {isPersistedEdit && editingItem && (
-                <Button variant="destructive" onClick={() => requestRemove(editingItem)} className="gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-              )}
-              {(editingItem || draft.title || draft.content) && (
-                <Button variant="outline" onClick={handleAddNew}>
-                  Cancel
-                </Button>
-              )}
-            </div>
-          </div>
+      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Current news</h2>
+          <Button type="button" className="gap-2 shrink-0" onClick={openAddDialog}>
+            <Plus className="h-4 w-4" />
+            Add news
+          </Button>
         </div>
 
-        {/* Right Side: List */}
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm flex flex-col h-fit max-h-[800px]">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Current News Items</h2>
-          
-          <div className="relative mb-4">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search news..."
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 transition outline-none"
-            />
-          </div>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search news..."
+          className="mb-4 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-primary/20"
+        />
 
-          <div className="overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-            {filteredNews.length === 0 ? (
-              <div className="text-center py-12 border border-dashed rounded-xl border-border/60">
-                <p className="text-sm text-foreground/60">
-                  {searchTerm ? 'No news match your search.' : 'No news items yet.'}
-                </p>
-              </div>
-            ) : (
-              filteredNews.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleEdit(item)}
-                  className={`w-full text-left rounded-xl border p-4 transition-all ${
-                    editingItem?.id === item.id
-                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                      : 'border-border/60 bg-background hover:border-primary/60'
-                  }`}
-                >
+        {filteredNews.length === 0 ? (
+          <p className="py-8 text-center text-sm text-foreground/60">
+            {searchTerm ? 'No news match your search.' : 'No news items yet.'}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {filteredNews.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
                   {item.imageUrl ? (
-                    <div className="relative mb-3 h-28 overflow-hidden rounded-lg border border-border/60">
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.title}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
+                    <div className="relative mb-2 h-20 overflow-hidden rounded-lg border border-border/60">
+                      <Image src={item.imageUrl} alt={item.title} fill className="object-cover" unoptimized />
                     </div>
                   ) : null}
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
-                    {!item.isPublished && (
-                      <span className="text-[10px] uppercase font-bold text-destructive px-1.5 py-0.5 rounded bg-destructive/10">
+                  <div className="flex items-center gap-2">
+                    <h3 className="truncate text-sm font-semibold text-foreground">{item.title}</h3>
+                    {!item.isPublished ? (
+                      <span className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-destructive">
                         Draft
                       </span>
-                    )}
+                    ) : null}
+                    {item.isFallback ? (
+                      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-foreground/60">
+                        Template
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">
-                    {[item.badge || 'Updates', item.displayDate || new Date(item.createdAt).toLocaleDateString()].join(' - ')}
+                    {[item.badge || 'Updates', item.displayDate || new Date(item.createdAt).toLocaleDateString()].join(' · ')}
                   </p>
-                  <p className="text-xs text-foreground/60 line-clamp-2">{item.content}</p>
-                  <p className="text-[10px] text-foreground/40 mt-2 font-medium">
-                    {item.isFallback ? 'Fallback content ready to edit' : new Date(item.createdAt).toLocaleDateString()}
-                  </p>
-                </button>
-              ))
-            )}
+                  <p className="mt-1 line-clamp-2 text-xs text-foreground/60">{item.content}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button type="button" size="icon" variant="ghost" aria-label={`Edit ${item.title}`} onClick={() => openEditDialog(item)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  {!item.isFallback ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete ${item.title}`}
+                      onClick={() => requestRemove(item)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
+
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setEditingItem(null);
+            setUploadName('');
+            setDraft(EMPTY_DRAFT);
+          }
+        }}
+        title={dialogTitle}
+        description={dialogDescription}
+        saving={saving}
+        saveLabel={saveLabel}
+        onSave={() => void save()}
+        onCancel={closeDialog}
+        maxWidthClass="sm:max-w-2xl"
+      >
+        {formFields}
+      </SchoolAdminDialogShell>
     </div>
   );
 }

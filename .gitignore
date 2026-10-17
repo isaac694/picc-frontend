@@ -26,6 +26,10 @@ next.config.compiled.js
 # production
 /build
 
+# User-uploaded homepage images (keep folder via .gitkeep)
+/public/uploads/page-images/*
+!/public/uploads/page-images/.gitkeep
+
 # misc
 .DS_Store
 *.pem

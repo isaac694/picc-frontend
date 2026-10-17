@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import WebsiteAdThumbnail from '@/components/WebsiteAdThumbnail';
@@ -22,8 +21,31 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
+function navigateToAdLink(router: ReturnType<typeof useRouter>, href: string) {
+  const trimmed = href.trim();
+  if (!trimmed) return;
+
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    router.push(trimmed);
+    return;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (typeof window !== 'undefined' && url.origin === window.location.origin) {
+      router.push(`${url.pathname}${url.search}${url.hash}`);
+      return;
+    }
+  } catch {
+    // Not an absolute URL — fall through.
+  }
+
+  window.location.assign(trimmed);
+}
+
 export default function WebsiteAdsPopup() {
   const pathname = usePathname();
+  const router = useRouter();
   const [ads, setAds] = useState<WebsiteAd[]>([]);
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
@@ -45,6 +67,21 @@ export default function WebsiteAdsPopup() {
     const description = current.description?.trim() || '';
     return { title, description };
   }, [current]);
+
+  const goToCurrentAdLink = useCallback(() => {
+    if (!currentLink) return;
+    setOpen(false);
+    navigateToAdLink(router, currentLink);
+  }, [currentLink, router]);
+
+  const handlePopupSurfaceClick = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      if (!currentLink) return;
+      if ((event.target as HTMLElement).closest('[data-popup-chrome]')) return;
+      goToCurrentAdLink();
+    },
+    [currentLink, goToCurrentAdLink],
+  );
 
   useEffect(() => {
     const t = window.setTimeout(() => setMounted(true), 80);
@@ -160,11 +197,34 @@ export default function WebsiteAdsPopup() {
           )}
           showCloseButton={false}
         >
-          <div className="max-h-[min(92vh,780px)] overflow-y-auto">
+          <div
+            className={cn(
+              'max-h-[min(92vh,780px)] overflow-y-auto',
+              currentLink && 'cursor-pointer',
+            )}
+            {...(currentLink
+              ? {
+                  onClick: handlePopupSurfaceClick,
+                  onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    if ((event.target as HTMLElement).closest('[data-popup-chrome]')) return;
+                    event.preventDefault();
+                    goToCurrentAdLink();
+                  },
+                  role: 'button' as const,
+                  tabIndex: 0,
+                  'aria-label': `Open announcement: ${current.name || 'Update'}`,
+                }
+              : {})}
+          >
             <div className="relative border-b border-border/30 bg-transparent">
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              data-popup-chrome
+              onClick={(event) => {
+                event.stopPropagation();
+                setOpen(false);
+              }}
               className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/40 bg-background/50 text-foreground shadow-md backdrop-blur-md transition hover:bg-background/70"
               aria-label="Close"
             >
@@ -190,24 +250,22 @@ export default function WebsiteAdsPopup() {
               {current.description || (hasThumbnail ? 'View the full announcement below.' : 'Learn more on our website.')}
             </DialogDescription>
 
-            {currentLink ? (
-              <Button asChild className="h-10 w-full rounded-lg text-sm shadow-md">
-                <Link href={currentLink} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>
-                  View details
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            ) : null}
-
             {visibleAds.length > 1 ? (
-              <div className="flex items-center justify-center gap-1 border-t border-border/60 pt-4">
+              <div
+                data-popup-chrome
+                className="flex items-center justify-center gap-1 border-t border-border/60 pt-4"
+                onClick={(event) => event.stopPropagation()}
+              >
                 <Button
                   type="button"
                   variant="outline"
                   size="icon-sm"
                   className="rounded-lg"
                   disabled={safeIndex <= 0}
-                  onClick={() => setIndex((prev) => Math.max(0, prev - 1))}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIndex((prev) => Math.max(0, prev - 1));
+                  }}
                   aria-label="Previous announcement"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -217,7 +275,10 @@ export default function WebsiteAdsPopup() {
                     <button
                       key={ad.id}
                       type="button"
-                      onClick={() => setIndex(i)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setIndex(i);
+                      }}
                       className={cn(
                         'h-1.5 rounded-full transition-all',
                         i === safeIndex ? 'w-6 bg-primary' : 'w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50',
@@ -232,7 +293,10 @@ export default function WebsiteAdsPopup() {
                   size="icon-sm"
                   className="rounded-lg"
                   disabled={safeIndex >= visibleAds.length - 1}
-                  onClick={() => setIndex((prev) => Math.min(visibleAds.length - 1, prev + 1))}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIndex((prev) => Math.min(visibleAds.length - 1, prev + 1));
+                  }}
                   aria-label="Next announcement"
                 >
                   <ChevronRight className="h-4 w-4" />

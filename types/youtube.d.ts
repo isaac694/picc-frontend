@@ -4,6 +4,7 @@ declare global {
   type YouTubePlayer = {
     pauseVideo: () => void;
     getCurrentTime?: () => number;
+    getVideoData?: () => { video_id?: string; title?: string; author?: string };
     destroy: () => void;
   };
 

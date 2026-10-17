@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
 import { YOUTH_CHURCH_NEWS_ITEMS, YOUTH_CHURCH_NEWS_KEY } from '@/components/youthChurchNews';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { PAYCHANGU_CHECKOUT_METHOD, processPaychanguPayment } from '@/lib/paychangu-initialize';
 import { 
   MapPin, Phone, Mail, CalendarClock, Globe, BookOpenText, MessageSquareText, 
   StickyNote, Rocket, Sparkles, Flame, Baby, XIcon, Instagram, Facebook, Twitter, Search
@@ -113,13 +114,6 @@ type YouthEvent = {
   paymentAmount: number | null;
   paymentCurrency: string;
   paymentAccount: string;
-};
-
-type BankTransferDetails = {
-  bank_name?: string;
-  account_number?: string;
-  account_name?: string;
-  account_expiration_timestamp?: number;
 };
 
 type YouthInitiative = {
@@ -419,12 +413,11 @@ export default function YouthChurchMinistryPage() {
     phone: '',
     phoneCountry: '+265',
     email: '',
-    paymentMethod: 'airtel',
+    paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
   });
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
-  const [bankTransferDetails, setBankTransferDetails] = useState<BankTransferDetails | null>(null);
   const [newsItems, setNewsItems] = useState<NewsSectionItem[]>(YOUTH_CHURCH_NEWS_ITEMS);
 
   // --- LIVESTREAM STATE ---
@@ -601,14 +594,12 @@ export default function YouthChurchMinistryPage() {
     setPaymentEvent(event);
     setPaymentError(null);
     setPaymentSuccess(null);
-    setBankTransferDetails(null);
   };
 
   const submitPayment = async () => {
     if (!paymentEvent) return;
     setPaymentError(null);
     setPaymentSuccess(null);
-    setBankTransferDetails(null);
 
     if (!paymentForm.fullName || !paymentForm.phone || !paymentForm.email) {
       setPaymentError('Please enter your name, phone number, and email.');
@@ -657,38 +648,20 @@ export default function YouthChurchMinistryPage() {
         throw new Error(givingData?.error || 'Failed to save payment record.');
       }
 
-      const paymentResponse = await apiFetch('/api/paychangu/initialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount,
-          currency,
-          email: paymentForm.email,
-          firstName,
-          lastName,
-          phone: normalizedPhone,
-          paymentMethod: paymentForm.paymentMethod,
-          reason,
-          givingId: givingData.id,
-          account: paymentAccount,
-        }),
+      await processPaychanguPayment({
+        amount,
+        currency,
+        email: paymentForm.email,
+        firstName,
+        lastName,
+        phone: normalizedPhone,
+        reason,
+        givingId: givingData.id,
+        account: paymentAccount,
+        returnPath: '/ministries/youth-church-ministry',
       });
-      const paymentData = await paymentResponse.json().catch(() => null);
-      if (!paymentResponse.ok) {
-        throw new Error(paymentData?.error || paymentData?.message || 'Payment initialization failed.');
-      }
 
-      if (paymentForm.paymentMethod === 'card' && paymentData?.checkoutUrl) {
-        window.location.href = paymentData.checkoutUrl;
-        return;
-      }
-
-      if (paymentForm.paymentMethod === 'bank') {
-        setBankTransferDetails(paymentData?.bankTransfer || null);
-        setPaymentSuccess('Your bank transfer account has been generated. Use the details below to complete payment.');
-      } else {
-        setPaymentSuccess('Payment request sent. Please follow the mobile prompt to complete payment.');
-      }
+      setPaymentSuccess('Complete your payment in the PayChangu window.');
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : 'Failed to initialize payment.');
     } finally {
@@ -1214,38 +1187,10 @@ export default function YouthChurchMinistryPage() {
                     />
                   </label>
                 </div>
-                <div className="grid gap-2">
-                  <span className="font-medium text-black/75">Payment method</span>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {[
-                      ['airtel', 'Airtel Money'],
-                      ['mpamba', 'Mpamba'],
-                      ['bank', 'Bank Transfer'],
-                      ['card', 'Card Payment'],
-                    ].map(([value, label]) => (
-                      <label key={value} className="flex items-center gap-2 rounded-lg border border-black/10 px-3 py-2">
-                        <input
-                          type="radio"
-                          name="youthEventPaymentMethod"
-                          value={value}
-                          checked={paymentForm.paymentMethod === value}
-                          onChange={(event) => setPaymentForm((prev) => ({ ...prev, paymentMethod: event.target.value }))}
-                        />
-                        <span>{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                <p className="text-sm text-black/70">
+                  PayChangu checkout opens when you tap Pay Now — choose Airtel, Mpamba, bank, or card there.
+                </p>
               </div>
-
-              {bankTransferDetails && (
-                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                  <p className="font-semibold">Bank transfer details</p>
-                  <p className="mt-2">Bank: {bankTransferDetails.bank_name || 'N/A'}</p>
-                  <p>Account Name: {bankTransferDetails.account_name || 'N/A'}</p>
-                  <p>Account Number: {bankTransferDetails.account_number || 'N/A'}</p>
-                </div>
-              )}
 
               <button
                 type="button"

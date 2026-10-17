@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toast';
-import { Eye, EyeOff, Plus } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react';
 
 type UserRow = {
   id: string;
@@ -511,13 +511,26 @@ export default function AdminUsersPage() {
                   <td className="py-2 pr-4">
                     <div className="flex gap-2">
                       {canEditUsers ? (
-                        <Button variant="outline" size="sm" onClick={() => setEditingId(u.id)}>
-                          Edit
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Edit ${u.name || u.email}`}
+                          onClick={() => setEditingId(u.id)}
+                        >
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       ) : null}
                       {canDeleteUsers ? (
-                        <Button variant="destructive" size="sm" onClick={() => requestDeleteUser(u)}>
-                          Delete
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={`Delete ${u.name || u.email}`}
+                          onClick={() => requestDeleteUser(u)}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       ) : null}
                     </div>

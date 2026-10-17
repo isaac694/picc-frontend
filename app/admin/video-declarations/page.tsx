@@ -10,6 +10,8 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 
 const FALLBACK_TITLE = "Listen to God's Word for You.";
 const FALLBACK_SUBTITLE = 'Video Declaration';
@@ -97,6 +99,7 @@ export default function VideoDeclarationsAdminPage() {
   const { runUploadWithKind, progress, uploading: isUploading } = useMediaUpload();
   const [isSaving, setIsSaving] = useState(false);
   const [archive, setArchive] = useState<DeclarationRecord[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const hasExistingDeclaration = Boolean(selectedId);
   const youtubeEmbedUrl = useMemo(
@@ -124,18 +127,31 @@ export default function VideoDeclarationsAdminPage() {
   };
 
   useEffect(() => {
-    void loadArchive();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!token) return;
+    const id = setTimeout(() => {
+      void loadArchive();
+    }, 0);
+    return () => clearTimeout(id);
   }, [token]);
 
-  const startNewDeclaration = () => {
+  const clearDeclarationSelection = () => {
     setDraft(EMPTY_CONTENT);
     setSelectedId(null);
     setUploadName('');
-    setStatus('');
   };
 
-  const selectDeclaration = (declaration: DeclarationRecord) => {
+  const closeDeclarationDialog = () => {
+    setDialogOpen(false);
+    clearDeclarationSelection();
+  };
+
+  const openAddDialog = () => {
+    clearDeclarationSelection();
+    setStatus('');
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (declaration: DeclarationRecord) => {
     setSelectedId(declaration.id);
     setDraft({
       source: declaration.source === 'upload' ? 'upload' : 'youtube',
@@ -146,6 +162,7 @@ export default function VideoDeclarationsAdminPage() {
     });
     setUploadName('');
     setStatus('');
+    setDialogOpen(true);
   };
 
   const uploadMedia = async (file: File) => {
@@ -200,23 +217,10 @@ export default function VideoDeclarationsAdminPage() {
         return;
       }
 
-      const data = await response.json().catch(() => null);
-      const saved = data?.declaration as DeclarationRecord | undefined;
-      if (saved?.id) {
-        setSelectedId(saved.id);
-        setDraft({
-          source: saved.source,
-          title: saved.title,
-          subtitle: saved.subtitle || FALLBACK_SUBTITLE,
-          mediaUrl: normalizeMediaUrl(saved.mediaUrl),
-          mediaKind: saved.mediaKind,
-        });
-      } else {
-        setDraft(payload);
-      }
-
       setUploadName('');
       setStatus(hasExistingDeclaration ? 'Video declaration saved.' : 'Video declaration posted.');
+      setDialogOpen(false);
+      clearDeclarationSelection();
       await loadArchive();
     } catch {
       setStatus('Unable to save video declaration.');
@@ -244,7 +248,8 @@ export default function VideoDeclarationsAdminPage() {
         return;
       }
 
-      startNewDeclaration();
+      setDialogOpen(false);
+      clearDeclarationSelection();
       setStatus('Video declaration deleted.');
       await loadArchive();
     } catch {
@@ -254,12 +259,17 @@ export default function VideoDeclarationsAdminPage() {
     }
   };
 
-  const requestDeleteConfirmation = () => {
-    if (!selectedId) return;
+  const requestDeleteConfirmation = (declaration?: DeclarationRecord) => {
+    const id = declaration?.id ?? selectedId;
+    if (!id) return;
+    const title = declaration?.title ?? draft.title;
     confirmDeleteToast({
       title: 'Delete this video declaration?',
-      description: draft.title || 'This declaration will be removed from the public archive.',
-      onConfirm: deleteDeclaration,
+      description: title || 'This declaration will be removed from the public archive.',
+      onConfirm: async () => {
+        if (declaration) setSelectedId(declaration.id);
+        await deleteDeclaration();
+      },
     });
   };
 
@@ -300,24 +310,29 @@ export default function VideoDeclarationsAdminPage() {
             Post declarations for the homepage and public video declarations archive.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={startNewDeclaration}>New Declaration</Button>
-        </div>
+        <Button type="button" onClick={openAddDialog} className="gap-2 shrink-0">
+          <Plus className="h-4 w-4" />
+          New declaration
+        </Button>
       </div>
 
       {status && <p className="text-sm text-foreground/70">{status}</p>}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-5 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">
-              {hasExistingDeclaration ? 'Edit Declaration' : 'New Declaration'}
-            </h2>
-            <p className="mt-1 text-sm text-foreground/60">
-              New posts become the homepage declaration and are added to the archive.
-            </p>
-          </div>
-
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) clearDeclarationSelection();
+        }}
+        title={hasExistingDeclaration ? 'Edit declaration' : 'New declaration'}
+        description="New posts become the homepage declaration and are added to the archive."
+        saving={isSaving || isUploading}
+        saveLabel={hasExistingDeclaration ? 'Save declaration' : 'Post declaration'}
+        onSave={() => void saveDeclaration()}
+        onCancel={closeDeclarationDialog}
+        maxWidthClass="sm:max-w-2xl"
+      >
+          <div className="space-y-5">
           <div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-background p-1">
             {(['youtube', 'upload'] as const).map((source) => (
               <button
@@ -412,22 +427,6 @@ export default function VideoDeclarationsAdminPage() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={saveDeclaration} disabled={isSaving || isUploading}>
-              {isSaving ? 'Saving...' : hasExistingDeclaration ? 'Save Declaration' : 'Post Declaration'}
-            </Button>
-            <Button variant="outline" onClick={startNewDeclaration} disabled={isSaving || isUploading}>
-              Clear Form
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={requestDeleteConfirmation}
-              disabled={isSaving || isUploading || !hasExistingDeclaration}
-            >
-              Delete
-            </Button>
-          </div>
-
           <div className="rounded-2xl border border-border/60 bg-background p-4">
             <h3 className="mb-3 text-sm font-semibold text-foreground">Preview</h3>
             <div className="relative min-h-[280px] overflow-hidden rounded-xl bg-black sm:min-h-[360px]">
@@ -460,7 +459,8 @@ export default function VideoDeclarationsAdminPage() {
               )}
             </div>
           </div>
-        </div>
+          </div>
+      </SchoolAdminDialogShell>
 
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-foreground">Recent Declarations</h2>
@@ -482,36 +482,52 @@ export default function VideoDeclarationsAdminPage() {
           ) : (
             <div className="max-h-[720px] space-y-3 overflow-y-auto pr-2">
               {filteredArchive.map((declaration, index) => (
-                <button
+                <div
                   key={declaration.id}
-                  type="button"
-                  onClick={() => selectDeclaration(declaration)}
-                  className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                    selectedId === declaration.id
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border/60 bg-background hover:border-primary/60'
-                  }`}
+                  className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-semibold text-foreground">
-                      {declaration.title || 'Untitled declaration'}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {declaration.title || 'Untitled declaration'}
+                      </p>
+                      {index === 0 ? (
+                        <span className="shrink-0 rounded bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase text-primary">
+                          Homepage
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-xs uppercase tracking-[0.2em] text-foreground/50">
+                      {declaration.createdAt ? formatDate(declaration.createdAt) : 'No date'}
                     </p>
-                    {index === 0 ? (
-                      <span className="rounded bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase text-primary">
-                        Homepage
-                      </span>
-                    ) : null}
+                    <p className="mt-2 text-xs text-foreground/60">{declaration.subtitle || FALLBACK_SUBTITLE}</p>
                   </div>
-                  <p className="mt-1 text-xs uppercase tracking-[0.2em] text-foreground/50">
-                    {declaration.createdAt ? formatDate(declaration.createdAt) : 'No date'}
-                  </p>
-                  <p className="mt-2 text-xs text-foreground/60">{declaration.subtitle || FALLBACK_SUBTITLE}</p>
-                </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Edit ${declaration.title || 'declaration'}`}
+                      onClick={() => openEditDialog(declaration)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete ${declaration.title || 'declaration'}`}
+                      onClick={() => requestDeleteConfirmation(declaration)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }

@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
-import { Plus } from 'lucide-react';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 
 type Branch = {
   id: string;
@@ -88,7 +89,7 @@ export default function LocationsAdminPage() {
   const { runUpload, progress, uploading } = useMediaUpload();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
-  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
 
   // Form state for editing/adding
@@ -122,7 +123,7 @@ export default function LocationsAdminPage() {
 
   const fetchImageContent = async (key: string): Promise<string> => {
     try {
-      const response = await apiFetch(`"/api/site-content/${key}"${key}`);
+      const response = await apiFetch(`/api/site-content/${key}`);
       if (!response.ok) return '';
       const data = await response.json();
       return normalizeImageUrl(data.imageUrl ?? '');
@@ -218,20 +219,8 @@ export default function LocationsAdminPage() {
     }
   };
 
-  const handleEditBranch = (branch: Branch) => {
-    setEditingBranch(branch);
-    setFormData({
-      region: branch.region,
-      name: branch.name,
-      pastor: branch.pastor,
-      location: branch.location,
-      phone: branch.phone,
-      email: branch.email,
-    });
-  };
-
-  const handleAddNewBranch = () => {
-    setIsAddingNew(true);
+  const resetBranchForm = () => {
+    setEditingBranch(null);
     setFormData({
       region: '',
       name: '',
@@ -242,12 +231,36 @@ export default function LocationsAdminPage() {
     });
   };
 
+  const closeBranchDialog = () => {
+    setDialogOpen(false);
+    resetBranchForm();
+  };
+
+  const openAddDialog = () => {
+    resetBranchForm();
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (branch: Branch) => {
+    setEditingBranch(branch);
+    setFormData({
+      region: branch.region,
+      name: branch.name,
+      pastor: branch.pastor,
+      location: branch.location,
+      phone: branch.phone,
+      email: branch.email,
+    });
+    setDialogOpen(true);
+  };
+
   const handleSaveBranch = async () => {
     if (!formData.name.trim() || !formData.region) {
       setStatus('Please fill in at least the branch name and region.');
       return;
     }
 
+    setSaving(true);
     const updatedBranches = [...branches];
     if (editingBranch) {
       const index = updatedBranches.findIndex(b => b.id === editingBranch.id);
@@ -262,14 +275,22 @@ export default function LocationsAdminPage() {
       updatedBranches.push(newBranch);
     }
 
-    await saveBranches(updatedBranches);
-    setEditingBranch(null);
-    setIsAddingNew(false);
+    try {
+      await saveBranches(updatedBranches);
+      setDialogOpen(false);
+      resetBranchForm();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteBranch = async (branchId: string) => {
     const updatedBranches = branches.filter(b => b.id !== branchId);
     await saveBranches(updatedBranches);
+    if (editingBranch?.id === branchId) {
+      setDialogOpen(false);
+      resetBranchForm();
+    }
   };
 
   const requestDeleteBranch = (branch: Branch) => {
@@ -278,11 +299,6 @@ export default function LocationsAdminPage() {
       description: branch.name || 'This branch will be permanently removed.',
       onConfirm: () => handleDeleteBranch(branch.id),
     });
-  };
-
-  const handleCancelEdit = () => {
-    setEditingBranch(null);
-    setIsAddingNew(false);
   };
 
   if (!token) {
@@ -312,6 +328,10 @@ export default function LocationsAdminPage() {
             Manage church locations, update the header image, and edit branch information.
           </p>
         </div>
+        <Button type="button" onClick={openAddDialog} className="gap-2 shrink-0">
+          <Plus className="h-4 w-4" />
+          Add branch
+        </Button>
       </div>
 
       {status && <p className='text-sm text-foreground/70'>{status}</p>}
@@ -391,26 +411,23 @@ export default function LocationsAdminPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
-        {/* Left Side: Form */}
-        <div className='rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6'>
-          <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
-            <div>
-              <h2 className='text-xl font-semibold text-foreground'>
-                {editingBranch ? 'Edit Branch' : 'Add New Branch'}
-              </h2>
-              <p className='text-sm text-foreground/60'>
-                {editingBranch ? 'Update the details for this branch.' : 'Create a new church branch entry.'}
-              </p>
-            </div>
-            {editingBranch && (
-              <Button variant="outline" onClick={handleAddNewBranch}>
-                <Plus className='w-4 h-4 mr-2' />
-                New Branch
-              </Button>
-            )}
-          </div>
-
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) resetBranchForm();
+        }}
+        title={editingBranch ? 'Edit branch' : 'Add branch'}
+        description={
+          editingBranch
+            ? 'Update the details for this branch.'
+            : 'Create a new church branch entry.'
+        }
+        saving={saving}
+        saveLabel={editingBranch ? 'Save changes' : 'Add branch'}
+        onSave={() => void handleSaveBranch()}
+        onCancel={closeBranchDialog}
+      >
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <div>
               <Label htmlFor='region'>Region</Label>
@@ -481,27 +498,8 @@ export default function LocationsAdminPage() {
               />
             </div>
           </div>
-          <div className='flex flex-wrap items-center gap-3'>
-            <Button onClick={handleSaveBranch}>
-              {editingBranch ? 'Update Branch' : 'Add Branch'}
-            </Button>
-            {editingBranch && (
-              <Button
-                variant='destructive'
-                onClick={() => requestDeleteBranch(editingBranch)}
-              >
-                Delete
-              </Button>
-            )}
-            {(editingBranch || isAddingNew) && (
-              <Button variant='outline' onClick={handleCancelEdit}>
-                Cancel
-              </Button>
-            )}
-          </div>
-        </div>
+      </SchoolAdminDialogShell>
 
-        {/* Right Side: Searchable List */}
         <div className='rounded-2xl border border-border/60 bg-card p-6 shadow-sm'>
           <h2 className='text-lg font-semibold text-foreground mb-4'>
             Church Branches
@@ -535,32 +533,48 @@ export default function LocationsAdminPage() {
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                 {filtered.map((branch) => (
-                  <button
+                  <div
                     key={branch.id}
-                    type="button"
-                    onClick={() => handleEditBranch(branch)}
-                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                      editingBranch?.id === branch.id
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                        : 'border-border/60 bg-background hover:border-primary/60'
-                    }`}
+                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
                   >
-                    <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                      {regions.find(r => r.id === branch.region)?.label || branch.region}
-                    </p>
-                    <p className="text-sm font-semibold text-foreground mt-1">
-                      {branch.name}
-                    </p>
-                    <p className="text-xs text-foreground/60 mt-0.5">
-                      {branch.pastor}
-                    </p>
-                  </button>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
+                        {regions.find(r => r.id === branch.region)?.label || branch.region}
+                      </p>
+                      <p className="text-sm font-semibold text-foreground mt-1 truncate">
+                        {branch.name}
+                      </p>
+                      <p className="text-xs text-foreground/60 mt-0.5 truncate">
+                        {branch.pastor}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Edit ${branch.name}`}
+                        onClick={() => openEditDialog(branch)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={`Delete ${branch.name}`}
+                        onClick={() => requestDeleteBranch(branch)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             );
           })()}
         </div>
-      </div>
     </div>
   );
 }

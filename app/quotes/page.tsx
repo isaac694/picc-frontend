@@ -1,4 +1,5 @@
-import { apiFetch, apiUrl } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { mapQuoteForArchive, normalizeQuoteRecord } from '@/lib/quotes';
 import QuotesArchiveClient from './QuotesArchiveClient';
 import { Metadata } from 'next';
 
@@ -9,33 +10,27 @@ export const metadata: Metadata = {
 
 async function getQuotes() {
   try {
-    // Attempt to fetch all quotes (if the endpoint exists/is updated later)
     const response = await apiFetch('/api/quotes', {
       next: { revalidate: 3600 },
     });
 
     if (response.ok) {
       const data = await response.json();
-      return Array.isArray(data) ? data : [];
+      const rawList = Array.isArray(data) ? data : [];
+      return rawList
+        .map(normalizeQuoteRecord)
+        .filter((item): item is NonNullable<ReturnType<typeof normalizeQuoteRecord>> => Boolean(item))
+        .map(mapQuoteForArchive);
     }
   } catch (error) {
     console.error('Failed to fetch quotes archive:', error);
   }
 
-  // Fallback: Try to get the current Quote of the Month at least
   try {
-    const response = await apiFetch('/api/quote-of-month');
+    const response = await apiFetch('/api/quote-of-month', { next: { revalidate: 3600 } });
     if (response.ok) {
-      const data = await response.json();
-      if (data && data.quote) {
-        return [{
-          id: data.id || 'current',
-          quote: data.quote,
-          author: data.author || 'Pastor Esau Banda',
-          imageUrl: data.imageUrl ? (data.imageUrl.startsWith('http') ? data.imageUrl : apiUrl(data.imageUrl)) : undefined,
-          createdAt: data.createdAt || new Date().toISOString(),
-        }];
-      }
+      const record = normalizeQuoteRecord(await response.json());
+      if (record) return [mapQuoteForArchive(record)];
     }
   } catch (error) {
     console.error('Failed to fetch fallback quote:', error);

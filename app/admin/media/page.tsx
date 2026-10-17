@@ -8,7 +8,8 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
-import { Trash2 } from 'lucide-react';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   buildFallbackItems,
   DEFAULT_MEDIA_BOOKS,
@@ -177,6 +178,7 @@ export default function AdminMediaPage() {
   const [editingIds, setEditingIds] = useState<Record<SectionId, string | null>>(EMPTY_EDITING_IDS);
   const [deletedFallbackIndexes, setDeletedFallbackIndexes] = useState<Record<SectionId, number[]>>(EMPTY_DELETED_FALLBACK_INDEXES);
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
+  const [openSection, setOpenSection] = useState<SectionId | null>(null);
 
   const updateUploadName = (key: string, name: string) => {
     setUploadNames((prev) => ({ ...prev, [key]: name }));
@@ -190,6 +192,24 @@ export default function AdminMediaPage() {
     if (section === 'gallery') setDraftGallery(DEFAULT_GALLERY_ITEM);
     if (section === 'books') setDraftBook(DEFAULT_BOOK_ITEM);
     if (section === 'magazines') setDraftMagazine(DEFAULT_MAGAZINE_ITEM);
+  };
+
+  const closeSectionDialog = (section: SectionId) => {
+    setOpenSection(null);
+    resetSectionEditor(section);
+  };
+
+  const openAddSectionDialog = (section: SectionId) => {
+    resetSectionEditor(section);
+    setOpenSection(section);
+  };
+
+  const openEditSectionDialog = <S extends SectionId>(section: S, item: SectionItems[S]) => {
+    if (section === 'news') startEditingNews(item as NewsItem);
+    if (section === 'gallery') startEditingGallery(item as GalleryItem);
+    if (section === 'books') startEditingBook(item as BookItem);
+    if (section === 'magazines') startEditingMagazine(item as MagazineItem);
+    setOpenSection(section);
   };
 
   const startEditingNews = (item: NewsItem) => {
@@ -334,12 +354,6 @@ export default function AdminMediaPage() {
   };
 
   const persistedNewsCount = newsItems.filter((item) => !item.isFallback).length;
-  const editingNewsItem = editingIds.news ? newsItems.find((item) => item.id === editingIds.news) : null;
-  const editingGalleryItem = editingIds.gallery ? galleryItems.find((item) => item.id === editingIds.gallery) : null;
-  const editingBookItem = editingIds.books ? bookItems.find((item) => item.id === editingIds.books) : null;
-  const editingMagazineItem = editingIds.magazines
-    ? magazineItems.find((item) => item.id === editingIds.magazines)
-    : null;
 
   const filteredNewsItems = useMemo(() => {
     const term = newsSearch.trim().toLowerCase();
@@ -417,6 +431,7 @@ export default function AdminMediaPage() {
       }
 
       setItems(mergeMediaItemsWithFallback(nextPersisted, visibleFallbacks));
+      setOpenSection(null);
       resetSectionEditor(section);
       setStatus(
         isFallbackEdit
@@ -465,7 +480,9 @@ export default function AdminMediaPage() {
       setDeletedFallbackIndexes((prev) => ({ ...prev, [section]: nextDeletedIndexes }));
       setItems(mergeMediaItemsWithFallback(nextPersisted, visibleFallbacks));
       if (editingIds[section] === itemId) {
-        resetSectionEditor(section);
+        closeSectionDialog(section);
+      } else if (openSection === section) {
+        setOpenSection(null);
       }
       setStatus('Item deleted.');
     } catch {
@@ -520,609 +537,576 @@ export default function AdminMediaPage() {
 
       <div className="space-y-12">
         <section className="space-y-5 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
-          <div>
-            <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Church News</p>
-            <p className="text-sm text-foreground/60">
-              Keep news stories separate from the rest of the media page and edit them from one focused workspace.
-            </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Church News</p>
+              <p className="text-sm text-foreground/60">
+                Keep news stories separate from the rest of the media page and edit them from one focused workspace.
+              </p>
+              <p className={`mt-2 text-xs font-semibold ${persistedNewsCount >= MEDIA_NEWS_MAX_ITEMS ? 'text-destructive' : 'text-primary'}`}>
+                {persistedNewsCount} / {MEDIA_NEWS_MAX_ITEMS} saved news items. Built-in news also appears on the public page.
+              </p>
+            </div>
+            <Button
+              type="button"
+              className="shrink-0 gap-2"
+              disabled={persistedNewsCount >= MEDIA_NEWS_MAX_ITEMS}
+              onClick={() => openAddSectionDialog('news')}
+            >
+              <Plus className="h-4 w-4" />
+              Add news
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
-            <div className={`${sectionCardClassName} space-y-5`}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    {editingIds.news ? 'Edit News Item' : 'Create News Item'}
-                  </h2>
-                  <p className="text-sm text-foreground/60">
-                    The editor stays right after the sidebar, just like the devotions flow.
-                  </p>
-                  <p className={`mt-2 text-xs font-semibold ${persistedNewsCount >= MEDIA_NEWS_MAX_ITEMS ? 'text-destructive' : 'text-primary'}`}>
-                    {persistedNewsCount} / {MEDIA_NEWS_MAX_ITEMS} saved news items. Built-in news also appears on the public page and in the list below.
-                  </p>
-                </div>
-                {editingIds.news && (
-                  <Button variant="outline" onClick={() => resetSectionEditor('news')}>
-                    New Item
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.1fr_1.35fr_1.35fr_0.95fr]">
-                <input
-                  type="text"
-                  placeholder="Badge"
-                  value={draftNews.badge}
-                  onChange={(event) => setDraftNews((prev) => ({ ...prev, badge: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-                <select
-                  value={draftNews.date.split(' ')[0] || ''}
-                  onChange={(event) => {
-                    const year = draftNews.date.split(' ')[1] || '';
-                    setDraftNews((prev) => ({
-                      ...prev,
-                      date: event.target.value ? `${event.target.value}${year ? ` ${year}` : ''}` : year,
-                    }));
-                  }}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                >
-                  <option value="">Month</option>
-                  {MONTHS.map((month) => (
-                    <option key={month} value={month}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={draftNews.date.split(' ')[1] || ''}
-                  onChange={(event) => {
-                    const month = draftNews.date.split(' ')[0] || '';
-                    setDraftNews((prev) => ({
-                      ...prev,
-                      date: event.target.value ? `${month ? `${month} ` : ''}${event.target.value}` : month,
-                    }));
-                  }}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                >
-                  <option value="">Year</option>
-                  {YEARS.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  placeholder="Headline"
-                  value={draftNews.title}
-                  onChange={(event) => setDraftNews((prev) => ({ ...prev, title: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">Description</label>
-                <textarea
-                  value={draftNews.description}
-                  onChange={(event) => setDraftNews((prev) => ({ ...prev, description: event.target.value }))}
-                  rows={5}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                  placeholder="Write a short summary for the news story."
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">Upload Image</label>
-                <input
-                  type="file"
-                  accept="image/*,.heic,.heif,.avif"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    const url = await uploadImage(file);
-                    if (!url) return;
-                    setDraftNews((prev) => ({ ...prev, imageUrl: url }));
-                    updateUploadName(DRAFT_UPLOAD_KEYS.news, file.name);
-                  }}
-                  className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-                />
-                {uploadNames[DRAFT_UPLOAD_KEYS.news] && (
-                  <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.news]}</p>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  onClick={() => handleSaveItem('news', draftNews, editingIds.news, newsItems, setNewsItems)}
-                  disabled={!editingIds.news && persistedNewsCount >= MEDIA_NEWS_MAX_ITEMS}
-                >
-                  {editingIds.news ? 'Save News Item' : 'Add News Item'}
-                </Button>
-                <Button variant="outline" onClick={() => resetSectionEditor('news')}>
-                  Clear
-                </Button>
-                {editingNewsItem && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => requestDeleteItem('news', editingNewsItem, newsItems, setNewsItems)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
-                )}
-              </div>
+          <div className={sectionCardClassName}>
+            <div className="mb-4">
+              <input
+                type="search"
+                value={newsSearch}
+                onChange={(event) => setNewsSearch(event.target.value)}
+                placeholder="Search existing news..."
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
             </div>
-
-            <div className={sectionCardClassName}>
-              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing News</h3>
-              <div className="mb-4">
-                <input
-                  type="search"
-                  value={newsSearch}
-                  onChange={(event) => setNewsSearch(event.target.value)}
-                  placeholder="Search existing news..."
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-              </div>
-              {filteredNewsItems.length === 0 ? (
-                <p className="text-sm text-foreground/60">No news items yet.</p>
-              ) : (
-                <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
-                  {filteredNewsItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`rounded-2xl border p-4 transition ${
-                        editingIds.news === item.id
-                          ? 'border-primary/60 bg-primary/5'
-                          : 'border-border/60 bg-background'
-                      }`}
-                    >
+            {filteredNewsItems.length === 0 ? (
+              <p className="text-sm text-foreground/60">No news items yet.</p>
+            ) : (
+              <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+                {filteredNewsItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
                           {[item.badge, item.date].filter(Boolean).join(' - ') || 'News Item'}
                         </p>
                         <ItemSourceBadge isFallback={item.isFallback} />
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-foreground">
+                      <p className="mt-1 text-sm font-semibold text-foreground">
                         {item.title || 'Untitled news item'}
                       </p>
-                      {item.description && (
-                        <p className="mt-2 text-sm text-foreground/70">{item.description}</p>
-                      )}
-                      <div className="mt-4 flex flex-wrap gap-3">
-                        <Button variant="outline" onClick={() => startEditingNews(item)}>
-                          {editingIds.news === item.id ? 'Editing' : 'Edit'}
-                        </Button>
-                        <Button variant="outline" onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)} className="gap-2">
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </Button>
-                      </div>
+                      {item.description ? (
+                        <p className="mt-1 line-clamp-2 text-sm text-foreground/70">{item.description}</p>
+                      ) : null}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Edit ${item.title || 'news item'}`}
+                        onClick={() => openEditSectionDialog('news', item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={`Delete ${item.title || 'news item'}`}
+                        onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
         <section className="space-y-5 border-t border-border/60 pt-8">
-          <div>
-            <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Events Gallery</p>
-            <p className="text-sm text-foreground/60">
-              Gallery items are now managed in their own split area so they do not overlap with church news.
-            </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Events Gallery</p>
+              <p className="text-sm text-foreground/60">
+                Gallery items are managed separately from church news.
+              </p>
+            </div>
+            <Button type="button" className="shrink-0 gap-2" onClick={() => openAddSectionDialog('gallery')}>
+              <Plus className="h-4 w-4" />
+              Add gallery item
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
-            <div className={`${sectionCardClassName} space-y-5`}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    {editingIds.gallery ? 'Edit Gallery Item' : 'Create Gallery Item'}
-                  </h2>
-                  <p className="text-sm text-foreground/60">
-                    Select an item on the right to update it here.
-                  </p>
-                </div>
-                {editingIds.gallery && (
-                  <Button variant="outline" onClick={() => resetSectionEditor('gallery')}>
-                    New Item
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <input
-                  type="text"
-                  placeholder="Title"
-                  value={draftGallery.title}
-                  onChange={(event) => setDraftGallery((prev) => ({ ...prev, title: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-                <select
-                  value={draftGallery.category}
-                  onChange={(event) => setDraftGallery((prev) => ({ ...prev, category: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                >
-                  <option value="">Select a category</option>
-                  {GALLERY_CATEGORIES.map((category) => (
-                    <option key={category} value={category}>
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">Upload Image</label>
-                <input
-                  type="file"
-                  accept="image/*,.heic,.heif,.avif"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    const url = await uploadImage(file);
-                    if (!url) return;
-                    setDraftGallery((prev) => ({ ...prev, imageUrl: url }));
-                    updateUploadName(DRAFT_UPLOAD_KEYS.gallery, file.name);
-                  }}
-                  className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-                />
-                {uploadNames[DRAFT_UPLOAD_KEYS.gallery] && (
-                  <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.gallery]}</p>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  onClick={() =>
-                    handleSaveItem('gallery', draftGallery, editingIds.gallery, galleryItems, setGalleryItems)
-                  }
-                >
-                  {editingIds.gallery ? 'Save Gallery Item' : 'Add Gallery Item'}
-                </Button>
-                <Button variant="outline" onClick={() => resetSectionEditor('gallery')}>
-                  Clear
-                </Button>
-                {editingGalleryItem && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => requestDeleteItem('gallery', editingGalleryItem, galleryItems, setGalleryItems)}
+          <div className={sectionCardClassName}>
+            {galleryItems.length === 0 ? (
+              <p className="text-sm text-foreground/60">No gallery items yet.</p>
+            ) : (
+              <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+                {galleryItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
                   >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <div className={sectionCardClassName}>
-              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing Gallery Items</h3>
-              {galleryItems.length === 0 ? (
-                <p className="text-sm text-foreground/60">No gallery items yet.</p>
-              ) : (
-                <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
-                  {galleryItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`rounded-2xl border p-4 transition ${
-                        editingIds.gallery === item.id
-                          ? 'border-primary/60 bg-primary/5'
-                          : 'border-border/60 bg-background'
-                      }`}
-                    >
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
                         {item.category || 'Gallery'}
                       </p>
-                      <div className="mt-2 flex items-start justify-between gap-3">
+                      <div className="mt-1 flex items-start justify-between gap-3">
                         <p className="text-sm font-semibold text-foreground">
                           {item.title || 'Untitled gallery item'}
                         </p>
                         <ItemSourceBadge isFallback={item.isFallback} />
                       </div>
-                      <div className="mt-4 flex flex-wrap gap-3">
-                        <Button variant="outline" onClick={() => startEditingGallery(item)}>
-                          {editingIds.gallery === item.id ? 'Editing' : 'Edit'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => requestDeleteItem('gallery', item, galleryItems, setGalleryItems)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Edit ${item.title || 'gallery item'}`}
+                        onClick={() => openEditSectionDialog('gallery', item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={`Delete ${item.title || 'gallery item'}`}
+                        onClick={() => requestDeleteItem('gallery', item, galleryItems, setGalleryItems)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
         <section className="space-y-5 border-t border-border/60 pt-8">
-          <div>
-            <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Fire on the Altar Books</p>
-            <p className="text-sm text-foreground/60">
-              Book uploads now have their own separated editor and review list for safer updates.
-            </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Fire on the Altar Books</p>
+              <p className="text-sm text-foreground/60">
+                Book uploads have a dedicated list and modal editor.
+              </p>
+            </div>
+            <Button type="button" className="shrink-0 gap-2" onClick={() => openAddSectionDialog('books')}>
+              <Plus className="h-4 w-4" />
+              Add book
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
-            <div className={`${sectionCardClassName} space-y-5`}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    {editingIds.books ? 'Edit Book' : 'Create a new Fire on the Altar Book'}
-                  </h2>
-                  <p className="text-sm text-foreground/60">
-                    Pick a saved book on the right when you need to update it.
-                  </p>
-                </div>
-                {editingIds.books && (
-                  <Button variant="outline" onClick={() => resetSectionEditor('books')}>
-                    New Item
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <input
-                  type="text"
-                  placeholder="Book title"
-                  value={draftBook.title}
-                  onChange={(event) => setDraftBook((prev) => ({ ...prev, title: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-                <input
-                  type="text"
-                  placeholder="Author"
-                  value={draftBook.author}
-                  onChange={(event) => setDraftBook((prev) => ({ ...prev, author: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">Description</label>
-                <textarea
-                  value={draftBook.description}
-                  onChange={(event) => setDraftBook((prev) => ({ ...prev, description: event.target.value }))}
-                  rows={5}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                  placeholder="Write a short description of the book."
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">Cover Image</label>
-                <input
-                  type="file"
-                  accept="image/*,.heic,.heif,.avif"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    const url = await uploadImage(file);
-                    if (!url) return;
-                    setDraftBook((prev) => ({ ...prev, imageUrl: url }));
-                    updateUploadName(DRAFT_UPLOAD_KEYS.books, file.name);
-                  }}
-                  className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-                />
-                {uploadNames[DRAFT_UPLOAD_KEYS.books] && (
-                  <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.books]}</p>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={() => handleSaveItem('books', draftBook, editingIds.books, bookItems, setBookItems)}>
-                  {editingIds.books ? 'Save Book' : 'Add Book'}
-                </Button>
-                <Button variant="outline" onClick={() => resetSectionEditor('books')}>
-                  Clear
-                </Button>
-                {editingBookItem && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => requestDeleteItem('books', editingBookItem, bookItems, setBookItems)}
+          <div className={sectionCardClassName}>
+            {bookItems.length === 0 ? (
+              <p className="text-sm text-foreground/60">No books yet.</p>
+            ) : (
+              <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+                {bookItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
                   >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <div className={sectionCardClassName}>
-              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing Fire on the Altar</h3>
-              {bookItems.length === 0 ? (
-                <p className="text-sm text-foreground/60">No books yet.</p>
-              ) : (
-                <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
-                  {bookItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`rounded-2xl border p-4 transition ${
-                        editingIds.books === item.id
-                          ? 'border-primary/60 bg-primary/5'
-                          : 'border-border/60 bg-background'
-                      }`}
-                    >
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
                         {item.author || 'Book'}
                       </p>
-                      <div className="mt-2 flex items-start justify-between gap-3">
+                      <div className="mt-1 flex items-start justify-between gap-3">
                         <p className="text-sm font-semibold text-foreground">
                           {item.title || 'Untitled book'}
                         </p>
                         <ItemSourceBadge isFallback={item.isFallback} />
                       </div>
-                      {item.description && (
-                        <p className="mt-2 text-sm text-foreground/70">{item.description}</p>
-                      )}
-                      <div className="mt-4 flex flex-wrap gap-3">
-                        <Button variant="outline" onClick={() => startEditingBook(item)}>
-                          {editingIds.books === item.id ? 'Editing' : 'Edit'}
-                        </Button>
-                        <Button variant="outline" onClick={() => requestDeleteItem('books', item, bookItems, setBookItems)}>
-                          Delete
-                        </Button>
-                      </div>
+                      {item.description ? (
+                        <p className="mt-1 line-clamp-2 text-sm text-foreground/70">{item.description}</p>
+                      ) : null}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Edit ${item.title || 'book'}`}
+                        onClick={() => openEditSectionDialog('books', item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={`Delete ${item.title || 'book'}`}
+                        onClick={() => requestDeleteItem('books', item, bookItems, setBookItems)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
         <section className="space-y-5 border-t border-border/60 pt-8">
-          <div>
-            <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Church Magazines</p>
-            <p className="text-sm text-foreground/60">
-              Magazine entries now sit in their own final section with a dedicated review column.
-            </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Church Magazines</p>
+              <p className="text-sm text-foreground/60">
+                Magazine entries in a dedicated list with modal editing.
+              </p>
+            </div>
+            <Button type="button" className="shrink-0 gap-2" onClick={() => openAddSectionDialog('magazines')}>
+              <Plus className="h-4 w-4" />
+              Add magazine
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
-            <div className={`${sectionCardClassName} space-y-5`}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    {editingIds.magazines ? 'Edit Magazine' : 'Create Magazine'}
-                  </h2>
-                  <p className="text-sm text-foreground/60">
-                    Use the list on the right to load an existing issue into this editor.
-                  </p>
-                </div>
-                {editingIds.magazines && (
-                  <Button variant="outline" onClick={() => resetSectionEditor('magazines')}>
-                    New Item
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <input
-                  type="text"
-                  placeholder="Magazine title"
-                  value={draftMagazine.title}
-                  onChange={(event) => setDraftMagazine((prev) => ({ ...prev, title: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-                <input
-                  type="text"
-                  placeholder="Issue"
-                  value={draftMagazine.issue}
-                  onChange={(event) => setDraftMagazine((prev) => ({ ...prev, issue: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-              </div>
-
+          <div className={sectionCardClassName}>
+            <div className="mb-4">
               <input
-                type="text"
-                placeholder="Link URL"
-                value={draftMagazine.fileUrl}
-                onChange={(event) => setDraftMagazine((prev) => ({ ...prev, fileUrl: event.target.value }))}
+                type="search"
+                value={magazineSearch}
+                onChange={(event) => setMagazineSearch(event.target.value)}
+                placeholder="Search existing magazines..."
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
               />
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">Cover Image</label>
-                <input
-                  type="file"
-                  accept="image/*,.heic,.heif,.avif"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    const url = await uploadImage(file);
-                    if (!url) return;
-                    setDraftMagazine((prev) => ({ ...prev, imageUrl: url }));
-                    updateUploadName(DRAFT_UPLOAD_KEYS.magazines, file.name);
-                  }}
-                  className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-                />
-                {uploadNames[DRAFT_UPLOAD_KEYS.magazines] && (
-                  <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.magazines]}</p>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  onClick={() =>
-                    handleSaveItem('magazines', draftMagazine, editingIds.magazines, magazineItems, setMagazineItems)
-                  }
-                >
-                  {editingIds.magazines ? 'Save Magazine' : 'Add Magazine'}
-                </Button>
-                <Button variant="outline" onClick={() => resetSectionEditor('magazines')}>
-                  Clear
-                </Button>
-                {editingMagazineItem && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => requestDeleteItem('magazines', editingMagazineItem, magazineItems, setMagazineItems)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
-                )}
-              </div>
             </div>
-
-            <div className={sectionCardClassName}>
-              <h3 className="mb-4 text-lg font-semibold text-foreground">Existing Magazines</h3>
-              <div className="mb-4">
-                <input
-                  type="search"
-                  value={magazineSearch}
-                  onChange={(event) => setMagazineSearch(event.target.value)}
-                  placeholder="Search existing magazines..."
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-              </div>
-              {filteredMagazineItems.length === 0 ? (
-                <p className="text-sm text-foreground/60">No magazine issues yet.</p>
-              ) : (
-                <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
-                  {filteredMagazineItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`rounded-2xl border p-4 transition ${
-                        editingIds.magazines === item.id
-                          ? 'border-primary/60 bg-primary/5'
-                          : 'border-border/60 bg-background'
-                      }`}
-                    >
+            {filteredMagazineItems.length === 0 ? (
+              <p className="text-sm text-foreground/60">No magazine issues yet.</p>
+            ) : (
+              <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+                {filteredMagazineItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
                         {item.issue || 'Magazine'}
                       </p>
-                      <div className="mt-2 flex items-start justify-between gap-3">
+                      <div className="mt-1 flex items-start justify-between gap-3">
                         <p className="text-sm font-semibold text-foreground">
                           {item.title || 'Untitled magazine'}
                         </p>
                         <ItemSourceBadge isFallback={item.isFallback} />
                       </div>
-                      <div className="mt-4 flex flex-wrap gap-3">
-                        <Button variant="outline" onClick={() => startEditingMagazine(item)}>
-                          {editingIds.magazines === item.id ? 'Editing' : 'Edit'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => requestDeleteItem('magazines', item, magazineItems, setMagazineItems)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Edit ${item.title || 'magazine'}`}
+                        onClick={() => openEditSectionDialog('magazines', item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={`Delete ${item.title || 'magazine'}`}
+                        onClick={() => requestDeleteItem('magazines', item, magazineItems, setMagazineItems)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </div>
+
+      <SchoolAdminDialogShell
+        open={openSection !== null}
+        onOpenChange={(open) => {
+          if (!open && openSection) closeSectionDialog(openSection);
+        }}
+        title={
+          openSection === 'news'
+            ? editingIds.news
+              ? 'Edit news item'
+              : 'Add news item'
+            : openSection === 'gallery'
+              ? editingIds.gallery
+                ? 'Edit gallery item'
+                : 'Add gallery item'
+              : openSection === 'books'
+                ? editingIds.books
+                  ? 'Edit book'
+                  : 'Add book'
+                : openSection === 'magazines'
+                  ? editingIds.magazines
+                    ? 'Edit magazine'
+                    : 'Add magazine'
+                  : 'Edit item'
+        }
+        description="Update the details below and save your changes."
+        saving={uploading}
+        saveLabel={
+          openSection === 'news'
+            ? editingIds.news
+              ? 'Save news item'
+              : 'Add news item'
+            : openSection === 'gallery'
+              ? editingIds.gallery
+                ? 'Save gallery item'
+                : 'Add gallery item'
+              : openSection === 'books'
+                ? editingIds.books
+                  ? 'Save book'
+                  : 'Add book'
+                : openSection === 'magazines'
+                  ? editingIds.magazines
+                    ? 'Save magazine'
+                    : 'Add magazine'
+                  : 'Save'
+        }
+        onSave={() => {
+          if (openSection === 'news') {
+            void handleSaveItem('news', draftNews, editingIds.news, newsItems, setNewsItems);
+          } else if (openSection === 'gallery') {
+            void handleSaveItem('gallery', draftGallery, editingIds.gallery, galleryItems, setGalleryItems);
+          } else if (openSection === 'books') {
+            void handleSaveItem('books', draftBook, editingIds.books, bookItems, setBookItems);
+          } else if (openSection === 'magazines') {
+            void handleSaveItem('magazines', draftMagazine, editingIds.magazines, magazineItems, setMagazineItems);
+          }
+        }}
+        onCancel={() => {
+          if (openSection) closeSectionDialog(openSection);
+        }}
+        maxWidthClass="sm:max-w-2xl"
+      >
+        {openSection === 'news' ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.1fr_1.35fr_1.35fr_0.95fr]">
+              <input
+                type="text"
+                placeholder="Badge"
+                value={draftNews.badge}
+                onChange={(event) => setDraftNews((prev) => ({ ...prev, badge: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+              <select
+                value={draftNews.date.split(' ')[0] || ''}
+                onChange={(event) => {
+                  const year = draftNews.date.split(' ')[1] || '';
+                  setDraftNews((prev) => ({
+                    ...prev,
+                    date: event.target.value ? `${event.target.value}${year ? ` ${year}` : ''}` : year,
+                  }));
+                }}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              >
+                <option value="">Month</option>
+                {MONTHS.map((month) => (
+                  <option key={month} value={month}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={draftNews.date.split(' ')[1] || ''}
+                onChange={(event) => {
+                  const month = draftNews.date.split(' ')[0] || '';
+                  setDraftNews((prev) => ({
+                    ...prev,
+                    date: event.target.value ? `${month ? `${month} ` : ''}${event.target.value}` : month,
+                  }));
+                }}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              >
+                <option value="">Year</option>
+                {YEARS.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Headline"
+                value={draftNews.title}
+                onChange={(event) => setDraftNews((prev) => ({ ...prev, title: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Description</label>
+              <textarea
+                value={draftNews.description}
+                onChange={(event) => setDraftNews((prev) => ({ ...prev, description: event.target.value }))}
+                rows={5}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                placeholder="Write a short summary for the news story."
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Upload Image</label>
+              <input
+                type="file"
+                accept="image/*,.heic,.heif,.avif"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const url = await uploadImage(file);
+                  if (!url) return;
+                  setDraftNews((prev) => ({ ...prev, imageUrl: url }));
+                  updateUploadName(DRAFT_UPLOAD_KEYS.news, file.name);
+                }}
+                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+              />
+              {uploadNames[DRAFT_UPLOAD_KEYS.news] ? (
+                <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.news]}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        {openSection === 'gallery' ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <input
+                type="text"
+                placeholder="Title"
+                value={draftGallery.title}
+                onChange={(event) => setDraftGallery((prev) => ({ ...prev, title: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+              <select
+                value={draftGallery.category}
+                onChange={(event) => setDraftGallery((prev) => ({ ...prev, category: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              >
+                <option value="">Select a category</option>
+                {GALLERY_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Upload Image</label>
+              <input
+                type="file"
+                accept="image/*,.heic,.heif,.avif"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const url = await uploadImage(file);
+                  if (!url) return;
+                  setDraftGallery((prev) => ({ ...prev, imageUrl: url }));
+                  updateUploadName(DRAFT_UPLOAD_KEYS.gallery, file.name);
+                }}
+                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+              />
+              {uploadNames[DRAFT_UPLOAD_KEYS.gallery] ? (
+                <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.gallery]}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        {openSection === 'books' ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <input
+                type="text"
+                placeholder="Book title"
+                value={draftBook.title}
+                onChange={(event) => setDraftBook((prev) => ({ ...prev, title: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+              <input
+                type="text"
+                placeholder="Author"
+                value={draftBook.author}
+                onChange={(event) => setDraftBook((prev) => ({ ...prev, author: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Description</label>
+              <textarea
+                value={draftBook.description}
+                onChange={(event) => setDraftBook((prev) => ({ ...prev, description: event.target.value }))}
+                rows={5}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                placeholder="Write a short description of the book."
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Cover Image</label>
+              <input
+                type="file"
+                accept="image/*,.heic,.heif,.avif"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const url = await uploadImage(file);
+                  if (!url) return;
+                  setDraftBook((prev) => ({ ...prev, imageUrl: url }));
+                  updateUploadName(DRAFT_UPLOAD_KEYS.books, file.name);
+                }}
+                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+              />
+              {uploadNames[DRAFT_UPLOAD_KEYS.books] ? (
+                <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.books]}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        {openSection === 'magazines' ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <input
+                type="text"
+                placeholder="Magazine title"
+                value={draftMagazine.title}
+                onChange={(event) => setDraftMagazine((prev) => ({ ...prev, title: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+              <input
+                type="text"
+                placeholder="Issue"
+                value={draftMagazine.issue}
+                onChange={(event) => setDraftMagazine((prev) => ({ ...prev, issue: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+            </div>
+            <input
+              type="text"
+              placeholder="Link URL"
+              value={draftMagazine.fileUrl}
+              onChange={(event) => setDraftMagazine((prev) => ({ ...prev, fileUrl: event.target.value }))}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            />
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Cover Image</label>
+              <input
+                type="file"
+                accept="image/*,.heic,.heif,.avif"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const url = await uploadImage(file);
+                  if (!url) return;
+                  setDraftMagazine((prev) => ({ ...prev, imageUrl: url }));
+                  updateUploadName(DRAFT_UPLOAD_KEYS.magazines, file.name);
+                }}
+                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+              />
+              {uploadNames[DRAFT_UPLOAD_KEYS.magazines] ? (
+                <p className="mt-2 text-xs text-foreground/60">Selected: {uploadNames[DRAFT_UPLOAD_KEYS.magazines]}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </SchoolAdminDialogShell>
     </div>
   );
 }

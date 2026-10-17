@@ -10,6 +10,11 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import type { Product } from '@/components/data/products';
+import {
+  openStorePaychanguPopup,
+  PAYCHANGU_CHECKOUT_METHOD,
+  resolveStoreOrderReference,
+} from '@/lib/store-paychangu-checkout';
 
 type CartItem = { product: Product; quantity: number };
 type StoreUser = { id: string; email: string; name: string };
@@ -62,9 +67,9 @@ export default function StoreCheckoutPage() {
   const [cartToken, setCartToken] = useState('');
   const [checkoutEmail, setCheckoutEmail] = useState('');
   const [checkoutPhone, setCheckoutPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Airtel Money');
   const [error, setError] = useState('');
   const [successReference, setSuccessReference] = useState('');
+  const [checkoutNotice, setCheckoutNotice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -109,6 +114,7 @@ export default function StoreCheckoutPage() {
     }
 
     setError('');
+    setCheckoutNotice('');
     setIsSubmitting(true);
 
     try {
@@ -119,7 +125,7 @@ export default function StoreCheckoutPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          paymentMethod,
+          paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
           phone: checkoutPhone,
           phoneCountry: '+265',
           format: 'soft',
@@ -140,20 +146,31 @@ export default function StoreCheckoutPage() {
         return;
       }
 
-      clearSoftCart();
-      setSuccessReference(String(data?.chargeId || data?.payment?.chargeId || ''));
+      const orderReference = resolveStoreOrderReference(data as Record<string, unknown>);
+      setSuccessReference(orderReference);
 
-      if (data?.payment?.checkoutUrl) {
-        window.location.href = data.payment.checkoutUrl;
-      }
-    } catch {
-      setError('Unable to start payment right now.');
+      await openStorePaychanguPopup({
+        orderReference,
+        amount: total,
+        email: checkoutEmail.trim(),
+        customerName: user.name || checkoutEmail,
+        phone: checkoutPhone,
+        reason: 'Hope Stores — soft copy',
+        returnPath: '/store',
+        format: 'soft',
+      });
+
+      clearSoftCart();
+      setItems([]);
+      setCheckoutNotice('Complete your payment in the PayChangu window. Your books unlock after confirmation.');
+    } catch (checkoutError) {
+      setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to start payment right now.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const isReadyToPay = Boolean(token && user && items.length > 0 && checkoutPhone.trim() && checkoutEmail.trim() && paymentMethod);
+  const isReadyToPay = Boolean(token && user && items.length > 0 && checkoutPhone.trim() && checkoutEmail.trim());
 
   return (
     <>
@@ -255,24 +272,21 @@ export default function StoreCheckoutPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <p className="text-sm font-semibold text-slate-700">Payment method</p>
-                    <div className="mt-2 space-y-2">
-                      {['Airtel Money', 'TNM Mpamba', 'Bank Transfer'].map((method) => (
-                        <label key={method} className={`flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3 text-sm font-semibold ${paymentMethod === method ? 'border-slate-950 bg-slate-50' : 'border-slate-200'}`}>
-                          <input type="radio" checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} />
-                          {method}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-600">
+                    You will choose Airtel Money, TNM Mpamba, bank transfer, or card inside the secure PayChangu checkout window.
+                  </p>
 
                   {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</p>}
 
-                  {successReference ? (
+                  {checkoutNotice || successReference ? (
                     <div className="rounded-md bg-green-50 p-4 text-sm text-green-800">
                       <CheckCircle2 className="mb-2 h-5 w-5" />
-                      Payment request created. Reference: <span className="font-semibold">{successReference}</span>
+                      {checkoutNotice || 'Payment request created.'}
+                      {successReference ? (
+                        <p className="mt-2">
+                          Reference: <span className="font-semibold">{successReference}</span>
+                        </p>
+                      ) : null}
                     </div>
                   ) : null}
 

@@ -11,7 +11,7 @@ import MomentsSection from '@/components/MomentsSection';
 import SpotifyFollowDialog from '@/components/SpotifyFollowDialog';
 import DevotionReadMore from '@/components/DevotionReadMore';
 import VideoDeclarationCard, { type VideoDeclarationCardContent } from '@/components/VideoDeclarationCard';
-import { apiFetch, apiUrl } from '@/lib/api';
+import { apiFetch, resolveMediaImageUrl } from '@/lib/api';
 
 const HOME_HERO_SLOTS = [
   { key: 'home-hero-1', fallback: '/hero/hero-4.JPG', className: 'col-span-2 row-span-1' },
@@ -306,13 +306,11 @@ async function getHomeVerse() {
 }
 
 function normalizeImageUrl(url?: string | null) {
-  const trimmed = url?.trim();
-  if (!trimmed) return null;
-  if (trimmed === REMOVED_IMAGE_VALUE) return null;
-  if (trimmed.startsWith('http')) return trimmed;
-  if (trimmed.startsWith('/uploads')) return apiUrl(trimmed);
-  if (trimmed === '/home/see-you-in-church.jpg') return '/home/see-you-in-church.JPG';
-  return trimmed;
+  if (url?.trim() === REMOVED_IMAGE_VALUE) return null;
+  const resolved = resolveMediaImageUrl(url);
+  if (!resolved) return null;
+  if (resolved === '/home/see-you-in-church.jpg') return '/home/see-you-in-church.JPG';
+  return resolved;
 }
 
 function resolveSiteImage(url: string | null | undefined, fallback: string) {

@@ -5,12 +5,13 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { apiFetch } from '@/lib/api';
 import { products, bookGenres, type Product } from '@/components/data/products';
-import { ImageIcon, RefreshCw, Trash2 } from 'lucide-react';
+import { ImageIcon, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 type StoreBook = Product & {
   productId: string;
@@ -140,11 +141,28 @@ export default function AdminStorePage() {
   const [uploadName, setUploadName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const resetEditor = () => {
     setDraft(EMPTY_DRAFT);
     setEditingId(null);
     setUploadName('');
+  };
+
+  const closeBookDialog = () => {
+    setDialogOpen(false);
+    resetEditor();
+  };
+
+  const openAddDialog = () => {
+    resetEditor();
+    setStatus('');
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (book: StoreBook) => {
+    startEditing(book);
+    setDialogOpen(true);
   };
 
   const fetchBooks = useCallback(async () => {
@@ -165,8 +183,12 @@ export default function AdminStorePage() {
   }, [token]);
 
   useEffect(() => {
-    void fetchBooks();
-  }, [fetchBooks]);
+    if (!token) return;
+    const id = setTimeout(() => {
+      void fetchBooks();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [token, fetchBooks]);
 
   const uploadImage = async (file: File) => {
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
@@ -228,6 +250,7 @@ export default function AdminStorePage() {
         return;
       }
       await fetchBooks();
+      setDialogOpen(false);
       resetEditor();
       setStatus(editingId ? 'Book updated.' : 'Book created.');
     } catch {
@@ -260,7 +283,10 @@ export default function AdminStorePage() {
         return;
       }
       setBooks((prev) => prev.filter((item) => item.id !== book.id));
-      if (editingId === book.id) resetEditor();
+      if (editingId === book.id) {
+        setDialogOpen(false);
+        resetEditor();
+      }
       setStatus('Book deleted.');
     } catch {
       setStatus('Unable to delete book.');
@@ -374,6 +400,10 @@ export default function AdminStorePage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <Button type="button" onClick={openAddDialog} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add book
+          </Button>
           <Button variant="outline" onClick={importExistingBooks} disabled={isImporting}>
             <RefreshCw className="h-4 w-4" />
             {isImporting ? 'Importing...' : 'Import Existing Books'}
@@ -384,16 +414,20 @@ export default function AdminStorePage() {
       {status && <p className="rounded-xl bg-muted px-4 py-3 text-sm text-foreground/70">{status}</p>}
       <MediaUploadProgress uploading={uploading} progress={progress} />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <section className={`${cardClassName} space-y-5`}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">{editingId ? 'Edit Book' : 'Create Book'}</h2>
-              <p className="text-sm text-foreground/60">Use the editor to change prices, covers, and soft-copy settings.</p>
-            </div>
-            {editingId && <Button variant="outline" onClick={resetEditor}>New Book</Button>}
-          </div>
-
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) resetEditor();
+        }}
+        title={editingId ? 'Edit book' : 'Create book'}
+        description="Change prices, covers, and soft-copy settings."
+        saving={isSaving}
+        saveLabel={editingId ? 'Save book' : 'Create book'}
+        onSave={() => void saveBook()}
+        onCancel={closeBookDialog}
+        maxWidthClass="sm:max-w-3xl"
+      >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="store-book-title" className="text-sm font-medium text-foreground">Book title</label>
@@ -570,20 +604,7 @@ export default function AdminStorePage() {
             />
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={saveBook} disabled={isSaving}>{isSaving ? 'Saving...' : editingId ? 'Save Book' : 'Create Book'}</Button>
-            <Button variant="outline" onClick={resetEditor}>Clear</Button>
-            {editingId && (
-              <Button variant="destructive" onClick={() => {
-                const book = books.find((item) => item.id === editingId);
-                if (book) requestDelete(book);
-              }}>
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-            )}
-          </div>
-        </section>
+      </SchoolAdminDialogShell>
 
         <section className={cardClassName}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -610,42 +631,56 @@ export default function AdminStorePage() {
             {filteredBooks.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-foreground/60">No store books yet.</p>
             ) : filteredBooks.map((book) => (
-              <div key={book.id} className={`rounded-2xl border p-4 transition ${editingId === book.id ? 'border-primary/60 bg-primary/5' : 'border-border/60 bg-background'}`}>
-                <div className="flex gap-4">
-                  <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
-                    {book.image ? <Image src={book.image} alt={book.title} fill sizes="64px" className="object-cover" /> : <ImageIcon className="m-auto h-8 w-8 text-foreground/30" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="truncate text-sm font-semibold text-foreground">{book.title}</p>
-                        <p className="mt-1 text-xs text-foreground/50">{book.author || 'No author'} - {book.genre || 'No genre'}</p>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${book.isActive ? 'bg-green-100 text-green-700' : 'bg-muted text-foreground/50'}`}>
-                          {book.isActive ? 'Visible' : 'Hidden'}
-                        </span>
-                        <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase text-foreground/50">
-                          {book.isBuiltIn ? 'Built-in' : 'Managed'}
-                        </span>
-                      </div>
+              <div key={book.id} className="flex items-center gap-4 rounded-2xl border border-border/60 bg-background p-4">
+                <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
+                  {book.image ? <Image src={book.image} alt={book.title} fill sizes="64px" className="object-cover" /> : <ImageIcon className="m-auto h-8 w-8 text-foreground/30" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{book.title}</p>
+                      <p className="mt-1 text-xs text-foreground/50">{book.author || 'No author'} - {book.genre || 'No genre'}</p>
                     </div>
-                    <p className="mt-2 text-xs text-foreground/60">
-                      Hard: MWK {book.hardCopyPrice.toLocaleString()} | Soft: {book.softCopyPrice == null ? 'Not set' : `MWK ${book.softCopyPrice.toLocaleString()}`}
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Button variant="outline" onClick={() => startEditing(book)}>
-                        {editingId === book.id ? 'Editing' : 'Edit'}
-                      </Button>
-                      {!book.isBuiltIn && <Button variant="outline" onClick={() => requestDelete(book)}>Delete</Button>}
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${book.isActive ? 'bg-green-100 text-green-700' : 'bg-muted text-foreground/50'}`}>
+                        {book.isActive ? 'Visible' : 'Hidden'}
+                      </span>
+                      <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase text-foreground/50">
+                        {book.isBuiltIn ? 'Built-in' : 'Managed'}
+                      </span>
                     </div>
                   </div>
+                  <p className="mt-2 text-xs text-foreground/60">
+                    Hard: MWK {book.hardCopyPrice.toLocaleString()} | Soft: {book.softCopyPrice == null ? 'Not set' : `MWK ${book.softCopyPrice.toLocaleString()}`}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Edit ${book.title}`}
+                    onClick={() => openEditDialog(book)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  {!book.isBuiltIn ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete ${book.title}`}
+                      onClick={() => requestDelete(book)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ))}
           </div>
         </section>
-      </div>
     </div>
   );
 }

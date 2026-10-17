@@ -13,6 +13,7 @@ type ArchivedQuote = {
   author: string;
   imageUrl?: string;
   createdAt: string;
+  monthLabel?: string;
 };
 
 type QuotesArchiveClientProps = {
@@ -68,10 +69,12 @@ export default function QuotesArchiveClient({ initialQuotes }: QuotesArchiveClie
                         <div>
                           <p className="font-bold text-primary text-sm">{item.author}</p>
                           <p className="text-xs text-foreground/50">
-                            {new Date(item.createdAt).toLocaleDateString('en-US', {
-                              month: 'long',
-                              year: 'numeric',
-                            })}
+                            {item.monthLabel ||
+                              new Date(item.createdAt).toLocaleDateString('en-US', {
+                                month: 'long',
+                                year: 'numeric',
+                                timeZone: 'UTC',
+                              })}
                           </p>
                         </div>
                       </div>

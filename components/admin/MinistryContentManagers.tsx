@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
 
 export type PartnershipDetail = {
   label: string;
@@ -545,6 +546,7 @@ export function MinistryItemsManager({
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { runUpload, progress, uploading } = useMediaUpload();
 
   const baseUrl = useMemo(() => `/api/admin/ministries/${encodeURIComponent(ministryKey)}`, [ministryKey]);
@@ -619,11 +621,7 @@ export function MinistryItemsManager({
     });
   };
 
-  const addNew = () => {
-    if (typeof maxItems === 'number' && items.length >= maxItems) {
-      setStatus(`Only ${maxItems} ${title.toLowerCase()} can be shown on the page. Delete one before adding another.`);
-      return;
-    }
+  const resetDraftState = () => {
     setEditingItem(null);
     setDraft({
       title: '',
@@ -637,6 +635,27 @@ export function MinistryItemsManager({
       paymentCurrency: 'MWK',
       paymentAccount: defaultPaymentAccount,
     });
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    resetDraftState();
+  };
+
+  const openAddDialog = () => {
+    if (typeof maxItems === 'number' && items.length >= maxItems) {
+      setStatus(`Only ${maxItems} ${title.toLowerCase()} can be shown on the page. Delete one before adding another.`);
+      return;
+    }
+    resetDraftState();
+    setStatus('');
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (item: MinistryItem) => {
+    edit(item);
+    setStatus('');
+    setDialogOpen(true);
   };
 
   const save = async () => {
@@ -687,7 +706,7 @@ export function MinistryItemsManager({
         return;
       }
 
-      addNew();
+      closeDialog();
       await refresh();
       setStatus(`Item ${isPersisted ? 'updated' : 'added'}.`);
     } catch {
@@ -712,7 +731,7 @@ export function MinistryItemsManager({
         setStatus('Unable to delete item.');
         return;
       }
-      if (editingItem?.id === item.id) addNew();
+      if (editingItem?.id === item.id) closeDialog();
       await refresh();
       setStatus('Item deleted.');
     } catch {
@@ -726,20 +745,10 @@ export function MinistryItemsManager({
       return;
     }
 
-    const toastId = toast('Delete this item?', {
+    confirmDeleteToast({
+      title: 'Delete this item?',
       description: item.title,
-      duration: Infinity,
-      action: {
-        label: 'Delete',
-        onClick: () => {
-          toast.dismiss(toastId);
-          void remove(item);
-        },
-      },
-      cancel: {
-        label: 'Cancel',
-        onClick: () => toast.dismiss(toastId),
-      },
+      onConfirm: () => void remove(item),
     });
   };
 
@@ -751,46 +760,15 @@ export function MinistryItemsManager({
     );
   }
 
-  const isPersistedEdit = Boolean(editingItem && !editingItem.isFallback);
-  const saveButtonText = labels?.save || 'Save Item';
+  const saveButtonText = labels?.save || (editingItem ? 'Save changes' : 'Add item');
   const limitReached = typeof maxItems === 'number' && items.length >= maxItems;
-  const isCreatingNew = !editingItem;
   const itemLimitLabel = typeof maxItems === 'number' ? `${Math.min(items.length, maxItems)} / ${maxItems}` : null;
+  const dialogTitle = editingItem
+    ? labels?.formTitle || `Edit ${title}`
+    : labels?.formTitle || `Add ${title}`;
 
-  return (
-    <div className="space-y-6">
-      {status && (
-        <div className={`rounded-xl p-4 text-sm ${status.includes('Unable') || status.includes('Please') || status.includes('cannot') || status.includes('Only') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
-          {status}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
-        <div className="space-y-5 rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">{labels?.formTitle || (isPersistedEdit ? `Update ${title}` : `Add ${title}`)}</h2>
-              <p className="mt-1 text-sm text-foreground/70">{description}</p>
-              {itemLimitLabel ? (
-                <p className={`mt-2 text-xs font-semibold ${limitReached ? 'text-destructive' : 'text-primary'}`}>
-                  {itemLimitLabel} items used. {limitReached ? 'Delete one before adding another.' : `Up to ${maxItems} items can be shown.`}
-                </p>
-              ) : null}
-            </div>
-            {editingItem ? (
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={save} disabled={savingId !== null} className="gap-2">
-                  {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  {saveButtonText}
-                </Button>
-                <Button variant="outline" onClick={addNew} disabled={limitReached}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New
-                </Button>
-              </div>
-            ) : null}
-          </div>
-
+  const itemFormFields = (
+    <div className="space-y-5">
           <Field label={labels?.title || 'Title'} value={draft.title} onChange={(value) => setDraft((prev) => ({ ...prev, title: value }))} placeholder="Title" />
           <TextArea label={labels?.description || 'Description'} value={draft.description} onChange={(value) => setDraft((prev) => ({ ...prev, description: value }))} rows={5} />
           {(showLabel || showSortOrder) && (
@@ -902,34 +880,60 @@ export function MinistryItemsManager({
               )}
             </div>
           )}
+    </div>
+  );
 
-          <div className="flex flex-wrap gap-3 border-t border-border/60 pt-4">
-            <Button onClick={save} disabled={savingId !== null || (isCreatingNew && limitReached)} className="gap-2">
-              {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saveButtonText}
-            </Button>
-            {isCreatingNew && limitReached ? (
-              <p className="flex items-center text-sm font-medium text-destructive">
-                Limit reached. Select an existing item to edit it, or delete one saved item first.
-              </p>
-            ) : null}
-            {isPersistedEdit && editingItem ? (
-              <Button variant="destructive" onClick={() => requestRemove(editingItem)} className="gap-2">
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-            ) : null}
-          </div>
+  return (
+    <div className="space-y-6">
+      {status ? (
+        <div
+          className={`rounded-xl p-4 text-sm ${status.includes('Unable') || status.includes('Please') || status.includes('cannot') || status.includes('Only') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}
+        >
+          {status}
         </div>
+      ) : null}
 
-        <div className="h-fit max-h-[780px] space-y-3 overflow-y-auto rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground">Current {title}</h2>
-          {items.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => edit(item)}
-              className={`w-full rounded-xl border p-4 text-left transition ${editingItem?.id === item.id ? 'border-primary bg-primary/5' : 'border-border/60 bg-background hover:border-primary/60'}`}
-            >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+          <p className="mt-1 text-sm text-foreground/70">{description}</p>
+          {itemLimitLabel ? (
+            <p className={`mt-2 text-xs font-semibold ${limitReached ? 'text-destructive' : 'text-primary'}`}>
+              {itemLimitLabel} items used. {limitReached ? 'Delete one before adding another.' : `Up to ${maxItems} items can be shown.`}
+            </p>
+          ) : null}
+        </div>
+        <Button type="button" onClick={openAddDialog} disabled={limitReached} className="shrink-0 gap-2">
+          <Plus className="h-4 w-4" />
+          Add {title.toLowerCase()}
+        </Button>
+      </div>
+
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) resetDraftState();
+        }}
+        title={dialogTitle}
+        description={description}
+        saving={savingId !== null}
+        saveLabel={saveButtonText}
+        onSave={() => void save()}
+        onCancel={closeDialog}
+        maxWidthClass="sm:max-w-2xl"
+      >
+        {itemFormFields}
+      </SchoolAdminDialogShell>
+
+      <div className="max-h-[780px] space-y-3 overflow-y-auto rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-foreground">Current {title}</h3>
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4"
+          >
+            <div className="min-w-0 flex-1">
               {item.imageUrl ? (
                 <div className="relative mb-3 h-28 overflow-hidden rounded-lg border border-border/60">
                   <Image src={toPreviewUrl(item.imageUrl)} alt={item.title} fill className="object-cover" unoptimized />
@@ -937,7 +941,9 @@ export function MinistryItemsManager({
               ) : null}
               <div className="flex items-start justify-between gap-2">
                 <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
-                {!item.isPublished ? <span className="rounded bg-destructive/10 px-2 py-1 text-[10px] font-bold uppercase text-destructive">Draft</span> : null}
+                {!item.isPublished ? (
+                  <span className="rounded bg-destructive/10 px-2 py-1 text-[10px] font-bold uppercase text-destructive">Draft</span>
+                ) : null}
               </div>
               {item.label ? <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{item.label}</p> : null}
               {item.description ? <p className="mt-2 line-clamp-2 text-xs text-foreground/60">{item.description}</p> : null}
@@ -947,9 +953,30 @@ export function MinistryItemsManager({
                 </p>
               ) : null}
               {item.isFallback ? <p className="mt-2 text-[10px] text-foreground/40">Fallback content ready to edit</p> : null}
-            </button>
-          ))}
-        </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label={`Edit ${item.title}`}
+                onClick={() => openEditDialog(item)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                aria-label={`Delete ${item.title}`}
+                onClick={() => requestRemove(item)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

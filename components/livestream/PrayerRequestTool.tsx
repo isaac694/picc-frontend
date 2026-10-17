@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, messageFromApiPayload } from '@/lib/api';
 
 const initialPrayerForm = {
   fullName: '',
@@ -61,7 +61,9 @@ export default function PrayerRequestTool({ ministryKey = 'main' }: { ministryKe
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to submit prayer request.');
+        throw new Error(
+          messageFromApiPayload(data, 'Failed to submit prayer request.'),
+        );
       }
 
       toast.success('Thank you! Your prayer request was submitted.');

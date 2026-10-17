@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { SchoolAdminDialogShell, SchoolAdminStatusBanner } from '@/components/admin/school-admin-dialog-shell';
+import { Loader2, Pencil, Plus, Power, PowerOff, Trash2 } from 'lucide-react';
 
 type IntakeRecord = {
   id: string;
@@ -17,6 +18,14 @@ type IntakeRecord = {
 
 type Draft = Omit<IntakeRecord, 'id'>;
 
+const emptyDraft = (sortOrder: number): Draft => ({
+  label: '',
+  opensOn: null,
+  closesOn: null,
+  isActive: true,
+  sortOrder,
+});
+
 export default function SchoolIntakesManager({
   token,
   schoolKey,
@@ -25,24 +34,24 @@ export default function SchoolIntakesManager({
   schoolKey: string;
 }) {
   const [status, setStatus] = useState('');
+  const [dialogStatus, setDialogStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [intakes, setIntakes] = useState<IntakeRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<IntakeRecord | null>(null);
-  const [draft, setDraft] = useState<Draft>({
-    label: '',
-    opensOn: null,
-    closesOn: null,
-    isActive: true,
-    sortOrder: 0,
-  });
+  const [draft, setDraft] = useState<Draft>(emptyDraft(0));
 
   const baseUrl = useMemo(() => `/api/admin/schools/${encodeURIComponent(schoolKey)}/intakes`, [schoolKey]);
   const isCohort = schoolKey === 'hope-school' || schoolKey === 'discipleship';
   const intakeLabel = isCohort ? 'Cohort' : 'Intake';
   const intakeLabelPlural = isCohort ? 'Cohorts' : 'Intakes';
   const sampleLabel = isCohort ? 'e.g., Cohort 1 2026' : 'e.g., Term 1 2026';
+
+  const nextSortOrder = () =>
+    intakes.length > 0 ? Math.max(...intakes.map((i) => i.sortOrder)) + 1 : 0;
 
   const refresh = async () => {
     setIsLoading(true);
@@ -67,11 +76,26 @@ export default function SchoolIntakesManager({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial list fetch
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl, token]);
 
-  const handleEdit = (item: IntakeRecord) => {
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingItem(null);
+    setDraft(emptyDraft(0));
+    setDialogStatus('');
+  };
+
+  const openAddDialog = () => {
+    setEditingItem(null);
+    setDraft(emptyDraft(nextSortOrder()));
+    setDialogStatus('');
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (item: IntakeRecord) => {
     setEditingItem(item);
     setDraft({
       label: item.label,
@@ -80,28 +104,19 @@ export default function SchoolIntakesManager({
       isActive: item.isActive,
       sortOrder: item.sortOrder,
     });
-  };
-
-  const handleAddNew = () => {
-    setEditingItem(null);
-    setDraft({
-      label: '',
-      opensOn: null,
-      closesOn: null,
-      isActive: true,
-      sortOrder: intakes.length > 0 ? Math.max(...intakes.map(i => i.sortOrder)) + 1 : 0,
-    });
+    setDialogStatus('');
+    setDialogOpen(true);
   };
 
   const save = async () => {
     if (!draft.label.trim()) {
-      setStatus('Please enter a label.');
+      setDialogStatus('Please enter a label.');
       return;
     }
-    
-    setSavingId(editingItem ? editingItem.id : 'new');
-    setStatus('');
-    
+
+    setSaving(true);
+    setDialogStatus('');
+
     try {
       const url = editingItem ? `${baseUrl}/${encodeURIComponent(editingItem.id)}` : baseUrl;
       const method = editingItem ? 'PUT' : 'POST';
@@ -116,20 +131,18 @@ export default function SchoolIntakesManager({
       });
 
       if (!response.ok) {
-        setStatus(`Unable to ${editingItem ? 'update' : 'add'} ${intakeLabel.toLowerCase()}.`);
+        setDialogStatus(`Unable to ${editingItem ? 'update' : 'add'} ${intakeLabel.toLowerCase()}.`);
         return;
       }
 
-      if (!editingItem) {
-        handleAddNew();
-      }
-      
+      const wasEdit = Boolean(editingItem);
+      closeDialog();
       await refresh();
-      setStatus(`${intakeLabel} ${editingItem ? 'updated' : 'added'}.`);
+      setStatus(`${intakeLabel} ${wasEdit ? 'updated' : 'added'}.`);
     } catch {
-      setStatus(`Unable to ${editingItem ? 'update' : 'add'} ${intakeLabel.toLowerCase()}.`);
+      setDialogStatus(`Unable to ${editingItem ? 'update' : 'add'} ${intakeLabel.toLowerCase()}.`);
     } finally {
-      setSavingId(null);
+      setSaving(false);
     }
   };
 
@@ -144,11 +157,8 @@ export default function SchoolIntakesManager({
         setStatus(`Unable to delete ${intakeLabel.toLowerCase()}.`);
         return;
       }
-      
-      if (editingItem?.id === id) {
-        handleAddNew();
-      }
-      
+
+      if (editingItem?.id === id) closeDialog();
       await refresh();
       setStatus(`${intakeLabel} deleted.`);
     } catch {
@@ -157,28 +167,133 @@ export default function SchoolIntakesManager({
   };
 
   const requestRemove = (item: IntakeRecord) => {
-    const toastId = toast(`Delete this ${intakeLabel.toLowerCase()}?`, {
+    confirmDeleteToast({
+      title: `Delete this ${intakeLabel.toLowerCase()}?`,
       description: item.label,
-      duration: Infinity,
-      action: {
-        label: 'Delete',
-        onClick: () => {
-          toast.dismiss(toastId);
-          void remove(item.id);
-        },
-      },
-      cancel: {
-        label: 'Cancel',
-        onClick: () => toast.dismiss(toastId),
-      },
+      onConfirm: () => void remove(item.id),
     });
+  };
+
+  const setIntakeActive = async (item: IntakeRecord, isActive: boolean) => {
+    setTogglingId(item.id);
+    setStatus('');
+    try {
+      const response = await apiFetch(`${baseUrl}/${encodeURIComponent(item.id)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          label: item.label,
+          opensOn: item.opensOn,
+          closesOn: item.closesOn,
+          isActive,
+          sortOrder: item.sortOrder,
+        }),
+      });
+
+      if (!response.ok) {
+        setStatus(`Unable to ${isActive ? 'activate' : 'deactivate'} ${intakeLabel.toLowerCase()}.`);
+        return;
+      }
+
+      if (editingItem?.id === item.id) {
+        setDraft((prev) => ({ ...prev, isActive }));
+      }
+
+      await refresh();
+      setStatus(`${intakeLabel} ${isActive ? 'activated' : 'deactivated'}.`);
+    } catch {
+      setStatus(`Unable to ${isActive ? 'activate' : 'deactivate'} ${intakeLabel.toLowerCase()}.`);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const filteredIntakes = useMemo(() => {
     if (!searchTerm.trim()) return intakes;
     const lower = searchTerm.toLowerCase();
-    return intakes.filter(i => i.label.toLowerCase().includes(lower));
+    return intakes.filter((i) => i.label.toLowerCase().includes(lower));
   }, [intakes, searchTerm]);
+
+  const isDialogError =
+    Boolean(dialogStatus) &&
+    (dialogStatus.includes('Unable') || dialogStatus.includes('Please'));
+
+  const formFields = (
+    <div className="space-y-4">
+      {dialogStatus ? (
+        <div
+          className={`rounded-xl p-3 text-sm ${
+            isDialogError ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
+          }`}
+        >
+          {dialogStatus}
+        </div>
+      ) : null}
+      <div>
+        <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+          Label *
+        </label>
+        <input
+          type="text"
+          value={draft.label}
+          onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
+          placeholder={sampleLabel}
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+            Opens on
+          </label>
+          <input
+            type="date"
+            value={draft.opensOn || ''}
+            onChange={(e) => setDraft((prev) => ({ ...prev, opensOn: e.target.value || null }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+            Closes on
+          </label>
+          <input
+            type="date"
+            value={draft.closesOn || ''}
+            min={draft.opensOn || undefined}
+            onChange={(e) => setDraft((prev) => ({ ...prev, closesOn: e.target.value || null }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+      </div>
+      <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/50 p-3">
+        <input
+          type="checkbox"
+          id="intake-isActive"
+          checked={draft.isActive}
+          onChange={(e) => setDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
+          className="rounded border-border"
+        />
+        <label htmlFor="intake-isActive" className="cursor-pointer text-sm font-medium text-foreground">
+          Active (visible on site)
+        </label>
+      </div>
+      {editingItem ? (
+        <Button
+          type="button"
+          variant="destructive"
+          className="gap-2"
+          onClick={() => requestRemove(editingItem)}
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete {intakeLabel.toLowerCase()}
+        </Button>
+      ) : null}
+    </div>
+  );
 
   if (isLoading && intakes.length === 0) {
     return (
@@ -190,162 +305,149 @@ export default function SchoolIntakesManager({
 
   return (
     <div className="space-y-6">
-      {status && (
-        <div
-          className={`p-4 rounded-xl text-sm ${
-            status.includes('Unable') ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
-          }`}
-        >
-          {status}
-        </div>
-      )}
+      <SchoolAdminStatusBanner status={status} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
-        {/* Left Side: Form */}
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                {editingItem ? `Update ${intakeLabel}` : `Add New ${intakeLabel}`}
-              </h2>
-              <p className="text-sm text-foreground/70 mt-1">
-                {editingItem ? `Update the details for this ${intakeLabel.toLowerCase()}.` : `Create a new ${intakeLabel.toLowerCase()} for your school.`}
-              </p>
-            </div>
-            {editingItem && (
-              <Button variant="outline" onClick={handleAddNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                New {intakeLabel}
+      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Current {intakeLabelPlural.toLowerCase()}</h2>
+          <Button type="button" className="shrink-0 gap-2" onClick={openAddDialog}>
+            <Plus className="h-4 w-4" />
+            Add {intakeLabel.toLowerCase()}
+          </Button>
+        </div>
+
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder={`Search ${intakeLabelPlural.toLowerCase()}...`}
+          className="mb-4 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-primary/20"
+        />
+
+        {filteredIntakes.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border/60 py-12 text-center">
+            <p className="text-sm text-foreground/60">
+              {searchTerm
+                ? `No ${intakeLabelPlural.toLowerCase()} match your search.`
+                : `No ${intakeLabelPlural.toLowerCase()} yet.`}
+            </p>
+            {!searchTerm ? (
+              <Button type="button" onClick={openAddDialog} className="mt-4 gap-2">
+                <Plus className="h-4 w-4" />
+                Add {intakeLabel.toLowerCase()}
               </Button>
-            )}
+            ) : null}
           </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                Label *
-              </label>
-              <input
-                type="text"
-                value={draft.label}
-                onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
-                placeholder={sampleLabel}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                  Opens On
-                </label>
-                <input
-                  type="date"
-                  value={draft.opensOn || ''}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, opensOn: e.target.value || null }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider mb-1 block">
-                  Closes On
-                </label>
-                <input
-                  type="date"
-                  value={draft.closesOn || ''}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, closesOn: e.target.value || null }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground focus:ring-2 focus:ring-primary/20 transition"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2 flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-background/50 self-end">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={draft.isActive}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
-                  className="rounded border-border"
-                />
-                <label htmlFor="isActive" className="text-sm font-medium text-foreground cursor-pointer">
-                  Active (Visible on site)
-                </label>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/60">
-              <Button onClick={save} disabled={savingId !== null} className="gap-2">
-                {savingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {editingItem ? `Update ${intakeLabel}` : `Add ${intakeLabel}`}
-              </Button>
-              {editingItem && (
-                <Button variant="destructive" onClick={() => requestRemove(editingItem)} className="gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-              )}
-              {(editingItem || draft.label) && (
-                <Button variant="outline" onClick={handleAddNew}>
-                  Cancel
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side: List */}
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm flex flex-col h-fit max-h-[800px]">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Current {intakeLabelPlural}</h2>
-          
-          <div className="relative mb-4">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={`Search ${intakeLabelPlural.toLowerCase()}...`}
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 transition outline-none"
-            />
-          </div>
-
-          <div className="overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-            {filteredIntakes.length === 0 ? (
-              <div className="text-center py-12 border border-dashed rounded-xl border-border/60">
-                <p className="text-sm text-foreground/60">
-                  {searchTerm ? `No ${intakeLabelPlural.toLowerCase()} match your search.` : `No ${intakeLabelPlural.toLowerCase()} yet.`}
-                </p>
-              </div>
-            ) : (
-              filteredIntakes.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleEdit(item)}
-                  className={`w-full text-left rounded-xl border p-4 transition-all ${
-                    editingItem?.id === item.id
-                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                      : 'border-border/60 bg-background hover:border-primary/60'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <h3 className="text-sm font-semibold text-foreground truncate">{item.label}</h3>
-                    {!item.isActive && (
-                      <span className="text-[10px] uppercase font-bold text-destructive px-1.5 py-0.5 rounded bg-destructive/10">
-                        Inactive
-                      </span>
-                    )}
+        ) : (
+          <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+            {filteredIntakes.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-sm font-semibold text-foreground">{item.label}</h3>
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                        item.isActive
+                          ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
+                          : 'bg-destructive/10 text-destructive'
+                      }`}
+                    >
+                      {item.isActive ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-[10px] text-foreground/50">
-                      Opens: {item.opensOn ? new Date(item.opensOn).toLocaleDateString() : 'N/A'} | 
-                      Closes: {item.closesOn ? new Date(item.closesOn).toLocaleDateString() : 'N/A'}
-                    </p>
+                  <p className="mt-1 text-[10px] text-foreground/50">
+                    Opens: {item.opensOn ? new Date(item.opensOn).toLocaleDateString() : 'N/A'} · Closes:{' '}
+                    {item.closesOn ? new Date(item.closesOn).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  {item.isActive ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={togglingId === item.id}
+                      onClick={() => void setIntakeActive(item, false)}
+                    >
+                      {togglingId === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <PowerOff className="h-4 w-4" />
+                      )}
+                      Deactivate
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={togglingId === item.id}
+                      onClick={() => void setIntakeActive(item, true)}
+                    >
+                      {togglingId === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Power className="h-4 w-4" />
+                      )}
+                      Activate
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Edit ${item.label}`}
+                      onClick={() => openEditDialog(item)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete ${item.label}`}
+                      onClick={() => requestRemove(item)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </button>
-              ))
-            )}
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
+
+      <SchoolAdminDialogShell
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setDialogOpen(true);
+            return;
+          }
+          closeDialog();
+        }}
+        title={editingItem ? `Edit ${intakeLabel.toLowerCase()}` : `Add ${intakeLabel.toLowerCase()}`}
+        description={
+          editingItem
+            ? `Update this ${intakeLabel.toLowerCase()} for your school.`
+            : `Create a new ${intakeLabel.toLowerCase()} for enrollment on the public site.`
+        }
+        saving={saving}
+        saveLabel={editingItem ? 'Save changes' : `Add ${intakeLabel.toLowerCase()}`}
+        onSave={() => void save()}
+        onCancel={closeDialog}
+        maxWidthClass="sm:max-w-2xl"
+      >
+        {formFields}
+      </SchoolAdminDialogShell>
     </div>
   );
 }

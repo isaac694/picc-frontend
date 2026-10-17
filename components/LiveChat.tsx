@@ -7,8 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, EyeOff } from 'lucide-react';
-import { apiFetch, apiUrl } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
+import { apiFetch, messageFromApiPayload } from '@/lib/api';
+import { isGenericLiveChatTitle, pickYouTubeVideoTitle } from '@/lib/youtube-client';
+import { fetchYouTubeVideoTitleFromApp } from '@/lib/youtube-video-title-client';
+import { useYouTubeVideoTitle } from '@/hooks/use-youtube-video-title';
+import { toast } from 'sonner';
 
 interface ChatMessage {
   id: string;
@@ -30,6 +33,9 @@ interface LiveChatProps {
 }
 
 export default function LiveChat({ videoId, videoTitle }: LiveChatProps) {
+  const { title: youTubeTitle } = useYouTubeVideoTitle(videoId);
+  const resolvedVideoTitle = pickYouTubeVideoTitle(youTubeTitle, videoTitle);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +52,6 @@ export default function LiveChat({ videoId, videoTitle }: LiveChatProps) {
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   // Check for existing auth token on mount
   useEffect(() => {
@@ -123,16 +128,27 @@ export default function LiveChat({ videoId, videoTitle }: LiveChatProps) {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('authToken');
+      let titleForApi = resolvedVideoTitle;
+      if (!titleForApi && videoId) {
+        const fetched = await fetchYouTubeVideoTitleFromApp(videoId);
+        if (fetched && !isGenericLiveChatTitle(fetched)) {
+          titleForApi = fetched;
+        }
+      }
+      if (!titleForApi && videoTitle && !isGenericLiveChatTitle(videoTitle)) {
+        titleForApi = videoTitle.trim();
+      }
+
       const response = await apiFetch('/api/chat/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           content: newMessage.trim(),
           videoId,
-          videoTitle,
+          ...(titleForApi ? { videoTitle: titleForApi } : {}),
         }),
       });
 
@@ -140,19 +156,12 @@ export default function LiveChat({ videoId, videoTitle }: LiveChatProps) {
         setNewMessage('');
         await fetchMessages(); // Refresh messages
       } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to send message',
-          variant: 'destructive',
-        });
+        const data = await response.json().catch(() => null);
+        toast.error(messageFromApiPayload(data, 'Failed to send message'));
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to send message',
-        variant: 'destructive',
-      });
+      toast.error('Failed to send message');
     } finally {
       setIsLoading(false);
     }
@@ -182,24 +191,13 @@ export default function LiveChat({ videoId, videoTitle }: LiveChatProps) {
         setUser(data.user);
         setIsAuthModalOpen(false);
         setAuthForm({ username: '', email: '', password: '', confirmPassword: '' });
-        toast({
-          title: 'Success',
-          description: 'Logged in successfully',
-        });
+        toast.success('Logged in successfully');
       } else {
-        toast({
-          title: 'Error',
-          description: data.message || 'Login failed',
-          variant: 'destructive',
-        });
+        toast.error(messageFromApiPayload(data, 'Login failed'));
       }
     } catch (error) {
       console.error('Login error:', error);
-      toast({
-        title: 'Error',
-        description: 'Login failed',
-        variant: 'destructive',
-      });
+      toast.error('Login failed');
     } finally {
       setIsAuthLoading(false);
     }
@@ -210,11 +208,7 @@ export default function LiveChat({ videoId, videoTitle }: LiveChatProps) {
     if (!authForm.username || !authForm.email || !authForm.password || !authForm.confirmPassword) return;
 
     if (authForm.password !== authForm.confirmPassword) {
-      toast({
-        title: 'Error',
-        description: 'Passwords do not match',
-        variant: 'destructive',
-      });
+      toast.error('Passwords do not match');
       return;
     }
 
@@ -239,24 +233,13 @@ export default function LiveChat({ videoId, videoTitle }: LiveChatProps) {
         setUser(data.user);
         setIsAuthModalOpen(false);
         setAuthForm({ username: '', email: '', password: '', confirmPassword: '' });
-        toast({
-          title: 'Success',
-          description: 'Account created successfully',
-        });
+        toast.success('Account created successfully');
       } else {
-        toast({
-          title: 'Error',
-          description: data.message || 'Registration failed',
-          variant: 'destructive',
-        });
+        toast.error(messageFromApiPayload(data, 'Registration failed'));
       }
     } catch (error) {
       console.error('Registration error:', error);
-      toast({
-        title: 'Error',
-        description: 'Registration failed',
-        variant: 'destructive',
-      });
+      toast.error('Registration failed');
     } finally {
       setIsAuthLoading(false);
     }
