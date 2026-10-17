@@ -121,52 +121,6 @@ export default function ConfessionsAdminPage() {
     }
   };
 
-  const handleEditConfession = (confession: ConfessionRecord) => {
-
-    clearStatus();
-
-    // Convert stored UTC date to Malawi date and time
-    const malawiDateTime = getDateTimeInputValueInMalawi(
-      confession.publishAt
-    );
-
-    if (!malawiDateTime) {
-      setErrorStatus('Invalid confession publication date.');
-      return;
-    }
-
-    // Store selected confession ID
-    setConfessionId(confession.id);
-
-    // Populate form
-    setTitle(confession.title || '');
-    setImageUrl(confession.imageUrl);
-
-    setDate(malawiDateTime.date);
-    setPublishTime(malawiDateTime.time);
-
-    setUploadName('');
-
-  };
-
-const handleNewConfession = () => {
-
-  clearStatus();
-
-  // Exit edit mode
-  setConfessionId(null);
-
-  // Reset fields
-  setTitle('');
-  setImageUrl('');
-  setUploadName('');
-
-  // Reset date and time
-  setDate(getTomorrowDateInputValueInMalawi());
-  setPublishTime('01:00');
-
-};
-
   useEffect(() => {
     if (!token) return;
 
@@ -198,11 +152,11 @@ const handleNewConfession = () => {
 
     const todayStr = getDateTimeInputValueInMalawi(new Date().toISOString())?.date || new Date().toISOString().slice(0, 10);
     if (!confessionId && date < todayStr) {
-  setErrorStatus(
-    'You cannot create confessions for past dates. Please select today or a future date.'
-  );
-  return;
-}
+      setErrorStatus(
+        'You cannot create confessions for past dates. Please select today or a future date.',
+      );
+      return;
+    }
 
     const publishAt = toMalawiIsoInstant(date, publishTime);
     setPendingPublishAt(publishAt);
@@ -212,25 +166,61 @@ const handleNewConfession = () => {
   };
 
   const handleConfirmPost = async () => {
+    if (!pendingPublishAt) return;
 
-  if (!pendingPublishAt) return;
+    clearStatus();
+    setLoading(true);
+    setConfirmOpen(false);
 
-  clearStatus();
-  setLoading(true);
-  setConfirmOpen(false);
+    try {
+      const isEditing = Boolean(confessionId);
+      const endpoint = isEditing
+        ? `/api/confessions/${encodeURIComponent(confessionId!)}`
+        : '/api/confessions';
+      const method = isEditing ? 'PUT' : 'POST';
 
-  try {
+      const response = await apiFetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title,
+          imageUrl,
+          publishAt: pendingPublishAt,
+        }),
+      });
 
-    // Determine whether creating or editing
-    const isEditing = Boolean(confessionId);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const message =
+          errorData && typeof errorData.error === 'string'
+            ? errorData.error
+            : 'Unable to save confession. Please try again.';
+        setErrorStatus(message);
+        return;
+      }
 
-      setSuccessStatus('Confession saved.');
+      const payload = (await response.json().catch(() => null)) as unknown;
+      const saved = normalizeConfession(payload);
+      if (saved) {
+        setConfessionId(saved.id);
+      }
+
+      setSuccessStatus(
+        isEditing ? 'Confession updated successfully.' : 'Confession created successfully.',
+      );
       setDialogOpen(false);
-    } catch {
-      setErrorStatus('Unable to save confession. Please try again.');
+    } catch (error) {
+      console.error('Confession save error:', error);
+      setErrorStatus(
+        error instanceof Error ? error.message : 'Unable to save confession.',
+      );
     } finally {
       setLoading(false);
     }
+  };
 
   const openNewDialog = () => {
     setDate(getTomorrowDateInputValueInMalawi());
@@ -270,13 +260,6 @@ const handleNewConfession = () => {
       onConfirm: () => handleConfirmDelete(deleteId),
     });
   };
-const getConfessionDate = (publishAt: string) => {
-  return (
-    getDateTimeInputValueInMalawi(publishAt)?.date ||
-    publishAt.slice(0, 10)
-  );
-};
-
 
   const handleConfirmDelete = async (deleteId: string) => {
     clearStatus();
