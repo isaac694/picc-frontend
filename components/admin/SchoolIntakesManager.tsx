@@ -339,31 +339,26 @@ export default function SchoolIntakesManager({
             ) : null}
           </div>
         ) : (
-          <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+          <div className="max-h-[620px] overflow-auto rounded-xl border border-border/70">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Opens</th>
+                  <th className="px-3 py-2 font-medium">Closes</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
             {filteredIntakes.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold text-foreground">{item.label}</h3>
-                    <span
-                      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
-                        item.isActive
-                          ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
-                          : 'bg-destructive/10 text-destructive'
-                      }`}
-                    >
-                      {item.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[10px] text-foreground/50">
-                    Opens: {item.opensOn ? new Date(item.opensOn).toLocaleDateString() : 'N/A'} · Closes:{' '}
-                    {item.closesOn ? new Date(item.closesOn).toLocaleDateString() : 'N/A'}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
+              <tr key={item.id} className="border-t border-border/60">
+                <td className="px-3 py-2 font-medium text-foreground">{item.label}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{item.opensOn ? new Date(item.opensOn).toLocaleDateString() : 'N/A'}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{item.closesOn ? new Date(item.closesOn).toLocaleDateString() : 'N/A'}</td>
+                <td className="px-3 py-2 text-foreground/70">{item.isActive ? 'Active' : 'Inactive'}</td>
+                <td className="px-3 py-2">
+                <div className="flex flex-wrap items-center gap-1">
                   {item.isActive ? (
                     <Button
                       type="button"
@@ -419,8 +414,11 @@ export default function SchoolIntakesManager({
                     </Button>
                   </div>
                 </div>
-              </div>
+              </td>
+              </tr>
             ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

@@ -18,8 +18,23 @@ import {
 } from '@/components/ui/dialog';
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-
-type EventScope = 'general' | 'discipleship' | 'hope-school';
+import EventFormBuilder from '@/components/events/EventFormBuilder';
+import {
+  EMPTY_EVENT_FORM_DRAFT,
+  EVENT_MINISTRIES,
+  draftToPayload,
+  eventFormForApi,
+  formToDraft,
+  ensureRegistrationDraft,
+  ministryNameForKey,
+  parseEventForm,
+  parseEventTickets,
+  ticketsToDraft,
+  type EventFormDraft,
+  type EventFormSchema,
+  type EventTicket,
+  type EventTicketDraft,
+} from '@/lib/event-forms';
 
 type AdminEvent = {
   id: string;
@@ -31,11 +46,15 @@ type AdminEvent = {
   description: string;
   image: string;
   requiresRegistration: boolean;
-  registrationEmail: string;
   acceptsOnlinePayment: boolean;
   paymentAmount: string;
   paymentCurrency: string;
-  scope: EventScope;
+  tickets: EventTicket[];
+  ministryKey: string;
+  ministryName: string;
+  registrationForm: EventFormSchema | null;
+  paymentForm: EventFormSchema | null;
+  isPublished: boolean;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -50,18 +69,29 @@ const DEFAULT_EVENT_DRAFT = {
   description: '',
   image: '',
   requiresRegistration: false,
-  registrationEmail: '',
   acceptsOnlinePayment: false,
   paymentAmount: '',
   paymentCurrency: 'MWK',
-  scope: 'general' as EventScope,
+  tickets: [] as EventTicketDraft[],
+  ministryKey: '',
+  registrationForm: { ...EMPTY_EVENT_FORM_DRAFT, fields: [] } as EventFormDraft,
+  paymentForm: { ...EMPTY_EVENT_FORM_DRAFT, fields: [] } as EventFormDraft,
 };
 
-const normalizeScope = (value: unknown): EventScope => {
-  const normalized = String(value ?? 'general').toLowerCase().replace(/_/g, '-');
-  if (normalized === 'discipleship') return 'discipleship';
-  if (normalized === 'hope-school' || normalized === 'hopeschool') return 'hope-school';
-  return 'general';
+const toIsoDateTime = (dateValue: string, timeValue = '') => {
+  const date = dateValue.trim();
+  if (!date) return '';
+  if (date.includes('T')) {
+    const parsed = new Date(date);
+    return Number.isNaN(parsed.getTime()) ? date : parsed.toISOString();
+  }
+  const clock = timeValue.trim().match(/^(\d{1,2}):(\d{2})/);
+  if (clock) {
+    const hours = clock[1].padStart(2, '0');
+    const parsed = new Date(`${date}T${hours}:${clock[2]}:00`);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  return `${date}T00:00:00.000Z`;
 };
 
 const normalizeEventImageUrl = (value?: string | null) => {
@@ -108,6 +138,7 @@ export default function EventsAdminPage() {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [togglingEventId, setTogglingEventId] = useState<string | null>(null);
   const { runUpload, progress, uploading } = useMediaUpload();
 
   const updateUploadName = (key: string, name: string) => {
@@ -138,7 +169,11 @@ export default function EventsAdminPage() {
         ...buildSearchableDateParts(event.endDate),
         formatEventDateLabel(event).toLowerCase(),
       ];
-      return title.includes(query) || dateParts.some((part) => part.includes(query));
+      return (
+        title.includes(query) ||
+        event.ministryName.toLowerCase().includes(query) ||
+        dateParts.some((part) => part.includes(query))
+      );
     });
   }, [searchQuery, sortedEvents]);
 
@@ -158,7 +193,9 @@ export default function EventsAdminPage() {
 
   const refreshEvents = useCallback(async () => {
     try {
-      const response = await apiFetch('/api/events');
+      const response = await apiFetch('/api/admin/events?take=200', {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (!response.ok) return;
       const data = (await response.json().catch(() => null)) as unknown;
       const list: unknown[] = Array.isArray(data)
@@ -197,7 +234,6 @@ export default function EventsAdminPage() {
             description: typeof event.description === 'string' ? event.description : '',
             image: normalizeEventImageUrl(rawImage),
             requiresRegistration: Boolean(event.requiresRegistration),
-            registrationEmail: typeof event.registrationEmail === 'string' ? event.registrationEmail : '',
             acceptsOnlinePayment: Boolean(event.acceptsOnlinePayment),
             paymentAmount:
               typeof event.paymentAmount === 'number'
@@ -206,16 +242,28 @@ export default function EventsAdminPage() {
                   ? event.paymentAmount
                   : '',
             paymentCurrency: typeof event.paymentCurrency === 'string' ? event.paymentCurrency : 'MWK',
-            scope: normalizeScope(event.scope),
+            tickets: parseEventTickets(event.tickets),
+            ministryKey: typeof event.ministryKey === 'string' ? event.ministryKey : '',
+            ministryName:
+              typeof event.ministryName === 'string' && event.ministryName
+                ? event.ministryName
+                : ministryNameForKey(typeof event.ministryKey === 'string' ? event.ministryKey : ''),
+            registrationForm: parseEventForm(event.registrationForm),
+            paymentForm: parseEventForm(event.paymentForm),
+            isPublished: event.isPublished !== false,
           };
         })
         .filter((event) => Boolean(event.id));
 
-      setEvents(normalized);
+      setEvents((current) => {
+        const incomingIds = new Set(normalized.map((event) => event.id));
+        const keptInactive = current.filter((event) => !event.isPublished && !incomingIds.has(event.id));
+        return [...normalized, ...keptInactive];
+      });
     } catch {
       setEvents([]);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -236,11 +284,13 @@ export default function EventsAdminPage() {
       description: event.description,
       image: event.image,
       requiresRegistration: event.requiresRegistration,
-      registrationEmail: event.registrationEmail,
       acceptsOnlinePayment: event.acceptsOnlinePayment,
-      paymentAmount: event.paymentAmount,
+      paymentAmount: event.tickets.length ? '' : event.paymentAmount,
       paymentCurrency: event.paymentCurrency,
-      scope: event.scope,
+      tickets: ticketsToDraft(event.tickets),
+      ministryKey: event.ministryKey,
+      registrationForm: ensureRegistrationDraft(formToDraft(event.registrationForm)),
+      paymentForm: formToDraft(event.paymentForm),
     });
     updateUploadName('event-draft', '');
   };
@@ -271,50 +321,80 @@ export default function EventsAdminPage() {
   };
 
   const handleSaveEvent = async () => {
-    if (!eventDraft.title || !eventDraft.startDate || !eventDraft.endDate || !eventDraft.time) {
-      setStatus('Please fill in title, start date, end date, and time.');
+    if (!eventDraft.title.trim() || !eventDraft.startDate) {
+      setStatus('Please fill in the event title and start date.');
       return;
     }
-    if (eventDraft.endDate < eventDraft.startDate) {
+    if (eventDraft.endDate && eventDraft.endDate < eventDraft.startDate) {
       setStatus('End date cannot be earlier than start date.');
       return;
     }
-    if (eventDraft.requiresRegistration && !eventDraft.registrationEmail.trim()) {
-      setStatus('Please enter the registration email for events that require registration.');
+    const ticketRows = eventDraft.tickets.filter((ticket) => ticket.name.trim() || ticket.price.trim());
+    if (eventDraft.acceptsOnlinePayment && ticketRows.length === 0 && (!Number(eventDraft.paymentAmount) || Number(eventDraft.paymentAmount) <= 0)) {
+      setStatus('Add a ticket type and price, or enter one payment amount.');
       return;
     }
-    if (eventDraft.acceptsOnlinePayment && (!Number(eventDraft.paymentAmount) || Number(eventDraft.paymentAmount) <= 0)) {
-      setStatus('Please enter the event payment amount.');
+    if (eventDraft.acceptsOnlinePayment) {
+      for (const ticket of ticketRows) {
+        if (!ticket.name.trim()) {
+          setStatus('Each ticket type needs a name.');
+          return;
+        }
+        if (!Number(ticket.price) || Number(ticket.price) <= 0) {
+          setStatus(`Enter a price greater than 0 for ${ticket.name.trim()}.`);
+          return;
+        }
+      }
+    }
+    if (!eventDraft.ministryKey) {
+      setStatus('Please choose the ministry for this event.');
+      return;
+    }
+    const registrationForm = eventDraft.requiresRegistration ? draftToPayload(eventDraft.registrationForm) : { form: null };
+    if ('error' in registrationForm) {
+      setStatus(registrationForm.error);
+      return;
+    }
+    const paymentForm = eventDraft.acceptsOnlinePayment ? draftToPayload(eventDraft.paymentForm) : { form: null };
+    if ('error' in paymentForm) {
+      setStatus(paymentForm.error);
       return;
     }
     setStatus('');
+    const payload = {
+      title: eventDraft.title.trim(),
+      startDate: toIsoDateTime(eventDraft.startDate, eventDraft.time),
+      ...(eventDraft.endDate ? { endDate: toIsoDateTime(eventDraft.endDate) } : {}),
+      ...(eventDraft.time.trim() ? { time: eventDraft.time.trim() } : {}),
+      location: eventDraft.location.trim(),
+      ...(eventDraft.description.trim() ? { description: eventDraft.description.trim() } : {}),
+      ...(eventDraft.image ? { imageUrl: eventDraft.image } : {}),
+      ministryKey: eventDraft.ministryKey,
+      requiresRegistration: eventDraft.requiresRegistration,
+      registrationForm: eventFormForApi(registrationForm.form),
+      acceptsOnlinePayment: eventDraft.acceptsOnlinePayment,
+      paymentAmount: eventDraft.acceptsOnlinePayment && ticketRows.length === 0 ? Number(eventDraft.paymentAmount) : null,
+      paymentCurrency: eventDraft.acceptsOnlinePayment ? eventDraft.paymentCurrency : 'MWK',
+      tickets: eventDraft.acceptsOnlinePayment
+        ? ticketRows.map((ticket) => ({ name: ticket.name.trim(), price: Number(ticket.price) }))
+        : [],
+      paymentForm: eventFormForApi(paymentForm.form),
+      isPublished: selectedEventId
+        ? events.find((event) => event.id === selectedEventId)?.isPublished !== false
+        : true,
+    };
     try {
-      const response = await apiFetch('/api/events', {
-        method: 'POST',
+      const response = await apiFetch(selectedEventId ? `/api/events/${selectedEventId}` : '/api/events', {
+        method: selectedEventId ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...(selectedEventId && { id: selectedEventId }),
-          title: eventDraft.title,
-          date: eventDraft.startDate,
-          startDate: eventDraft.startDate,
-          endDate: eventDraft.endDate,
-          time: eventDraft.time,
-          location: eventDraft.location,
-          description: eventDraft.description,
-          imageUrl: eventDraft.image,
-          requiresRegistration: eventDraft.requiresRegistration,
-          registrationEmail: eventDraft.requiresRegistration ? eventDraft.registrationEmail.trim() : null,
-          acceptsOnlinePayment: eventDraft.acceptsOnlinePayment,
-          paymentAmount: eventDraft.acceptsOnlinePayment ? Number(eventDraft.paymentAmount) : null,
-          paymentCurrency: eventDraft.acceptsOnlinePayment ? eventDraft.paymentCurrency : 'MWK',
-          scope: eventDraft.scope,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        setStatus(selectedEventId ? 'Unable to update event.' : 'Unable to add event.');
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        setStatus(data?.error || (selectedEventId ? 'Unable to update event.' : 'Unable to add event.'));
         return;
       }
       if (!selectedEventId) {
@@ -354,6 +434,31 @@ export default function EventsAdminPage() {
     }
   };
 
+  const handleTogglePublished = async (event: AdminEvent, isPublished: boolean) => {
+    setStatus('');
+    setTogglingEventId(event.id);
+    try {
+      const response = await apiFetch(isPublished ? `/api/events/${event.id}/activate` : `/api/events/${event.id}/deactivate`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        setStatus(data?.error || (isPublished ? 'Unable to activate event.' : 'Unable to deactivate event.'));
+        return;
+      }
+      setEvents((current) => current.map((item) => (item.id === event.id ? { ...item, isPublished } : item)));
+      setStatus(isPublished ? 'Event activated.' : 'Event deactivated.');
+      await refreshEvents();
+    } catch {
+      setStatus(isPublished ? 'Unable to activate event.' : 'Unable to deactivate event.');
+    } finally {
+      setTogglingEventId(null);
+    }
+  };
+
   const requestDeleteEvent = (eventId: string) => {
     const eventTitle = events.find((event) => event.id === eventId)?.title || eventDraft.title;
     confirmDeleteToast({
@@ -372,6 +477,22 @@ export default function EventsAdminPage() {
         onChange={(event) => setEventDraft((prev) => ({ ...prev, title: event.target.value }))}
         className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
       />
+      <label className="grid gap-2 text-sm text-foreground/70">
+        <span>Ministry</span>
+        <select
+          value={eventDraft.ministryKey}
+          onChange={(event) => setEventDraft((prev) => ({ ...prev, ministryKey: event.target.value }))}
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+          aria-label="Ministry"
+        >
+          <option value="">Select ministry</option>
+          {EVENT_MINISTRIES.map((ministry) => (
+            <option key={ministry.key} value={ministry.key}>
+              {ministry.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label className="grid gap-2 text-sm text-foreground/70">
           <span>Start date</span>
@@ -402,16 +523,6 @@ export default function EventsAdminPage() {
           onChange={(event) => setEventDraft((prev) => ({ ...prev, time: event.target.value }))}
           className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
         />
-        <select
-          value={eventDraft.scope}
-          onChange={(event) => setEventDraft((prev) => ({ ...prev, scope: normalizeScope(event.target.value) }))}
-          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-          aria-label="Event scope"
-        >
-          <option value="general">General</option>
-          <option value="discipleship">Discipleship</option>
-          <option value="hope-school">Hope School</option>
-        </select>
         <input
           type="text"
           placeholder="Location"
@@ -486,7 +597,9 @@ export default function EventsAdminPage() {
             setEventDraft((prev) => ({
               ...prev,
               requiresRegistration: event.target.checked,
-              registrationEmail: event.target.checked ? prev.registrationEmail : '',
+              registrationForm: event.target.checked
+                ? ensureRegistrationDraft(prev.registrationForm)
+                : { ...EMPTY_EVENT_FORM_DRAFT, fields: [] },
             }))
           }
           className="h-4 w-4"
@@ -494,12 +607,10 @@ export default function EventsAdminPage() {
         <span>This event requires registration</span>
       </label>
       {eventDraft.requiresRegistration ? (
-        <input
-          type="email"
-          placeholder="Registration email recipient"
-          value={eventDraft.registrationEmail}
-          onChange={(event) => setEventDraft((prev) => ({ ...prev, registrationEmail: event.target.value }))}
-          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+        <EventFormBuilder
+          heading="Registration form"
+          draft={eventDraft.registrationForm}
+          onChange={(registrationForm) => setEventDraft((prev) => ({ ...prev, registrationForm }))}
         />
       ) : null}
       <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground">
@@ -512,6 +623,8 @@ export default function EventsAdminPage() {
               acceptsOnlinePayment: event.target.checked,
               paymentAmount: event.target.checked ? prev.paymentAmount : '',
               paymentCurrency: event.target.checked ? prev.paymentCurrency : 'MWK',
+              tickets: event.target.checked ? prev.tickets : [],
+              paymentForm: event.target.checked ? prev.paymentForm : { ...EMPTY_EVENT_FORM_DRAFT, fields: [] },
             }))
           }
           className="h-4 w-4"
@@ -519,24 +632,99 @@ export default function EventsAdminPage() {
         <span>Allow users to pay for this event on the website</span>
       </label>
       {eventDraft.acceptsOnlinePayment ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr]">
-          <select
-            value={eventDraft.paymentCurrency}
-            onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentCurrency: event.target.value }))}
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-            aria-label="Event payment currency"
-          >
-            <option value="MWK">MWK</option>
-            <option value="USD">USD</option>
-          </select>
-          <input
-            type="number"
-            min="1"
-            step="any"
-            placeholder="Event payment amount"
-            value={eventDraft.paymentAmount}
-            onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentAmount: event.target.value }))}
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+        <div className="space-y-3">
+          <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">Ticket types</p>
+              <select
+                value={eventDraft.paymentCurrency}
+                onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentCurrency: event.target.value }))}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
+                aria-label="Event payment currency"
+              >
+                <option value="MWK">MWK</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+            {eventDraft.tickets.map((ticket) => (
+              <div key={ticket.clientId} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_160px_auto]">
+                <input
+                  type="text"
+                  placeholder="Ticket name"
+                  value={ticket.name}
+                  onChange={(event) =>
+                    setEventDraft((prev) => ({
+                      ...prev,
+                      tickets: prev.tickets.map((row) =>
+                        row.clientId === ticket.clientId ? { ...row, name: event.target.value } : row,
+                      ),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  step="any"
+                  placeholder="Price"
+                  value={ticket.price}
+                  onChange={(event) =>
+                    setEventDraft((prev) => ({
+                      ...prev,
+                      tickets: prev.tickets.map((row) =>
+                        row.clientId === ticket.clientId ? { ...row, price: event.target.value } : row,
+                      ),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEventDraft((prev) => ({
+                      ...prev,
+                      tickets: prev.tickets.filter((row) => row.clientId !== ticket.clientId),
+                    }))
+                  }
+                  className="rounded-xl border border-border px-4 py-3 text-sm text-foreground"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                setEventDraft((prev) => ({
+                  ...prev,
+                  tickets: [
+                    ...prev.tickets,
+                    { clientId: `ticket-${Date.now()}-${prev.tickets.length}`, name: '', price: '' },
+                  ],
+                }))
+              }
+              className="rounded-full border border-border px-4 py-2 text-sm text-foreground"
+            >
+              Add ticket type
+            </button>
+            {eventDraft.tickets.length === 0 ? (
+              <input
+                type="number"
+                min="1"
+                step="any"
+                placeholder="One price for everyone"
+                value={eventDraft.paymentAmount}
+                onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentAmount: event.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              />
+            ) : (
+              <p className="text-xs text-foreground/60">Each ticket is charged at its own price.</p>
+            )}
+          </div>
+          <EventFormBuilder
+            heading="Payment form"
+            draft={eventDraft.paymentForm}
+            onChange={(paymentForm) => setEventDraft((prev) => ({ ...prev, paymentForm }))}
           />
         </div>
       ) : null}
@@ -595,6 +783,8 @@ export default function EventsAdminPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[min(60vh,520px)] overflow-y-auto px-6 py-5">{eventFormFields}</div>
+          {status ? <p className="px-6 pb-2 text-sm text-destructive">{status}</p> : null}
+          {status ? <p className="px-6 pt-3 text-sm text-red-600">{status}</p> : null}
           <DialogFooter className="border-t border-border/70 bg-muted/20 px-6 py-4 gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={closeEventDialog}>
               Cancel
@@ -642,44 +832,82 @@ export default function EventsAdminPage() {
           ) : filteredEvents.length === 0 ? (
             <p className="text-sm text-foreground/60">No events match your search.</p>
           ) : (
-            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
-              {filteredEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                      {formatEventDateLabel(event)}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-foreground truncate">
-                      {event.title || 'Untitled event'}
-                    </p>
-                    <p className="mt-0.5 text-xs text-foreground/50 capitalize">{event.scope.replace('-', ' ')}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Edit ${event.title || 'event'}`}
-                      onClick={() => openEditDialog(event)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      aria-label={`Delete ${event.title || 'event'}`}
-                      onClick={() => requestDeleteEvent(event.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto rounded-xl border border-border/70">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Event</th>
+                    <th className="px-3 py-2 font-medium">Ministry</th>
+                    <th className="px-3 py-2 font-medium">Date</th>
+                    <th className="px-3 py-2 font-medium">Location</th>
+                    <th className="px-3 py-2 font-medium">Status</th>
+                    <th className="px-3 py-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEvents.map((event) => (
+                    <tr key={event.id} className="border-t border-border/60 align-middle">
+                      <td className="px-3 py-3 font-medium text-foreground">{event.title || 'Untitled event'}</td>
+                      <td className="px-3 py-3 text-foreground/70">{event.ministryName || '—'}</td>
+                      <td className="px-3 py-3 whitespace-nowrap text-foreground/70">{formatEventDateLabel(event)}</td>
+                      <td className="px-3 py-3 text-foreground/70">{event.location || '—'}</td>
+                      <td className="px-3 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            event.isPublished ? 'bg-emerald-500/15 text-emerald-700' : 'bg-muted text-foreground/50'
+                          }`}
+                        >
+                          {event.isPublished ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {event.isPublished ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={togglingEventId === event.id}
+                              onClick={() => void handleTogglePublished(event, false)}
+                            >
+                              {togglingEventId === event.id ? 'Saving...' : 'Deactivate'}
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={togglingEventId === event.id}
+                              onClick={() => void handleTogglePublished(event, true)}
+                            >
+                              {togglingEventId === event.id ? 'Saving...' : 'Activate'}
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Edit ${event.title || 'event'}`}
+                            onClick={() => openEditDialog(event)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            aria-label={`Delete ${event.title || 'event'}`}
+                            onClick={() => requestDeleteEvent(event.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
       </div>

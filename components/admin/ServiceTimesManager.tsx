@@ -261,47 +261,51 @@ export default function ServiceTimesManager({
         {services.length === 0 ? (
           <p className="text-sm text-foreground/60">No services yet.</p>
         ) : (
-          <div className="space-y-3">
-            {services.map((service) => (
-              <div
-                key={service.id}
-                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-              >
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-sm font-semibold text-foreground">{service.title || 'Untitled service'}</p>
-                  <p className="text-xs text-foreground/60">
-                    {[service.dayOfWeek, service.time].filter(Boolean).join(' · ') || 'No schedule set'}
-                  </p>
-                  {service.location ? (
-                    <p className="text-xs text-foreground/50 truncate">{service.location}</p>
-                  ) : null}
-                  {service.description ? (
-                    <p className="line-clamp-2 text-xs text-foreground/50">{service.description}</p>
-                  ) : null}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Edit ${service.title || 'service'}`}
-                    onClick={() => openEditDialog(service)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={`Delete ${service.title || 'service'}`}
-                    onClick={() => requestDeleteService(service)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-auto rounded-xl border border-border/70">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Service</th>
+                  <th className="px-3 py-2 font-medium">Schedule</th>
+                  <th className="px-3 py-2 font-medium">Location</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {services.map((service) => (
+                  <tr key={service.id} className="border-t border-border/60">
+                    <td className="px-3 py-2 font-medium text-foreground">{service.title || 'Untitled service'}</td>
+                    <td className="px-3 py-2 text-foreground/70">
+                      {[service.dayOfWeek, service.time].filter(Boolean).join(' · ') || 'No schedule set'}
+                    </td>
+                    <td className="px-3 py-2 text-foreground/70">{service.location || '—'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Edit ${service.title || 'service'}`}
+                          onClick={() => openEditDialog(service)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={`Delete ${service.title || 'service'}`}
+                          onClick={() => requestDeleteService(service)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

@@ -531,46 +531,49 @@ export default function LocationsAdminPage() {
             return filtered.length === 0 ? (
               <p className="text-sm text-foreground/60">No branches match your search.</p>
             ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {filtered.map((branch) => (
-                  <div
-                    key={branch.id}
-                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                        {regions.find(r => r.id === branch.region)?.label || branch.region}
-                      </p>
-                      <p className="text-sm font-semibold text-foreground mt-1 truncate">
-                        {branch.name}
-                      </p>
-                      <p className="text-xs text-foreground/60 mt-0.5 truncate">
-                        {branch.pastor}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Edit ${branch.name}`}
-                        onClick={() => openEditDialog(branch)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        aria-label={`Delete ${branch.name}`}
-                        onClick={() => requestDeleteBranch(branch)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-[600px] overflow-auto rounded-xl border border-border/70">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Region</th>
+                      <th className="px-3 py-2 font-medium">Branch</th>
+                      <th className="px-3 py-2 font-medium">Pastor</th>
+                      <th className="px-3 py-2 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((branch) => (
+                      <tr key={branch.id} className="border-t border-border/60">
+                        <td className="px-3 py-2 text-foreground/70">{regions.find(r => r.id === branch.region)?.label || branch.region}</td>
+                        <td className="px-3 py-2 font-medium text-foreground">{branch.name}</td>
+                        <td className="px-3 py-2 text-foreground/70">{branch.pastor}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Edit ${branch.name}`}
+                              onClick={() => openEditDialog(branch)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Delete ${branch.name}`}
+                              onClick={() => requestDeleteBranch(branch)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             );
           })()}

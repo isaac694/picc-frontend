@@ -255,38 +255,47 @@ export default function AdminGivePage() {
         {isLoading ? (
           <p className="text-sm text-foreground/60">Loading giving types...</p>
         ) : givingTypes.length > 0 ? (
-          <div className="max-h-[520px] space-y-3 overflow-y-auto pr-2">
-            {givingTypes.map((type, index) => (
-              <div
-                key={`${type}-${index}`}
-                className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-              >
-                <p className="min-w-0 flex-1 text-sm font-semibold text-foreground">{type}</p>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Edit ${type}`}
-                    onClick={() => openEditDialog(index)}
-                    disabled={saving}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={`Remove ${type}`}
-                    onClick={() => requestRemoveType(index)}
-                    disabled={saving || givingTypes.length <= 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+          <div className="max-h-[520px] overflow-auto rounded-xl border border-border/70">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Giving type</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {givingTypes.map((type, index) => (
+                  <tr key={`${type}-${index}`} className="border-t border-border/60">
+                    <td className="px-3 py-2 font-medium text-foreground">{type}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Edit ${type}`}
+                          onClick={() => openEditDialog(index)}
+                          disabled={saving}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={`Remove ${type}`}
+                          onClick={() => requestRemoveType(index)}
+                          disabled={saving || givingTypes.length <= 1}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <p className="text-sm text-foreground/60">No giving types found.</p>

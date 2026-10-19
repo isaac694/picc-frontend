@@ -5,21 +5,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { publicEventPath } from '@/lib/public-event';
 
-const FALLBACK_SLIDES = [
-  { src: '/events/event-1.jpg', alt: 'Event 1' },
-  { src: '/events/event-2.jpg', alt: 'Event 2' },
-  { src: '/events/event-3.jpg', alt: 'Event 3' },
-  { src: '/events/event-4.jpg', alt: 'Event 4' },
-  { src: '/events/event-5.jpg', alt: 'Event 5' },
-];
+const PLACEHOLDER_SLIDE = '/hero/hero-store.jpg';
 
 const AUTO_PLAY_MS = 4000;
 
 export default function EventsCarousel({
   eventsHref = '/events',
   eventsLabel = 'Events',
-  apiPath = '/api/events?take=12',
+  apiPath = '/api/events',
   title = 'Upcoming Events',
   subtitle = "Don't miss out on what's happening at our church",
   connectLabel = 'CONNECT WITH US',
@@ -40,7 +35,7 @@ export default function EventsCarousel({
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null;
 
-  const [slides, setSlides] = useState(FALLBACK_SLIDES);
+  const [slides, setSlides] = useState<{ src: string; alt: string; href: string }[]>([]);
   // Start at index 1 (the real first slide, after the cloned last)
   const [index, setIndex] = useState(slides.length > 1 ? 1 : 0);
   const [paused, setPaused] = useState(false);
@@ -118,7 +113,11 @@ export default function EventsCarousel({
     const fetchEvents = async () => {
       try {
         const response = await apiFetch(apiPath);
-        if (!response.ok) return;
+        if (!response.ok) {
+          setSlides([]);
+          setIndex(0);
+          return;
+        }
         const raw = (await response.json().catch(() => null)) as unknown;
         const events = (() => {
           if (!isRecord(raw)) return [];
@@ -132,22 +131,26 @@ export default function EventsCarousel({
         };
 
         const incoming = events
-          .filter(isRecord)
-          .map((event, idx) => {
+          .filter((event) => isRecord(event) && event.isPublished !== false)
+          .map((event) => {
             const imageUrl = typeof event.imageUrl === 'string' ? event.imageUrl : '';
             const title = typeof event.title === 'string' ? event.title : '';
             return {
-              src: imageUrl && !imageUrl.includes('placeholder-event') ? resolveImageUrl(imageUrl) : '',
-              alt: title || `Event ${idx + 1}`,
+              src: imageUrl && !imageUrl.includes('placeholder-event') ? resolveImageUrl(imageUrl) : PLACEHOLDER_SLIDE,
+              alt: title || 'Event',
+              href: publicEventPath(event.id),
             };
-          })
-          .filter((event) => Boolean(event.src));
+          });
         if (incoming.length > 0) {
           setSlides(incoming);
           setIndex(incoming.length > 1 ? 1 : 0);
+        } else {
+          setSlides([]);
+          setIndex(0);
         }
       } catch {
-        // keep fallback slides
+        setSlides([]);
+        setIndex(0);
       }
     };
 
@@ -197,21 +200,41 @@ export default function EventsCarousel({
               style={{ transform: `translateX(-${index * 100}%)` }}
               onTransitionEnd={handleTransitionEnd}
             >
-              {extended.map((slide, i) => (
+            {extended.length > 0 ? extended.map((slide, i) => (
                 <div
                   key={`${slide.src}-${i}`}
                   className="relative min-w-full h-[320px] bg-muted/40 sm:h-[420px] md:h-[520px] lg:h-[640px]"
                 >
-                  <Image
-                    src={slide.src}
-                    alt={slide.alt}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-contain object-center"
-                    priority={i === 1}
-                  />
+                  {slide.href ? (
+                    <Link href={slide.href} className="absolute inset-0" aria-label={`Open ${slide.alt}`}>
+                      <Image
+                        src={slide.src}
+                        alt={slide.alt}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-contain object-center"
+                        priority={i === 1}
+                      />
+                      <span className="absolute bottom-14 left-4 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#10233f]">
+                        Open event
+                      </span>
+                    </Link>
+                  ) : (
+                    <Image
+                      src={slide.src}
+                      alt={slide.alt}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-contain object-center"
+                      priority={i === 1}
+                    />
+                  )}
                 </div>
-              ))}
+              )) : (
+                <div className="flex min-h-[320px] items-center justify-center bg-muted/40 px-6 text-center text-sm text-foreground/60 sm:min-h-[420px]">
+                  No events yet.
+                </div>
+              )}
             </div>
 
             {/* Prev / Next */}

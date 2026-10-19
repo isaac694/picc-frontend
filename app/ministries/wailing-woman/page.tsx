@@ -11,6 +11,8 @@ import {
   Target, MessageCircle, MessageSquareText, X, CreditCard, Landmark, Wallet, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMinistryPageEvents } from '@/lib/ministry-page-events';
+import { openPublicEvent } from '@/lib/public-event';
 
 // --- LIVESTREAM COMPONENTS ---
 import LiveChat from '@/components/LiveChat';
@@ -141,12 +143,28 @@ export default function WailingWomenPage() {
   // New Interactive Modal / Popup States
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<typeof highlightGallery[0] | null>(null);
   const [selectedArrowImage, setSelectedArrowImage] = useState<string | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<typeof pastEvents[0] | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{
+    id: string | number;
+    title: string;
+    date: string;
+    location: string;
+    description: string;
+    image: string;
+  } | null>(null);
   const [selectedProject, setSelectedProject] = useState<typeof pastEvents[0] | null>(null);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [eventSearchInput, setEventSearchInput] = useState('');
   const [eventSearchQuery, setEventSearchQuery] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const apiEvents = useMinistryPageEvents('wailing-woman');
+  const ministryEvents = apiEvents.map((item) => ({
+    id: item.id,
+    title: item.title,
+    date: item.label || 'Upcoming',
+    location: item.location || 'PICC',
+    description: item.description || '',
+    image: item.imageUrl || '/logo.png',
+  }));
 
   // Projects section state (mirror of events)
   const [projectSearchInput, setProjectSearchInput] = useState('');
@@ -182,7 +200,7 @@ export default function WailingWomenPage() {
 
   const normalizedEventSearchQuery = normalizeSearchText(eventSearchQuery);
   const displayedEventItems = normalizedEventSearchQuery
-    ? pastEvents.filter((event) => {
+    ? ministryEvents.filter((event) => {
         const searchableText = normalizeSearchText([
           event.title,
           event.date,
@@ -191,13 +209,13 @@ export default function WailingWomenPage() {
         ].join(' '));
         return searchableText.includes(normalizedEventSearchQuery);
       })
-    : pastEvents;
+    : ministryEvents;
 
   const safeCurrentSlide = displayedEventItems.length
     ? ((currentSlide % displayedEventItems.length) + displayedEventItems.length) % displayedEventItems.length
     : 0;
 
-  const featuredEvent = displayedEventItems[safeCurrentSlide] || pastEvents[0];
+  const featuredEvent = displayedEventItems[safeCurrentSlide] || ministryEvents[0];
   const remainingEvents = displayedEventItems.filter((_, idx) => idx !== safeCurrentSlide);
 
   const handleEventSearch = (event: FormEvent<HTMLFormElement>) => {
@@ -1069,8 +1087,8 @@ export default function WailingWomenPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                   <button
                     type="button"
-                    onClick={() => setSelectedEvent(featuredEvent)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
+                    onClick={() => openPublicEvent(featuredEvent.id)}
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
                   >
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -1102,16 +1120,16 @@ export default function WailingWomenPage() {
                       </motion.div>
                     </AnimatePresence>
                     <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Select this event
+                      Open event
                     </div>
                   </button>
 
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
                     {remainingEvents.map((event) => (
                       <button
                         key={event.id}
                         type="button"
-                        onClick={() => setSelectedEvent(event)}
+                        onClick={() => openPublicEvent(event.id)}
                         className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#045BB4] sm:w-72 lg:h-[113px] lg:w-full"
                       >
                         <Image
@@ -1183,7 +1201,7 @@ export default function WailingWomenPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedProject(featuredProject)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
                   >
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -1219,7 +1237,7 @@ export default function WailingWomenPage() {
                     </div>
                   </button>
 
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
                     {remainingProjects.map((project) => (
                       <button
                         key={project.id}

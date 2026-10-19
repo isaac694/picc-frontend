@@ -551,7 +551,7 @@ export default async function SchoolOfDiscipleshipPage() {
       </section>
 
       <EventsCarousel
-        apiPath="/api/schools/discipleship/events"
+        apiPath="/api/events?scope=discipleship"
         eventsHref="/schools/discipleship/events"
         eventsLabel="View all class events"
         title="Growth & Equipping Events"

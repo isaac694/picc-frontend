@@ -349,45 +349,47 @@ export default function SchoolEventsManager({
             {searchTerm ? 'No events match your search.' : 'No events yet.'}
           </p>
         ) : (
-          <div className="space-y-3">
-            {filteredEvents.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold text-foreground">{item.title}</h3>
-                    {!item.isPublished ? (
-                      <span className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-destructive">
-                        Draft
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-                    {new Date(item.date).toLocaleDateString()} @{' '}
-                    {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                  {item.location ? <p className="text-[10px] text-foreground/50 italic">{item.location}</p> : null}
-                  <p className="mt-1 line-clamp-2 text-xs text-foreground/60">{item.description}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button type="button" size="icon" variant="ghost" aria-label={`Edit ${item.title}`} onClick={() => openEditDialog(item)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={`Delete ${item.title}`}
-                    onClick={() => requestRemove(item)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-auto rounded-xl border border-border/70">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Event</th>
+                  <th className="px-3 py-2 font-medium">Date</th>
+                  <th className="px-3 py-2 font-medium">Location</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEvents.map((item) => (
+                  <tr key={item.id} className="border-t border-border/60">
+                    <td className="px-3 py-2 font-medium text-foreground">{item.title}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
+                      {new Date(item.date).toLocaleDateString()} {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-3 py-2 text-foreground/70">{item.location || '—'}</td>
+                    <td className="px-3 py-2 text-foreground/70">{item.isPublished ? 'Published' : 'Draft'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <Button type="button" size="icon" variant="ghost" aria-label={`Edit ${item.title}`} onClick={() => openEditDialog(item)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={`Delete ${item.title}`}
+                          onClick={() => requestRemove(item)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

@@ -8,6 +8,8 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { eventLocation, useMinistryPageEvents } from '@/lib/ministry-page-events';
+import { openPublicEvent } from '@/lib/public-event';
 import { 
   MapPin, Phone, Mail, CalendarClock, Globe, 
   MessageSquareText, BookOpenText, StickyNote, 
@@ -321,6 +323,7 @@ export default function RiversOfHopePage() {
   const [outreachSearchQuery, setOutreachSearchQuery] = useState('');
   const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
   const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
+  const apiEvents = useMinistryPageEvents('rivers-of-hope');
   const [isRohSubmitting, setIsRohSubmitting] = useState(false);
   const [rohFormData, setRohFormData] = useState({
     fullName: '',
@@ -481,14 +484,14 @@ export default function RiversOfHopePage() {
     status: item.description || 'Active',
     image: toAssetUrl(item.imageUrl) || ministryProjects[index % ministryProjects.length]?.image || '/hero/hero-store.jpg',
   }));
-  const eventItems: EventCard[] = mergeItemsWithFallback(itemGroups.events, defaultEventItems).map((item, index) => ({
+  const eventItems: EventCard[] = apiEvents.map((item) => ({
     id: item.id,
-    type: eventsList[index % eventsList.length]?.type || 'Crusade & Conference',
+    type: 'Crusade & Conference',
     title: item.title,
     date: item.label || 'Upcoming',
-    location: eventsList[index % eventsList.length]?.location || ministryInfo.location || 'PICC Worldwide',
+    location: eventLocation(item, ministryInfo.location || 'PICC Worldwide'),
     description: item.description || '',
-    image: toAssetUrl(item.imageUrl) || eventsList[index % eventsList.length]?.image || '/hero/hero-store.jpg',
+    image: toAssetUrl(item.imageUrl) || '/hero/hero-store.jpg',
   }));
 
   const outreachItems: EventCard[] = RIVERS_OF_HOPE_NEWS_ITEMS.map((item, index) => ({
@@ -1200,8 +1203,8 @@ export default function RiversOfHopePage() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                   <button 
-                    onClick={() => setSelectedEvent(featuredGridEvent)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-red-800"
+                    onClick={() => openPublicEvent(featuredGridEvent.id)}
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-red-800"
                   >
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -1240,11 +1243,11 @@ export default function RiversOfHopePage() {
                   </button>
 
                   <div className="lg:col-span-1">
-                    <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-red-200">
+                    <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-red-200">
                       {remainingEvents.map((event) => (
                         <button 
                           key={event.id} 
-                          onClick={() => setSelectedEvent(event)}
+                          onClick={() => openPublicEvent(event.id)}
                           className="min-w-[280px] lg:min-w-full relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-red-800"
                         >
                           <Image 
@@ -1307,7 +1310,7 @@ export default function RiversOfHopePage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                   <button 
                     onClick={() => setSelectedOutreach(featuredGridOutreach)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-red-800"
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-red-800"
                   >
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -1346,7 +1349,7 @@ export default function RiversOfHopePage() {
                   </button>
 
                   <div className="lg:col-span-1">
-                    <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-red-200">
+                    <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-red-200">
                       {remainingOutreaches.map((outreach) => (
                         <button 
                           key={outreach.id} 

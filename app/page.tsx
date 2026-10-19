@@ -593,7 +593,7 @@ export default async function HomePage() {
         />
 
         {/* Upcoming Events Section */}
-        <EventsCarousel />
+        <EventsCarousel apiPath="/api/events" />
 
         {/* Pastors Section */}
         <section className="py-16 sm:py-16 sm:py-20 md:py-24 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] text-white">

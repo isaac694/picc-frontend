@@ -8,6 +8,8 @@ import Footer from '@/components/Footer';
 import { Card } from '@/components/ui/card';
 import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { useMinistryPageEvents } from '@/lib/ministry-page-events';
+import { openPublicEvent } from '@/lib/public-event';
 import { 
   MapPin, Phone, Mail, CalendarClock, Globe, Target,
   BookOpenText, MessageSquareText, StickyNote, Heart, Search, X
@@ -419,6 +421,7 @@ export default function WomenOfHopePage() {
 
   const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
   const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
+  const apiEvents = useMinistryPageEvents('women-of-hope');
 
   const ministryItemGroups = {
     pillars: ministryItems.filter((item) => item.category === 'pillar'),
@@ -440,7 +443,7 @@ export default function WomenOfHopePage() {
     status: item.label || 'Ongoing',
     image: toAssetUrl(item.imageUrl) || '/hero/hero-store.jpg',
   }));
-  const eventCards = mergeItemsWithFallback(ministryItemGroups.events, defaultEvents).map((item) => ({
+  const eventCards = apiEvents.map((item) => ({
     id: item.id,
     title: item.title,
     date: item.label || 'TBA',
@@ -1130,7 +1133,7 @@ export default function WomenOfHopePage() {
                   <button
                     type="button"
                     onClick={() => setSelectedProject(featuredProject)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#029EFB]"
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#029EFB]"
                   >
                     <Image
                       src={featuredProject.image || '/hero/hero-store.jpg'}
@@ -1153,7 +1156,7 @@ export default function WomenOfHopePage() {
                     </div>
                   </button>
 
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#029EFB]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#029EFB]/30">
                     {remainingProjects.map((material) => (
                       <button
                         key={material.id}
@@ -1278,8 +1281,8 @@ export default function WomenOfHopePage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                   <button
                     type="button"
-                    onClick={() => setSelectedEvent(featuredGridEvent)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#029EFB]"
+                    onClick={() => openPublicEvent(featuredGridEvent.id)}
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#029EFB]"
                   >
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -1318,12 +1321,12 @@ export default function WomenOfHopePage() {
                     </div>
                   </button>
 
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#029EFB]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#029EFB]/30">
                     {remainingEvents.map((event) => (
                       <button
                         key={event.id}
                         type="button"
-                        onClick={() => setSelectedEvent(event)}
+                        onClick={() => openPublicEvent(event.id)}
                         className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#029EFB] sm:w-72 lg:h-[113px] lg:w-full"
                       >
                         <Image

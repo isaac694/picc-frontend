@@ -9,9 +9,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   ADMIN_ACCESS_RIGHT,
   ADMIN_PAGE,
+  MINISTRY_ADMIN_OPTIONS,
   canAccessAdminPage,
   canAccessMinistry,
+  canAccessMinistryEvents,
   canAccessRight,
+  ministryEventKeyFromAdminPath,
   ministryKeyFromAdminPath,
 } from '@/lib/admin-pages';
 import Link from 'next/link';
@@ -29,6 +32,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/see-you-in-church': { title: 'See You in Church', subtitle: 'Manage service invitation content.' },
   '/admin/services': { title: 'Services', subtitle: 'Manage service times and weekly schedules.' },
   '/admin/events': { title: 'Events', subtitle: 'Create and publish upcoming events.' },
+  '/admin/ministry-events': { title: 'Ministry Events', subtitle: 'Review event registration applications for one ministry.' },
   '/admin/hr/dashboard': { title: 'HR Dashboard', subtitle: 'Track vacancies, applicants, applications, and hiring progress.' },
   '/admin/hr/applications': { title: 'Application Details', subtitle: 'Review the full applicant profile, answers, and documents.' },
   '/admin/hr/leadership': { title: 'Leadership Management', subtitle: 'Manage church administration and secretariat leadership structure.' },
@@ -52,6 +56,9 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/give': { title: 'Give Page', subtitle: 'Manage giving page content.' },
   '/admin/locations': { title: 'Church Locations', subtitle: 'Manage church location details.' },
   '/admin/zones': { title: 'Zones & Home Churches', subtitle: 'Manage zonal pastors and home church areas for the locations page.' },
+  '/admin/event-check-in': { title: 'Ticket check-in', subtitle: 'Scan or enter a ticket code at the event entrance.' },
+  '/admin/event-payments/dashboard': { title: 'Events payment dashboard', subtitle: 'Ticket sales, completion, and recent event payments.' },
+  '/admin/event-payments': { title: 'Events payment', subtitle: 'All event ticket payments.' },
 };
 
 const pathToAdminPage = (pathname: string | null) => {
@@ -146,6 +153,15 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     if (isUsersPage) return canAccessRight(user, ADMIN_ACCESS_RIGHT.USER_LIST);
     if (isRolesPage) return canAccessRight(user, ADMIN_ACCESS_RIGHT.ROLE_LIST);
     if (requiredMinistryKey) return canAccessMinistry(user, requiredMinistryKey);
+    const ministryEventKey = ministryEventKeyFromAdminPath(pathname);
+    if (ministryEventKey) return canAccessMinistryEvents(user, ministryEventKey);
+    if ((pathname || '').startsWith('/admin/event-check-in')) {
+      return canAccessAdminPage(user, ADMIN_PAGE.EVENTS)
+        || MINISTRY_ADMIN_OPTIONS.some((ministry) => canAccessMinistryEvents(user, ministry.key));
+    }
+    if ((pathname || '').startsWith('/admin/event-payments')) {
+      return canAccessAdminPage(user, ADMIN_PAGE.EVENT_PAYMENTS) || canAccessAdminPage(user, ADMIN_PAGE.EVENTS);
+    }
     if (!requiredPage) return true;
     return canAccessAdminPage(user, requiredPage);
   })();

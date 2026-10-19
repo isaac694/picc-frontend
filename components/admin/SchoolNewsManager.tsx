@@ -377,55 +377,52 @@ export default function SchoolNewsManager({
             {searchTerm ? 'No news match your search.' : 'No news items yet.'}
           </p>
         ) : (
-          <div className="space-y-3">
-            {filteredNews.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-              >
-                <div className="min-w-0 flex-1">
-                  {item.imageUrl ? (
-                    <div className="relative mb-2 h-20 overflow-hidden rounded-lg border border-border/60">
-                      <Image src={item.imageUrl} alt={item.title} fill className="object-cover" unoptimized />
-                    </div>
-                  ) : null}
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold text-foreground">{item.title}</h3>
-                    {!item.isPublished ? (
-                      <span className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-destructive">
-                        Draft
-                      </span>
-                    ) : null}
-                    {item.isFallback ? (
-                      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-foreground/60">
-                        Template
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">
-                    {[item.badge || 'Updates', item.displayDate || new Date(item.createdAt).toLocaleDateString()].join(' · ')}
-                  </p>
-                  <p className="mt-1 line-clamp-2 text-xs text-foreground/60">{item.content}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button type="button" size="icon" variant="ghost" aria-label={`Edit ${item.title}`} onClick={() => openEditDialog(item)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  {!item.isFallback ? (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      aria-label={`Delete ${item.title}`}
-                      onClick={() => requestRemove(item)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+          <div className="overflow-auto rounded-xl border border-border/70">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Title</th>
+                  <th className="px-3 py-2 font-medium">Date</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredNews.map((item) => (
+                  <tr key={item.id} className="border-t border-border/60 align-top">
+                    <td className="px-3 py-2">
+                      <p className="font-medium text-foreground">{item.title}</p>
+                      <p className="mt-1 line-clamp-2 text-foreground/60">{item.content}</p>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
+                      {[item.badge || 'Updates', item.displayDate || new Date(item.createdAt).toLocaleDateString()].join(' · ')}
+                    </td>
+                    <td className="px-3 py-2 text-foreground/70">
+                      {!item.isPublished ? 'Draft' : item.isFallback ? 'Template' : 'Published'}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <Button type="button" size="icon" variant="ghost" aria-label={`Edit ${item.title}`} onClick={() => openEditDialog(item)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {!item.isFallback ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            aria-label={`Delete ${item.title}`}
+                            onClick={() => requestRemove(item)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

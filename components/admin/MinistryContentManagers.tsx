@@ -475,7 +475,7 @@ export function MinistryInfoManager({
                 }`}
               >
                 {imageUrl ? (
-                  <div className="relative mb-3 h-28 overflow-hidden rounded-lg border border-border/60">
+                  <div className="relative mb-2 h-16 overflow-hidden rounded-lg border border-border/60">
                     <Image src={imageUrl} alt={item.label} fill className="object-cover" unoptimized />
                   </div>
                 ) : null}
@@ -926,57 +926,60 @@ export function MinistryItemsManager({
         {itemFormFields}
       </SchoolAdminDialogShell>
 
-      <div className="max-h-[780px] space-y-3 overflow-y-auto rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-foreground">Current {title}</h3>
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4"
-          >
-            <div className="min-w-0 flex-1">
-              {item.imageUrl ? (
-                <div className="relative mb-3 h-28 overflow-hidden rounded-lg border border-border/60">
-                  <Image src={toPreviewUrl(item.imageUrl)} alt={item.title} fill className="object-cover" unoptimized />
-                </div>
-              ) : null}
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
-                {!item.isPublished ? (
-                  <span className="rounded bg-destructive/10 px-2 py-1 text-[10px] font-bold uppercase text-destructive">Draft</span>
-                ) : null}
-              </div>
-              {item.label ? <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{item.label}</p> : null}
-              {item.description ? <p className="mt-2 line-clamp-2 text-xs text-foreground/60">{item.description}</p> : null}
-              {item.acceptsOnlinePayment && item.paymentAmount ? (
-                <p className="mt-2 text-xs font-semibold text-primary">
-                  Online payment: {item.paymentCurrency || 'MWK'} {Number(item.paymentAmount).toLocaleString('en-US')}
-                </p>
-              ) : null}
-              {item.isFallback ? <p className="mt-2 text-[10px] text-foreground/40">Fallback content ready to edit</p> : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                aria-label={`Edit ${item.title}`}
-                onClick={() => openEditDialog(item)}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="text-destructive hover:text-destructive"
-                aria-label={`Delete ${item.title}`}
-                onClick={() => requestRemove(item)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+      <div className="max-h-[780px] overflow-auto rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <h3 className="mb-3 text-lg font-semibold text-foreground">Current {title}</h3>
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+            <tr>
+              <th className="px-3 py-2 font-medium">Title</th>
+              <th className="px-3 py-2 font-medium">Label</th>
+              <th className="px-3 py-2 font-medium">Status</th>
+              <th className="px-3 py-2 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.id} className="border-t border-border/60 align-top">
+                <td className="px-3 py-2">
+                  <p className="font-medium text-foreground">{item.title}</p>
+                  {item.description ? <p className="mt-1 line-clamp-2 text-foreground/60">{item.description}</p> : null}
+                  {item.acceptsOnlinePayment && item.paymentAmount ? (
+                    <p className="mt-1 text-xs font-semibold text-primary">
+                      {item.paymentCurrency || 'MWK'} {Number(item.paymentAmount).toLocaleString('en-US')}
+                    </p>
+                  ) : null}
+                </td>
+                <td className="px-3 py-2 text-foreground/70">{item.label || '—'}</td>
+                <td className="px-3 py-2 text-foreground/70">
+                  {!item.isPublished ? 'Draft' : item.isFallback ? 'Fallback' : 'Published'}
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Edit ${item.title}`}
+                      onClick={() => openEditDialog(item)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete ${item.title}`}
+                      onClick={() => requestRemove(item)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

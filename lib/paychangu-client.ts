@@ -26,6 +26,8 @@ export type ProcessPaychanguPaymentInput = {
   returnPath?: string;
   /** Default `PICC`; use `STORE` for Hope Stores checkout. */
   txRefPrefix?: 'PICC' | 'STORE';
+  /** Use this exact PayChangu reference instead of generating one. */
+  txRef?: string;
   meta?: Record<string, string | undefined>;
 };
 
@@ -174,7 +176,7 @@ export async function openPaychanguPopupCheckout(input: ProcessPaychanguPaymentI
 
   const config: PaychanguConfig = {
     public_key: publicKey,
-    tx_ref: `${txPrefix}-${input.givingId}-${generateTxRef()}`,
+    tx_ref: input.txRef || `${txPrefix}-${input.givingId}-${generateTxRef()}`,
     amount: input.amount,
     currency: input.currency,
     callback_url,

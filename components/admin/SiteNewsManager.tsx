@@ -395,45 +395,53 @@ export default function SiteNewsManager({
         {newsFormFields}
       </SchoolAdminDialogShell>
 
-      <div className="max-h-[780px] space-y-3 overflow-y-auto rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-foreground">Current news</h3>
-        {items.map((item) => (
-          <div key={item.id} className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4">
-            <div className="min-w-0 flex-1">
-              {item.imageUrl ? (
-                <div className="relative mb-3 h-28 overflow-hidden rounded-lg border border-border/60">
-                  <Image src={toPreviewUrl(item.imageUrl)} alt={item.title} fill className="object-cover" unoptimized />
-                </div>
-              ) : null}
-              <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                {[item.badge, item.date].filter(Boolean).join(' - ') || 'News Item'}
-              </p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{item.title || 'Untitled news item'}</p>
-              {item.description ? <p className="mt-2 line-clamp-2 text-xs text-foreground/60">{item.description}</p> : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                aria-label={`Edit ${item.title || 'news item'}`}
-                onClick={() => openEditDialog(item)}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="text-destructive hover:text-destructive"
-                aria-label={`Delete ${item.title || 'news item'}`}
-                onClick={() => requestRemove(item)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+      <div className="max-h-[780px] overflow-auto rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+        <h3 className="mb-3 text-lg font-semibold text-foreground">Current news</h3>
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+            <tr>
+              <th className="px-3 py-2 font-medium">Date</th>
+              <th className="px-3 py-2 font-medium">Title</th>
+              <th className="px-3 py-2 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.id} className="border-t border-border/60 align-top">
+                <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
+                  {[item.badge, item.date].filter(Boolean).join(' - ') || 'News item'}
+                </td>
+                <td className="px-3 py-2">
+                  <p className="font-medium text-foreground">{item.title || 'Untitled news item'}</p>
+                  {item.description ? <p className="mt-1 line-clamp-2 text-foreground/60">{item.description}</p> : null}
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Edit ${item.title || 'news item'}`}
+                      onClick={() => openEditDialog(item)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete ${item.title || 'news item'}`}
+                      onClick={() => requestRemove(item)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

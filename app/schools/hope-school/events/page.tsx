@@ -26,7 +26,7 @@ export default function HopeSchoolEventsPage() {
           </div>
         </section>
 
-        <EventsListSection apiPath="/api/schools/hope-school/events" layout="classic" />
+        <EventsListSection apiPath="/api/events?scope=hope-school" layout="classic" />
       </main>
       <Footer />
     </>

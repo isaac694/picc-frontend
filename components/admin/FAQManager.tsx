@@ -337,82 +337,74 @@ export default function FAQManager({
             ) : null}
           </div>
         ) : (
-          <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
-            {filteredFaqs.map((faq) => (
-              <div
-                key={faq.id}
-                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground">{faq.question}</p>
-                  <p className="mt-2 text-sm text-foreground/70">{faq.answer}</p>
-                  <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/40">
-                    {faq.isActive ? 'Active' : 'Hidden'}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  {faq.isActive ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      disabled={togglingFaqId === faq.id}
-                      onClick={() => void handleToggleFaqActive(faq, false)}
-                    >
-                      {togglingFaqId === faq.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <PowerOff className="h-4 w-4" />
-                      )}
-                      Deactivate
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      disabled={togglingFaqId === faq.id}
-                      onClick={() => void handleToggleFaqActive(faq, true)}
-                    >
-                      {togglingFaqId === faq.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Power className="h-4 w-4" />
-                      )}
-                      Activate
-                    </Button>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Edit FAQ: ${faq.question}`}
-                      onClick={() => openEditDialog(faq)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      aria-label={`Delete FAQ: ${faq.question}`}
-                      onClick={() => requestDeleteFaq(faq)}
-                      disabled={deletingFaqId === faq.id}
-                    >
-                      {deletingFaqId === faq.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="max-h-[620px] overflow-auto rounded-xl border border-border/70">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Question</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFaqs.map((faq) => (
+                  <tr key={faq.id} className="border-t border-border/60 align-top">
+                    <td className="px-3 py-2">
+                      <p className="font-medium text-foreground">{faq.question}</p>
+                      <p className="mt-1 line-clamp-2 text-foreground/70">{faq.answer}</p>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{faq.isActive ? 'Active' : 'Hidden'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {faq.isActive ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={togglingFaqId === faq.id}
+                            onClick={() => void handleToggleFaqActive(faq, false)}
+                          >
+                            {togglingFaqId === faq.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />}
+                            Deactivate
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={togglingFaqId === faq.id}
+                            onClick={() => void handleToggleFaqActive(faq, true)}
+                          >
+                            {togglingFaqId === faq.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+                            Activate
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Edit FAQ: ${faq.question}`}
+                          onClick={() => openEditDialog(faq)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={`Delete FAQ: ${faq.question}`}
+                          onClick={() => requestDeleteFaq(faq)}
+                          disabled={deletingFaqId === faq.id}
+                        >
+                          {deletingFaqId === faq.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

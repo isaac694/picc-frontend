@@ -22,6 +22,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Quote,
+  ScanLine,
   School,
   ShieldCheck,
   ShoppingBag,
@@ -32,7 +33,7 @@ import {
   Receipt,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { ADMIN_ACCESS_RIGHT, ADMIN_PAGE, canAccessAdminPage, canAccessMinistry, canAccessRight } from '@/lib/admin-pages';
+import { ADMIN_ACCESS_RIGHT, ADMIN_PAGE, MINISTRY_ADMIN_OPTIONS, canAccessAdminPage, canAccessMinistry, canAccessMinistryEvents, canAccessRight } from '@/lib/admin-pages';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useAdminTheme } from '@/hooks/use-admin-theme';
 import type { AdminPageKey } from '@/lib/admin-pages';
@@ -69,6 +70,8 @@ const NAV_ITEMS: NavItem[] = [
 const PAYMENTS_ITEMS: NavItem[] = [
   { label: 'Giving dashboard', href: '/admin/giving/dashboard', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Wallet },
   { label: 'Giving payments', href: '/admin/giving/payments', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Receipt },
+  { label: 'Events payment dashboard', href: '/admin/event-payments/dashboard', icon: Wallet },
+  { label: 'Events payment', href: '/admin/event-payments', icon: Receipt },
   { label: 'Store dashboard', href: '/admin/store/dashboard', pageKey: ADMIN_PAGE.STORE_PAGE, icon: LayoutDashboard },
   { label: 'Book store payments', href: '/admin/store/payments', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
 ];
@@ -95,6 +98,13 @@ const MINISTRIES_ITEMS: Array<NavItem & { ministryKey: string }> = [
   { label: 'Rivers of Hope', href: '/admin/ministries/rivers-of-hope', ministryKey: 'rivers-of-hope', icon: Users },
   { label: 'Heritage', href: '/admin/ministries/heritage', ministryKey: 'heritage', icon: Users },
 ];
+
+const MINISTRY_EVENT_ITEMS: Array<NavItem & { ministryKey: string }> = MINISTRY_ADMIN_OPTIONS.map((ministry) => ({
+  label: ministry.label,
+  href: `/admin/ministry-events/${ministry.key}`,
+  ministryKey: ministry.key,
+  icon: CalendarDays,
+}));
 
 const ARCHIVE_ITEMS: NavItem[] = [
   { label: 'Devotions Archive', href: '/devotions', icon: Archive },
@@ -166,6 +176,7 @@ export default function AdminSidebar() {
     if (href === '/admin/hr') return pathname === href || Boolean(pathname?.startsWith('/admin/hr/applications'));
     if (href === '/admin/store') return pathname === href;
     if (href === '/admin/give') return pathname === href;
+    if (href === '/admin/event-payments') return pathname === href;
     return pathname?.startsWith(href);
   };
 
@@ -180,6 +191,7 @@ export default function AdminSidebar() {
         payments: [] as NavItem[],
         settings: [] as NavItem[],
         ministries: [] as NavItem[],
+        ministryEvents: [] as NavItem[],
         showArchives: false,
       };
     }
@@ -188,10 +200,14 @@ export default function AdminSidebar() {
       if (!item.pageKey) return true;
       return canAccessAdminPage(user, item.pageKey);
     };
+    const canSeeEventPayments = canAccessAdminPage(user, ADMIN_PAGE.EVENT_PAYMENTS) || canAccessAdminPage(user, ADMIN_PAGE.EVENTS);
 
     const nav = NAV_ITEMS.filter(canSee);
     const site = SITE_PAGE_ITEMS.filter(canSee);
-    const payments = PAYMENTS_ITEMS.filter(canSee);
+    const payments = PAYMENTS_ITEMS.filter((item) => {
+      if (item.href.startsWith('/admin/event-payments')) return canSeeEventPayments;
+      return canSee(item);
+    });
 
     const settings: NavItem[] = [];
 
@@ -203,12 +219,22 @@ export default function AdminSidebar() {
       settings.push({ label: 'User Management', href: '/admin/users', icon: Users });
     }
 
+    const canCheckInTickets = canAccessAdminPage(user, ADMIN_PAGE.EVENTS)
+      || MINISTRY_ADMIN_OPTIONS.some((ministry) => canAccessMinistryEvents(user, ministry.key));
+    const ministryEvents = [
+      ...(canCheckInTickets
+        ? [{ label: 'Ticket check-in', href: '/admin/event-check-in', icon: ScanLine }]
+        : []),
+      ...MINISTRY_EVENT_ITEMS.filter((item) => canAccessMinistryEvents(user, item.ministryKey)),
+    ];
+
     return {
       nav,
       site,
       payments,
       settings,
       ministries: MINISTRIES_ITEMS.filter((item) => canAccessMinistry(user, item.ministryKey)),
+      ministryEvents,
       showArchives: user.role === 'SUPER_ADMIN' || Boolean(user.isSystem),
     };
   }, [user]);
@@ -266,6 +292,7 @@ export default function AdminSidebar() {
         <SidebarSection title="Settings" items={filtered.settings} isActive={isActive} collapsed={collapsed} />
         <SidebarSection title="Site Pages" items={filtered.site} isActive={isActive} collapsed={collapsed} />
         <SidebarSection title="Ministries" items={filtered.ministries} isActive={isActive} collapsed={collapsed} />
+        <SidebarSection title="Ministry Events" items={filtered.ministryEvents} isActive={isActive} collapsed={collapsed} />
         <SidebarSection title="Archives" items={filtered.showArchives ? ARCHIVE_ITEMS : []} isActive={isActive} collapsed={collapsed} />
       </div>
 

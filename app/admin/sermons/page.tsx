@@ -704,43 +704,47 @@ export default function AdminSermonsPage() {
             return filtered.length === 0 ? (
               <p className="text-sm text-foreground/60">No sermons match your filters.</p>
             ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {filtered.map((sermon) => (
-                  <div
-                    key={sermon.id}
-                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                        {sermon.date || 'No date'}
-                      </p>
-                      <p className="text-sm font-semibold text-foreground mt-1 truncate">
-                        {sermon.title || 'Untitled'}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Edit ${sermon.title || 'sermon'}`}
-                        onClick={() => openEditDialog(sermon)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        aria-label={`Delete ${sermon.title || 'sermon'}`}
-                        onClick={() => requestDeleteSermon(sermon.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-[600px] overflow-auto rounded-xl border border-border/70">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Date</th>
+                      <th className="px-3 py-2 font-medium">Title</th>
+                      <th className="px-3 py-2 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((sermon) => (
+                      <tr key={sermon.id} className="border-t border-border/60">
+                        <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{sermon.date || 'No date'}</td>
+                        <td className="px-3 py-2 font-medium text-foreground">{sermon.title || 'Untitled'}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Edit ${sermon.title || 'sermon'}`}
+                              onClick={() => openEditDialog(sermon)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Delete ${sermon.title || 'sermon'}`}
+                              onClick={() => requestDeleteSermon(sermon.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             );
           })()}

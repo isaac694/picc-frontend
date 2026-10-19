@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,6 +17,20 @@ import {
 import { sendEventRegistrationNotification } from '@/lib/email';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { PAYCHANGU_CHECKOUT_METHOD, processPaychanguPayment } from '@/lib/paychangu-initialize';
+import { publicEventPath } from '@/lib/public-event';
+import EventFormFields from '@/components/events/EventFormFields';
+import {
+  contactFromEventAnswers,
+  emptyAnswers,
+  formCollectsContact,
+  ministryNameForKey,
+  parseEventForm,
+  parseEventTickets,
+  validateEventAnswers,
+  type EventAnswers,
+  type EventFormSchema,
+  type EventTicket,
+} from '@/lib/event-forms';
 
 interface Event {
   id: number | string;
@@ -31,7 +46,12 @@ interface Event {
   acceptsOnlinePayment: boolean;
   paymentAmount: number | null;
   paymentCurrency: string;
+  tickets?: EventTicket[];
   paymentAccount?: string | null;
+  ministryKey?: string | null;
+  ministryName?: string | null;
+  registrationForm?: EventFormSchema | null;
+  paymentForm?: EventFormSchema | null;
   imageUrl?: string | null;
   scope?: string | null;
 }
@@ -170,49 +190,7 @@ const buildIcsFile = (event: Event) => {
     .join('\r\n');
 };
 
-const DEFAULT_EVENTS: Event[] = [
-  {
-    id: 1,
-    title: '2026 Chatroom',
-    startDate: '2026-04-11',
-    endDate: '2026-04-11',
-    time: '8:00 AM - 4:00 PM',
-    image: '/events/upcoming.JPG',
-    location: 'African Bible College',
-    description:
-      'PICC Teens Ministry presents 2026 Chatroom. Registration fee MK18,000 (includes snacks and lunch). Age group 12–19 years. With Pastor Loyce Banda.',
-    requiresRegistration: true,
-    registrationEmail: 'info@piccworldwide.org',
-    acceptsOnlinePayment: false,
-    paymentAmount: null,
-    paymentCurrency: 'MWK',
-  },
-];
-
-const HARDCODED_EVENTS: Event[] = [
-  {
-    id: 'mega-sunday-service-2026-06-28',
-    title: 'MEGA SUNDAY SERVICE',
-    startDate: '2026-06-28',
-    endDate: '2026-06-28',
-    time: '7:00 AM - 1:00 PM',
-    image: '/events/mega.jpeg',
-    location: 'Camp of God Cathedral, Area 49, Lilongwe',
-    description:
-      'Invitation is extended to you all for this Mega Sunday Service taking place on Sunday, June 28, 2026 at the Camp of God Cathedral in Area 49, Lilongwe. Time is 7:00am to 1:00pm. Tell your friend to tell their friends #THOG',
-    requiresRegistration: false,
-    registrationEmail: null,
-    acceptsOnlinePayment: false,
-    paymentAmount: null,
-    paymentCurrency: 'MWK',
-  },
-];
-
-const mergeHardcodedEvents = (incoming: Event[]) => {
-  const incomingIds = new Set(incoming.map((event) => String(event.id)));
-  const extraEvents = HARDCODED_EVENTS.filter((event) => !incomingIds.has(String(event.id)));
-  return [...extraEvents, ...incoming];
-};
+const isStoredEvent = (event: Pick<Event, 'id'>) => !/^\d+$/.test(String(event.id));
 
 export default function EventsListSection({
   apiPath = '/api/events',
@@ -242,6 +220,7 @@ export default function EventsListSection({
   const [registerSubmitting, setRegisterSubmitting] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
+  const [registerAnswers, setRegisterAnswers] = useState<EventAnswers>({});
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [paymentEvent, setPaymentEvent] = useState<Event | null>(null);
   const [paymentForm, setPaymentForm] = useState({
@@ -254,6 +233,8 @@ export default function EventsListSection({
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
+  const [paymentAnswers, setPaymentAnswers] = useState<EventAnswers>({});
+  const [selectedTicketKey, setSelectedTicketKey] = useState('');
   const pageSize = 3;
 
   useEffect(() => {
@@ -269,7 +250,7 @@ export default function EventsListSection({
               : [];
 
           const normalized: Event[] = eventsList
-            .filter(isRecord)
+            .filter((event) => isRecord(event) && event.isPublished !== false)
             .map((event) => ({
               id: typeof event.id === 'string' || typeof event.id === 'number' ? event.id : String(event.id ?? ''),
               title: typeof event.title === 'string' ? event.title : '',
@@ -307,17 +288,25 @@ export default function EventsListSection({
                     ? Number(event.paymentAmount)
                     : null,
               paymentCurrency: typeof event.paymentCurrency === 'string' ? event.paymentCurrency : 'MWK',
+              tickets: parseEventTickets(event.tickets),
               paymentAccount: typeof event.paymentAccount === 'string' ? event.paymentAccount : null,
+              ministryKey: typeof event.ministryKey === 'string' ? event.ministryKey : null,
+              ministryName:
+                typeof event.ministryName === 'string' && event.ministryName
+                  ? event.ministryName
+                  : ministryNameForKey(typeof event.ministryKey === 'string' ? event.ministryKey : ''),
+              registrationForm: parseEventForm(event.registrationForm),
+              paymentForm: parseEventForm(event.paymentForm),
               imageUrl: typeof event.imageUrl === 'string' ? event.imageUrl : null,
               scope: typeof event.scope === 'string' ? event.scope : null,
             }))
             .filter((event) => Boolean(event.title) && Boolean(event.startDate));
-          setEvents(mergeHardcodedEvents(normalized.length > 0 ? normalized : DEFAULT_EVENTS));
+          setEvents(normalized);
         } else {
-          setEvents(mergeHardcodedEvents(DEFAULT_EVENTS));
+          setEvents([]);
         }
       } catch {
-        setEvents(mergeHardcodedEvents(DEFAULT_EVENTS));
+        setEvents([]);
       } finally {
         setEventsLoading(false);
       }
@@ -497,6 +486,7 @@ export default function EventsListSection({
   const openRegister = (event: typeof events[number]) => {
     if (!event.requiresRegistration) return;
     setActiveEvent(event);
+    setRegisterAnswers(emptyAnswers(event.registrationForm || null));
     setIsRegisterOpen(true);
     setRegisterError(null);
     setRegisterSuccess(null);
@@ -510,12 +500,28 @@ export default function EventsListSection({
     return `${countryCode}${digits}`;
   };
 
-  const formatPaymentAmount = (event: Event) =>
-    `${event.paymentCurrency || 'MWK'} ${Number(event.paymentAmount || 0).toLocaleString('en-US')}`;
+  const ticketPrice = (event: Event, ticketKey?: string) => {
+    const tickets = event.tickets || [];
+    const selected = tickets.find((ticket) => ticket.key === ticketKey);
+    if (selected) return selected.price;
+    if (tickets.length) return Math.min(...tickets.map((ticket) => ticket.price));
+    return event.paymentAmount;
+  };
+
+  const formatPaymentAmount = (event: Event, ticketKey?: string) => {
+    const amount = ticketPrice(event, ticketKey);
+    const prefix = !ticketKey && (event.tickets?.length || 0) > 1 ? 'from ' : '';
+    return `${prefix}${event.paymentCurrency || 'MWK'} ${Number(amount || 0).toLocaleString('en-US')}`;
+  };
+
+  const canPayEvent = (event: Event) =>
+    event.acceptsOnlinePayment && ((event.tickets?.length || 0) > 0 || Boolean(event.paymentAmount && event.paymentAmount > 0));
 
   const openPayment = (event: Event) => {
-    if (!event.acceptsOnlinePayment || !event.paymentAmount) return;
+    if (!canPayEvent(event)) return;
     setPaymentEvent(event);
+    setSelectedTicketKey(event.tickets?.[0]?.key || '');
+    setPaymentAnswers(emptyAnswers(event.paymentForm || null));
     setPaymentError(null);
     setPaymentSuccess(null);
     setIsPaymentOpen(true);
@@ -526,32 +532,98 @@ export default function EventsListSection({
     setPaymentError(null);
     setPaymentSuccess(null);
 
-    if (!paymentForm.fullName || !paymentForm.phone || !paymentForm.email) {
+    const dynamicPaymentForm = paymentEvent.paymentForm || null;
+    const answerError = validateEventAnswers(dynamicPaymentForm, paymentAnswers);
+    if (answerError) {
+      setPaymentError(answerError);
+      return;
+    }
+    const collected = contactFromEventAnswers(dynamicPaymentForm, paymentAnswers);
+    const covered = formCollectsContact(dynamicPaymentForm);
+    const fullName = collected.name || paymentForm.fullName.trim();
+    const email = collected.email || paymentForm.email.trim();
+    const rawPhone = collected.phone || paymentForm.phone.trim();
+
+    if ((!covered.name && !paymentForm.fullName) || (!covered.email && !paymentForm.email) || (!covered.phone && !paymentForm.phone)) {
+      setPaymentError('Please enter your name, phone number, and email.');
+      return;
+    }
+    if (!fullName || !email || !rawPhone) {
       setPaymentError('Please enter your name, phone number, and email.');
       return;
     }
 
-    const nameParts = paymentForm.fullName.trim().split(/\s+/).filter(Boolean);
+    const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
     if (nameParts.length < 2) {
       setPaymentError('Please enter your full name (first and last).');
       return;
     }
 
-    const normalizedPhone = normalizePaychanguPhone(paymentForm.phoneCountry, paymentForm.phone);
-    if (paymentForm.phoneCountry === '+265' && normalizedPhone.length !== 9) {
+    const normalizedPhone = covered.phone ? rawPhone.replace(/\s+/g, '') : normalizePaychanguPhone(paymentForm.phoneCountry, rawPhone);
+    if (!covered.phone && paymentForm.phoneCountry === '+265' && normalizedPhone.length !== 9) {
       setPaymentError('Please enter a valid Malawi mobile number with 9 digits.');
+      return;
+    }
+
+    const tickets = paymentEvent.tickets || [];
+    const ticket = tickets.find((item) => item.key === selectedTicketKey);
+    if (tickets.length && !ticket) {
+      setPaymentError('Choose a ticket type.');
       return;
     }
 
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(' ');
-    const amount = Number(paymentEvent.paymentAmount || 0);
+    const amount = ticket ? ticket.price : Number(paymentEvent.paymentAmount || 0);
     const currency = paymentEvent.paymentCurrency || 'MWK';
     const reason = `Event: ${paymentEvent.title}`;
-    const paymentAccount = paymentEvent.paymentAccount || (paymentEvent.scope === 'youth-church' ? 'youth' : 'main');
+    const paymentAccount =
+      paymentEvent.paymentAccount || (paymentEvent.ministryKey === 'youth-church' ? 'youth' : 'main');
 
     setPaymentSubmitting(true);
     try {
+      if (isStoredEvent(paymentEvent)) {
+        const paymentResponse = await apiFetch(`/api/events/${paymentEvent.id}/payments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            answers: paymentAnswers,
+            name: fullName,
+            email,
+            phone: normalizedPhone,
+            ticketKey: ticket?.key,
+            paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
+            paychanguAccount: paymentAccount,
+          }),
+        });
+        const paymentData = await paymentResponse.json().catch(() => null);
+        if (!paymentResponse.ok) {
+          throw new Error(paymentData?.error || 'Failed to save payment record.');
+        }
+        const chargeId = typeof paymentData?.chargeId === 'string' ? paymentData.chargeId : '';
+        if (!chargeId) {
+          throw new Error('Payment could not be started.');
+        }
+
+        await processPaychanguPayment({
+          amount,
+          currency,
+          email,
+          firstName,
+          lastName,
+          phone: normalizedPhone,
+          reason,
+          givingId: chargeId,
+          txRef: chargeId,
+          account: paymentAccount,
+          returnPath: typeof window !== 'undefined' ? window.location.pathname : '/events',
+          meta: { eventId: String(paymentEvent.id), chargeId },
+        });
+
+        setPaymentSuccess('Payment started. When PayChangu confirms it, your ticket and QR code will be emailed to you.');
+        return;
+      }
+
       const givingResponse = await apiFetch('/api/giving', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -599,26 +671,57 @@ export default function EventsListSection({
     setRegisterError(null);
     setRegisterSuccess(null);
 
-    if (!registerForm.fullName || !registerForm.residence || !registerForm.phone || !registerForm.email) {
+    const dynamicRegistrationForm = activeEvent.registrationForm || null;
+    if (dynamicRegistrationForm) {
+      const answerError = validateEventAnswers(dynamicRegistrationForm, registerAnswers);
+      if (answerError) {
+        setRegisterError(answerError);
+        return;
+      }
+    } else if (!registerForm.fullName || !registerForm.residence || !registerForm.phone || !registerForm.email) {
       setRegisterError('Please complete the required fields before submitting.');
       return;
     }
-    if (!activeEvent.registrationEmail) {
-      setRegisterError('This event is not configured to receive registrations yet.');
-      return;
+
+    if (!isStoredEvent(activeEvent)) {
+      if (!activeEvent.registrationEmail) {
+        setRegisterError('This event is not configured to receive registrations yet.');
+        return;
+      }
     }
 
     setRegisterSubmitting(true);
     try {
-      await sendEventRegistrationNotification({
-        churchEmail: activeEvent.registrationEmail,
-        eventTitle: activeEvent.title,
-        eventDate: formatEventDateSummary(activeEvent),
-        fullName: registerForm.fullName,
-        residence: registerForm.residence,
-        phone: registerForm.phone,
-        email: registerForm.email,
-      });
+      if (isStoredEvent(activeEvent)) {
+        const response = await apiFetch(`/api/events/${activeEvent.id}/registrations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            dynamicRegistrationForm
+              ? { answers: registerAnswers }
+              : {
+                  name: registerForm.fullName.trim(),
+                  email: registerForm.email.trim(),
+                  phone: registerForm.phone.trim(),
+                  message: registerForm.residence.trim(),
+                },
+          ),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.error || 'Failed to submit registration.');
+        }
+      } else {
+        await sendEventRegistrationNotification({
+          churchEmail: activeEvent.registrationEmail || '',
+          eventTitle: activeEvent.title,
+          eventDate: formatEventDateSummary(activeEvent),
+          fullName: registerForm.fullName,
+          residence: registerForm.residence,
+          phone: registerForm.phone,
+          email: registerForm.email,
+        });
+      }
       setRegisterSuccess('Thank you! Your registration was submitted.');
       setRegisterForm({
         fullName: '',
@@ -626,6 +729,7 @@ export default function EventsListSection({
         phone: '',
         email: '',
       });
+      setRegisterAnswers(emptyAnswers(dynamicRegistrationForm));
     } catch (error) {
       setRegisterError(error instanceof Error ? error.message : 'Failed to submit registration.');
     } finally {
@@ -721,12 +825,65 @@ export default function EventsListSection({
                     <p className="text-xs uppercase tracking-[0.3em] text-foreground/50 mb-6">
                       {group.label}
                     </p>
-                    <div className="grid gap-8">
+                    {layout === 'classic' ? (
+                      <div className="overflow-x-auto rounded-xl border border-border">
+                        <table className="min-w-full text-left text-sm">
+                          <thead className="bg-muted/40 text-xs uppercase tracking-wide text-foreground/60">
+                            <tr>
+                              <th className="px-3 py-2 font-medium">Date</th>
+                              <th className="px-3 py-2 font-medium">Event</th>
+                              <th className="px-3 py-2 font-medium">Ministry</th>
+                              <th className="px-3 py-2 font-medium">Location</th>
+                              <th className="px-3 py-2 font-medium" />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.items.map((event) => {
+                              const detailPath = publicEventPath(event.id);
+                              const detailAction = event.requiresRegistration && canPayEvent(event)
+                                ? 'Register & get tickets'
+                                : event.requiresRegistration
+                                  ? 'Register'
+                                  : canPayEvent(event)
+                                    ? 'Get tickets'
+                                    : 'View event';
+                              return (
+                                <tr key={event.id} className="border-t border-border/70">
+                                  <td className="whitespace-nowrap px-3 py-3 text-foreground/70">{formatEventDateSummary(event)}</td>
+                                  <td className="px-3 py-3 font-medium text-primary">
+                                    {detailPath ? <Link href={detailPath} className="hover:underline">{event.title}</Link> : event.title}
+                                  </td>
+                                  <td className="px-3 py-3 text-foreground/70">{event.ministryName || '—'}</td>
+                                  <td className="px-3 py-3 text-foreground/70">{event.location || '—'}</td>
+                                  <td className="px-3 py-3 text-right">
+                                    {detailPath ? (
+                                      <Button asChild size="sm" className="rounded-full">
+                                        <Link href={detailPath}>{detailAction}</Link>
+                                      </Button>
+                                    ) : null}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                    <div className="mx-auto grid max-w-3xl gap-4">
                       {group.items.map((event) => {
                         const dateLabel = event.dateObj
                           .toLocaleString('en-US', { weekday: 'short' })
                           .toUpperCase();
                         const dateNumber = event.dateObj.getDate();
+
+                        const detailPath = publicEventPath(event.id);
+                        const detailAction = event.requiresRegistration && canPayEvent(event)
+                          ? 'Register & get tickets'
+                          : event.requiresRegistration
+                            ? 'Register'
+                            : canPayEvent(event)
+                              ? 'Get tickets'
+                              : 'View event';
 
                         return (
                           <div
@@ -744,7 +901,12 @@ export default function EventsListSection({
                                   <p className="text-3xl font-semibold text-foreground">{dateNumber}</p>
                                 </div>
                                 <div>
-                                  <h3 className="text-lg md:text-xl font-semibold text-primary">{event.title}</h3>
+                                  <h3 className="text-lg md:text-xl font-semibold text-primary">
+                                    {detailPath ? <Link href={detailPath} className="hover:underline">{event.title}</Link> : event.title}
+                                  </h3>
+                                  {event.ministryName ? (
+                                    <p className="mt-1 text-xs font-medium uppercase tracking-[0.2em] text-foreground/50">{event.ministryName}</p>
+                                  ) : null}
                                   <p className="text-sm text-foreground/70 mt-2">
                                     {group.label} • {event.time || 'Time to be announced'}
                                   </p>
@@ -756,32 +918,52 @@ export default function EventsListSection({
                                     <p className="text-sm leading-6 text-foreground/75 mt-3">{event.description}</p>
                                   ) : null}
                                   <div className="mt-4">
-                                    <Button
-                                      variant="outline"
-                                      className="rounded-full px-5 text-sm"
-                                      disabled={!event.requiresRegistration}
-                                      onClick={() => openRegister(event)}
-                                    >
-                                      {event.requiresRegistration ? 'Register for Event' : 'Registration Not Required'}
-                                    </Button>
-                                    {event.acceptsOnlinePayment && event.paymentAmount ? (
-                                      <Button
-                                        className="ml-0 mt-3 rounded-full px-5 text-sm md:ml-3 md:mt-0"
-                                        onClick={() => openPayment(event)}
-                                      >
-                                        Pay {formatPaymentAmount(event)}
+                                    {detailPath ? (
+                                      <Button asChild className="rounded-full px-5 text-sm">
+                                        <Link href={detailPath}>{detailAction}</Link>
                                       </Button>
-                                    ) : null}
+                                    ) : (
+                                      <>
+                                        <Button
+                                          variant="outline"
+                                          className="rounded-full px-5 text-sm"
+                                          disabled={!event.requiresRegistration}
+                                          onClick={() => openRegister(event)}
+                                        >
+                                          {event.requiresRegistration ? 'Register for Event' : 'Registration Not Required'}
+                                        </Button>
+                                        {canPayEvent(event) ? (
+                                          <Button
+                                            className="ml-0 mt-3 rounded-full px-5 text-sm md:ml-3 md:mt-0"
+                                            onClick={() => openPayment(event)}
+                                          >
+                                            Pay {formatPaymentAmount(event)}
+                                          </Button>
+                                        ) : null}
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="relative aspect-video max-w-[320px] w-full justify-self-center overflow-hidden rounded-xl border border-border/40 bg-muted/40 shadow-sm md:justify-self-end">
-                                  <Image
-                                    src={event.image}
-                                    alt={event.title}
-                                    fill
-                                    className="object-contain object-center"
-                                    unoptimized={isLocalUpstreamImage(event.image)}
-                                  />
+                                  {detailPath ? (
+                                    <Link href={detailPath} className="absolute inset-0" aria-label={event.title}>
+                                      <Image
+                                        src={event.image}
+                                        alt={event.title}
+                                        fill
+                                        className="object-contain object-center"
+                                        unoptimized={isLocalUpstreamImage(event.image)}
+                                      />
+                                    </Link>
+                                  ) : (
+                                    <Image
+                                      src={event.image}
+                                      alt={event.title}
+                                      fill
+                                      className="object-contain object-center"
+                                      unoptimized={isLocalUpstreamImage(event.image)}
+                                    />
+                                  )}
                                 </div>
                               </>
                             ) : (
@@ -792,13 +974,23 @@ export default function EventsListSection({
                                     <p className="mt-1 text-3xl font-semibold text-foreground">{dateNumber}</p>
                                   </div>
                                   <div className="flex-1 md:hidden">
-                                    <h3 className="text-lg font-semibold text-primary">{event.title}</h3>
+                                    <h3 className="text-lg font-semibold text-primary">
+                                      {detailPath ? <Link href={detailPath} className="hover:underline">{event.title}</Link> : event.title}
+                                    </h3>
+                                    {event.ministryName ? (
+                                      <p className="mt-1 text-xs font-medium uppercase tracking-[0.2em] text-foreground/50">{event.ministryName}</p>
+                                    ) : null}
                                     <p className="mt-2 text-sm text-foreground/70">{formatEventDateSummary(event)}</p>
                                   </div>
                                 </div>
                                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.3fr_0.9fr]">
                                   <div>
-                                    <h3 className="hidden text-xl font-semibold text-primary md:block">{event.title}</h3>
+                                    <h3 className="hidden text-xl font-semibold text-primary md:block">
+                                      {detailPath ? <Link href={detailPath} className="hover:underline">{event.title}</Link> : event.title}
+                                    </h3>
+                                    {event.ministryName ? (
+                                      <p className="mt-1 hidden text-xs font-medium uppercase tracking-[0.2em] text-foreground/50 md:block">{event.ministryName}</p>
+                                    ) : null}
                                     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                       <div className="rounded-xl bg-muted/40 px-4 py-3">
                                         <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-foreground/50">
@@ -828,22 +1020,30 @@ export default function EventsListSection({
                                       </div>
                                     ) : null}
                                     <div className="mt-4 flex flex-wrap items-center gap-3">
-                                      <Button
-                                        variant="outline"
-                                        className="rounded-full px-5 text-sm"
-                                        disabled={!event.requiresRegistration}
-                                        onClick={() => openRegister(event)}
-                                      >
-                                        {event.requiresRegistration ? 'Register for Event' : 'Registration Not Required'}
-                                      </Button>
-                                      {event.acceptsOnlinePayment && event.paymentAmount ? (
-                                        <Button
-                                          className="rounded-full px-5 text-sm"
-                                          onClick={() => openPayment(event)}
-                                        >
-                                          Pay {formatPaymentAmount(event)}
+                                      {detailPath ? (
+                                        <Button asChild className="rounded-full px-5 text-sm">
+                                          <Link href={detailPath}>{detailAction}</Link>
                                         </Button>
-                                      ) : null}
+                                      ) : (
+                                        <>
+                                          <Button
+                                            variant="outline"
+                                            className="rounded-full px-5 text-sm"
+                                            disabled={!event.requiresRegistration}
+                                            onClick={() => openRegister(event)}
+                                          >
+                                            {event.requiresRegistration ? 'Register for Event' : 'Registration Not Required'}
+                                          </Button>
+                                          {canPayEvent(event) ? (
+                                            <Button
+                                              className="rounded-full px-5 text-sm"
+                                              onClick={() => openPayment(event)}
+                                            >
+                                              Pay {formatPaymentAmount(event)}
+                                            </Button>
+                                          ) : null}
+                                        </>
+                                      )}
                                       <span className="rounded-full bg-primary/8 px-3 py-1 text-xs font-medium text-primary">
                                         {event.acceptsOnlinePayment
                                           ? `Online payment enabled: ${formatPaymentAmount(event)}`
@@ -871,6 +1071,7 @@ export default function EventsListSection({
                         );
                       })}
                     </div>
+                    )}
                   </div>
                 ))
               )}
@@ -1006,9 +1207,16 @@ export default function EventsListSection({
               {registerSuccess}
             </div>
           )}
+          {activeEvent?.registrationForm ? (
+            <EventFormFields
+              form={activeEvent.registrationForm}
+              values={registerAnswers}
+              onChange={(key, value) => setRegisterAnswers((prev) => ({ ...prev, [key]: value }))}
+            />
+          ) : (
           <div className="grid gap-3 text-sm">
             <label className="grid gap-1">
-              <span className="text-foreground/80">Full name</span>
+              <span className="text-foreground/80">Full name *</span>
               <input
                 className="rounded-md border border-border px-3 py-2 text-sm"
                 value={registerForm.fullName}
@@ -1030,7 +1238,7 @@ export default function EventsListSection({
               />
             </label>
             <label className="grid gap-1">
-              <span className="text-foreground/80">Phone number</span>
+              <span className="text-foreground/80">Phone number *</span>
               <input
                 className="rounded-md border border-border px-3 py-2 text-sm"
                 value={registerForm.phone}
@@ -1050,6 +1258,7 @@ export default function EventsListSection({
               />
             </label>
           </div>
+          )}
           <DialogFooter>
             <Button
               className="rounded-full px-5"
@@ -1077,7 +1286,7 @@ export default function EventsListSection({
           <DialogHeader>
             <DialogTitle>Pay for Event</DialogTitle>
             <DialogDescription>
-              {paymentEvent ? `${paymentEvent.title} - ${formatPaymentAmount(paymentEvent)}` : 'Event payment'}
+              {paymentEvent ? `${paymentEvent.title} - ${formatPaymentAmount(paymentEvent, selectedTicketKey)}` : 'Event payment'}
             </DialogDescription>
           </DialogHeader>
           {paymentError && (
@@ -1091,6 +1300,34 @@ export default function EventsListSection({
             </div>
           )}
           <div className="grid gap-3 text-sm">
+            {paymentEvent && (paymentEvent.tickets?.length || 0) > 0 ? (
+              <fieldset className="grid gap-2">
+                <legend className="text-foreground/80">Ticket type</legend>
+                {(paymentEvent.tickets || []).map((ticket) => (
+                  <label key={ticket.key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2">
+                    <input
+                      type="radio"
+                      name={`ticket-${paymentEvent.id}`}
+                      value={ticket.key}
+                      checked={selectedTicketKey === ticket.key}
+                      onChange={() => setSelectedTicketKey(ticket.key)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span>
+                      {ticket.name} — {paymentEvent.paymentCurrency || 'MWK'} {ticket.price.toLocaleString('en-US')}
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
+            {paymentEvent?.paymentForm ? (
+              <EventFormFields
+                form={paymentEvent.paymentForm}
+                values={paymentAnswers}
+                onChange={(key, value) => setPaymentAnswers((prev) => ({ ...prev, [key]: value }))}
+              />
+            ) : null}
+            {formCollectsContact(paymentEvent?.paymentForm || null).name ? null : (
             <label className="grid gap-1">
               <span className="text-foreground/80">Full name</span>
               <input
@@ -1101,6 +1338,8 @@ export default function EventsListSection({
                 placeholder="First and last name"
               />
             </label>
+            )}
+            {formCollectsContact(paymentEvent?.paymentForm || null).email ? null : (
             <label className="grid gap-1">
               <span className="text-foreground/80">Email address</span>
               <input
@@ -1111,6 +1350,8 @@ export default function EventsListSection({
                 placeholder="Email address"
               />
             </label>
+            )}
+            {formCollectsContact(paymentEvent?.paymentForm || null).phone ? null : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[116px_minmax(0,1fr)]">
               <label className="grid min-w-0 gap-1">
                 <span className="text-foreground/80">Country</span>
@@ -1141,6 +1382,7 @@ export default function EventsListSection({
                 />
               </label>
             </div>
+            )}
             <p className="text-sm text-foreground/70">
               PayChangu checkout opens when you tap Pay Now — choose Airtel, Mpamba, bank, or card there.
             </p>

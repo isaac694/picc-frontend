@@ -548,7 +548,7 @@ export default async function HopeSchoolPage() {
       </section>
 
       <EventsCarousel
-        apiPath="/api/schools/hope-school/events"
+        apiPath="/api/events?scope=hope-school"
         eventsHref="/schools/hope-school/events"
         eventsLabel="View all school events"
         title="Hope School Events"

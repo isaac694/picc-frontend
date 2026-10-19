@@ -379,40 +379,43 @@ export default function SchoolKeyDatesManager({
             {searchTerm ? 'No key dates match your search.' : 'No key dates yet.'}
           </p>
         ) : (
-          <div className="space-y-3">
-            {filteredDates.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold text-foreground">{item.label}</h3>
-                    {!item.isActive ? (
-                      <span className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-destructive">
-                        Inactive
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-xs font-bold uppercase tracking-wider text-primary">{item.dateText}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button type="button" size="icon" variant="ghost" aria-label={`Edit ${item.label}`} onClick={() => openEditDialog(item)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={`Delete ${item.label}`}
-                    onClick={() => requestRemove(item)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-auto rounded-xl border border-border/70">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Label</th>
+                  <th className="px-3 py-2 font-medium">Date</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDates.map((item) => (
+                  <tr key={item.id} className="border-t border-border/60">
+                    <td className="px-3 py-2 font-medium text-foreground">{item.label}</td>
+                    <td className="px-3 py-2 text-foreground/70">{item.dateText}</td>
+                    <td className="px-3 py-2 text-foreground/70">{item.isActive ? 'Active' : 'Inactive'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <Button type="button" size="icon" variant="ghost" aria-label={`Edit ${item.label}`} onClick={() => openEditDialog(item)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={`Delete ${item.label}`}
+                          onClick={() => requestRemove(item)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

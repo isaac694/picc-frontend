@@ -627,58 +627,61 @@ export default function AdminStorePage() {
             />
           </div>
 
-          <div className="mt-5 max-h-[760px] space-y-3 overflow-y-auto pr-2">
+          <div className="mt-5 max-h-[760px] overflow-auto rounded-xl border border-border/70">
             {filteredBooks.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-foreground/60">No store books yet.</p>
-            ) : filteredBooks.map((book) => (
-              <div key={book.id} className="flex items-center gap-4 rounded-2xl border border-border/60 bg-background p-4">
-                <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
-                  {book.image ? <Image src={book.image} alt={book.title} fill sizes="64px" className="object-cover" /> : <ImageIcon className="m-auto h-8 w-8 text-foreground/30" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{book.title}</p>
-                      <p className="mt-1 text-xs text-foreground/50">{book.author || 'No author'} - {book.genre || 'No genre'}</p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${book.isActive ? 'bg-green-100 text-green-700' : 'bg-muted text-foreground/50'}`}>
-                        {book.isActive ? 'Visible' : 'Hidden'}
-                      </span>
-                      <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase text-foreground/50">
-                        {book.isBuiltIn ? 'Built-in' : 'Managed'}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-xs text-foreground/60">
-                    Hard: MWK {book.hardCopyPrice.toLocaleString()} | Soft: {book.softCopyPrice == null ? 'Not set' : `MWK ${book.softCopyPrice.toLocaleString()}`}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Edit ${book.title}`}
-                    onClick={() => openEditDialog(book)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  {!book.isBuiltIn ? (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      aria-label={`Delete ${book.title}`}
-                      onClick={() => requestDelete(book)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+              <p className="p-6 text-center text-sm text-foreground/60">No store books yet.</p>
+            ) : (
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Book</th>
+                    <th className="px-3 py-2 font-medium">Author</th>
+                    <th className="px-3 py-2 font-medium">Hard copy</th>
+                    <th className="px-3 py-2 font-medium">Soft copy</th>
+                    <th className="px-3 py-2 font-medium">Status</th>
+                    <th className="px-3 py-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredBooks.map((book) => (
+                    <tr key={book.id} className="border-t border-border/60">
+                      <td className="px-3 py-2 font-medium text-foreground">{book.title}</td>
+                      <td className="px-3 py-2 text-foreground/70">{book.author || 'No author'}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-foreground/70">MWK {book.hardCopyPrice.toLocaleString()}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
+                        {book.softCopyPrice == null ? 'Not set' : `MWK ${book.softCopyPrice.toLocaleString()}`}
+                      </td>
+                      <td className="px-3 py-2 text-foreground/70">{book.isActive ? 'Visible' : 'Hidden'}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Edit ${book.title}`}
+                            onClick={() => openEditDialog(book)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {!book.isBuiltIn ? (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Delete ${book.title}`}
+                              onClick={() => requestDelete(book)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </section>
     </div>

@@ -15,6 +15,7 @@ export const ADMIN_PAGE = {
   FORMS_PAGE: 'FORMS_PAGE',
   SERMONS_PAGE: 'SERMONS_PAGE',
   GIVE_PAGE: 'GIVE_PAGE',
+  EVENT_PAYMENTS: 'EVENT_PAYMENTS',
   LOCATIONS_PAGE: 'LOCATIONS_PAGE',
   HOME_CHURCHES_PAGE: 'HOME_CHURCHES_PAGE',
   FAQS: 'FAQS',
@@ -65,6 +66,7 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.FORMS_PAGE, label: 'Forms Page' },
   { key: ADMIN_PAGE.SERMONS_PAGE, label: 'Sermons Page' },
   { key: ADMIN_PAGE.GIVE_PAGE, label: 'Give Page' },
+  { key: ADMIN_PAGE.EVENT_PAYMENTS, label: 'Events payment' },
   { key: ADMIN_PAGE.LOCATIONS_PAGE, label: 'Church Locations' },
   { key: ADMIN_PAGE.HOME_CHURCHES_PAGE, label: 'Zones & Home Churches' },
   { key: ADMIN_PAGE.FAQS, label: 'FAQ (Footer)' },
@@ -88,6 +90,7 @@ export const MINISTRY_ADMIN_OPTIONS = [
 export type MinistryAdminKey = (typeof MINISTRY_ADMIN_OPTIONS)[number]['key'];
 
 export const ministryAdminAccessKey = (ministryKey: string) => `MINISTRY:${ministryKey}`;
+export const ministryEventAccessKey = (ministryKey: string) => `MINISTRY_EVENTS:${ministryKey}`;
 
 export const ADMIN_ACCESS_RIGHT = {
   ROLE_LIST: 'role.list',
@@ -101,7 +104,7 @@ export const ADMIN_ACCESS_RIGHT = {
   USER_DELETE: 'user.delete',
 } as const;
 
-export type AdminAccessRight = (typeof ADMIN_ACCESS_RIGHT)[keyof typeof ADMIN_ACCESS_RIGHT] | AdminPageKey | `MINISTRY:${string}`;
+export type AdminAccessRight = (typeof ADMIN_ACCESS_RIGHT)[keyof typeof ADMIN_ACCESS_RIGHT] | AdminPageKey | `MINISTRY:${string}` | `MINISTRY_EVENTS:${string}`;
 
 export type AdminAccessRightOption = {
   entity: string;
@@ -201,12 +204,23 @@ export const ADMIN_ACCESS_RIGHT_OPTIONS: AdminAccessRightOption[] = [
       })),
     ],
   },
+  {
+    entity: 'ministry-events',
+    label: 'Ministry Events',
+    description: 'Access ministry event applications.',
+    rights: MINISTRY_ADMIN_OPTIONS.map((option) => ({
+      name: ministryEventAccessKey(option.key) as AdminAccessRight,
+      label: `${option.label} events`,
+      description: `Can view ${option.label} events and registration applications.`,
+    })),
+  },
 ];
 
 const PAGE_ACCESS_RIGHTS = new Set<string>([
   ...ADMIN_PAGE_OPTIONS.map((option) => option.key),
   ADMIN_PAGE.MINISTRIES,
   ...MINISTRY_ADMIN_OPTIONS.map((option) => ministryAdminAccessKey(option.key)),
+  ...MINISTRY_ADMIN_OPTIONS.map((option) => ministryEventAccessKey(option.key)),
 ]);
 
 const extractRightName = (value: unknown): string | null => {
@@ -251,9 +265,23 @@ export function canAccessRight(user: AdminUser | null, right: string): boolean {
   return false;
 }
 
+export function ministryEventKeyFromAdminPath(pathname: string | null): string | null {
+  const match = (pathname || '').match(/^\/admin\/ministry-events\/([^/]+)/);
+  return match ? match[1] : null;
+}
+
 export function ministryKeyFromAdminPath(pathname: string | null): string | null {
   const match = (pathname || '').match(/^\/admin\/ministries\/([^/]+)/);
   return match ? match[1] : null;
+}
+
+export function canAccessMinistryEvents(user: AdminUser | null, ministryKey: string): boolean {
+  if (!user) return false;
+  if (user.role === 'SUPER_ADMIN' || user.isSystem || user.assignedRole?.isSystem) return true;
+  if (canAccessRight(user, ministryEventAccessKey(ministryKey))) return true;
+  if (user.role === 'ADMIN' && user.adminAccessAll) return true;
+  const list = Array.isArray(user.adminPageAccess) ? user.adminPageAccess : [];
+  return list.includes(ministryEventAccessKey(ministryKey));
 }
 
 export function canAccessMinistry(user: AdminUser | null, ministryKey: string): boolean {

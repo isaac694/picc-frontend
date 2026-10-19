@@ -15,6 +15,11 @@ const STORE_TABS: Tab[] = [
   { label: 'Book store payments', href: '/admin/store/payments' },
 ];
 
+const EVENT_TABS: Tab[] = [
+  { label: 'Events payment dashboard', href: '/admin/event-payments/dashboard' },
+  { label: 'Events payment', href: '/admin/event-payments' },
+];
+
 export function GivingPaymentsTabs({ activePath }: { activePath: string }) {
   return <PaymentsTabs tabs={GIVING_TABS} activePath={activePath} />;
 }
@@ -23,11 +28,17 @@ export function StorePaymentsTabs({ activePath }: { activePath: string }) {
   return <PaymentsTabs tabs={STORE_TABS} activePath={activePath} />;
 }
 
-function PaymentsTabs({ tabs, activePath }: { tabs: Tab[]; activePath: string }) {
+export function EventPaymentsTabs({ activePath }: { activePath: string }) {
+  return <PaymentsTabs tabs={EVENT_TABS} activePath={activePath} exact />;
+}
+
+function PaymentsTabs({ tabs, activePath, exact = false }: { tabs: Tab[]; activePath: string; exact?: boolean }) {
   return (
     <div className="flex flex-wrap gap-1 rounded-lg border border-border/60 bg-muted/30 p-1">
       {tabs.map((tab) => {
-        const active = activePath === tab.href || activePath.startsWith(`${tab.href}/`);
+        const active = exact
+          ? activePath === tab.href
+          : activePath === tab.href || activePath.startsWith(`${tab.href}/`);
         return (
           <Link
             key={tab.href}

@@ -8,6 +8,8 @@ import Footer from '@/components/Footer';
 import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
 import { Card } from '@/components/ui/card';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { useMinistryPageEvents } from '@/lib/ministry-page-events';
+import { openPublicEvent } from '@/lib/public-event';
 import { 
   MapPin, Phone, Mail, CalendarClock, Globe, Search, 
   Baby, Smile, Palette, Music, BookOpen, XIcon
@@ -309,6 +311,7 @@ export default function HeritageMinistryPage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultMinistryInfo);
   const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
+  const apiEvents = useMinistryPageEvents('heritage');
   const [, setIsLoading] = useState(true);
 
   const normalizeSearchText = (value: string) =>
@@ -343,13 +346,12 @@ export default function HeritageMinistryPage() {
     loadContent();
   }, []);
 
-  const loadedEventItems = ministryItems.filter((item) => item.category === 'event');
   const loadedHighlightItems = ministryItems.filter((item) => item.category === 'highlight');
   const loadedFocusItems = ministryItems.filter((item) => item.category === 'focus');
 
   const focusAreas = mergeItemsWithFallback(loadedFocusItems, defaultFocusAreas);
   const highlightGalleryItems = mergeItemsWithFallback(loadedHighlightItems, defaultHighlightGallery).slice(0, 6);
-  const eventList = mergeItemsWithFallback(loadedEventItems, defaultEventItems);
+  const eventList = apiEvents;
   const aboutParagraphs = (ministryInfo.about || defaultMinistryInfo.about || '').split(/\n{2,}/).filter(Boolean);
   const logoImageUrl = toAssetUrl(ministryInfo.logoImageUrl);
 
@@ -792,8 +794,8 @@ export default function HeritageMinistryPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 <button
                   type="button"
-                  onClick={() => setSelectedEvent(featuredGridEvent)}
-                  className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-3xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
+                  onClick={() => openPublicEvent(featuredGridEvent.id)}
+                  className="relative h-56 md:h-64 rounded-3xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
                 >
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -825,16 +827,16 @@ export default function HeritageMinistryPage() {
                     </motion.div>
                   </AnimatePresence>
                   <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                    Select this event
+                    Open event
                   </div>
                 </button>
 
-                <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
+                <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
                   {remainingEvents.map((event) => (
                     <button
                       key={event.id}
                       type="button"
-                      onClick={() => setSelectedEvent(event)}
+                      onClick={() => openPublicEvent(event.id)}
                       className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#045BB4] sm:w-72 lg:h-[113px] lg:w-full"
                     >
                       <Image
@@ -891,7 +893,7 @@ export default function HeritageMinistryPage() {
 
             {displayedOutreachItems.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                <button type="button" onClick={() => setSelectedOutreach(featuredOutreach)} className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-3xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]">
+                <button type="button" onClick={() => setSelectedOutreach(featuredOutreach)} className="relative h-56 md:h-64 rounded-3xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]">
                   <AnimatePresence mode="wait">
                     <motion.div key={featuredOutreach.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.5 }} className="absolute inset-0">
                       <Image src={toAssetUrl(featuredOutreach.imageUrl) || '/hero/hero-store.jpg'} alt={featuredOutreach.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" onError={fallbackImageHandler('/hero/hero-store.jpg')} />
@@ -908,7 +910,7 @@ export default function HeritageMinistryPage() {
                   <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">Select this outreach</div>
                 </button>
 
-                <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
+                <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
                   {remainingOutreaches.map((outreach) => (
                     <button key={outreach.id} type="button" onClick={() => setSelectedOutreach(outreach)} className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#045BB4] sm:w-72 lg:h-[113px] lg:w-full">
                       <Image src={toAssetUrl(outreach.imageUrl) || '/hero/hero-store.jpg'} alt={outreach.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" onError={fallbackImageHandler('/hero/hero-store.jpg')} />

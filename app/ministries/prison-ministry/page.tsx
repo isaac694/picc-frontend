@@ -14,6 +14,7 @@ import {
 
 type PrisonEvent = {
   id: number;
+  sourceId?: string;
   type: string;
   title: string;
   date: string;
@@ -23,6 +24,8 @@ type PrisonEvent = {
 };
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { eventLocation, useMinistryPageEvents } from '@/lib/ministry-page-events';
+import { openPublicEvent } from '@/lib/public-event';
 
 type MinistryInfo = {
   name: string | null;
@@ -162,6 +165,7 @@ const defaultEvents: MinistryItem[] = upcomingEvents.map((event, index) => ({
 export default function PrisonMinistryPage() {
   const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
   const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
+  const apiEvents = useMinistryPageEvents('prison-ministry');
   
   // State for Redesigned Outreaches section
   const [selectedOutreach, setSelectedOutreach] = useState<PrisonEvent | null>(null);
@@ -191,21 +195,16 @@ export default function PrisonMinistryPage() {
     };
   });
 
-  const eventItems: PrisonEvent[] = mergeItemsWithFallback(
-    ministryItems.filter((item) => item.category === 'event'),
-    defaultEvents,
-  ).map((item, index) => {
-    const fallbackEvent = upcomingEvents[index % upcomingEvents.length];
-    return {
-      id: index + 1,
-      type: 'Ministry Event',
-      title: item.title,
-      date: item.label || 'Upcoming Event',
-      location: 'Camp of God Cathedral',
-      description: item.description || '',
-      image: toAssetUrl(item.imageUrl) || fallbackEvent?.image || '/hero/hero-store.jpg',
-    };
-  });
+  const eventItems: PrisonEvent[] = apiEvents.map((item, index) => ({
+    id: index + 1,
+    sourceId: item.id,
+    type: 'Ministry Event',
+    title: item.title,
+    date: item.label || 'Upcoming Event',
+    location: eventLocation(item, 'Camp of God Cathedral'),
+    description: item.description || '',
+    image: toAssetUrl(item.imageUrl) || '/hero/hero-store.jpg',
+  }));
 
   const normalizeSearchText = (value: string) =>
     value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -662,7 +661,7 @@ export default function PrisonMinistryPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 <button 
                   onClick={() => setSelectedOutreach(featuredGridOutreach)}
-                  className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
+                  className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
                 >
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -700,7 +699,7 @@ export default function PrisonMinistryPage() {
                   </div>
                 </button>
 
-                <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
+                <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
                   {remainingOutreaches.map((outreach) => (
                     <button 
                       key={outreach.id} 
@@ -783,8 +782,8 @@ export default function PrisonMinistryPage() {
             {displayedEventItems.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 <button 
-                  onClick={() => setSelectedEvent(featuredGridEvent)}
-                  className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
+                  onClick={() => openPublicEvent(featuredGridEvent.sourceId)}
+                  className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
                 >
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -822,11 +821,11 @@ export default function PrisonMinistryPage() {
                   </div>
                 </button>
 
-                <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
+                <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
                   {remainingEvents.map((event) => (
                     <button 
                       key={event.id} 
-                      onClick={() => setSelectedEvent(event)}
+                      onClick={() => openPublicEvent(event.sourceId)}
                       className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#2D5A8C] sm:w-72 lg:h-[113px] lg:w-full"
                     >
                       <Image 

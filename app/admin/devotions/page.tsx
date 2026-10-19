@@ -403,45 +403,49 @@ export default function DevotionsAdminPage() {
           return filtered.length === 0 ? (
             <p className="text-sm text-foreground/60">No devotions match your search.</p>
           ) : (
-            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
-              {filtered.map((devotion) => (
-                <div
-                  key={devotion.id}
-                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                      {devotion.publishAt.slice(0, 10)}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-foreground truncate">
-                      {devotion.title || 'Untitled devotion'}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Edit devotion for ${devotion.publishAt.slice(0, 10)}`}
-                      onClick={() => openEditDialog(devotion)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      aria-label={`Delete devotion for ${devotion.publishAt.slice(0, 10)}`}
-                      onClick={() =>
-                        requestDeleteConfirmation(devotion.id, devotion.publishAt.slice(0, 10))
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="max-h-[520px] overflow-auto rounded-xl border border-border/70">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Date</th>
+                    <th className="px-3 py-2 font-medium">Title</th>
+                    <th className="px-3 py-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((devotion) => (
+                    <tr key={devotion.id} className="border-t border-border/60">
+                      <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{devotion.publishAt.slice(0, 10)}</td>
+                      <td className="px-3 py-2 font-medium text-foreground">{devotion.title || 'Untitled devotion'}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Edit devotion for ${devotion.publishAt.slice(0, 10)}`}
+                            onClick={() => openEditDialog(devotion)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            aria-label={`Delete devotion for ${devotion.publishAt.slice(0, 10)}`}
+                            onClick={() =>
+                              requestDeleteConfirmation(devotion.id, devotion.publishAt.slice(0, 10))
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           );
         })()}

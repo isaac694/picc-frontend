@@ -8,6 +8,8 @@ import Footer from '@/components/Footer';
 import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
 import { Card } from '@/components/ui/card';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { eventLocation, useMinistryPageEvents } from '@/lib/ministry-page-events';
+import { openPublicEvent } from '@/lib/public-event';
 import { 
   ChevronLeft, ChevronRight, MapPin, 
   Phone, Mail, CalendarClock, BookOpen, Globe, 
@@ -279,6 +281,7 @@ export default function IcdMinistryPage() {
   const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
   const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
   const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
+  const apiEvents = useMinistryPageEvents('icd');
   const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
   // --- LIVESTREAM CONSTANTS ---
@@ -346,24 +349,15 @@ export default function IcdMinistryPage() {
     },
   ];
 
-  const mergedEventItems = mergeItemsWithFallback(itemGroups.events, defaultEventItems);
-  const eventItems = mergedEventItems.length > 0
-    ? mergedEventItems.map((item, index) => ({
-        id: index + 1,
-        title: icdEventDetails[index]?.title || item.title,
-        date: icdEventDetails[index]?.date || item.label || 'Upcoming',
-        description: icdEventDetails[index]?.description || item.description || '',
-        location: 'Camp of God Cathedral, Lilongwe',
-        image: icdEventImages[index % icdEventImages.length],
-      }))
-    : pastEvents.map((event, index) => ({
-        ...event,
-        title: icdEventDetails[index]?.title || event.title,
-        date: icdEventDetails[index]?.date || event.date,
-        description: icdEventDetails[index]?.description || event.description,
-        location: 'Camp of God Cathedral, Lilongwe',
-        image: icdEventImages[index % icdEventImages.length],
-      }));
+  const eventItems = apiEvents.map((item, index) => ({
+    id: index + 1,
+    sourceId: item.id,
+    title: item.title,
+    date: item.label || 'Upcoming',
+    description: item.description || '',
+    location: eventLocation(item, 'Camp of God Cathedral, Lilongwe'),
+    image: item.imageUrl || '/hero/hero-store.jpg',
+  }));
 
   const icdNewsItems: NewsSectionItem[] = [
     {
@@ -1099,7 +1093,7 @@ export default function IcdMinistryPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedInitiative(featuredProject)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
                   >
                     <Image 
                       src={featuredProject.image || '/images/icd/ICD-MAY-26.png'} 
@@ -1117,7 +1111,7 @@ export default function IcdMinistryPage() {
                     </div>
                   </button>
 
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
                     {remainingProjects.map((material) => (
                       <button
                         key={material.id}
@@ -1238,8 +1232,8 @@ export default function IcdMinistryPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                   <button
                     type="button"
-                    onClick={() => setSelectedEvent(featuredEvent)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
+                    onClick={() => openPublicEvent(featuredEvent.sourceId)}
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
                   >
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -1271,16 +1265,16 @@ export default function IcdMinistryPage() {
                       </motion.div>
                     </AnimatePresence>
                     <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Select this event
+                      Open event
                     </div>
                   </button>
 
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
                     {remainingEvents.map((event, index) => (
                       <button
                         key={event.id}
                         type="button"
-                        onClick={() => setSelectedEvent(event)}
+                        onClick={() => openPublicEvent(event.sourceId)}
                         className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#045BB4] sm:w-72 lg:h-[113px] lg:w-full"
                       >
                         <Image

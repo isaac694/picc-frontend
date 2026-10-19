@@ -9,6 +9,8 @@ import { Card } from '@/components/ui/card';
 import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
 import { MEN_OF_VALOUR_NEWS_ITEMS, MEN_OF_VALOUR_NEWS_KEY } from '@/components/menOfValourNews';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { eventLocation, useMinistryPageEvents } from '@/lib/ministry-page-events';
+import { openPublicEvent } from '@/lib/public-event';
 import { 
   MapPin, Phone, Mail, CalendarClock, Search, XIcon,
   BookOpenText, MessageSquareText, StickyNote,
@@ -106,6 +108,7 @@ type MinistryItem = {
 
 type MenEvent = {
   id: number;
+  sourceId?: string;
   type: string;
   title: string;
   date: string;
@@ -333,6 +336,7 @@ export default function MenOfValourPage() {
   const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
   const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
   const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
+  const apiEvents = useMinistryPageEvents('men-of-valour');
   const [newsItems, setNewsItems] = useState<NewsSectionItem[]>(MEN_OF_VALOUR_NEWS_ITEMS);
   const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
@@ -363,14 +367,15 @@ export default function MenOfValourPage() {
     status: item.description || 'Active',
     image: toAssetUrl(item.imageUrl) || ministryProjects[index % ministryProjects.length]?.image || '/hero/hero-store.jpg',
   }));
-  const eventItems = mergeItemsWithFallback(itemGroups.events, defaultEventItems).map((item, index) => ({
+  const eventItems = apiEvents.map((item, index) => ({
     id: index + 1,
-    type: pastEvents[index % pastEvents.length]?.type || 'Men of Valour Event',
+    sourceId: item.id,
+    type: 'Men of Valour Event',
     title: item.title,
     date: item.label || 'Upcoming',
-    location: pastEvents[index % pastEvents.length]?.location || 'PICC Men of Valour',
+    location: eventLocation(item, 'PICC Men of Valour'),
     description: item.description || '',
-    image: toAssetUrl(item.imageUrl) || pastEvents[index % pastEvents.length]?.image || '/hero/hero-store.jpg',
+    image: toAssetUrl(item.imageUrl) || '/hero/hero-store.jpg',
   }));
   const aboutParagraphs = (ministryInfo.about || defaultInfo.about || '').split(/\n{2,}/).filter(Boolean);
   const membershipParagraphs = (ministryInfo.partnershipBody || defaultInfo.partnershipBody || '').split(/\n{2,}/).filter(Boolean);
@@ -1160,7 +1165,7 @@ export default function MenOfValourPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedInitiative(featuredProject)}
-                    className="group relative h-[400px] w-full overflow-hidden rounded-2xl border border-black/5 text-left shadow-xl focus:outline-none focus:ring-4 focus:ring-[#2D5A8C] md:h-[500px] lg:col-span-2"
+                    className="group relative h-56 w-full overflow-hidden rounded-2xl border border-black/5 text-left shadow-xl focus:outline-none focus:ring-4 focus:ring-[#2D5A8C] md:h-64"
                   >
                     <Image
                       src={featuredProject.image || '/hero/hero-store.jpg'}
@@ -1181,7 +1186,7 @@ export default function MenOfValourPage() {
                     </div>
                   </button>
 
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
                     {remainingProjects.map((material) => (
                       <button
                         key={material.id}
@@ -1304,8 +1309,8 @@ export default function MenOfValourPage() {
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
                   <button
                     type="button"
-                    onClick={() => setSelectedEvent(featuredGridEvent)}
-                    className="group relative h-[400px] w-full overflow-hidden rounded-2xl border border-black/5 text-left shadow-xl focus:outline-none focus:ring-4 focus:ring-[#2D5A8C] md:h-[500px] lg:col-span-2"
+                    onClick={() => openPublicEvent(featuredGridEvent.sourceId)}
+                    className="group relative h-56 w-full overflow-hidden rounded-2xl border border-black/5 text-left shadow-xl focus:outline-none focus:ring-4 focus:ring-[#2D5A8C] md:h-64"
                   >
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -1343,12 +1348,12 @@ export default function MenOfValourPage() {
                     </div>
                   </button>
 
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
                     {remainingEvents.map((event) => (
                       <button
                         key={event.id}
                         type="button"
-                        onClick={() => setSelectedEvent(event)}
+                        onClick={() => openPublicEvent(event.sourceId)}
                         className="group relative h-48 w-64 flex-shrink-0 overflow-hidden rounded-xl border border-black/5 text-left shadow-md focus:outline-none focus:ring-2 focus:ring-[#2D5A8C] sm:w-72 lg:h-[113px] lg:w-full"
                       >
                         <Image

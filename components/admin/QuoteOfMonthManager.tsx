@@ -16,7 +16,7 @@ import {
   resolveQuoteImageUrl,
   type QuoteRecord,
 } from '@/lib/quotes';
-import { CalendarDays, ExternalLink, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 
 type QuoteDraft = {
   quote: string;
@@ -435,69 +435,56 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
               ) : null}
             </div>
           ) : (
-            <div className="max-h-[560px] space-y-3 overflow-y-auto pr-2">
-              {filteredQuotes.map((item) => {
-                const isLive =
-                  item.activeYear === utcNow.year && item.activeMonth === utcNow.month;
-                const thumb = resolveQuoteImageUrl(item.imageUrl);
-                return (
-                  <div
-                    key={item.id}
-                    className="flex gap-3 rounded-xl border border-border/60 bg-background p-4"
-                  >
-                    {thumb ? (
-                      <div
-                        className="hidden h-20 w-20 shrink-0 rounded-lg bg-cover bg-center sm:block"
-                        style={{ backgroundImage: `url(${thumb})` }}
-                      />
-                    ) : (
-                      <div className="hidden h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/30 sm:flex">
-                        <CalendarDays className="h-5 w-5 text-foreground/35" />
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                          {formatQuoteMonth(item.activeYear, item.activeMonth)}
-                        </p>
-                        {isLive ? (
-                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-                            Live on homepage
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-2 line-clamp-2 text-sm text-foreground">&ldquo;{item.quote}&rdquo;</p>
-                      <p className="mt-1 text-xs text-foreground/55">{item.author || 'No author'}</p>
-                    </div>
-                    <div className="flex shrink-0 items-start gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Edit quote for ${formatQuoteMonth(item.activeYear, item.activeMonth)}`}
-                        onClick={() => openEditDialog(item)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        aria-label={`Delete quote for ${formatQuoteMonth(item.activeYear, item.activeMonth)}`}
-                        disabled={deletingId === item.id}
-                        onClick={() => requestRemove(item)}
-                      >
-                        {deletingId === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="max-h-[560px] overflow-auto rounded-xl border border-border/70">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Month</th>
+                    <th className="px-3 py-2 font-medium">Quote</th>
+                    <th className="px-3 py-2 font-medium">Author</th>
+                    <th className="px-3 py-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredQuotes.map((item) => {
+                    const isLive = item.activeYear === utcNow.year && item.activeMonth === utcNow.month;
+                    return (
+                      <tr key={item.id} className="border-t border-border/60 align-top">
+                        <td className="whitespace-nowrap px-3 py-2">
+                          <p className="font-medium text-foreground">{formatQuoteMonth(item.activeYear, item.activeMonth)}</p>
+                          {isLive ? <p className="mt-1 text-xs text-emerald-700">Live on homepage</p> : null}
+                        </td>
+                        <td className="px-3 py-2 text-foreground">&ldquo;{item.quote}&rdquo;</td>
+                        <td className="px-3 py-2 text-foreground/70">{item.author || 'No author'}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Edit quote for ${formatQuoteMonth(item.activeYear, item.activeMonth)}`}
+                              onClick={() => openEditDialog(item)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Delete quote for ${formatQuoteMonth(item.activeYear, item.activeMonth)}`}
+                              disabled={deletingId === item.id}
+                              onClick={() => requestRemove(item)}
+                            >
+                              {deletingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

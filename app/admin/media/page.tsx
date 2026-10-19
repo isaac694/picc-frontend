@@ -571,49 +571,56 @@ export default function AdminMediaPage() {
             {filteredNewsItems.length === 0 ? (
               <p className="text-sm text-foreground/60">No news items yet.</p>
             ) : (
-              <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
-                {filteredNewsItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                          {[item.badge, item.date].filter(Boolean).join(' - ') || 'News Item'}
-                        </p>
-                        <ItemSourceBadge isFallback={item.isFallback} />
-                      </div>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        {item.title || 'Untitled news item'}
-                      </p>
-                      {item.description ? (
-                        <p className="mt-1 line-clamp-2 text-sm text-foreground/70">{item.description}</p>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Edit ${item.title || 'news item'}`}
-                        onClick={() => openEditSectionDialog('news', item)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        aria-label={`Delete ${item.title || 'news item'}`}
-                        onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-[620px] overflow-auto rounded-xl border border-border/70">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Date</th>
+                      <th className="px-3 py-2 font-medium">Title</th>
+                      <th className="px-3 py-2 font-medium">Source</th>
+                      <th className="px-3 py-2 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredNewsItems.map((item) => (
+                      <tr key={item.id} className="border-t border-border/60 align-top">
+                        <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
+                          {[item.badge, item.date].filter(Boolean).join(' - ') || 'News item'}
+                        </td>
+                        <td className="px-3 py-2">
+                          <p className="font-medium text-foreground">{item.title || 'Untitled news item'}</p>
+                          {item.description ? (
+                            <p className="mt-1 line-clamp-2 text-foreground/70">{item.description}</p>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2"><ItemSourceBadge isFallback={item.isFallback} /></td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Edit ${item.title || 'news item'}`}
+                              onClick={() => openEditSectionDialog('news', item)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Delete ${item.title || 'news item'}`}
+                              onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -637,46 +644,49 @@ export default function AdminMediaPage() {
             {galleryItems.length === 0 ? (
               <p className="text-sm text-foreground/60">No gallery items yet.</p>
             ) : (
-              <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
-                {galleryItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                        {item.category || 'Gallery'}
-                      </p>
-                      <div className="mt-1 flex items-start justify-between gap-3">
-                        <p className="text-sm font-semibold text-foreground">
-                          {item.title || 'Untitled gallery item'}
-                        </p>
-                        <ItemSourceBadge isFallback={item.isFallback} />
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Edit ${item.title || 'gallery item'}`}
-                        onClick={() => openEditSectionDialog('gallery', item)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        aria-label={`Delete ${item.title || 'gallery item'}`}
-                        onClick={() => requestDeleteItem('gallery', item, galleryItems, setGalleryItems)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-[620px] overflow-auto rounded-xl border border-border/70">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Category</th>
+                      <th className="px-3 py-2 font-medium">Title</th>
+                      <th className="px-3 py-2 font-medium">Source</th>
+                      <th className="px-3 py-2 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {galleryItems.map((item) => (
+                      <tr key={item.id} className="border-t border-border/60">
+                        <td className="px-3 py-2 text-foreground/70">{item.category || 'Gallery'}</td>
+                        <td className="px-3 py-2 font-medium text-foreground">{item.title || 'Untitled gallery item'}</td>
+                        <td className="px-3 py-2"><ItemSourceBadge isFallback={item.isFallback} /></td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Edit ${item.title || 'gallery item'}`}
+                              onClick={() => openEditSectionDialog('gallery', item)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Delete ${item.title || 'gallery item'}`}
+                              onClick={() => requestDeleteItem('gallery', item, galleryItems, setGalleryItems)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -700,49 +710,54 @@ export default function AdminMediaPage() {
             {bookItems.length === 0 ? (
               <p className="text-sm text-foreground/60">No books yet.</p>
             ) : (
-              <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
-                {bookItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                        {item.author || 'Book'}
-                      </p>
-                      <div className="mt-1 flex items-start justify-between gap-3">
-                        <p className="text-sm font-semibold text-foreground">
-                          {item.title || 'Untitled book'}
-                        </p>
-                        <ItemSourceBadge isFallback={item.isFallback} />
-                      </div>
-                      {item.description ? (
-                        <p className="mt-1 line-clamp-2 text-sm text-foreground/70">{item.description}</p>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Edit ${item.title || 'book'}`}
-                        onClick={() => openEditSectionDialog('books', item)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        aria-label={`Delete ${item.title || 'book'}`}
-                        onClick={() => requestDeleteItem('books', item, bookItems, setBookItems)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-[620px] overflow-auto rounded-xl border border-border/70">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Author</th>
+                      <th className="px-3 py-2 font-medium">Title</th>
+                      <th className="px-3 py-2 font-medium">Source</th>
+                      <th className="px-3 py-2 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookItems.map((item) => (
+                      <tr key={item.id} className="border-t border-border/60 align-top">
+                        <td className="px-3 py-2 text-foreground/70">{item.author || 'Book'}</td>
+                        <td className="px-3 py-2">
+                          <p className="font-medium text-foreground">{item.title || 'Untitled book'}</p>
+                          {item.description ? (
+                            <p className="mt-1 line-clamp-2 text-foreground/70">{item.description}</p>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2"><ItemSourceBadge isFallback={item.isFallback} /></td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Edit ${item.title || 'book'}`}
+                              onClick={() => openEditSectionDialog('books', item)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Delete ${item.title || 'book'}`}
+                              onClick={() => requestDeleteItem('books', item, bookItems, setBookItems)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -775,46 +790,49 @@ export default function AdminMediaPage() {
             {filteredMagazineItems.length === 0 ? (
               <p className="text-sm text-foreground/60">No magazine issues yet.</p>
             ) : (
-              <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
-                {filteredMagazineItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">
-                        {item.issue || 'Magazine'}
-                      </p>
-                      <div className="mt-1 flex items-start justify-between gap-3">
-                        <p className="text-sm font-semibold text-foreground">
-                          {item.title || 'Untitled magazine'}
-                        </p>
-                        <ItemSourceBadge isFallback={item.isFallback} />
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Edit ${item.title || 'magazine'}`}
-                        onClick={() => openEditSectionDialog('magazines', item)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        aria-label={`Delete ${item.title || 'magazine'}`}
-                        onClick={() => requestDeleteItem('magazines', item, magazineItems, setMagazineItems)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-[620px] overflow-auto rounded-xl border border-border/70">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Issue</th>
+                      <th className="px-3 py-2 font-medium">Title</th>
+                      <th className="px-3 py-2 font-medium">Source</th>
+                      <th className="px-3 py-2 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMagazineItems.map((item) => (
+                      <tr key={item.id} className="border-t border-border/60">
+                        <td className="px-3 py-2 text-foreground/70">{item.issue || 'Magazine'}</td>
+                        <td className="px-3 py-2 font-medium text-foreground">{item.title || 'Untitled magazine'}</td>
+                        <td className="px-3 py-2"><ItemSourceBadge isFallback={item.isFallback} /></td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Edit ${item.title || 'magazine'}`}
+                              onClick={() => openEditSectionDialog('magazines', item)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Delete ${item.title || 'magazine'}`}
+                              onClick={() => requestDeleteItem('magazines', item, magazineItems, setMagazineItems)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

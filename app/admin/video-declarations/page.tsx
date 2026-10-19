@@ -480,51 +480,54 @@ export default function VideoDeclarationsAdminPage() {
           ) : filteredArchive.length === 0 ? (
             <p className="text-sm text-foreground/60">No declarations match your search.</p>
           ) : (
-            <div className="max-h-[720px] space-y-3 overflow-y-auto pr-2">
-              {filteredArchive.map((declaration, index) => (
-                <div
-                  key={declaration.id}
-                  className="flex items-start gap-3 rounded-xl border border-border/60 bg-background px-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-semibold text-foreground">
-                        {declaration.title || 'Untitled declaration'}
-                      </p>
-                      {index === 0 ? (
-                        <span className="shrink-0 rounded bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase text-primary">
-                          Homepage
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-xs uppercase tracking-[0.2em] text-foreground/50">
-                      {declaration.createdAt ? formatDate(declaration.createdAt) : 'No date'}
-                    </p>
-                    <p className="mt-2 text-xs text-foreground/60">{declaration.subtitle || FALLBACK_SUBTITLE}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Edit ${declaration.title || 'declaration'}`}
-                      onClick={() => openEditDialog(declaration)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      aria-label={`Delete ${declaration.title || 'declaration'}`}
-                      onClick={() => requestDeleteConfirmation(declaration)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="max-h-[720px] overflow-auto rounded-xl border border-border/70">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Title</th>
+                    <th className="px-3 py-2 font-medium">Date</th>
+                    <th className="px-3 py-2 font-medium">Placement</th>
+                    <th className="px-3 py-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredArchive.map((declaration, index) => (
+                    <tr key={declaration.id} className="border-t border-border/60 align-top">
+                      <td className="px-3 py-2">
+                        <p className="font-medium text-foreground">{declaration.title || 'Untitled declaration'}</p>
+                        <p className="mt-1 line-clamp-1 text-foreground/60">{declaration.subtitle || FALLBACK_SUBTITLE}</p>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
+                        {declaration.createdAt ? formatDate(declaration.createdAt) : 'No date'}
+                      </td>
+                      <td className="px-3 py-2 text-foreground/70">{index === 0 ? 'Homepage' : 'Archive'}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Edit ${declaration.title || 'declaration'}`}
+                            onClick={() => openEditDialog(declaration)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            aria-label={`Delete ${declaration.title || 'declaration'}`}
+                            onClick={() => requestDeleteConfirmation(declaration)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

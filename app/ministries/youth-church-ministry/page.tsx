@@ -9,7 +9,19 @@ import { Card } from '@/components/ui/card';
 import NewsSection, { type NewsSectionItem } from '@/components/NewsSection';
 import { YOUTH_CHURCH_NEWS_ITEMS, YOUTH_CHURCH_NEWS_KEY } from '@/components/youthChurchNews';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { eventLocation, useMinistryPageEvents } from '@/lib/ministry-page-events';
+import EventFormFields from '@/components/events/EventFormFields';
+import {
+  contactFromEventAnswers,
+  emptyAnswers,
+  formCollectsContact,
+  validateEventAnswers,
+  type EventAnswers,
+  type EventFormSchema,
+  type EventTicket,
+} from '@/lib/event-forms';
 import { PAYCHANGU_CHECKOUT_METHOD, processPaychanguPayment } from '@/lib/paychangu-initialize';
+import { openPublicEvent } from '@/lib/public-event';
 import { 
   MapPin, Phone, Mail, CalendarClock, Globe, BookOpenText, MessageSquareText, 
   StickyNote, Rocket, Sparkles, Flame, Baby, XIcon, Instagram, Facebook, Twitter, Search
@@ -103,7 +115,7 @@ type MinistryItem = {
 };
 
 type YouthEvent = {
-  id: number;
+  id: string;
   type: string;
   title: string;
   date: string;
@@ -114,6 +126,10 @@ type YouthEvent = {
   paymentAmount: number | null;
   paymentCurrency: string;
   paymentAccount: string;
+  requiresRegistration: boolean;
+  registrationForm: EventFormSchema | null;
+  paymentForm: EventFormSchema | null;
+  tickets?: EventTicket[];
 };
 
 type YouthInitiative = {
@@ -408,6 +424,7 @@ export default function YouthChurchMinistryPage() {
   const [initiativeSearchInput, setInitiativeSearchInput] = useState('');
   const [initiativeSearchQuery, setInitiativeSearchQuery] = useState('');
   const [paymentEvent, setPaymentEvent] = useState<YouthEvent | null>(null);
+  const [selectedTicketKey, setSelectedTicketKey] = useState('');
   const [paymentForm, setPaymentForm] = useState({
     fullName: '',
     phone: '',
@@ -418,6 +435,11 @@ export default function YouthChurchMinistryPage() {
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
+  const [paymentAnswers, setPaymentAnswers] = useState<EventAnswers>({});
+  const [registerAnswers, setRegisterAnswers] = useState<EventAnswers>({});
+  const [registerSubmitting, setRegisterSubmitting] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
   const [newsItems, setNewsItems] = useState<NewsSectionItem[]>(YOUTH_CHURCH_NEWS_ITEMS);
 
   // --- LIVESTREAM STATE ---
@@ -428,6 +450,7 @@ export default function YouthChurchMinistryPage() {
   const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
   const [ministryInfo, setMinistryInfo] = useState<MinistryInfo>(defaultInfo);
   const [ministryItems, setMinistryItems] = useState<MinistryItem[]>([]);
+  const apiEvents = useMinistryPageEvents('youth-church');
   const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
   // --- LIVESTREAM CONSTANTS ---
@@ -457,23 +480,23 @@ export default function YouthChurchMinistryPage() {
     status: item.label || 'Active',
     image: toAssetUrl(item.imageUrl) || ministryProjects[index % ministryProjects.length]?.image || '/hero/hero-store.jpg',
   }));
-  const eventItems = mergeItemsWithFallback(itemGroups.events, defaultEventItems).map((item, index) => {
-    const [maybeLocation, ...bodyParts] = (item.description || '').split(/\n{2,}/);
-    const fallbackEvent = eventsList[index % eventsList.length];
-    const hasLocationAndBody = bodyParts.length > 0;
-
+  const eventItems = apiEvents.map((item) => {
     return {
-      id: index + 1,
-      type: fallbackEvent?.type || 'Youth Church Event',
+      id: item.id,
+      type: 'Youth Church Event',
       title: item.title,
       date: item.label || 'Upcoming',
-      location: hasLocationAndBody ? maybeLocation : fallbackEvent?.location || 'PICC Youth Church',
-      description: hasLocationAndBody ? bodyParts.join('\n\n') : item.description || '',
-      image: toAssetUrl(item.imageUrl) || fallbackEvent?.image || '/hero/hero-store.jpg',
+      location: eventLocation(item, 'PICC Youth Church'),
+      description: item.description || '',
+      image: toAssetUrl(item.imageUrl) || '/hero/hero-store.jpg',
       acceptsOnlinePayment: Boolean(item.acceptsOnlinePayment) || (normalizePaymentAmount(item.paymentAmount) != null && normalizePaymentAmount(item.paymentAmount)! > 0),
       paymentAmount: normalizePaymentAmount(item.paymentAmount),
       paymentCurrency: item.paymentCurrency || 'MWK',
       paymentAccount: item.paymentAccount || 'youth',
+      requiresRegistration: Boolean(item.requiresRegistration),
+      registrationForm: item.registrationForm || null,
+      paymentForm: item.paymentForm || null,
+      tickets: item.tickets || [],
     };
   });
   const aboutParagraphs = (ministryInfo.about || defaultInfo.about || '').split(/\n{2,}/).filter(Boolean);
@@ -541,7 +564,7 @@ export default function YouthChurchMinistryPage() {
   }, [eventSearchQuery]);
 
   const fallbackGridEvent: YouthEvent = {
-    id: 0,
+    id: 'fallback',
     type: 'Youth Church Event',
     title: 'Youth Church Sunday Service',
     date: 'Every Sunday | 1:30 PM - 3:30 PM',
@@ -552,6 +575,9 @@ export default function YouthChurchMinistryPage() {
     paymentAmount: null,
     paymentCurrency: 'MWK',
     paymentAccount: 'youth',
+    requiresRegistration: false,
+    registrationForm: null,
+    paymentForm: null,
   };
   const safeFeaturedEventIndex = displayedEventItems.length ? featuredEventIndex % displayedEventItems.length : 0;
   const featuredGridEvent = displayedEventItems[safeFeaturedEventIndex] || fallbackGridEvent;
@@ -586,14 +612,67 @@ export default function YouthChurchMinistryPage() {
     return `${countryCode}${digits}`;
   };
 
-  const formatPaymentAmount = (event: YouthEvent) =>
-    `${event.paymentCurrency || 'MWK'} ${Number(event.paymentAmount || 0).toLocaleString('en-US')}`;
+  const formatPaymentAmount = (event: YouthEvent, ticketKey?: string) => {
+    const tickets = event.tickets || [];
+    const selected = tickets.find((ticket) => ticket.key === ticketKey);
+    const amount = selected
+      ? selected.price
+      : tickets.length
+        ? Math.min(...tickets.map((ticket) => ticket.price))
+        : event.paymentAmount;
+    const prefix = !ticketKey && tickets.length > 1 ? 'from ' : '';
+    return `${prefix}${event.paymentCurrency || 'MWK'} ${Number(amount || 0).toLocaleString('en-US')}`;
+  };
+
+  const canPayEvent = (event: YouthEvent) =>
+    event.acceptsOnlinePayment && ((event.tickets?.length || 0) > 0 || (event.paymentAmount != null && event.paymentAmount > 0));
+
+  const openEvent = (event: YouthEvent) => {
+    if (openPublicEvent(event.id)) return;
+    setSelectedEvent(event);
+    setRegisterAnswers(emptyAnswers(event.registrationForm));
+    setRegisterError(null);
+    setRegisterSuccess(null);
+  };
 
   const openPayment = (event: YouthEvent) => {
-    if (!event.acceptsOnlinePayment || event.paymentAmount == null || event.paymentAmount <= 0) return;
+    if (!canPayEvent(event)) return;
     setPaymentEvent(event);
+    setSelectedTicketKey(event.tickets?.[0]?.key || '');
+    setPaymentAnswers(emptyAnswers(event.paymentForm));
     setPaymentError(null);
     setPaymentSuccess(null);
+  };
+
+  const submitRegistration = async () => {
+    if (!selectedEvent?.requiresRegistration) return;
+    setRegisterError(null);
+    setRegisterSuccess(null);
+    const form = selectedEvent.registrationForm;
+    const answerError = validateEventAnswers(form, registerAnswers);
+    if (answerError) {
+      setRegisterError(answerError);
+      return;
+    }
+
+    setRegisterSubmitting(true);
+    try {
+      const response = await apiFetch(`/api/events/${selectedEvent.id}/registrations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: registerAnswers }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to submit registration.');
+      }
+      setRegisterSuccess('Thank you! Your registration was submitted.');
+      setRegisterAnswers(emptyAnswers(form));
+    } catch (error) {
+      setRegisterError(error instanceof Error ? error.message : 'Failed to submit registration.');
+    } finally {
+      setRegisterSubmitting(false);
+    }
   };
 
   const submitPayment = async () => {
@@ -601,67 +680,88 @@ export default function YouthChurchMinistryPage() {
     setPaymentError(null);
     setPaymentSuccess(null);
 
-    if (!paymentForm.fullName || !paymentForm.phone || !paymentForm.email) {
+    const dynamicPaymentForm = paymentEvent.paymentForm || null;
+    const answerError = validateEventAnswers(dynamicPaymentForm, paymentAnswers);
+    if (answerError) {
+      setPaymentError(answerError);
+      return;
+    }
+    const collected = contactFromEventAnswers(dynamicPaymentForm, paymentAnswers);
+    const covered = formCollectsContact(dynamicPaymentForm);
+    const fullName = collected.name || paymentForm.fullName.trim();
+    const email = collected.email || paymentForm.email.trim();
+    const rawPhone = collected.phone || paymentForm.phone.trim();
+
+    if (!fullName || !email || !rawPhone) {
       setPaymentError('Please enter your name, phone number, and email.');
       return;
     }
 
-    const nameParts = paymentForm.fullName.trim().split(/\s+/).filter(Boolean);
+    const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
     if (nameParts.length < 2) {
       setPaymentError('Please enter your full name (first and last).');
       return;
     }
 
-    const normalizedPhone = normalizePaychanguPhone(paymentForm.phoneCountry, paymentForm.phone);
-    if (paymentForm.phoneCountry === '+265' && normalizedPhone.length !== 9) {
+    const normalizedPhone = covered.phone ? rawPhone.replace(/\s+/g, '') : normalizePaychanguPhone(paymentForm.phoneCountry, rawPhone);
+    if (!covered.phone && paymentForm.phoneCountry === '+265' && normalizedPhone.length !== 9) {
       setPaymentError('Please enter a valid Malawi mobile number with 9 digits.');
+      return;
+    }
+
+    const tickets = paymentEvent.tickets || [];
+    const ticket = tickets.find((item) => item.key === selectedTicketKey);
+    if (tickets.length && !ticket) {
+      setPaymentError('Choose a ticket type.');
       return;
     }
 
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(' ');
-    const amount = Number(paymentEvent.paymentAmount || 0);
+    const amount = ticket ? ticket.price : Number(paymentEvent.paymentAmount || 0);
     const currency = paymentEvent.paymentCurrency || 'MWK';
     const reason = `Youth Event: ${paymentEvent.title}`;
     const paymentAccount = paymentEvent.paymentAccount || 'youth';
 
     setPaymentSubmitting(true);
     try {
-      const givingResponse = await apiFetch('/api/giving', {
+      const paymentResponse = await apiFetch(`/api/events/${paymentEvent.id}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount,
-          currency,
-          fullName: paymentForm.fullName,
-          email: paymentForm.email,
+          answers: paymentAnswers,
+          name: fullName,
+          email,
           phone: normalizedPhone,
-          phoneCountry: paymentForm.phoneCountry,
-          paymentMethod: paymentForm.paymentMethod,
-          givingType: 'Youth Event Payment',
-          reason,
-          paymentAccount,
+          ticketKey: ticket?.key,
+          paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
+          paychanguAccount: paymentAccount,
         }),
       });
-      const givingData = await givingResponse.json().catch(() => null);
-      if (!givingResponse.ok) {
-        throw new Error(givingData?.error || 'Failed to save payment record.');
+      const paymentData = await paymentResponse.json().catch(() => null);
+      if (!paymentResponse.ok) {
+        throw new Error(paymentData?.error || 'Failed to save payment record.');
+      }
+      const chargeId = typeof paymentData?.chargeId === 'string' ? paymentData.chargeId : '';
+      if (!chargeId) {
+        throw new Error('Payment could not be started.');
       }
 
       await processPaychanguPayment({
         amount,
         currency,
-        email: paymentForm.email,
+        email,
         firstName,
         lastName,
         phone: normalizedPhone,
         reason,
-        givingId: givingData.id,
+        givingId: chargeId,
+        txRef: chargeId,
         account: paymentAccount,
         returnPath: '/ministries/youth-church-ministry',
       });
 
-      setPaymentSuccess('Complete your payment in the PayChangu window.');
+      setPaymentSuccess('Payment started. When PayChangu confirms it, your ticket and QR code will be emailed to you.');
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : 'Failed to initialize payment.');
     } finally {
@@ -935,7 +1035,7 @@ export default function YouthChurchMinistryPage() {
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-white text-black w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative"
+              className="bg-white text-black w-full max-w-4xl max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative"
               onClick={(e) => e.stopPropagation()} 
             >
               {/* Close Button */}
@@ -958,7 +1058,7 @@ export default function YouthChurchMinistryPage() {
               </div>
 
               {/* Event Details Area */}
-              <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col justify-center bg-gray-50">
+              <div className="w-full md:w-1/2 max-h-[90vh] overflow-y-auto p-8 md:p-10 flex flex-col bg-gray-50">
                 <span className="text-sm font-bold text-[#2D5A8C] uppercase tracking-wider mb-2">
                   {selectedEvent.type}
                 </span>
@@ -979,17 +1079,52 @@ export default function YouthChurchMinistryPage() {
 
                 <div className="w-12 h-1 bg-gray-200 rounded-full mb-6" />
 
-                <p className="text-gray-600 leading-relaxed mb-8">
+                <p className="text-gray-600 leading-relaxed mb-6">
                   {selectedEvent.description}
                 </p>
 
-                {selectedEvent.acceptsOnlinePayment && selectedEvent.paymentAmount != null && selectedEvent.paymentAmount > 0 ? (
+                {selectedEvent.requiresRegistration ? (
+                  <div className="mb-6 rounded-2xl border border-black/10 bg-white p-4">
+                    <p className="mb-3 text-sm font-bold uppercase tracking-wide text-[#2D5A8C]">
+                      {selectedEvent.registrationForm?.title || 'Application form'}
+                    </p>
+                    {registerError ? (
+                      <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700">
+                        {registerError}
+                      </div>
+                    ) : null}
+                    {registerSuccess ? (
+                      <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+                        {registerSuccess}
+                      </div>
+                    ) : null}
+                    {selectedEvent.registrationForm ? (
+                      <EventFormFields
+                        form={selectedEvent.registrationForm}
+                        values={registerAnswers}
+                        onChange={(key, value) => setRegisterAnswers((prev) => ({ ...prev, [key]: value }))}
+                      />
+                    ) : (
+                      <p className="text-sm text-black/60">Registration is open for this event.</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={submitRegistration}
+                      disabled={registerSubmitting}
+                      className="mt-4 w-full rounded-full bg-[#2D5A8C] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#1E3A5F] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {registerSubmitting ? 'Submitting...' : 'Submit application'}
+                    </button>
+                  </div>
+                ) : null}
+
+                {canPayEvent(selectedEvent) ? (
                   <button
                     type="button"
                     onClick={() => openPayment(selectedEvent)}
                     className="mb-6 w-fit rounded-full bg-[#2D5A8C] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
                   >
-                    Pay {formatPaymentAmount(selectedEvent)}
+                    Buy Ticket
                   </button>
                 ) : null}
 
@@ -1113,7 +1248,7 @@ export default function YouthChurchMinistryPage() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#2D5A8C]">Youth Event Payment</p>
                   <h2 className="mt-2 text-2xl font-black">{paymentEvent.title}</h2>
-                  <p className="mt-1 text-sm text-black/60">{formatPaymentAmount(paymentEvent)}</p>
+                  <p className="mt-1 text-sm text-black/60">{formatPaymentAmount(paymentEvent, selectedTicketKey)}</p>
                 </div>
                 <button
                   type="button"
@@ -1137,6 +1272,34 @@ export default function YouthChurchMinistryPage() {
               )}
 
               <div className="grid gap-3 text-sm">
+                {(paymentEvent.tickets?.length || 0) > 0 ? (
+                  <fieldset className="grid gap-2">
+                    <legend className="font-medium text-black/75">Ticket type</legend>
+                    {(paymentEvent.tickets || []).map((ticket) => (
+                      <label key={ticket.key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-black/10 px-3 py-2">
+                        <input
+                          type="radio"
+                          name={`ticket-${paymentEvent.id}`}
+                          value={ticket.key}
+                          checked={selectedTicketKey === ticket.key}
+                          onChange={() => setSelectedTicketKey(ticket.key)}
+                          className="h-4 w-4 accent-[#045BB4]"
+                        />
+                        <span>
+                          {ticket.name} — {paymentEvent.paymentCurrency || 'MWK'} {ticket.price.toLocaleString('en-US')}
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                ) : null}
+                {paymentEvent.paymentForm ? (
+                  <EventFormFields
+                    form={paymentEvent.paymentForm}
+                    values={paymentAnswers}
+                    onChange={(key, value) => setPaymentAnswers((prev) => ({ ...prev, [key]: value }))}
+                  />
+                ) : null}
+                {formCollectsContact(paymentEvent.paymentForm).name ? null : (
                 <label className="grid gap-1">
                   <span className="font-medium text-black/75">Full name</span>
                   <input
@@ -1147,6 +1310,8 @@ export default function YouthChurchMinistryPage() {
                     placeholder="First and last name"
                   />
                 </label>
+                )}
+                {formCollectsContact(paymentEvent.paymentForm).email ? null : (
                 <label className="grid gap-1">
                   <span className="font-medium text-black/75">Email address</span>
                   <input
@@ -1157,6 +1322,8 @@ export default function YouthChurchMinistryPage() {
                     placeholder="Email address"
                   />
                 </label>
+                )}
+                {formCollectsContact(paymentEvent.paymentForm).phone ? null : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-[116px_minmax(0,1fr)]">
                   <label className="grid gap-1">
                     <span className="font-medium text-black/75">Country</span>
@@ -1187,6 +1354,7 @@ export default function YouthChurchMinistryPage() {
                     />
                   </label>
                 </div>
+                )}
                 <p className="text-sm text-black/70">
                   PayChangu checkout opens when you tap Pay Now — choose Airtel, Mpamba, bank, or card there.
                 </p>
@@ -1503,8 +1671,8 @@ export default function YouthChurchMinistryPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                   {/* Large Featured Image (Cycling) - BUTTON */}
                   <button 
-                    onClick={() => setSelectedEvent(featuredGridEvent)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
+                    onClick={() => openEvent(featuredGridEvent)}
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
                   >
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -1543,11 +1711,11 @@ export default function YouthChurchMinistryPage() {
                   </button>
 
                   {/* Scrollable Smaller Previous/Future Events - BUTTONS */}
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
                     {remainingEvents.map((event) => (
                       <button 
                         key={event.id} 
-                        onClick={() => setSelectedEvent(event)}
+                        onClick={() => openEvent(event)}
                         className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#2D5A8C] sm:w-72 lg:h-[113px] lg:w-full"
                       >
                         <Image 
@@ -1621,7 +1789,7 @@ export default function YouthChurchMinistryPage() {
                   {/* Large Featured Image (Current/Latest Project) */}
                   <button
                     onClick={() => setSelectedInitiative(featuredProject)}
-                    className="lg:col-span-2 relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
+                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#2D5A8C]"
                   >
                     <Image 
                       src={featuredProject.image || '/hero/hero-store.jpg'} 
@@ -1643,7 +1811,7 @@ export default function YouthChurchMinistryPage() {
                   </button>
 
                   {/* Scrollable Previous/Future Initiatives */}
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-[500px] lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
+                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
                     {remainingProjects.map((material) => (
                       <button
                         key={material.id}
