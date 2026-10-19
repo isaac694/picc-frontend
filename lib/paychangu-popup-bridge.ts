@@ -18,7 +18,10 @@ export function resolvePaychanguCheckoutOrigin(): string {
   return window.location.origin;
 }
 
-export function buildPaychanguReturnUrls(returnPath: string): {
+export function buildPaychanguReturnUrls(
+  returnPath: string,
+  options?: { account?: string; callbackUrl?: string },
+): {
   callback_url: string;
   return_url: string;
 } {
@@ -32,9 +35,10 @@ export function buildPaychanguReturnUrls(returnPath: string): {
   const returnUrl = new URL('/paychangu/return', origin);
   returnUrl.searchParams.set('next', path);
   returnUrl.searchParams.set('paychangu', 'return');
+  if (options?.account) returnUrl.searchParams.set('account', options.account);
 
   return {
-    callback_url: callback.toString(),
+    callback_url: options?.callbackUrl || callback.toString(),
     return_url: returnUrl.toString(),
   };
 }

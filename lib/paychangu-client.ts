@@ -1,6 +1,7 @@
 'use client';
 
 import type { PaychanguConfig } from 'paychangu-js';
+import { apiUrl } from '@/lib/api';
 import {
   buildPaychanguReturnUrls,
   listenForPaychanguReturn,
@@ -160,7 +161,17 @@ export async function openPaychanguPopupCheckout(input: ProcessPaychanguPaymentI
     );
   }
 
-  const { callback_url, return_url } = buildPaychanguReturnUrls(returnPath);
+  const account = String(input.account || 'main').toLowerCase();
+  const webhookPath =
+    account === 'youth'
+      ? '/api/paychangu/youth/webhook'
+      : account === 'bookshop'
+        ? '/api/paychangu/bookshop/webhook'
+        : '/api/paychangu/webhook';
+  const { callback_url, return_url } = buildPaychanguReturnUrls(returnPath, {
+    account,
+    callbackUrl: apiUrl(webhookPath),
+  });
 
   ensurePaychanguWrapper();
   await loadPaychanguPopupScript();
@@ -169,6 +180,10 @@ export async function openPaychanguPopupCheckout(input: ProcessPaychanguPaymentI
   window.setTimeout(stopListening, 60 * 60 * 1000);
 
   const txPrefix = input.txRefPrefix === 'STORE' ? 'STORE' : 'PICC';
+  const txRef = input.txRef || `${txPrefix}-${input.givingId}-${generateTxRef()}`;
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('picc-paychangu-pending', JSON.stringify({ txRef, account }));
+  }
   const defaultMeta =
     txPrefix === 'STORE'
       ? { storeOrderId: input.givingId, phone: input.phone }
@@ -176,7 +191,7 @@ export async function openPaychanguPopupCheckout(input: ProcessPaychanguPaymentI
 
   const config: PaychanguConfig = {
     public_key: publicKey,
-    tx_ref: input.txRef || `${txPrefix}-${input.givingId}-${generateTxRef()}`,
+    tx_ref: txRef,
     amount: input.amount,
     currency: input.currency,
     callback_url,
