@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useMemo, type FormEvent, type SyntheticEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -259,6 +260,7 @@ export default function StorePage() {
     genre?: string | null;
     description?: string | null;
     hardCopyEnabled?: boolean;
+    hardCopyStock?: number;
     softCopyEnabled?: boolean;
     downloadUrl?: string | null;
     bookContent?: string | null;
@@ -276,6 +278,7 @@ export default function StorePage() {
     genre: book.genre || undefined,
     description: book.description || undefined,
     hardCopyEnabled: book.hardCopyEnabled !== false,
+    hardCopyStock: book.hardCopyStock == null ? undefined : Number(book.hardCopyStock),
     softCopyEnabled: book.softCopyEnabled !== false,
     downloadUrl: book.downloadUrl || null,
     bookContent: book.bookContent || null,
@@ -322,13 +325,24 @@ export default function StorePage() {
   };
 
   const addToCart = (product: Product, options?: { openCart?: boolean }) => {
+    const stock = product.hardCopyStock;
+    let blocked = false;
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
+      const nextQuantity = (existing?.quantity || 0) + 1;
+      if (typeof stock === 'number' && nextQuantity > stock) {
+        blocked = true;
+        return prev;
+      }
       if (existing) {
         return prev.map((item) => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       }
       return [...prev, { product, quantity: 1 }];
     });
+    if (blocked) {
+      setCheckoutError(stock === 0 ? `${product.name} is out of stock.` : `Only ${stock} ${product.name} ${stock === 1 ? 'is' : 'are'} in stock.`);
+      return;
+    }
     setCartMode('hard');
     setCheckoutStep('cart');
     setCheckoutError('');
@@ -448,7 +462,10 @@ export default function StorePage() {
   const updateQuantity = (id: string, delta: number) => {
     setCart((prev) => prev.map((item) => {
       if (item.product.id === id) {
-        const newQty = Math.max(0, item.quantity + delta);
+        const stock = item.product.hardCopyStock;
+        const next = item.quantity + delta;
+        const capped = typeof stock === 'number' ? Math.min(stock, next) : next;
+        const newQty = Math.max(0, capped);
         return { ...item, quantity: newQty };
       }
       return item;
@@ -915,7 +932,13 @@ export default function StorePage() {
                     <div className="rounded-md border-2 border-[#1688b4] bg-[#e9f6fb] p-4">
                       <p className="font-bold text-slate-950">Hard Copy</p>
                       <p className="mt-1 text-xl font-bold text-slate-950">{formatMWK(selectedBook.price)}</p>
-                      <p className="mt-1 text-sm text-slate-700">Available for collection</p>
+                      <p className="mt-1 text-sm text-slate-700">
+                        {typeof selectedBook.hardCopyStock === 'number'
+                          ? selectedBook.hardCopyStock > 0
+                            ? `${selectedBook.hardCopyStock} in stock`
+                            : 'Out of stock'
+                          : 'Available for collection'}
+                      </p>
                     </div>
 
                     <div className="mt-5">
@@ -926,10 +949,14 @@ export default function StorePage() {
                       <button
                         type="button"
                         onClick={() => addToCart(selectedBook)}
-                        disabled={selectedBook.hardCopyEnabled === false}
+                        disabled={selectedBook.hardCopyEnabled === false || selectedBook.hardCopyStock === 0}
                         className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[#f59e0b] px-5 py-3 text-base font-semibold text-slate-950 transition hover:bg-[#e58f00] disabled:pointer-events-none disabled:opacity-50"
                       >
-                        {selectedBook.hardCopyEnabled === false ? 'Hard copy unavailable' : 'Add hard copy to cart'}
+                        {selectedBook.hardCopyEnabled === false
+                          ? 'Hard copy unavailable'
+                          : selectedBook.hardCopyStock === 0
+                            ? 'Out of stock'
+                            : 'Add hard copy to cart'}
                       </button>
                       <p className="mt-4 text-sm leading-6 text-slate-600">
                         You can review your cart and payment details before confirming your order.
@@ -1099,6 +1126,12 @@ export default function StorePage() {
                 <Menu className="h-6 w-6" />
                 All Categories
               </button>
+              <Link
+                href="/store/branded"
+                className="ml-3 inline-flex min-h-14 items-center rounded-md border border-[#1688b4] px-6 text-sm font-semibold uppercase tracking-[0.16em] text-[#1688b4] hover:bg-[#1688b4] hover:text-white"
+              >
+                Shirts and stickers
+              </Link>
               <AnimatePresence>
                 {isCategoryMenuOpen && (
                   <motion.div
@@ -1434,9 +1467,9 @@ export default function StorePage() {
                           <div className="min-w-0">
                             <h3 className="line-clamp-2 font-semibold leading-tight text-slate-950">{purchase.product.name}</h3>
                             <p className="mt-1 text-xs text-slate-500">{formatMWK(purchase.price)} - Soft Copy</p>
-                            <span className={`mt-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${purchase.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                            <span className={`mt-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${purchase.status === 'available' ? 'bg-green-100 text-green-700' : purchase.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-800'}`}>
                               <ShieldCheck className="h-3 w-3" />
-                              {purchase.status === 'available' ? 'Available' : 'Pending payment'}
+                              {purchase.status === 'available' ? 'Available' : purchase.status === 'cancelled' ? 'Cancelled' : 'Pending payment'}
                             </span>
                           </div>
                         </div>

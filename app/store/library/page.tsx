@@ -184,9 +184,9 @@ export default function StoreLibraryPage() {
                               </div>
                               <div className="min-w-0">
                                 <p className="line-clamp-2 text-sm font-semibold leading-tight">{purchase.title}</p>
-                                <p className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase ${isAvailable ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                <p className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase ${isAvailable ? 'bg-green-100 text-green-700' : purchase.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-800'}`}>
                                   <ShieldCheck className="h-3 w-3" />
-                                  {isAvailable ? 'Paid' : 'Pending'}
+                                  {isAvailable ? 'Paid' : purchase.status === 'cancelled' ? 'Cancelled' : 'Pending'}
                                 </p>
                               </div>
                             </div>
@@ -213,8 +213,8 @@ export default function StoreLibraryPage() {
                 ) : (
                   <article className="mx-auto max-w-3xl px-5 py-8 sm:px-8 lg:py-12">
                     <div className="border-b border-slate-200 pb-6">
-                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1688b4]">
-                        {selectedPurchase.status === 'available' ? 'Ready to read' : 'Awaiting payment confirmation'}
+                      <p className={`text-xs font-bold uppercase tracking-[0.2em] ${selectedPurchase.status === 'available' ? 'text-emerald-700' : selectedPurchase.status === 'cancelled' ? 'text-red-700' : 'text-orange-700'}`}>
+                        {selectedPurchase.status === 'available' ? 'Ready to read' : selectedPurchase.status === 'cancelled' ? 'Cancelled' : 'Awaiting payment confirmation'}
                       </p>
                       <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-5xl">{selectedPurchase.title}</h2>
                       <p className="mt-3 text-sm text-slate-600">
@@ -222,8 +222,12 @@ export default function StoreLibraryPage() {
                       </p>
                     </div>
 
-                    {selectedPurchase.status !== 'available' ? (
-                      <div className="mt-8 border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
+                    {selectedPurchase.status === 'cancelled' ? (
+                      <div className="mt-8 border border-red-200 bg-red-50 p-5 text-sm leading-6 text-red-800">
+                        This purchase was cancelled, so the book stays locked.
+                      </div>
+                    ) : selectedPurchase.status !== 'available' ? (
+                      <div className="mt-8 border border-orange-200 bg-orange-50 p-5 text-sm leading-6 text-orange-900">
                         This book is in your library, but it will unlock after PayChangu confirms the payment.
                       </div>
                     ) : (

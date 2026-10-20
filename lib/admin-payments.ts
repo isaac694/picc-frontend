@@ -33,6 +33,16 @@ export function formatMoney(amount: unknown, currency?: string): string {
   }
 }
 
+export function paymentStatusBadgeClass(status?: string | null) {
+  const value = String(status || '').trim().toLowerCase();
+  if (value === 'pending') return 'border-orange-200 bg-orange-100 text-orange-800';
+  if (value === 'completed' || value === 'complete' || value === 'paid' || value === 'available') {
+    return 'border-emerald-200 bg-emerald-100 text-emerald-800';
+  }
+  if (value) return 'border-red-200 bg-red-100 text-red-800';
+  return '';
+}
+
 export function formatAdminDate(value?: string | null): string {
   if (!value) return '—';
   const date = new Date(value);

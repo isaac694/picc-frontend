@@ -81,6 +81,8 @@ const SITE_PAGE_ITEMS: NavItem[] = [
   { label: 'Contact Page', href: '/admin/contact', pageKey: ADMIN_PAGE.CONTACT_PAGE, icon: MessageSquareText },
   { label: 'Media Page', href: '/admin/media', pageKey: ADMIN_PAGE.MEDIA_PAGE, icon: ImageIcon },
   { label: 'Store Page', href: '/admin/store', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
+  { label: 'Branded items', href: '/admin/store/merchandise', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
+  { label: 'Book launch sales', href: '/admin/store/book-launch', pageKey: ADMIN_PAGE.STORE_PAGE, icon: Receipt },
   { label: 'Forms Page', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE, icon: FileText },
   { label: 'Sermons Page', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE, icon: BookOpen },
   { label: 'Give Page', href: '/admin/give', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: FileText },

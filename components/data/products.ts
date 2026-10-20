@@ -12,6 +12,7 @@ export type Product = {
   hardCopyPrice?: number;
   softCopyPrice?: number | null;
   hardCopyEnabled?: boolean;
+  hardCopyStock?: number;
   softCopyEnabled?: boolean;
   downloadUrl?: string | null;
   bookContent?: string | null;

@@ -49,6 +49,7 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
   const [registerError, setRegisterError] = useState('');
   const [registerSuccess, setRegisterSuccess] = useState('');
   const [ticketKey, setTicketKey] = useState('');
+  const [ticketQuantity, setTicketQuantity] = useState(1);
   const [paymentAnswers, setPaymentAnswers] = useState<EventAnswers>({});
   const [paymentForm, setPaymentForm] = useState({ fullName: '', email: '', phone: '', phoneCountry: '+265' });
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
@@ -86,7 +87,8 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
     [event, ticketKey],
   );
   const canPay = Boolean(event?.acceptsOnlinePayment && (ticket || (event.paymentAmount && event.paymentAmount > 0)));
-  const amount = ticket?.price || event?.paymentAmount || 0;
+  const unitAmount = ticket?.price || event?.paymentAmount || 0;
+  const amount = unitAmount * Math.min(10, Math.max(1, ticketQuantity || 1));
   const dateLabel = event
     ? [formatWhen(event.startDate), event.endDate && formatWhen(event.endDate) !== formatWhen(event.startDate) ? formatWhen(event.endDate) : '']
         .filter(Boolean)
@@ -183,6 +185,7 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
           email,
           phone,
           ticketKey: ticket?.key,
+          quantity: Math.min(10, Math.max(1, ticketQuantity || 1)),
           paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
           paychanguAccount: event.paymentAccount,
         }),
@@ -205,7 +208,7 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
         returnPath: `/events/${event.id}`,
         meta: { eventId: event.id, chargeId, ticketKey: ticket?.key },
       });
-      setPaymentSuccess('Payment started. When PayChangu confirms it, your ticket and QR code will be emailed to you.');
+      setPaymentSuccess('Payment started. When PayChangu confirms it, every ticket and QR code will be emailed to you.');
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : 'Failed to start payment.');
     } finally {
@@ -325,6 +328,17 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
                   })}
                 </fieldset>
               ) : null}
+              <label className="mt-4 grid gap-1 text-sm">
+                <span className="text-white/80">Number of tickets</span>
+                <input
+                  className="w-28 rounded-xl border border-white/20 bg-white px-3 py-2 text-[#10233f]"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={ticketQuantity}
+                  onChange={(item) => setTicketQuantity(Math.min(10, Math.max(1, Number.parseInt(item.target.value, 10) || 1)))}
+                />
+              </label>
               {paymentError ? <p className="mt-4 rounded-xl bg-red-500/20 px-3 py-2 text-sm">{paymentError}</p> : null}
               {paymentSuccess ? <p className="mt-4 rounded-xl bg-emerald-500/20 px-3 py-2 text-sm">{paymentSuccess}</p> : null}
               <div className="mt-4 space-y-3 text-[#10233f]">

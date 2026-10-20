@@ -235,6 +235,7 @@ export default function EventsListSection({
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
   const [paymentAnswers, setPaymentAnswers] = useState<EventAnswers>({});
   const [selectedTicketKey, setSelectedTicketKey] = useState('');
+  const [ticketQuantity, setTicketQuantity] = useState(1);
   const pageSize = 3;
 
   useEffect(() => {
@@ -574,7 +575,9 @@ export default function EventsListSection({
 
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(' ');
-    const amount = ticket ? ticket.price : Number(paymentEvent.paymentAmount || 0);
+    const quantity = Math.min(10, Math.max(1, ticketQuantity || 1));
+    const unitAmount = ticket ? ticket.price : Number(paymentEvent.paymentAmount || 0);
+    const amount = unitAmount * quantity;
     const currency = paymentEvent.paymentCurrency || 'MWK';
     const reason = `Event: ${paymentEvent.title}`;
     const paymentAccount =
@@ -592,6 +595,7 @@ export default function EventsListSection({
             email,
             phone: normalizedPhone,
             ticketKey: ticket?.key,
+            quantity,
             paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
             paychanguAccount: paymentAccount,
           }),
@@ -620,7 +624,7 @@ export default function EventsListSection({
           meta: { eventId: String(paymentEvent.id), chargeId },
         });
 
-        setPaymentSuccess('Payment started. When PayChangu confirms it, your ticket and QR code will be emailed to you.');
+        setPaymentSuccess('Payment started. When PayChangu confirms it, every ticket and QR code will be emailed to you.');
         return;
       }
 
@@ -1277,6 +1281,7 @@ export default function EventsListSection({
           setIsPaymentOpen(open);
           if (!open) {
             setPaymentEvent(null);
+            setTicketQuantity(1);
             setPaymentError(null);
             setPaymentSuccess(null);
           }
@@ -1286,7 +1291,7 @@ export default function EventsListSection({
           <DialogHeader>
             <DialogTitle>Pay for Event</DialogTitle>
             <DialogDescription>
-              {paymentEvent ? `${paymentEvent.title} - ${formatPaymentAmount(paymentEvent, selectedTicketKey)}` : 'Event payment'}
+              {paymentEvent ? `${paymentEvent.title} - ${formatPaymentAmount(paymentEvent, selectedTicketKey)}${ticketQuantity > 1 ? ` × ${ticketQuantity}` : ''}` : 'Event payment'}
             </DialogDescription>
           </DialogHeader>
           {paymentError && (
@@ -1320,6 +1325,17 @@ export default function EventsListSection({
                 ))}
               </fieldset>
             ) : null}
+            <label className="grid gap-1">
+              <span className="text-foreground/80">Number of tickets</span>
+              <input
+                className="w-28 rounded-md border border-border px-3 py-2 text-sm"
+                type="number"
+                min={1}
+                max={10}
+                value={ticketQuantity}
+                onChange={(event) => setTicketQuantity(Math.min(10, Math.max(1, Number.parseInt(event.target.value, 10) || 1)))}
+              />
+            </label>
             {paymentEvent?.paymentForm ? (
               <EventFormFields
                 form={paymentEvent.paymentForm}

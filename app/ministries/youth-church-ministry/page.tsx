@@ -425,6 +425,7 @@ export default function YouthChurchMinistryPage() {
   const [initiativeSearchQuery, setInitiativeSearchQuery] = useState('');
   const [paymentEvent, setPaymentEvent] = useState<YouthEvent | null>(null);
   const [selectedTicketKey, setSelectedTicketKey] = useState('');
+  const [ticketQuantity, setTicketQuantity] = useState(1);
   const [paymentForm, setPaymentForm] = useState({
     fullName: '',
     phone: '',
@@ -718,7 +719,9 @@ export default function YouthChurchMinistryPage() {
 
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(' ');
-    const amount = ticket ? ticket.price : Number(paymentEvent.paymentAmount || 0);
+    const quantity = Math.min(10, Math.max(1, ticketQuantity || 1));
+    const unitAmount = ticket ? ticket.price : Number(paymentEvent.paymentAmount || 0);
+    const amount = unitAmount * quantity;
     const currency = paymentEvent.paymentCurrency || 'MWK';
     const reason = `Youth Event: ${paymentEvent.title}`;
     const paymentAccount = paymentEvent.paymentAccount || 'youth';
@@ -734,6 +737,7 @@ export default function YouthChurchMinistryPage() {
           email,
           phone: normalizedPhone,
           ticketKey: ticket?.key,
+          quantity,
           paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
           paychanguAccount: paymentAccount,
         }),
@@ -761,7 +765,7 @@ export default function YouthChurchMinistryPage() {
         returnPath: '/ministries/youth-church-ministry',
       });
 
-      setPaymentSuccess('Payment started. When PayChangu confirms it, your ticket and QR code will be emailed to you.');
+      setPaymentSuccess('Payment started. When PayChangu confirms it, every ticket and QR code will be emailed to you.');
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : 'Failed to initialize payment.');
     } finally {
@@ -1248,7 +1252,7 @@ export default function YouthChurchMinistryPage() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#2D5A8C]">Youth Event Payment</p>
                   <h2 className="mt-2 text-2xl font-black">{paymentEvent.title}</h2>
-                  <p className="mt-1 text-sm text-black/60">{formatPaymentAmount(paymentEvent, selectedTicketKey)}</p>
+                  <p className="mt-1 text-sm text-black/60">{formatPaymentAmount(paymentEvent, selectedTicketKey)}{ticketQuantity > 1 ? ` × ${ticketQuantity}` : ''}</p>
                 </div>
                 <button
                   type="button"
@@ -1292,6 +1296,17 @@ export default function YouthChurchMinistryPage() {
                     ))}
                   </fieldset>
                 ) : null}
+                <label className="grid gap-1">
+                  <span className="font-medium text-black/75">Number of tickets</span>
+                  <input
+                    className="w-28 rounded-lg border border-black/10 px-3 py-2"
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={ticketQuantity}
+                    onChange={(event) => setTicketQuantity(Math.min(10, Math.max(1, Number.parseInt(event.target.value, 10) || 1)))}
+                  />
+                </label>
                 {paymentEvent.paymentForm ? (
                   <EventFormFields
                     form={paymentEvent.paymentForm}

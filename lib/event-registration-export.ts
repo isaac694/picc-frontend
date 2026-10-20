@@ -24,6 +24,7 @@ function downloadBlob(blob: Blob, fileName: string) {
 
 export function downloadRegistrationsExcel(input: {
   fileName: string;
+  sheetName?: string;
   columns: ExportColumn[];
   rows: Array<Record<string, string>>;
 }) {
@@ -42,7 +43,7 @@ export function downloadRegistrationsExcel(input: {
   const workbook = `<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-  <Worksheet ss:Name="Registrations">
+  <Worksheet ss:Name="${xmlEscape(input.sheetName || 'Registrations')}">
     <Table>
       <Row>${header}</Row>
       ${body}

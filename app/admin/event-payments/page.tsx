@@ -16,7 +16,7 @@ import {
 import { adminErrorToast } from '@/components/admin/admin-toast';
 import { EventPaymentsTabs } from '@/components/admin/payments/PaymentsSectionTabs';
 import { AdminListPagination } from '@/components/admin/payments/AdminListPagination';
-import { buildAdminQuery, formatAdminDate, formatMoney } from '@/lib/admin-payments';
+import { buildAdminQuery, formatAdminDate, formatMoney, paymentStatusBadgeClass } from '@/lib/admin-payments';
 
 type EventPaymentRow = {
   id: string;
@@ -29,7 +29,9 @@ type EventPaymentRow = {
   paymentMethod?: string;
   paychanguAccount?: string;
   ticketName?: string | null;
+  quantity?: number;
   ticketCode?: string | null;
+  ticketCodes?: string[];
   checkedInAt?: string | null;
   eventTitle?: string | null;
   ministryKey?: string | null;
@@ -170,11 +172,11 @@ export default function EventPaymentsPage() {
                   </td>
                   <td className="px-4 py-2.5">{row.eventTitle || '—'}</td>
                   <td className="px-4 py-2.5">
-                    <p>{row.ticketName || 'Event ticket'}</p>
-                    <p className="font-mono text-[10px] text-muted-foreground">{row.ticketCode || ''}</p>
+                    <p>{row.ticketName || 'Event ticket'}{(row.quantity || 1) > 1 ? ` × ${row.quantity}` : ''}</p>
+                    <p className="font-mono text-[10px] text-muted-foreground">{(row.ticketCodes && row.ticketCodes.length ? row.ticketCodes : [row.ticketCode].filter(Boolean)).join(', ')}</p>
                   </td>
                   <td className="px-4 py-2.5">{formatMoney(row.amount, row.currency)}</td>
-                  <td className="px-4 py-2.5"><Badge variant="outline">{row.status || '—'}</Badge></td>
+                  <td className="px-4 py-2.5"><Badge variant="outline" className={paymentStatusBadgeClass(row.status)}>{row.status || '—'}</Badge></td>
                   <td className="px-4 py-2.5">{formatAdminDate(row.createdAt)}</td>
                   <td className="px-4 py-2.5">
                     <Button type="button" size="sm" variant="outline" onClick={() => void openDetail(row.id)}>View</Button>
@@ -203,10 +205,15 @@ export default function EventPaymentsPage() {
               <Detail label="Email" value={selected.email} />
               <Detail label="Phone" value={selected.phone} />
               <Detail label="Event" value={selected.eventTitle} />
-              <Detail label="Ticket" value={selected.ticketName || 'Event ticket'} />
-              <Detail label="Ticket code" value={selected.ticketCode} />
+              <Detail label="Ticket" value={`${selected.ticketName || 'Event ticket'}${(selected.quantity || 1) > 1 ? ` × ${selected.quantity}` : ''}`} />
+              <Detail label="Ticket codes" value={(selected.ticketCodes && selected.ticketCodes.length ? selected.ticketCodes : [selected.ticketCode].filter(Boolean)).join(', ')} />
               <Detail label="Amount" value={formatMoney(selected.amount, selected.currency)} />
-              <Detail label="Status" value={selected.status} />
+              <div>
+                <dt className="text-muted-foreground">Status</dt>
+                <dd className="mt-1">
+                  <Badge variant="outline" className={paymentStatusBadgeClass(selected.status)}>{selected.status || '—'}</Badge>
+                </dd>
+              </div>
               <Detail label="Payment method" value={selected.paymentMethod} />
               <Detail label="PayChangu account" value={selected.paychanguAccount} />
               <Detail label="Charge" value={selected.chargeId} />

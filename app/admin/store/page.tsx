@@ -19,6 +19,7 @@ type StoreBook = Product & {
   coverImageUrl?: string | null;
   hardCopyPrice: number;
   softCopyPrice?: number | null;
+  hardCopyStock: number;
   hardCopyEnabled: boolean;
   softCopyEnabled: boolean;
   downloadUrl?: string | null;
@@ -37,6 +38,7 @@ type StoreBookDraft = {
   coverImageUrl: string;
   hardCopyPrice: string;
   softCopyPrice: string;
+  hardCopyStock: string;
   hardCopyEnabled: boolean;
   softCopyEnabled: boolean;
   downloadUrl: string;
@@ -54,6 +56,7 @@ const EMPTY_DRAFT: StoreBookDraft = {
   coverImageUrl: '',
   hardCopyPrice: '',
   softCopyPrice: '',
+  hardCopyStock: '',
   hardCopyEnabled: true,
   softCopyEnabled: true,
   downloadUrl: '',
@@ -73,6 +76,7 @@ const toDraft = (book: StoreBook): StoreBookDraft => ({
   coverImageUrl: book.coverImageUrl || book.image || '',
   hardCopyPrice: String(book.hardCopyPrice ?? book.price ?? ''),
   softCopyPrice: book.softCopyPrice == null ? '' : String(book.softCopyPrice),
+  hardCopyStock: String(book.hardCopyStock ?? 0),
   hardCopyEnabled: book.hardCopyEnabled !== false,
   softCopyEnabled: book.softCopyEnabled !== false,
   downloadUrl: book.downloadUrl || '',
@@ -95,6 +99,7 @@ const normalizeBook = (book: Partial<StoreBook>): StoreBook => ({
   author: book.author || '',
   genre: book.genre || '',
   description: book.description || '',
+  hardCopyStock: Number(book.hardCopyStock ?? 0),
   hardCopyEnabled: book.hardCopyEnabled !== false,
   softCopyEnabled: book.softCopyEnabled !== false,
   downloadUrl: book.downloadUrl || '',
@@ -213,6 +218,7 @@ export default function AdminStorePage() {
     coverImageUrl: draft.coverImageUrl.trim(),
     hardCopyPrice: Number(draft.hardCopyPrice),
     softCopyPrice: draft.softCopyPrice.trim() ? Number(draft.softCopyPrice) : null,
+    hardCopyStock: draft.hardCopyEnabled ? Number(draft.hardCopyStock) : Number(draft.hardCopyStock || 0),
     hardCopyEnabled: draft.hardCopyEnabled,
     softCopyEnabled: draft.softCopyEnabled,
     downloadUrl: draft.downloadUrl.trim(),
@@ -229,6 +235,10 @@ export default function AdminStorePage() {
     }
     if (!draft.hardCopyPrice.trim() || Number.isNaN(Number(draft.hardCopyPrice))) {
       setStatus('Please enter a valid hard copy price.');
+      return;
+    }
+    if (draft.hardCopyEnabled && (!draft.hardCopyStock.trim() || !Number.isInteger(Number(draft.hardCopyStock)) || Number(draft.hardCopyStock) < 0)) {
+      setStatus('Enter the number of hard copies in stock.');
       return;
     }
 
@@ -581,6 +591,20 @@ export default function AdminStorePage() {
               <input type="checkbox" checked={draft.hardCopyEnabled} onChange={(event) => setDraft((prev) => ({ ...prev, hardCopyEnabled: event.target.checked }))} />
               Hard copy
             </label>
+            {draft.hardCopyEnabled ? (
+              <label className="grid gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm sm:col-span-3">
+                <span className="font-medium text-foreground">Number of hard copies in stock</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={draft.hardCopyStock}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, hardCopyStock: event.target.value }))}
+                  placeholder="How many hard copies are available"
+                  className="w-full max-w-xs rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+              </label>
+            ) : null}
             <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm">
               <input type="checkbox" checked={draft.softCopyEnabled} onChange={(event) => setDraft((prev) => ({ ...prev, softCopyEnabled: event.target.checked }))} />
               Soft copy
@@ -637,6 +661,7 @@ export default function AdminStorePage() {
                     <th className="px-3 py-2 font-medium">Book</th>
                     <th className="px-3 py-2 font-medium">Author</th>
                     <th className="px-3 py-2 font-medium">Hard copy</th>
+                    <th className="px-3 py-2 font-medium">Stock</th>
                     <th className="px-3 py-2 font-medium">Soft copy</th>
                     <th className="px-3 py-2 font-medium">Status</th>
                     <th className="px-3 py-2 font-medium">Actions</th>
@@ -648,6 +673,7 @@ export default function AdminStorePage() {
                       <td className="px-3 py-2 font-medium text-foreground">{book.title}</td>
                       <td className="px-3 py-2 text-foreground/70">{book.author || 'No author'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-foreground/70">MWK {book.hardCopyPrice.toLocaleString()}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{book.hardCopyEnabled ? book.hardCopyStock ?? 0 : '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
                         {book.softCopyPrice == null ? 'Not set' : `MWK ${book.softCopyPrice.toLocaleString()}`}
                       </td>

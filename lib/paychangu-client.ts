@@ -1,7 +1,7 @@
 'use client';
 
 import type { PaychanguConfig } from 'paychangu-js';
-import { apiUrl } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import {
   buildPaychanguReturnUrls,
   listenForPaychanguReturn,
@@ -143,6 +143,37 @@ async function invokePaychanguCheckout(config: PaychanguConfig): Promise<void> {
   throw lastError instanceof Error ? lastError : new Error('Unable to open PayChangu checkout.');
 }
 
+function readPendingPaychanguCheckout(): { txRef?: string; account?: string } | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    return JSON.parse(sessionStorage.getItem('picc-paychangu-pending') || 'null') as {
+      txRef?: string;
+      account?: string;
+    } | null;
+  } catch {
+    return null;
+  }
+}
+
+/** Ask the API to verify a PayChangu charge and mark the matching payment paid. */
+export async function confirmPaychanguCheckout(
+  txRef: string,
+  account?: string,
+  status = 'success',
+): Promise<void> {
+  const reference = txRef.trim();
+  if (!reference) return;
+  await apiFetch('/api/paychangu/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tx_ref: reference,
+      account: account || 'main',
+      status,
+    }),
+  });
+}
+
 /**
  * PayChangu hosted popup ([paychangu-js](https://www.npmjs.com/package/paychangu-js)).
  * User picks Airtel, Mpamba, bank, or card inside PayChangu — not on our form.
@@ -162,28 +193,27 @@ export async function openPaychanguPopupCheckout(input: ProcessPaychanguPaymentI
   }
 
   const account = String(input.account || 'main').toLowerCase();
-  const webhookPath =
-    account === 'youth'
-      ? '/api/paychangu/youth/webhook'
-      : account === 'bookshop'
-        ? '/api/paychangu/bookshop/webhook'
-        : '/api/paychangu/webhook';
-  const { callback_url, return_url } = buildPaychanguReturnUrls(returnPath, {
-    account,
-    callbackUrl: apiUrl(webhookPath),
-  });
+  // PayChangu redirects the browser to callback_url after a successful payment.
+  // The return page then asks our API to verify the charge and save it.
+  const { callback_url, return_url } = buildPaychanguReturnUrls(returnPath, { account });
 
   ensurePaychanguWrapper();
   await loadPaychanguPopupScript();
-
-  const stopListening = listenForPaychanguReturn();
-  window.setTimeout(stopListening, 60 * 60 * 1000);
 
   const txPrefix = input.txRefPrefix === 'STORE' ? 'STORE' : 'PICC';
   const txRef = input.txRef || `${txPrefix}-${input.givingId}-${generateTxRef()}`;
   if (typeof sessionStorage !== 'undefined') {
     sessionStorage.setItem('picc-paychangu-pending', JSON.stringify({ txRef, account }));
   }
+
+  const stopListening = listenForPaychanguReturn((_next, pending) => {
+    const stored = readPendingPaychanguCheckout();
+    const pendingTx = pending?.txRef || stored?.txRef || txRef;
+    const pendingAccount = pending?.account || stored?.account || account;
+    if (!pendingTx) return;
+    void confirmPaychanguCheckout(pendingTx, pendingAccount, pending?.status || 'success');
+  });
+  window.setTimeout(stopListening, 60 * 60 * 1000);
   const defaultMeta =
     txPrefix === 'STORE'
       ? { storeOrderId: input.givingId, phone: input.phone }

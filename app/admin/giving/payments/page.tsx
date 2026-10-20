@@ -16,7 +16,7 @@ import {
 import { adminErrorToast } from '@/components/admin/admin-toast';
 import { GivingPaymentsTabs } from '@/components/admin/payments/PaymentsSectionTabs';
 import { AdminListPagination } from '@/components/admin/payments/AdminListPagination';
-import { buildAdminQuery, formatAdminDate, formatMoney } from '@/lib/admin-payments';
+import { buildAdminQuery, formatAdminDate, formatMoney, paymentStatusBadgeClass } from '@/lib/admin-payments';
 
 type GivingRow = {
   id: string;
@@ -170,7 +170,7 @@ export default function GivingPaymentsPage() {
                   </td>
                   <td className="px-4 py-2.5">{formatMoney(row.amount, row.currency)}</td>
                   <td className="px-4 py-2.5">
-                    <Badge variant="outline">{row.status || '—'}</Badge>
+                    <Badge variant="outline" className={paymentStatusBadgeClass(row.status)}>{row.status || '—'}</Badge>
                   </td>
                   <td className="px-4 py-2.5">{row.paymentMethod || '—'}</td>
                   <td className="px-4 py-2.5">{row.paychanguAccount || '—'}</td>
@@ -208,7 +208,12 @@ export default function GivingPaymentsPage() {
               <Detail label="Donor" value={selected.fullName} />
               <Detail label="Email" value={selected.email} />
               <Detail label="Phone" value={selected.phone} />
-              <Detail label="Status" value={selected.status} />
+              <div>
+                <dt className="text-muted-foreground">Status</dt>
+                <dd className="mt-1">
+                  <Badge variant="outline" className={paymentStatusBadgeClass(selected.status)}>{selected.status || '—'}</Badge>
+                </dd>
+              </div>
               <Detail label="Payment method" value={selected.paymentMethod} />
               <Detail label="PayChangu account" value={selected.paychanguAccount} />
               <Detail label="Giving type" value={selected.givingType} />

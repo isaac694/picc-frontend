@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { adminErrorToast } from '@/components/admin/admin-toast';
 import { GivingPaymentsTabs } from '@/components/admin/payments/PaymentsSectionTabs';
-import { formatAdminDate, formatMoney } from '@/lib/admin-payments';
+import { formatAdminDate, formatMoney, paymentStatusBadgeClass } from '@/lib/admin-payments';
 
 type GivingKpis = {
   total: number;
@@ -197,7 +197,7 @@ export default function GivingDashboardPage() {
                   <td className="px-4 py-2.5 font-medium">{row.fullName || '—'}</td>
                   <td className="px-4 py-2.5">{formatMoney(row.amount, row.currency)}</td>
                   <td className="px-4 py-2.5">
-                    <Badge variant="outline">{row.status || '—'}</Badge>
+                    <Badge variant="outline" className={paymentStatusBadgeClass(row.status)}>{row.status || '—'}</Badge>
                   </td>
                   <td className="px-4 py-2.5">{row.paymentMethod || '—'}</td>
                   <td className="px-4 py-2.5">{formatAdminDate(row.createdAt)}</td>

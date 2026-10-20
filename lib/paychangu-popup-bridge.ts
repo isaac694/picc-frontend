@@ -35,7 +35,10 @@ export function buildPaychanguReturnUrls(
   const returnUrl = new URL('/paychangu/return', origin);
   returnUrl.searchParams.set('next', path);
   returnUrl.searchParams.set('paychangu', 'return');
-  if (options?.account) returnUrl.searchParams.set('account', options.account);
+  if (options?.account) {
+    callback.searchParams.set('account', options.account);
+    returnUrl.searchParams.set('account', options.account);
+  }
 
   return {
     callback_url: options?.callbackUrl || callback.toString(),
@@ -50,25 +53,46 @@ export function cleanupPaychanguCheckoutOverlay(): void {
   document.getElementById('myModal')?.remove();
 }
 
-export function notifyPaychanguReturn(nextPath: string): void {
+export function notifyPaychanguReturn(
+  nextPath: string,
+  pending?: { txRef?: string; account?: string; status?: string },
+): void {
   if (typeof window === 'undefined' || window.parent === window) return;
-  window.parent.postMessage('removeIframe', '*');
-  window.parent.postMessage({ type: PAYCHANGU_RETURN_MESSAGE, next: nextPath }, window.location.origin);
+  window.parent.postMessage(
+    { type: PAYCHANGU_RETURN_MESSAGE, next: nextPath, ...pending },
+    window.location.origin,
+  );
 }
 
-export function listenForPaychanguReturn(onReturn?: (nextPath: string) => void): () => void {
+export function listenForPaychanguReturn(
+  onReturn?: (
+    nextPath: string,
+    pending?: { txRef?: string; account?: string; status?: string },
+  ) => void,
+): () => void {
   if (typeof window === 'undefined') return () => undefined;
 
   const handler = (event: MessageEvent) => {
     if (event.data === 'removeIframe') {
       cleanupPaychanguCheckoutOverlay();
+      onReturn?.('/give');
       return;
     }
 
-    const payload = event.data as { type?: string; next?: string } | null;
+    const payload = event.data as {
+      type?: string;
+      next?: string;
+      txRef?: string;
+      account?: string;
+      status?: string;
+    } | null;
     if (payload?.type === PAYCHANGU_RETURN_MESSAGE) {
       cleanupPaychanguCheckoutOverlay();
-      onReturn?.(payload.next || '/give');
+      onReturn?.(payload.next || '/give', {
+        txRef: payload.txRef,
+        account: payload.account,
+        status: payload.status,
+      });
     }
   };
 

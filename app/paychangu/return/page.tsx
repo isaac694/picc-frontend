@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
+import { confirmPaychanguCheckout } from '@/lib/paychangu-client';
 import {
   cleanupPaychanguCheckoutOverlay,
   notifyPaychanguReturn,
@@ -11,16 +11,22 @@ import {
 function PaychanguReturnContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+
     const rawNext = searchParams.get('next') || '/give';
     const nextPath = rawNext.startsWith('/') ? rawNext : '/give';
     const inIframe = window.self !== window.top;
+    const status = searchParams.get('status') || 'success';
 
     const txRef =
       searchParams.get('tx_ref') ||
       searchParams.get('txRef') ||
       searchParams.get('charge_id') ||
+      searchParams.get('transaction_id') ||
       '';
     let pendingTx = txRef;
     let pendingAccount = searchParams.get('account') || '';
@@ -32,32 +38,27 @@ function PaychanguReturnContent() {
       pendingTx = txRef;
     }
 
-    if (pendingTx) {
-      void apiFetch('/api/paychangu/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tx_ref: pendingTx,
-          account: pendingAccount || 'main',
-          status: searchParams.get('status') || 'success',
-        }),
-      }).finally(() => {
+    void (async () => {
+      if (pendingTx) {
+        await confirmPaychanguCheckout(pendingTx, pendingAccount || 'main', status);
         sessionStorage.removeItem('picc-paychangu-pending');
+      }
+
+      cleanupPaychanguCheckoutOverlay();
+      notifyPaychanguReturn(nextPath, {
+        txRef: pendingTx,
+        account: pendingAccount || 'main',
+        status,
       });
-    }
 
-    cleanupPaychanguCheckoutOverlay();
-    notifyPaychanguReturn(nextPath);
+      if (inIframe) return;
 
-    if (inIframe) {
-      return;
-    }
-
-    const paychangu = searchParams.get('paychangu');
-    const target = paychangu
-      ? `${nextPath}${nextPath.includes('?') ? '&' : '?'}paychangu=${encodeURIComponent(paychangu)}`
-      : nextPath;
-    router.replace(target);
+      const paychangu = searchParams.get('paychangu');
+      const target = paychangu
+        ? `${nextPath}${nextPath.includes('?') ? '&' : '?'}paychangu=${encodeURIComponent(paychangu)}`
+        : nextPath;
+      router.replace(target);
+    })();
   }, [router, searchParams]);
 
   return (

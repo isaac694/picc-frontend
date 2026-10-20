@@ -16,7 +16,7 @@ import {
 import { adminErrorToast } from '@/components/admin/admin-toast';
 import { StorePaymentsTabs } from '@/components/admin/payments/PaymentsSectionTabs';
 import { AdminListPagination } from '@/components/admin/payments/AdminListPagination';
-import { buildAdminQuery, formatAdminDate, formatMoney } from '@/lib/admin-payments';
+import { buildAdminQuery, formatAdminDate, formatMoney, paymentStatusBadgeClass } from '@/lib/admin-payments';
 
 type PurchaseRow = {
   id: string;
@@ -176,7 +176,7 @@ export default function StorePaymentsPage() {
                   <td className="px-4 py-2.5 capitalize">{row.format || '—'}</td>
                   <td className="px-4 py-2.5">{formatMoney(row.price, row.currency)}</td>
                   <td className="px-4 py-2.5">
-                    <Badge variant="outline">{row.status || '—'}</Badge>
+                    <Badge variant="outline" className={paymentStatusBadgeClass(row.status)}>{row.status || '—'}</Badge>
                   </td>
                   <td className="px-4 py-2.5">{row.customerEmail || '—'}</td>
                   <td className="px-4 py-2.5">{formatAdminDate(row.paidAt || row.createdAt)}</td>
@@ -212,7 +212,12 @@ export default function StorePaymentsPage() {
               <Detail label="Title" value={selected.title} />
               <Detail label="Format" value={selected.format} />
               <Detail label="Amount" value={formatMoney(selected.price, selected.currency)} />
-              <Detail label="Status" value={selected.status} />
+              <div>
+                <dt className="text-muted-foreground">Status</dt>
+                <dd className="mt-1">
+                  <Badge variant="outline" className={paymentStatusBadgeClass(selected.status)}>{selected.status || '—'}</Badge>
+                </dd>
+              </div>
               <Detail label="Customer email" value={selected.customerEmail} />
               <Detail label="User ID" value={selected.userId} />
               <Detail label="Cart token" value={selected.cartToken} />
