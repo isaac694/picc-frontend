@@ -1123,14 +1123,14 @@ export default function StorePage() {
                 aria-expanded={isCategoryMenuOpen}
                 aria-controls="store-category-menu"
               >
-                <Menu className="h-6 w-6" />
-                All Categories
+                
+                Books
               </button>
               <Link
                 href="/store/branded"
                 className="ml-3 inline-flex min-h-14 items-center rounded-md border border-[#1688b4] px-6 text-sm font-semibold uppercase tracking-[0.16em] text-[#1688b4] hover:bg-[#1688b4] hover:text-white"
               >
-                Shirts and stickers
+                Branded Products
               </Link>
               <AnimatePresence>
                 {isCategoryMenuOpen && (
