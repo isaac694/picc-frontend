@@ -77,7 +77,8 @@ export function createFormFieldId() {
 }
 
 export function ministryNameForKey(key?: string | null) {
-  return EVENT_MINISTRIES.find((ministry) => ministry.key === key)?.name || '';
+  if (!key || key === 'general') return 'General';
+  return EVENT_MINISTRIES.find((ministry) => ministry.key === key)?.name || 'General';
 }
 
 function parseOptions(value: unknown) {
@@ -311,12 +312,14 @@ export type EventTicket = {
   key: string;
   name: string;
   price: number;
+  expected?: number | null;
 };
 
 export type EventTicketDraft = {
   clientId: string;
   name: string;
   price: string;
+  expected: string;
 };
 
 export function parseEventTickets(value: unknown): EventTicket[] {
@@ -329,8 +332,11 @@ export function parseEventTickets(value: unknown): EventTicket[] {
     const price = Number(item.price);
     const key = String(item.key || name).trim();
     if (!name || !key || !Number.isFinite(price) || price <= 0 || seen.has(key)) continue;
+    const expectedRaw = item.expected ?? item.capacity;
+    const expectedNumber = expectedRaw == null || expectedRaw === '' ? null : Number(expectedRaw);
+    const expected = Number.isInteger(expectedNumber) && expectedNumber >= 0 ? expectedNumber : null;
     seen.add(key);
-    tickets.push({ key, name, price });
+    tickets.push({ key, name, price, expected });
   }
   return tickets;
 }
@@ -340,6 +346,7 @@ export function ticketsToDraft(tickets: EventTicket[]): EventTicketDraft[] {
     clientId: `ticket-${index}-${ticket.key}`,
     name: ticket.name,
     price: String(ticket.price),
+    expected: ticket.expected == null ? '' : String(ticket.expected),
   }));
 }
 

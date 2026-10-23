@@ -23,6 +23,7 @@ import {
   PanelLeftOpen,
   Quote,
   ScanLine,
+  Ticket,
   School,
   ShieldCheck,
   ShoppingBag,
@@ -33,7 +34,7 @@ import {
   Receipt,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { ADMIN_ACCESS_RIGHT, ADMIN_PAGE, MINISTRY_ADMIN_OPTIONS, canAccessAdminPage, canAccessMinistry, canAccessMinistryEvents, canAccessRight } from '@/lib/admin-pages';
+import { ADMIN_ACCESS_RIGHT, ADMIN_PAGE, MINISTRY_ADMIN_OPTIONS, canAccessAdminPage, canAccessEventCheckIn, canAccessEventPaymentPath, canAccessMinistry, canAccessMinistryEvents, canAccessRight } from '@/lib/admin-pages';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useAdminTheme } from '@/hooks/use-admin-theme';
 import type { AdminPageKey } from '@/lib/admin-pages';
@@ -70,8 +71,9 @@ const NAV_ITEMS: NavItem[] = [
 const PAYMENTS_ITEMS: NavItem[] = [
   { label: 'Giving dashboard', href: '/admin/giving/dashboard', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Wallet },
   { label: 'Giving payments', href: '/admin/giving/payments', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Receipt },
-  { label: 'Events payment dashboard', href: '/admin/event-payments/dashboard', icon: Wallet },
-  { label: 'Events payment', href: '/admin/event-payments', icon: Receipt },
+  { label: 'Events payment dashboard', href: '/admin/event-payments/dashboard', pageKey: ADMIN_PAGE.EVENT_PAYMENTS_DASHBOARD, icon: Wallet },
+  { label: 'Events payment', href: '/admin/event-payments', pageKey: ADMIN_PAGE.EVENT_PAYMENTS, icon: Receipt },
+  { label: 'Ticket KPIs', href: '/admin/event-payments/tickets', pageKey: ADMIN_PAGE.EVENT_TICKET_KPIS, icon: Ticket },
   { label: 'Store dashboard', href: '/admin/store/dashboard', pageKey: ADMIN_PAGE.STORE_PAGE, icon: LayoutDashboard },
   { label: 'Book store payments', href: '/admin/store/payments', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
 ];
@@ -202,12 +204,10 @@ export default function AdminSidebar() {
       if (!item.pageKey) return true;
       return canAccessAdminPage(user, item.pageKey);
     };
-    const canSeeEventPayments = canAccessAdminPage(user, ADMIN_PAGE.EVENT_PAYMENTS) || canAccessAdminPage(user, ADMIN_PAGE.EVENTS);
-
     const nav = NAV_ITEMS.filter(canSee);
     const site = SITE_PAGE_ITEMS.filter(canSee);
     const payments = PAYMENTS_ITEMS.filter((item) => {
-      if (item.href.startsWith('/admin/event-payments')) return canSeeEventPayments;
+      if (item.href.startsWith('/admin/event-payments')) return canAccessEventPaymentPath(user, item.href);
       return canSee(item);
     });
 
@@ -221,10 +221,8 @@ export default function AdminSidebar() {
       settings.push({ label: 'User Management', href: '/admin/users', icon: Users });
     }
 
-    const canCheckInTickets = canAccessAdminPage(user, ADMIN_PAGE.EVENTS)
-      || MINISTRY_ADMIN_OPTIONS.some((ministry) => canAccessMinistryEvents(user, ministry.key));
     const ministryEvents = [
-      ...(canCheckInTickets
+      ...(canAccessEventCheckIn(user)
         ? [{ label: 'Ticket check-in', href: '/admin/event-check-in', icon: ScanLine }]
         : []),
       ...MINISTRY_EVENT_ITEMS.filter((item) => canAccessMinistryEvents(user, item.ministryKey)),

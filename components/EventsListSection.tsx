@@ -625,6 +625,16 @@ export default function EventsListSection({
         });
 
         setPaymentSuccess('Payment started. When PayChangu confirms it, every ticket and QR code will be emailed to you.');
+        setPaymentForm({
+          fullName: '',
+          phone: '',
+          phoneCountry: '+265',
+          email: '',
+          paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
+        });
+        setPaymentAnswers(emptyAnswers(dynamicPaymentForm));
+        setTicketQuantity(1);
+        setSelectedTicketKey(paymentEvent.tickets?.[0]?.key || '');
         return;
       }
 
@@ -663,6 +673,16 @@ export default function EventsListSection({
       });
 
       setPaymentSuccess('Complete your payment in the PayChangu window.');
+      setPaymentForm({
+        fullName: '',
+        phone: '',
+        phoneCountry: '+265',
+        email: '',
+        paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
+      });
+      setPaymentAnswers(emptyAnswers(dynamicPaymentForm));
+      setTicketQuantity(1);
+      setSelectedTicketKey(paymentEvent.tickets?.[0]?.key || '');
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : 'Failed to initialize payment.');
     } finally {

@@ -209,6 +209,10 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
         meta: { eventId: event.id, chargeId, ticketKey: ticket?.key },
       });
       setPaymentSuccess('Payment started. When PayChangu confirms it, every ticket and QR code will be emailed to you.');
+      setPaymentForm({ fullName: '', email: '', phone: '', phoneCountry: '+265' });
+      setPaymentAnswers(emptyAnswers(form));
+      setTicketQuantity(1);
+      setTicketKey(event.tickets[0]?.key || '');
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : 'Failed to start payment.');
     } finally {

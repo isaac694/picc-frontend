@@ -128,6 +128,43 @@ const normalizeAccessGroupsResponse = (value: unknown): AccessRightGroup[] => {
     .filter((group): group is AccessRightGroup => Boolean(group));
 };
 
+const mergeMissingCatalogRights = (groups: AccessRightGroup[]): AccessRightGroup[] => {
+  const present = new Set(
+    groups.flatMap((group) => [...group.assigned, ...group.unassigned].map((right) => right.name)),
+  );
+  const next = groups.map((group) => ({
+    ...group,
+    assigned: [...group.assigned],
+    unassigned: [...group.unassigned],
+  }));
+
+  ADMIN_ACCESS_RIGHT_OPTIONS.forEach((catalog) => {
+    const missing = catalog.rights.filter((right) => !present.has(right.name));
+    if (!missing.length) return;
+    let group = next.find((item) => item.key === catalog.entity || item.name === catalog.label);
+    if (!group) {
+      group = {
+        key: catalog.entity,
+        name: catalog.label,
+        description: catalog.description,
+        assigned: [],
+        unassigned: [],
+      };
+      next.push(group);
+    }
+    missing.forEach((right) => {
+      group?.unassigned.push({
+        id: right.name,
+        name: right.name,
+        description: right.description,
+        sortOrder: group.unassigned.length,
+      });
+    });
+  });
+
+  return next;
+};
+
 const fallbackAccessGroups = (): AccessRightGroup[] =>
   ADMIN_ACCESS_RIGHT_OPTIONS.map((group) => ({
     key: group.entity,
@@ -506,7 +543,7 @@ export default function AdminRolesPage() {
       }
 
       const groups = normalizeAccessGroupsResponse(data);
-      setAccessGroups(groups.length ? groups : fallbackAccessGroups());
+      setAccessGroups(mergeMissingCatalogRights(groups.length ? groups : fallbackAccessGroups()));
       const normalized = normalizeRoleAccessResponse(data, role.accessRights || []);
       setAssignedRights(new Set(normalized));
       setOriginalAssignedRights(new Set(normalized));

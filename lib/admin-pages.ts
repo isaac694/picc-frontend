@@ -16,6 +16,9 @@ export const ADMIN_PAGE = {
   SERMONS_PAGE: 'SERMONS_PAGE',
   GIVE_PAGE: 'GIVE_PAGE',
   EVENT_PAYMENTS: 'EVENT_PAYMENTS',
+  EVENT_PAYMENTS_DASHBOARD: 'EVENT_PAYMENTS_DASHBOARD',
+  EVENT_TICKET_KPIS: 'EVENT_TICKET_KPIS',
+  EVENT_CHECK_IN: 'EVENT_CHECK_IN',
   LOCATIONS_PAGE: 'LOCATIONS_PAGE',
   HOME_CHURCHES_PAGE: 'HOME_CHURCHES_PAGE',
   FAQS: 'FAQS',
@@ -66,7 +69,10 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.FORMS_PAGE, label: 'Forms Page' },
   { key: ADMIN_PAGE.SERMONS_PAGE, label: 'Sermons Page' },
   { key: ADMIN_PAGE.GIVE_PAGE, label: 'Give Page' },
+  { key: ADMIN_PAGE.EVENT_PAYMENTS_DASHBOARD, label: 'Events payment dashboard' },
   { key: ADMIN_PAGE.EVENT_PAYMENTS, label: 'Events payment' },
+  { key: ADMIN_PAGE.EVENT_TICKET_KPIS, label: 'Ticket KPIs' },
+  { key: ADMIN_PAGE.EVENT_CHECK_IN, label: 'Ticket check-in' },
   { key: ADMIN_PAGE.LOCATIONS_PAGE, label: 'Church Locations' },
   { key: ADMIN_PAGE.HOME_CHURCHES_PAGE, label: 'Zones & Home Churches' },
   { key: ADMIN_PAGE.FAQS, label: 'FAQ (Footer)' },
@@ -293,6 +299,28 @@ export function canAccessMinistry(user: AdminUser | null, ministryKey: string): 
 
   const list = Array.isArray(user.adminPageAccess) ? user.adminPageAccess : [];
   return list.includes(ministryAdminAccessKey(ministryKey));
+}
+
+export function eventPaymentPageForPath(pathname: string | null): AdminPageKey | null {
+  const path = pathname || '';
+  if (path.startsWith('/admin/event-payments/tickets')) return ADMIN_PAGE.EVENT_TICKET_KPIS;
+  if (path.startsWith('/admin/event-payments/dashboard')) return ADMIN_PAGE.EVENT_PAYMENTS_DASHBOARD;
+  if (path.startsWith('/admin/event-payments')) return ADMIN_PAGE.EVENT_PAYMENTS;
+  return null;
+}
+
+export function canAccessEventPaymentPath(user: AdminUser | null, pathname: string | null): boolean {
+  const page = eventPaymentPageForPath(pathname);
+  if (!page) return false;
+  if (canAccessAdminPage(user, page)) return true;
+  if (canAccessAdminPage(user, ADMIN_PAGE.EVENT_PAYMENTS)) return true;
+  return canAccessAdminPage(user, ADMIN_PAGE.EVENTS);
+}
+
+export function canAccessEventCheckIn(user: AdminUser | null): boolean {
+  if (canAccessAdminPage(user, ADMIN_PAGE.EVENT_CHECK_IN)) return true;
+  if (canAccessAdminPage(user, ADMIN_PAGE.EVENTS)) return true;
+  return MINISTRY_ADMIN_OPTIONS.some((ministry) => canAccessMinistryEvents(user, ministry.key));
 }
 
 export function canAccessAdminPage(user: AdminUser | null, page: AdminPageKey): boolean {

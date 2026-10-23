@@ -71,9 +71,10 @@ const DEFAULT_EVENT_DRAFT = {
   requiresRegistration: false,
   acceptsOnlinePayment: false,
   paymentAmount: '',
+  paymentTicketCount: '',
   paymentCurrency: 'MWK',
   tickets: [] as EventTicketDraft[],
-  ministryKey: '',
+  ministryKey: 'general',
   registrationForm: { ...EMPTY_EVENT_FORM_DRAFT, fields: [] } as EventFormDraft,
   paymentForm: { ...EMPTY_EVENT_FORM_DRAFT, fields: [] } as EventFormDraft,
 };
@@ -243,7 +244,7 @@ export default function EventsAdminPage() {
                   : '',
             paymentCurrency: typeof event.paymentCurrency === 'string' ? event.paymentCurrency : 'MWK',
             tickets: parseEventTickets(event.tickets),
-            ministryKey: typeof event.ministryKey === 'string' ? event.ministryKey : '',
+            ministryKey: typeof event.ministryKey === 'string' && event.ministryKey ? event.ministryKey : 'general',
             ministryName:
               typeof event.ministryName === 'string' && event.ministryName
                 ? event.ministryName
@@ -286,9 +287,10 @@ export default function EventsAdminPage() {
       requiresRegistration: event.requiresRegistration,
       acceptsOnlinePayment: event.acceptsOnlinePayment,
       paymentAmount: event.tickets.length ? '' : event.paymentAmount,
+      paymentTicketCount: '',
       paymentCurrency: event.paymentCurrency,
       tickets: ticketsToDraft(event.tickets),
-      ministryKey: event.ministryKey,
+      ministryKey: event.ministryKey || 'general',
       registrationForm: ensureRegistrationDraft(formToDraft(event.registrationForm)),
       paymentForm: formToDraft(event.paymentForm),
     });
@@ -334,6 +336,10 @@ export default function EventsAdminPage() {
       setStatus('Add a ticket type and price, or enter one payment amount.');
       return;
     }
+    if (eventDraft.acceptsOnlinePayment && ticketRows.length === 0 && (!Number.isInteger(Number(eventDraft.paymentTicketCount)) || Number(eventDraft.paymentTicketCount) < 1)) {
+      setStatus('Enter the number of tickets for this event.');
+      return;
+    }
     if (eventDraft.acceptsOnlinePayment) {
       for (const ticket of ticketRows) {
         if (!ticket.name.trim()) {
@@ -344,12 +350,13 @@ export default function EventsAdminPage() {
           setStatus(`Enter a price greater than 0 for ${ticket.name.trim()}.`);
           return;
         }
+        if (!Number.isInteger(Number(ticket.expected)) || Number(ticket.expected) < 1) {
+          setStatus(`Enter the number of tickets for ${ticket.name.trim() || 'this ticket'}.`);
+          return;
+        }
       }
     }
-    if (!eventDraft.ministryKey) {
-      setStatus('Please choose the ministry for this event.');
-      return;
-    }
+    const isGeneralEvent = !eventDraft.ministryKey || eventDraft.ministryKey === 'general';
     const registrationForm = eventDraft.requiresRegistration ? draftToPayload(eventDraft.registrationForm) : { form: null };
     if ('error' in registrationForm) {
       setStatus(registrationForm.error);
@@ -369,14 +376,24 @@ export default function EventsAdminPage() {
       location: eventDraft.location.trim(),
       ...(eventDraft.description.trim() ? { description: eventDraft.description.trim() } : {}),
       ...(eventDraft.image ? { imageUrl: eventDraft.image } : {}),
-      ministryKey: eventDraft.ministryKey,
+      ministryKey: isGeneralEvent ? null : eventDraft.ministryKey,
       requiresRegistration: eventDraft.requiresRegistration,
       registrationForm: eventFormForApi(registrationForm.form),
       acceptsOnlinePayment: eventDraft.acceptsOnlinePayment,
       paymentAmount: eventDraft.acceptsOnlinePayment && ticketRows.length === 0 ? Number(eventDraft.paymentAmount) : null,
       paymentCurrency: eventDraft.acceptsOnlinePayment ? eventDraft.paymentCurrency : 'MWK',
       tickets: eventDraft.acceptsOnlinePayment
-        ? ticketRows.map((ticket) => ({ name: ticket.name.trim(), price: Number(ticket.price) }))
+        ? (ticketRows.length
+          ? ticketRows.map((ticket) => ({
+            name: ticket.name.trim(),
+            price: Number(ticket.price),
+            expected: Number(ticket.expected),
+          }))
+          : [{
+            name: 'Standard',
+            price: Number(eventDraft.paymentAmount),
+            expected: Number(eventDraft.paymentTicketCount),
+          }])
         : [],
       paymentForm: eventFormForApi(paymentForm.form),
       isPublished: selectedEventId
@@ -478,14 +495,14 @@ export default function EventsAdminPage() {
         className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
       />
       <label className="grid gap-2 text-sm text-foreground/70">
-        <span>Ministry</span>
+        <span>Event for</span>
         <select
-          value={eventDraft.ministryKey}
+          value={eventDraft.ministryKey || 'general'}
           onChange={(event) => setEventDraft((prev) => ({ ...prev, ministryKey: event.target.value }))}
           className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-          aria-label="Ministry"
+          aria-label="Event for"
         >
-          <option value="">Select ministry</option>
+          <option value="general">General</option>
           {EVENT_MINISTRIES.map((ministry) => (
             <option key={ministry.key} value={ministry.key}>
               {ministry.name}
@@ -622,6 +639,7 @@ export default function EventsAdminPage() {
               ...prev,
               acceptsOnlinePayment: event.target.checked,
               paymentAmount: event.target.checked ? prev.paymentAmount : '',
+              paymentTicketCount: event.target.checked ? prev.paymentTicketCount : '',
               paymentCurrency: event.target.checked ? prev.paymentCurrency : 'MWK',
               tickets: event.target.checked ? prev.tickets : [],
               paymentForm: event.target.checked ? prev.paymentForm : { ...EMPTY_EVENT_FORM_DRAFT, fields: [] },
@@ -647,7 +665,7 @@ export default function EventsAdminPage() {
               </select>
             </div>
             {eventDraft.tickets.map((ticket) => (
-              <div key={ticket.clientId} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_160px_auto]">
+              <div key={ticket.clientId} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_140px_140px_auto]">
                 <input
                   type="text"
                   placeholder="Ticket name"
@@ -678,6 +696,23 @@ export default function EventsAdminPage() {
                   }
                   className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
                 />
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  placeholder="Number of tickets"
+                  value={ticket.expected}
+                  onChange={(event) =>
+                    setEventDraft((prev) => ({
+                      ...prev,
+                      tickets: prev.tickets.map((row) =>
+                        row.clientId === ticket.clientId ? { ...row, expected: event.target.value } : row,
+                      ),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
                 <button
                   type="button"
                   onClick={() =>
@@ -699,7 +734,7 @@ export default function EventsAdminPage() {
                   ...prev,
                   tickets: [
                     ...prev.tickets,
-                    { clientId: `ticket-${Date.now()}-${prev.tickets.length}`, name: '', price: '' },
+                    { clientId: `ticket-${Date.now()}-${prev.tickets.length}`, name: '', price: '', expected: '' },
                   ],
                 }))
               }
@@ -708,15 +743,27 @@ export default function EventsAdminPage() {
               Add ticket type
             </button>
             {eventDraft.tickets.length === 0 ? (
-              <input
-                type="number"
-                min="1"
-                step="any"
-                placeholder="One price for everyone"
-                value={eventDraft.paymentAmount}
-                onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentAmount: event.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  placeholder="Number of tickets"
+                  value={eventDraft.paymentTicketCount}
+                  onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentTicketCount: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  step="any"
+                  placeholder="One price for everyone"
+                  value={eventDraft.paymentAmount}
+                  onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentAmount: event.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                />
+              </div>
             ) : (
               <p className="text-xs text-foreground/60">Each ticket is charged at its own price.</p>
             )}
@@ -848,7 +895,7 @@ export default function EventsAdminPage() {
                   {filteredEvents.map((event) => (
                     <tr key={event.id} className="border-t border-border/60 align-middle">
                       <td className="px-3 py-3 font-medium text-foreground">{event.title || 'Untitled event'}</td>
-                      <td className="px-3 py-3 text-foreground/70">{event.ministryName || '—'}</td>
+                      <td className="px-3 py-3 text-foreground/70">{event.ministryName || 'General'}</td>
                       <td className="px-3 py-3 whitespace-nowrap text-foreground/70">{formatEventDateLabel(event)}</td>
                       <td className="px-3 py-3 text-foreground/70">{event.location || '—'}</td>
                       <td className="px-3 py-3">

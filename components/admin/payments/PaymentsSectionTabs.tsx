@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { canAccessEventPaymentPath } from '@/lib/admin-pages';
 import { cn } from '@/lib/utils';
 
 type Tab = { label: string; href: string };
@@ -18,6 +20,7 @@ const STORE_TABS: Tab[] = [
 const EVENT_TABS: Tab[] = [
   { label: 'Events payment dashboard', href: '/admin/event-payments/dashboard' },
   { label: 'Events payment', href: '/admin/event-payments' },
+  { label: 'Ticket KPIs', href: '/admin/event-payments/tickets' },
 ];
 
 export function GivingPaymentsTabs({ activePath }: { activePath: string }) {
@@ -29,7 +32,9 @@ export function StorePaymentsTabs({ activePath }: { activePath: string }) {
 }
 
 export function EventPaymentsTabs({ activePath }: { activePath: string }) {
-  return <PaymentsTabs tabs={EVENT_TABS} activePath={activePath} exact />;
+  const { user } = useAdminAuth();
+  const tabs = user ? EVENT_TABS.filter((tab) => canAccessEventPaymentPath(user, tab.href)) : EVENT_TABS;
+  return <PaymentsTabs tabs={tabs} activePath={activePath} exact />;
 }
 
 function PaymentsTabs({ tabs, activePath, exact = false }: { tabs: Tab[]; activePath: string; exact?: boolean }) {

@@ -9,8 +9,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   ADMIN_ACCESS_RIGHT,
   ADMIN_PAGE,
-  MINISTRY_ADMIN_OPTIONS,
   canAccessAdminPage,
+  canAccessEventCheckIn,
+  canAccessEventPaymentPath,
   canAccessMinistry,
   canAccessMinistryEvents,
   canAccessRight,
@@ -60,6 +61,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/zones': { title: 'Zones & Home Churches', subtitle: 'Manage zonal pastors and home church areas for the locations page.' },
   '/admin/event-check-in': { title: 'Ticket check-in', subtitle: 'Scan or enter a ticket code at the event entrance.' },
   '/admin/event-payments/dashboard': { title: 'Events payment dashboard', subtitle: 'Ticket sales, completion, and recent event payments.' },
+  '/admin/event-payments/tickets': { title: 'Ticket KPIs', subtitle: 'Sold, remaining, checked in, and not checked in for each ticket package.' },
   '/admin/event-payments': { title: 'Events payment', subtitle: 'All event ticket payments.' },
 };
 
@@ -157,13 +159,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     if (requiredMinistryKey) return canAccessMinistry(user, requiredMinistryKey);
     const ministryEventKey = ministryEventKeyFromAdminPath(pathname);
     if (ministryEventKey) return canAccessMinistryEvents(user, ministryEventKey);
-    if ((pathname || '').startsWith('/admin/event-check-in')) {
-      return canAccessAdminPage(user, ADMIN_PAGE.EVENTS)
-        || MINISTRY_ADMIN_OPTIONS.some((ministry) => canAccessMinistryEvents(user, ministry.key));
-    }
-    if ((pathname || '').startsWith('/admin/event-payments')) {
-      return canAccessAdminPage(user, ADMIN_PAGE.EVENT_PAYMENTS) || canAccessAdminPage(user, ADMIN_PAGE.EVENTS);
-    }
+    if ((pathname || '').startsWith('/admin/event-check-in')) return canAccessEventCheckIn(user);
+    if ((pathname || '').startsWith('/admin/event-payments')) return canAccessEventPaymentPath(user, pathname);
     if (!requiredPage) return true;
     return canAccessAdminPage(user, requiredPage);
   })();

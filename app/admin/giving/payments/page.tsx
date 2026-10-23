@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Search } from 'lucide-react';
+import { FileText, Printer, RefreshCw, Search } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { adminErrorToast } from '@/components/admin/admin-toast';
 import { GivingPaymentsTabs } from '@/components/admin/payments/PaymentsSectionTabs';
 import { AdminListPagination } from '@/components/admin/payments/AdminListPagination';
 import { buildAdminQuery, formatAdminDate, formatMoney, paymentStatusBadgeClass } from '@/lib/admin-payments';
+import { downloadGivingReportPdf, printGivingReport, type GivingReport } from '@/lib/giving-report';
 
 type GivingRow = {
   id: string;
@@ -34,6 +35,31 @@ type GivingRow = {
 
 const PAGE_SIZE = 50;
 
+function inputDate(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function monthRange() {
+  const now = new Date();
+  return {
+    start: inputDate(new Date(now.getFullYear(), now.getMonth(), 1)),
+    end: inputDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
+}
+
+function weekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const start = new Date(now);
+  start.setDate(now.getDate() + mondayOffset);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start: inputDate(start), end: inputDate(end) };
+}
+
 export default function GivingPaymentsPage() {
   const { token } = useAdminAuth();
   const [rows, setRows] = useState<GivingRow[]>([]);
@@ -46,6 +72,11 @@ export default function GivingPaymentsPage() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<GivingRow | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const initialRange = monthRange();
+  const [reportStart, setReportStart] = useState(initialRange.start);
+  const [reportEnd, setReportEnd] = useState(initialRange.end);
+  const [reportStatus, setReportStatus] = useState('completed');
+  const [reportBusy, setReportBusy] = useState<'print' | 'pdf' | ''>('');
 
   const fetchList = useCallback(async () => {
     if (!token) return;
@@ -78,6 +109,41 @@ export default function GivingPaymentsPage() {
   useEffect(() => {
     void fetchList();
   }, [fetchList]);
+
+  const loadReport = async () => {
+    if (!token) return null;
+    if (!reportStart || !reportEnd) {
+      adminErrorToast('Enter a start date and an end date.');
+      return null;
+    }
+    if (reportStart > reportEnd) {
+      adminErrorToast('The start date must be on or before the end date.');
+      return null;
+    }
+    const response = await apiFetch(`/api/admin/giving/report?startDate=${reportStart}&endDate=${reportEnd}&status=${reportStatus}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      adminErrorToast(data.error || 'Unable to build the giving report.');
+      return null;
+    }
+    return data as GivingReport;
+  };
+
+  const runReport = async (format: 'print' | 'pdf') => {
+    setReportBusy(format);
+    try {
+      const report = await loadReport();
+      if (!report) return;
+      if (format === 'print') printGivingReport(report);
+      else await downloadGivingReportPdf(report);
+    } catch {
+      adminErrorToast('Unable to build the giving report.');
+    } finally {
+      setReportBusy('');
+    }
+  };
 
   const openDetail = async (id: string) => {
     if (!token) return;
@@ -114,6 +180,51 @@ export default function GivingPaymentsPage() {
           Refresh
         </Button>
       </div>
+
+      <section className="rounded-lg border border-border/60 bg-card p-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Giving report</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">Totals by offering type for a week, a month, or dates you choose.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => { const range = weekRange(); setReportStart(range.start); setReportEnd(range.end); }}>
+              This week
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => { const range = monthRange(); setReportStart(range.start); setReportEnd(range.end); }}>
+              This month
+            </Button>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_160px_auto]">
+          <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Start date
+            <input type="date" value={reportStart} onChange={(event) => setReportStart(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs normal-case tracking-normal text-foreground" />
+          </label>
+          <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            End date
+            <input type="date" value={reportEnd} onChange={(event) => setReportEnd(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs normal-case tracking-normal text-foreground" />
+          </label>
+          <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Status
+            <select value={reportStatus} onChange={(event) => setReportStatus(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs normal-case tracking-normal text-foreground">
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="all">All</option>
+            </select>
+          </label>
+          <div className="flex items-end gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={Boolean(reportBusy)} onClick={() => void runReport('print')}>
+              <Printer className="h-4 w-4" />
+              {reportBusy === 'print' ? 'Preparing...' : 'Print'}
+            </Button>
+            <Button type="button" size="sm" disabled={Boolean(reportBusy)} onClick={() => void runReport('pdf')}>
+              <FileText className="h-4 w-4" />
+              {reportBusy === 'pdf' ? 'Preparing...' : 'PDF'}
+            </Button>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-2 rounded-lg border border-border/60 bg-card p-3 sm:grid-cols-2 lg:grid-cols-4">
         <FilterSelect label="Status" value={status} onChange={(v) => { setSkip(0); setStatus(v); }} options={['', 'pending', 'completed']} />
