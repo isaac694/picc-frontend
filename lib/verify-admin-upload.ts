@@ -26,9 +26,10 @@ function roleAllowsAdminUpload(role: string | null | undefined) {
   return normalized === 'ADMIN' || normalized === 'SUPER_ADMIN';
 }
 
-function hasAdminUploadAccess(user: AdminUser | null) {
+function hasAdminUploadAccess(user: AdminUser | null, extraPages: string[] = []) {
   if (!user) return false;
   if (canAccessAdminPage(user, ADMIN_PAGE.PAGE_IMAGES)) return true;
+  if (extraPages.some((page) => canAccessAdminPage(user, page))) return true;
   if (roleAllowsAdminUpload(user.role)) return true;
   if (user.isSystem || user.assignedRole?.isSystem) return true;
   return false;
@@ -101,13 +102,13 @@ async function fetchAdminUser(token: string): Promise<AdminUser | null> {
 }
 
 /** Validates Bearer token and homepage-images admin access (same rules as the admin layout). */
-export async function verifyAdminUploadToken(request: Request): Promise<boolean> {
+export async function verifyAdminUploadToken(request: Request, extraPages: string[] = []): Promise<boolean> {
   const header = request.headers.get('authorization') || '';
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
   if (!token) return false;
 
   const user = await fetchAdminUser(token);
-  if (hasAdminUploadAccess(user)) return true;
+  if (hasAdminUploadAccess(user, extraPages)) return true;
 
   const jwtRole = roleFromVerifiedToken(token) ?? roleFromUnverifiedToken(token);
   if (roleAllowsAdminUpload(jwtRole)) return true;

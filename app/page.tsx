@@ -168,8 +168,8 @@ function parseSeeYouServices(body?: string | null): ServiceLike[] {
 
 async function getDailyDevotion() {
   try {
-    const response = await apiFetch('/api/devotions/latest', {
-      next: { revalidate: 300 },
+    const response = await apiFetch('/api/devotions/today', {
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -184,8 +184,8 @@ async function getDailyDevotion() {
 
 async function getDailyConfession() {
   try {
-    const response = await apiFetch('/api/confessions/latest', {
-      cache: 'no-store',
+    const response = await apiFetch('/api/confessions/today', {
+      next: { revalidate: 60 },
     });
 
     if (!response.ok) {
@@ -246,8 +246,8 @@ async function getVideoDeclaration(): Promise<VideoDeclaration | null> {
 
 async function getQuoteOfMonth() {
   try {
-    const response = await apiFetch('/api/quote-of-month', {
-      next: { revalidate: 300 },
+    const response = await apiFetch('/api/quotes/today', {
+      next: { revalidate: 60 },
     });
     if (!response.ok) return null;
     return response.json();
@@ -352,6 +352,7 @@ export default async function HomePage() {
       month: 'long',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'Africa/Blantyre',
     }).format(new Date(devotion.publishAt))
     : null;
 
@@ -360,13 +361,24 @@ export default async function HomePage() {
       month: 'long',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'Africa/Blantyre',
     }).format(new Date(confession.publishAt))
     : null;
 
-  const confessionImageSrc = normalizeImageUrl(confession?.imageUrl) || '/home/declaration.jpeg';
+  const confessionImageSrc = normalizeImageUrl(confession?.imageUrl);
   const confessionImageUnoptimized = isLocalUpstreamImage(confessionImageSrc);
 
   const quoteImageUrl = normalizeImageUrl(quoteOfMonth?.imageUrl);
+  const quotePublishedLabel = quoteOfMonth?.publishAt
+    ? new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'Africa/Blantyre',
+      }).format(new Date(quoteOfMonth.publishAt))
+    : null;
   const heroImages = HOME_HERO_SLOTS.map((slot) => ({
     ...slot,
     src: resolveSiteImage(siteImages[slot.key], slot.fallback),
@@ -383,38 +395,8 @@ export default async function HomePage() {
     image: resolveSiteImage(siteImages[slot.key], slot.fallback),
   }));
   const livestreamImage = resolveSiteImage(siteImages['home-livestream-bg'], '/hero/hero-15.png');
-  const fallbackDevotion = {
-    title: 'God Is Good',
-    content: [
-      'PENTECOST INTERNATIONAL CHRISTIAN CENTRE',
-      '2026 - Year of THE HAND OF GOD (Ezekiel 37:1-10)',
-      'Please Find Your Daily Rivers of Hope Devotional',
-      'Monday, 30 March 2026',
-      'Yes, it is true. No matter what you may be going through, God is good. Whether or not there is money in your pocket, God is good. Whether your marriage is working or not, God is good. Whether or not your prayers have been answered, He remains good.',
-      'Truly God is good to Israel, To such as are pure in heart. Psalms 73:1 NKJV',
-      'He was good before you were born, He is good now, and He will remain good even after you are long gone. His goodness can and must not be questioned at all. There is nothing happening to you or around you that can change His goodness. In other words, regardless of what He does or does not do, He is good!',
-      'In Exodus 34:6, we see that He is abundant in goodness. His goodness is always available in abundant supply. There is no day when God will not be good to His children. Never. You can rest assured that His goodness shall be manifested in all aspects of life.',
-      "We also learn from Psalms 33:5 that the whole earth is full of God's goodness, which means that there is no place on earth where His goodness cannot reach you. No matter your geographical location, be assured that you are a candidate of His goodness.",
-      "Beloved, God's will is that we should all enjoy His goodness while we are still alive (Psalms 27:13). Yes, we must see and enjoy His goodness in the land of the living, not in the land of the dead. Therefore, the devil’s agenda of premature death against us is destroyed in Jesus' mighty name. No evil shall befall you and no plague shall come near your dwelling (Psalms 91:10).",
-      'Your Prayer Today',
-      'Father, help me walk and abide in Your goodness all the days of my life, in Jesus mighty name.',
-      'For Prayer, Counselling and More Spiritual Resources',
-      'Email: pastoresaubanda@gmail.com',
-      'Facebook: https://www.faceboohk.com/pastoresaubanda/ https://www.facebook.com/PICCWorldwide',
-      'Website: www.esaubanda.com',
-      'Get free audio messages at: esaubanda.podbean.com',
-      'If you want to be receiving these devotions, whatsapp the word "Subscribe" to +265886464774',
-      'FOR BOOK ORDERS ONLY, CONTACT GIFT KANDIDZIWA OR GIFT BANDA ON:',
-      'WhatsApp on +265995500800 / 0992849555',
-    ],
-  };
-  const devotionData = devotion ?? fallbackDevotion;
-  const fallbackDevotionDate = Array.isArray(devotionData?.content)
-    ? devotionData.content.find((line: string) =>
-      /\b(?:[A-Za-z]+,?\s+)?\d{1,2}\s+[A-Za-z]+\s+\d{4}\b/.test(line),
-    )
-    : null;
-  const displayDevotionDate = devotionDate || fallbackDevotionDate;
+  const devotionData = devotion;
+  const displayDevotionDate = devotionDate;
 
   return (
     <>
@@ -486,28 +468,50 @@ export default async function HomePage() {
                 <h2 className="text-3xl md:text-5xl font-semibold text-foreground mb-6">
                   My Confession
                 </h2>
-                {confessionDate && (
-                  <p className="mb-4 text-xs uppercase tracking-[0.25em] text-foreground/50">
-                    {confessionDate}
-                  </p>
+                {confession ? (
+                  <>
+                    {confessionDate && (
+                      <p className="mb-4 text-xs uppercase tracking-[0.25em] text-foreground/50">
+                        {confessionDate}
+                      </p>
+                    )}
+                    {confession.title ? (
+                      <p className="mb-4 text-lg text-foreground/70">{confession.title}</p>
+                    ) : null}
+                    <div className="mb-6">
+                      <Link href="/devotions#confessions">
+                        <Button className="rounded-full px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90">
+                          Past confessions
+                        </Button>
+                      </Link>
+                    </div>
+                    {confessionImageSrc ? (
+                      <div className="relative h-[400px] sm:h-[480px] md:h-[550px] overflow-hidden bg-white">
+                        <Image
+                          src={confessionImageSrc}
+                          alt={confession.title || 'Daily confession'}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          className="object-contain"
+                          unoptimized={confessionImageUnoptimized}
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-foreground/70 text-lg leading-relaxed">
+                      Today&apos;s confession has not been posted yet.
+                    </p>
+                    <div className="mt-6">
+                      <Link href="/devotions#confessions">
+                        <Button className="rounded-full px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90">
+                          Past confessions
+                        </Button>
+                      </Link>
+                    </div>
+                  </>
                 )}
-                <div className="mb-6">
-                  <Link href="/devotions#confessions">
-                    <Button className="rounded-full px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90">
-                      View Confession Archive
-                    </Button>
-                  </Link>
-                </div>
-                <div className="relative h-[400px] sm:h-[480px] md:h-[550px] overflow-hidden bg-white">
-                  <Image
-                    src={confessionImageSrc}
-                    alt="Daily declarations"
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-contain"
-                    unoptimized={confessionImageUnoptimized}
-                  />
-                </div>
               </div>
               <div className="relative rounded-[24px] sm:rounded-[28px] border border-primary/10 bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-6 sm:p-8 md:p-10 shadow-xl min-h-[360px]">
                 <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-3">
@@ -516,24 +520,41 @@ export default async function HomePage() {
                 <h2 className="text-3xl md:text-5xl font-semibold text-foreground mb-4">
                   Rivers of Hope Devotion
                 </h2>
-                <p className="text-foreground/70 text-lg leading-relaxed">
-                  {devotionData.title}
-                </p>
-                {displayDevotionDate && (
-                  <p className="mt-2 text-xs uppercase tracking-[0.25em] text-foreground/50">
-                    {displayDevotionDate}
-                  </p>
+                {devotionData ? (
+                  <>
+                    <p className="text-foreground/70 text-lg leading-relaxed">
+                      {devotionData.title}
+                    </p>
+                    {displayDevotionDate && (
+                      <p className="mt-2 text-xs uppercase tracking-[0.25em] text-foreground/50">
+                        {displayDevotionDate}
+                      </p>
+                    )}
+                    <div className="mt-6">
+                      <Link href="/devotions">
+                        <Button className="rounded-full px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90">
+                          Past devotions
+                        </Button>
+                      </Link>
+                    </div>
+                    <div className="mt-8 border-t border-primary/10 pt-6">
+                      <DevotionReadMore content={devotionData.content} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-foreground/70 text-lg leading-relaxed">
+                      Today&apos;s devotion has not been posted yet.
+                    </p>
+                    <div className="mt-6">
+                      <Link href="/devotions">
+                        <Button className="rounded-full px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90">
+                          Past devotions
+                        </Button>
+                      </Link>
+                    </div>
+                  </>
                 )}
-                <div className="mt-6">
-                  <Link href="/devotions">
-                    <Button className="rounded-full px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90">
-                      View All Devotions
-                    </Button>
-                  </Link>
-                </div>
-                <div className="mt-8 border-t border-primary/10 pt-6">
-                  <DevotionReadMore content={devotionData.content} />
-                </div>
               </div>
             </div>
           </div>
@@ -590,6 +611,7 @@ export default async function HomePage() {
           quote={quoteOfMonth?.quote}
           author={quoteOfMonth?.author}
           imageUrl={quoteImageUrl || undefined}
+          publishedLabel={quotePublishedLabel}
         />
 
         {/* Upcoming Events Section */}

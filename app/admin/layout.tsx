@@ -25,7 +25,7 @@ import { LogOut } from 'lucide-react';
 import './admin-compact.css';
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
-  '/admin': { title: 'Admin Hub', subtitle: 'Manage church content and daily operations.' },
+  '/admin': { title: 'Admin Dashboard', subtitle: 'Live counts for users, content, and payments.' },
   '/admin/users': { title: 'User Management', subtitle: 'Manage admin users and page access.' },
   '/admin/roles': { title: 'Roles', subtitle: 'Create and manage admin role definitions.' },
   '/admin/devotions': { title: 'Devotions', subtitle: 'Write and publish daily devotions.' },
@@ -38,7 +38,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/hr/applications': { title: 'Application Details', subtitle: 'Review the full applicant profile, answers, and documents.' },
   '/admin/hr/leadership': { title: 'Leadership Management', subtitle: 'Manage church administration and secretariat leadership structure.' },
   '/admin/hr': { title: 'HR Vacancies', subtitle: 'Manage vacancies and applicant reviews.' },
-  '/admin/quote-of-month': { title: 'Qoutes', subtitle: 'Manage monthly quote content.' },
+  '/admin/quote-of-month': { title: 'Qoutes', subtitle: 'Manage daily quotes.' },
   '/admin/page-images': { title: 'Homepage Images', subtitle: 'Update site imagery and page visuals.' },
   '/admin/ads-management': { title: 'Ads Management', subtitle: 'Manage promotional ads and placements.' },
   '/admin/video-declarations': { title: 'Video Declarations', subtitle: 'Publish video and audio declarations.' },
@@ -124,6 +124,37 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     return () => document.documentElement.classList.remove('admin-compact');
   }, [isLoginPage]);
 
+  useEffect(() => {
+    const root = document.querySelector('[data-admin-content]');
+    if (!root) return;
+
+    const labelTables = () => {
+      if (window.innerWidth >= 768) return;
+      root.querySelectorAll('table').forEach((table) => {
+        const headers = [...table.querySelectorAll('thead th')].map((header) =>
+          (header.textContent || '').replace(/\s+/g, ' ').trim(),
+        );
+        table.querySelectorAll('tbody tr').forEach((row) => {
+          [...row.children].forEach((cell, index) => {
+            if (!(cell instanceof HTMLTableCellElement)) return;
+            const label = headers[index] || '';
+            if (label) cell.dataset.label = label;
+            else delete cell.dataset.label;
+          });
+        });
+      });
+    };
+
+    labelTables();
+    const observer = new MutationObserver(labelTables);
+    observer.observe(root, { childList: true, subtree: true });
+    window.addEventListener('resize', labelTables);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', labelTables);
+    };
+  }, [pathname, token]);
+
   if (!token && !isLoginPage) {
     return null;
   }
@@ -172,15 +203,14 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <AdminSidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <header className="mb-2 flex h-11 shrink-0 items-center justify-between gap-3 rounded-lg border border-border/60 bg-card px-3 shadow-sm">
-              <div className="min-w-0">
-                {/* <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/70">PICC Admin</p>
-                <h1 className="truncate text-sm font-semibold leading-tight text-foreground">{meta.title}</h1> */}
+              <div className="min-w-0 md:hidden">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/70">PICC Admin</p>
+                <h1 className="truncate text-sm font-semibold leading-tight text-foreground">{meta.title}</h1>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-2">
                 {user ? (
                   <div className="hidden text-right sm:block">
                     <p className="text-xs font-medium leading-tight text-foreground">{user.name}</p>
-                    {/* <p className="text-[10px] leading-tight text-muted-foreground">{user.role}</p> */}
                   </div>
                 ) : null}
                 <Button
@@ -192,11 +222,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                   }}
                 >
                   <LogOut className="h-3.5 w-3.5" />
-                  Logout
+                  <span className="hidden sm:inline">Logout</span>
                 </Button>
               </div>
             </header>
-            <div className="flex-1 overflow-y-auto rounded-lg border border-border/60 bg-background p-3 shadow-sm">
+            <div data-admin-content className="flex-1 overflow-y-auto rounded-lg border border-border/60 bg-background p-3 pb-20 shadow-sm md:pb-3">
               {isAuthorized ? (
                 children
               ) : (

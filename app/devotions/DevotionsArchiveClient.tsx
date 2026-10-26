@@ -39,6 +39,7 @@ const formatLongDate = (value?: string | null) => {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'Africa/Blantyre',
   }).format(parsed);
 };
 
@@ -114,7 +115,7 @@ export default function DevotionsArchiveClient({
               Devotions & Confessions
             </h1>
             <p className="text-foreground/70 max-w-2xl">
-              Select a date to view the devotion and confession for that day.
+              Today&apos;s devotion and confession stay on the home page. Earlier ones are kept here.
             </p>
           </div>
 
@@ -140,27 +141,12 @@ export default function DevotionsArchiveClient({
                     setIncludeUndated(false);
                   }}
                   className={`rounded-full px-6 py-3 border transition ${
-                    !selectedDate 
-                      ? 'bg-primary text-white border-primary shadow-md' 
-                      : 'border-border/60 text-foreground hover:border-primary/60'
-                  }`}
-                >
-                  Show All Dates
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const today = new Date().toISOString().slice(0, 10);
-                    setSelectedDate(today);
-                    setIncludeUndated(false);
-                  }}
-                  className={`rounded-full px-6 py-3 border transition ${
-                    selectedDate === new Date().toISOString().slice(0, 10)
+                    !selectedDate
                       ? 'bg-primary text-white border-primary shadow-md'
                       : 'border-border/60 text-foreground hover:border-primary/60'
                   }`}
                 >
-                  Today
+                  Show all past dates
                 </button>
               </div>
             </div>
@@ -202,10 +188,10 @@ export default function DevotionsArchiveClient({
                   Declarations
                 </p>
                 <h2 className="text-3xl md:text-5xl font-semibold text-foreground mb-4">
-                  Confession Archive
+                  Past Confessions
                 </h2>
                 <p className="text-foreground/70">
-                  Showing {filteredConfessions.length} confession(s).
+                  Showing {filteredConfessions.length} past confession(s).
                 </p>
               </div>
 
@@ -213,7 +199,7 @@ export default function DevotionsArchiveClient({
                 {filteredConfessions.length === 0 ? (
                   <div className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm">
                     <p className="text-foreground/70">
-                      No confessions match that date.
+                      {isFiltering ? 'No past confession matches that date.' : 'No past confessions yet.'}
                     </p>
                   </div>
                 ) : (
@@ -251,10 +237,10 @@ export default function DevotionsArchiveClient({
                   Daily Devotions
                 </p>
                 <h2 className="text-3xl md:text-5xl font-semibold text-foreground mb-4">
-                  All Devotions
+                  Past Devotions
                 </h2>
                 <p className="text-foreground/70">
-                  Showing {filteredDevotions.length} devotion(s).
+                  Showing {filteredDevotions.length} past devotion(s).
                 </p>
               </div>
 
@@ -262,7 +248,7 @@ export default function DevotionsArchiveClient({
                 {filteredDevotions.length === 0 ? (
                   <div className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm">
                     <p className="text-foreground/70">
-                      No devotions match that date.
+                      {isFiltering ? 'No past devotion matches that date.' : 'No past devotions yet.'}
                     </p>
                     <div className="mt-4">
                       <Link href="/">

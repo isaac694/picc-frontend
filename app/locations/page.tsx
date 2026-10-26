@@ -331,11 +331,11 @@ export default function LocationsPage() {
     const fetchLocationsData = async () => {
       try {
         // Fetch branches data
-        const branchesResponse = await apiFetch('/api/site-content/locations-data');
+        const branchesResponse = await apiFetch('/api/church-locations');
         if (branchesResponse.ok) {
           const branchesData = await branchesResponse.json();
-          if (branchesData.body) {
-            setBranches(JSON.parse(branchesData.body));
+          if (Array.isArray(branchesData.locations)) {
+            setBranches(branchesData.locations);
           }
         }
 

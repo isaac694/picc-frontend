@@ -32,36 +32,6 @@ const regions = [
   { id: 'international', label: 'International' },
 ] as const;
 
-const defaultBranches: Branch[] = [
-  {
-    id: '1',
-    region: 'lilongwe',
-    name: 'PICC Headquarters',
-    pastor: 'Apostle Grace Malenga',
-    location: 'Area 49, New Gulliver',
-    phone: '+265 992 433 333',
-    email: 'apostle@picc.org.mw',
-  },
-  {
-    id: '2',
-    region: 'lilongwe',
-    name: 'Old Town Mega Church',
-    pastor: 'Pastor John Mwale',
-    location: 'Malangalanga, Lilongwe',
-    phone: '+265 882 433 333',
-    email: 'john@picc.org.mw',
-  },
-  {
-    id: '3',
-    region: 'lilongwe',
-    name: 'Hope Tabernacle Mega Church',
-    pastor: 'Prophetess Doris Banda',
-    location: 'Airwing 4ways, Lilongwe',
-    phone: '+265 999 111 222',
-    email: 'doris@picc.org.mw',
-  },
-];
-
 const IMAGE_ITEMS = [
   { key: 'locations-header-bg', label: 'Header Background', fallback: '/images/locations-header.png' },
 ] as const;
@@ -149,39 +119,22 @@ export default function LocationsAdminPage() {
   };
 
   const fetchBranches = async () => {
-    try {
-      const response = await apiFetch('/api/site-content/locations-data');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.body) {
-          setBranches(JSON.parse(data.body));
-        } else {
-          setBranches(defaultBranches);
-        }
-      } else {
-        setBranches(defaultBranches);
-      }
-    } catch (error) {
-      console.error('Failed to fetch branches:', error);
-      setBranches(defaultBranches);
-    }
-  };
-
-  const saveBranches = async (updatedBranches: Branch[]) => {
     if (!token) return;
     try {
-      await apiFetch('/api/site-content/locations-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ body: JSON.stringify(updatedBranches) }),
+      const response = await apiFetch('/api/admin/church-locations', {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setBranches(updatedBranches);
-      setStatus('Locations updated successfully.');
-    } catch {
-      setStatus('Failed to save locations.');
+      if (!response.ok) {
+        setBranches([]);
+        setStatus('Unable to load church locations.');
+        return;
+      }
+      const data = (await response.json()) as { locations?: Branch[] };
+      setBranches(Array.isArray(data.locations) ? data.locations : []);
+    } catch (error) {
+      console.error('Failed to fetch branches:', error);
+      setBranches([]);
+      setStatus('Unable to load church locations.');
     }
   };
 
@@ -255,41 +208,70 @@ export default function LocationsAdminPage() {
   };
 
   const handleSaveBranch = async () => {
+    if (!token) return;
     if (!formData.name.trim() || !formData.region) {
       setStatus('Please fill in at least the branch name and region.');
       return;
     }
 
     setSaving(true);
-    const updatedBranches = [...branches];
-    if (editingBranch) {
-      const index = updatedBranches.findIndex(b => b.id === editingBranch.id);
-      if (index !== -1) {
-        updatedBranches[index] = { ...editingBranch, ...formData };
-      }
-    } else {
-      const newBranch: Branch = {
-        id: Date.now().toString(),
-        ...formData,
-      };
-      updatedBranches.push(newBranch);
-    }
+    setStatus('');
+    const payload = {
+      region: formData.region,
+      name: formData.name.trim(),
+      pastor: formData.pastor.trim(),
+      location: formData.location.trim(),
+      phone: formData.phone.trim(),
+      email: formData.email.trim(),
+    };
 
     try {
-      await saveBranches(updatedBranches);
+      const url = editingBranch
+        ? `/api/admin/church-locations/${encodeURIComponent(editingBranch.id)}`
+        : '/api/admin/church-locations';
+      const response = await apiFetch(url, {
+        method: editingBranch ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        setStatus(data?.error || 'Failed to save location.');
+        return;
+      }
+      await fetchBranches();
+      setStatus(editingBranch ? 'Location updated.' : 'Location added.');
       setDialogOpen(false);
       resetBranchForm();
+    } catch {
+      setStatus('Failed to save location.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteBranch = async (branchId: string) => {
-    const updatedBranches = branches.filter(b => b.id !== branchId);
-    await saveBranches(updatedBranches);
-    if (editingBranch?.id === branchId) {
-      setDialogOpen(false);
-      resetBranchForm();
+    if (!token) return;
+    try {
+      const response = await apiFetch(`/api/admin/church-locations/${encodeURIComponent(branchId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok && response.status !== 204) {
+        setStatus('Failed to delete location.');
+        return;
+      }
+      await fetchBranches();
+      setStatus('Location deleted.');
+      if (editingBranch?.id === branchId) {
+        setDialogOpen(false);
+        resetBranchForm();
+      }
+    } catch {
+      setStatus('Failed to delete location.');
     }
   };
 

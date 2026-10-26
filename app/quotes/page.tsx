@@ -5,13 +5,13 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Quotes Archive | PICC',
-  description: 'A collection of monthly quotes and spiritual wisdom from Pentecost International Christian Centre.',
+  description: 'Past quotes and spiritual wisdom from Pentecost International Christian Centre.',
 };
 
 async function getQuotes() {
   try {
-    const response = await apiFetch('/api/quotes', {
-      next: { revalidate: 3600 },
+    const response = await apiFetch('/api/quotes?archive=1', {
+      next: { revalidate: 60 },
     });
 
     if (response.ok) {
@@ -24,16 +24,6 @@ async function getQuotes() {
     }
   } catch (error) {
     console.error('Failed to fetch quotes archive:', error);
-  }
-
-  try {
-    const response = await apiFetch('/api/quote-of-month', { next: { revalidate: 3600 } });
-    if (response.ok) {
-      const record = normalizeQuoteRecord(await response.json());
-      if (record) return [mapQuoteForArchive(record)];
-    }
-  } catch (error) {
-    console.error('Failed to fetch fallback quote:', error);
   }
 
   return [];

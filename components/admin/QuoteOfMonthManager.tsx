@@ -7,35 +7,33 @@ import { Button } from '@/components/ui/button';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { SchoolAdminDialogShell, SchoolAdminStatusBanner } from '@/components/admin/school-admin-dialog-shell';
 import {
-  formatQuoteMonth,
-  getUtcYearMonth,
-  monthInputValue,
+  formatQuoteDateTime,
+  isQuoteLiveToday,
   normalizeQuoteRecord,
-  parseMonthInput,
   quoteImagePathForApi,
   resolveQuoteImageUrl,
   type QuoteRecord,
 } from '@/lib/quotes';
+import { getDateTimeInputValueInMalawi, getTodayDateInputValueInMalawi, toMalawiIsoInstant } from '@/lib/timezone';
 import { ExternalLink, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 
 type QuoteDraft = {
   quote: string;
   author: string;
   imageUrl: string;
-  activeYear: number;
-  activeMonth: number;
+  date: string;
+  time: string;
 };
 
 const ADMIN_QUOTES = '/api/admin/quotes';
 
 function emptyDraft(): QuoteDraft {
-  const { year, month } = getUtcYearMonth();
   return {
     quote: '',
     author: '',
     imageUrl: '',
-    activeYear: year,
-    activeMonth: month,
+    date: getTodayDateInputValueInMalawi(),
+    time: '01:00',
   };
 }
 
@@ -54,15 +52,13 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
   const [draft, setDraft] = useState<QuoteDraft>(emptyDraft);
   const [uploadName, setUploadName] = useState('');
 
-  const utcNow = getUtcYearMonth();
-
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setStatus('');
     try {
       const [adminRes, publicRes] = await Promise.all([
         apiFetch(ADMIN_QUOTES, { headers: { Authorization: `Bearer ${token}` } }),
-        apiFetch('/api/quote-of-month'),
+        apiFetch('/api/quotes/today'),
       ]);
 
       if (adminRes.ok) {
@@ -70,7 +66,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
         const list = Array.isArray(data.quotes)
           ? data.quotes.map(normalizeQuoteRecord).filter((q): q is QuoteRecord => Boolean(q))
           : [];
-        list.sort((a, b) => b.activeYear - a.activeYear || b.activeMonth - a.activeMonth);
+        list.sort((a, b) => new Date(b.publishAt).getTime() - new Date(a.publishAt).getTime());
         setQuotes(list);
       } else {
         setQuotes([]);
@@ -113,13 +109,14 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
   };
 
   const openEditDialog = (item: QuoteRecord) => {
+    const when = getDateTimeInputValueInMalawi(item.publishAt);
     setEditingId(item.id);
     setDraft({
       quote: item.quote,
       author: item.author || '',
       imageUrl: resolveQuoteImageUrl(item.imageUrl),
-      activeYear: item.activeYear,
-      activeMonth: item.activeMonth,
+      date: when?.date || getTodayDateInputValueInMalawi(),
+      time: when?.time || '01:00',
     });
     setDialogStatus('');
     setUploadName('');
@@ -172,6 +169,10 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
       setDialogStatus('Please enter the quote text.');
       return;
     }
+    if (!draft.date || !draft.time) {
+      setDialogStatus('Please enter the date and time.');
+      return;
+    }
 
     setSaving(true);
     setDialogStatus('');
@@ -180,9 +181,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
       quote: draft.quote.trim(),
       author: draft.author.trim() || undefined,
       imageUrl: draft.imageUrl ? quoteImagePathForApi(draft.imageUrl) : null,
-      activeYear: draft.activeYear,
-      activeMonth: draft.activeMonth,
-      activeDate: monthInputValue(draft.activeYear, draft.activeMonth),
+      publishAt: toMalawiIsoInstant(draft.date, draft.time),
     };
 
     try {
@@ -198,7 +197,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
       });
 
       if (response.status === 409) {
-        setDialogStatus('A quote is already scheduled for that month. Edit that entry instead.');
+        setDialogStatus('A quote is already scheduled for that date and time. Edit that entry instead.');
         return;
       }
 
@@ -243,7 +242,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
   const requestRemove = (item: QuoteRecord) => {
     confirmDeleteToast({
       title: 'Delete this scheduled quote?',
-      description: formatQuoteMonth(item.activeYear, item.activeMonth),
+      description: formatQuoteDateTime(item.publishAt),
       onConfirm: () => void remove(item.id),
     });
   };
@@ -255,7 +254,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
       (item) =>
         item.quote.toLowerCase().includes(q) ||
         (item.author || '').toLowerCase().includes(q) ||
-        formatQuoteMonth(item.activeYear, item.activeMonth).toLowerCase().includes(q),
+        formatQuoteDateTime(item.publishAt).toLowerCase().includes(q),
     );
   }, [quotes, searchTerm]);
 
@@ -283,24 +282,33 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
         </div>
       ) : null}
 
-      <div>
-        <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
-          Schedule month (UTC) *
-        </label>
-        <input
-          type="month"
-          value={monthInputValue(draft.activeYear, draft.activeMonth)}
-          onChange={(event) => {
-            const parsed = parseMonthInput(event.target.value);
-            if (!parsed) return;
-            setDraft((prev) => ({ ...prev, activeYear: parsed.year, activeMonth: parsed.month }));
-          }}
-          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
-        />
-        <p className="mt-1 text-xs text-foreground/55">
-          Homepage shows the quote for the current UTC month ({formatQuoteMonth(utcNow.year, utcNow.month)}).
-        </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+            Date *
+          </label>
+          <input
+            type="date"
+            value={draft.date}
+            onChange={(event) => setDraft((prev) => ({ ...prev, date: event.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
+            Time *
+          </label>
+          <input
+            type="time"
+            value={draft.time}
+            onChange={(event) => setDraft((prev) => ({ ...prev, time: event.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground transition focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
       </div>
+      <p className="-mt-2 text-xs text-foreground/55">
+        The homepage shows the quote scheduled for today in Malawi time. Earlier quotes stay in the archive.
+      </p>
 
       <div>
         <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-foreground/50">
@@ -406,7 +414,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">Scheduled quotes</h2>
-              <p className="text-sm text-foreground/60">One quote per calendar month (UTC).</p>
+              <p className="text-sm text-foreground/60">Today&apos;s quote appears on the homepage. Past quotes stay in the archive.</p>
             </div>
             <Button type="button" className="shrink-0 gap-2" onClick={openAddDialog}>
               <Plus className="h-4 w-4" />
@@ -418,7 +426,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
             type="search"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search by month, quote, or author…"
+            placeholder="Search by date, quote, or author…"
             className="mb-4 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-primary/20"
           />
 
@@ -439,7 +447,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
                   <tr>
-                    <th className="px-3 py-2 font-medium">Month</th>
+                    <th className="px-3 py-2 font-medium">Date and time</th>
                     <th className="px-3 py-2 font-medium">Quote</th>
                     <th className="px-3 py-2 font-medium">Author</th>
                     <th className="px-3 py-2 font-medium">Actions</th>
@@ -447,14 +455,15 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
                 </thead>
                 <tbody>
                   {filteredQuotes.map((item) => {
-                    const isLive = item.activeYear === utcNow.year && item.activeMonth === utcNow.month;
+                    const isLive = isQuoteLiveToday(item.publishAt);
+                    const whenLabel = formatQuoteDateTime(item.publishAt);
                     return (
                       <tr key={item.id} className="border-t border-border/60 align-top">
                         <td className="whitespace-nowrap px-3 py-2">
-                          <p className="font-medium text-foreground">{formatQuoteMonth(item.activeYear, item.activeMonth)}</p>
+                          <p className="font-medium text-foreground">{whenLabel}</p>
                           {isLive ? <p className="mt-1 text-xs text-emerald-700">Live on homepage</p> : null}
                         </td>
-                        <td className="px-3 py-2 text-foreground">&ldquo;{item.quote}&rdquo;</td>
+                        <td className="whitespace-pre-wrap px-3 py-2 text-foreground">&ldquo;{item.quote}&rdquo;</td>
                         <td className="px-3 py-2 text-foreground/70">{item.author || 'No author'}</td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
@@ -462,7 +471,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
                               type="button"
                               size="icon"
                               variant="ghost"
-                              aria-label={`Edit quote for ${formatQuoteMonth(item.activeYear, item.activeMonth)}`}
+                              aria-label={`Edit quote for ${whenLabel}`}
                               onClick={() => openEditDialog(item)}
                             >
                               <Pencil className="h-4 w-4" />
@@ -472,7 +481,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
                               size="icon"
                               variant="ghost"
                               className="text-destructive hover:text-destructive"
-                              aria-label={`Delete quote for ${formatQuoteMonth(item.activeYear, item.activeMonth)}`}
+                              aria-label={`Delete quote for ${whenLabel}`}
                               disabled={deletingId === item.id}
                               onClick={() => requestRemove(item)}
                             >
@@ -491,15 +500,16 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
 
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
           <p className="mb-1 text-xs uppercase tracking-[0.3em] text-foreground/50">Homepage preview</p>
-          <p className="mb-4 text-sm text-foreground/60">
-            {formatQuoteMonth(utcNow.year, utcNow.month)} (current UTC month)
-          </p>
+          <p className="mb-4 text-sm text-foreground/60">Today in Malawi time</p>
           {liveQuote ? (
             <>
-              <p className="text-lg font-semibold leading-snug text-foreground">
+              <p className="whitespace-pre-wrap text-lg font-semibold leading-snug text-foreground">
                 &ldquo;{liveQuote.quote}&rdquo;
               </p>
               <p className="mt-2 text-sm text-foreground/60">{liveQuote.author || 'Author'}</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.2em] text-foreground/45">
+                {formatQuoteDateTime(liveQuote.publishAt)}
+              </p>
               {liveImage ? (
                 <div
                   className="mt-4 h-40 rounded-xl bg-cover bg-center"
@@ -508,7 +518,7 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
               ) : null}
             </>
           ) : (
-            <p className="text-sm text-foreground/60 italic">No quote scheduled for this month yet.</p>
+            <p className="text-sm text-foreground/60 italic">Today&apos;s quote has not been posted yet.</p>
           )}
           <Link href="/quotes" className="mt-6 inline-flex">
             <Button type="button" variant="outline" className="gap-2 rounded-full">
@@ -531,8 +541,8 @@ export default function QuoteOfMonthManager({ token }: { token: string }) {
         title={editingId ? 'Edit scheduled quote' : 'Schedule a quote'}
         description={
           editingId
-            ? 'Update the quote, author, month, or background image.'
-            : 'Pick a month and add the quote shown on the homepage for that period.'
+            ? 'Update the quote, author, date, time, or background image.'
+            : 'Pick a date and time and add the quote shown on the homepage for that day.'
         }
         saving={saving || uploadingImage}
         saveLabel={editingId ? 'Save changes' : 'Schedule quote'}

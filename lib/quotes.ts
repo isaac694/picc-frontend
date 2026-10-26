@@ -1,10 +1,12 @@
 import { resolveMediaImageUrl } from '@/lib/api';
+import { getDateInputValueInMalawi, getDateTimeInputValueInMalawi, MALAWI_TIME_ZONE } from '@/lib/timezone';
 
 export type QuoteRecord = {
   id: string;
   quote: string;
   author?: string | null;
   imageUrl?: string | null;
+  publishAt: string;
   activeYear: number;
   activeMonth: number;
   activeDate?: string | null;
@@ -25,6 +27,27 @@ export function formatQuoteMonth(year: number, month: number) {
     year: 'numeric',
     timeZone: 'UTC',
   });
+}
+
+export function formatQuoteDateTime(value?: string | null) {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: MALAWI_TIME_ZONE,
+  });
+}
+
+export function isQuoteLiveToday(publishAt?: string | null, now = new Date()) {
+  if (!publishAt) return false;
+  const parsed = new Date(publishAt);
+  if (Number.isNaN(parsed.getTime()) || parsed.getTime() > now.getTime()) return false;
+  return getDateInputValueInMalawi(parsed) === getDateInputValueInMalawi(now);
 }
 
 export function monthInputValue(year: number, month: number) {
@@ -65,9 +88,24 @@ export function normalizeQuoteRecord(raw: unknown): QuoteRecord | null {
   const item = raw as Record<string, unknown>;
   const id = typeof item.id === 'string' ? item.id : '';
   const quote = typeof item.quote === 'string' ? item.quote : '';
-  const activeYear = Number(item.activeYear);
-  const activeMonth = Number(item.activeMonth);
-  if (!id || !quote.trim() || !Number.isFinite(activeYear) || !Number.isFinite(activeMonth)) {
+  const publishAt =
+    typeof item.publishAt === 'string'
+      ? item.publishAt
+      : typeof item.activeDate === 'string' && item.activeDate.includes('T')
+        ? item.activeDate
+        : '';
+  const when = publishAt ? getDateTimeInputValueInMalawi(publishAt) : null;
+  const activeYear = Number.isFinite(Number(item.activeYear))
+    ? Number(item.activeYear)
+    : when
+      ? Number(when.date.slice(0, 4))
+      : NaN;
+  const activeMonth = Number.isFinite(Number(item.activeMonth))
+    ? Number(item.activeMonth)
+    : when
+      ? Number(when.date.slice(5, 7))
+      : NaN;
+  if (!id || !quote.trim() || !publishAt || !Number.isFinite(activeYear) || !Number.isFinite(activeMonth)) {
     return null;
   }
   return {
@@ -75,19 +113,17 @@ export function normalizeQuoteRecord(raw: unknown): QuoteRecord | null {
     quote,
     author: typeof item.author === 'string' ? item.author : null,
     imageUrl: typeof item.imageUrl === 'string' ? item.imageUrl : null,
+    publishAt,
     activeYear,
     activeMonth,
-    activeDate: typeof item.activeDate === 'string' ? item.activeDate : null,
+    activeDate: typeof item.activeDate === 'string' ? item.activeDate : publishAt,
     createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
     updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : undefined,
   };
 }
 
 export function quoteArchiveDateIso(quote: QuoteRecord) {
-  if (quote.activeYear && quote.activeMonth) {
-    return new Date(Date.UTC(quote.activeYear, quote.activeMonth - 1, 1)).toISOString();
-  }
-  return quote.createdAt || new Date().toISOString();
+  return quote.publishAt || quote.createdAt || new Date().toISOString();
 }
 
 export function mapQuoteForArchive(quote: QuoteRecord) {
@@ -97,7 +133,7 @@ export function mapQuoteForArchive(quote: QuoteRecord) {
     author: quote.author || 'PICC',
     imageUrl: resolveQuoteImageUrl(quote.imageUrl) || undefined,
     createdAt: quoteArchiveDateIso(quote),
-    monthLabel: formatQuoteMonth(quote.activeYear, quote.activeMonth),
+    monthLabel: formatQuoteDateTime(quote.publishAt),
   };
 }
 

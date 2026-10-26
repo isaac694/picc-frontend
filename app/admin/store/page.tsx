@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
@@ -10,6 +10,7 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { apiFetch } from '@/lib/api';
+import { PROJECT_BOOKS_UPLOAD_PREFIX } from '@/lib/project-page-images-upload';
 import { products, bookGenres, type Product } from '@/components/data/products';
 import { ImageIcon, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
@@ -144,6 +145,11 @@ export default function AdminStorePage() {
   const { runUpload, progress, uploading } = useMediaUpload();
   const [search, setSearch] = useState('');
   const [uploadName, setUploadName] = useState('');
+  const [pdfName, setPdfName] = useState('');
+  const [uploadTarget, setUploadTarget] = useState<'cover' | 'pdf' | ''>('');
+  const [pdfUploading, setPdfUploading] = useState(false);
+  const pdfUrlRef = useRef('');
+  const editingIdRef = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -152,6 +158,11 @@ export default function AdminStorePage() {
     setDraft(EMPTY_DRAFT);
     setEditingId(null);
     setUploadName('');
+    setPdfName('');
+    setUploadTarget('');
+    setPdfUploading(false);
+    pdfUrlRef.current = '';
+    editingIdRef.current = null;
   };
 
   const closeBookDialog = () => {
@@ -195,12 +206,75 @@ export default function AdminStorePage() {
     return () => clearTimeout(id);
   }, [token, fetchBooks]);
 
+  const uploadPdf = async (file: File) => {
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      setStatus('Upload a PDF file for the soft copy.');
+      return null;
+    }
+    if (file.size > 40 * 1024 * 1024) {
+      setStatus('The PDF must be 40MB or smaller.');
+      return null;
+    }
+    if (!token) return null;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('purpose', 'store-book');
+    setUploadTarget('pdf');
+    setPdfUploading(true);
+    try {
+      const response = await fetch('/api/uploads', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
+      if (!response.ok) {
+        setStatus(data?.error || 'PDF upload failed.');
+        return null;
+      }
+      const path = typeof data?.url === 'string' ? data.url.trim() : '';
+      if (!path.startsWith(PROJECT_BOOKS_UPLOAD_PREFIX)) {
+        setStatus('Upload did not return a local book file.');
+        return null;
+      }
+      return path;
+    } catch {
+      setStatus('PDF upload failed.');
+      return null;
+    } finally {
+      setPdfUploading(false);
+    }
+  };
+
+  const saveDownloadUrl = async (url: string) => {
+    const id = editingIdRef.current;
+    if (!id || !token) return true;
+    const response = await apiFetch(`/api/admin/store/books/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ...buildPayload(), downloadUrl: url }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      setStatus(data?.error || 'The PDF uploaded, but the book still has the previous link. Save the book to keep the uploads URL.');
+      return false;
+    }
+    setBooks((prev) => prev.map((book) => (book.id === id ? normalizeBook({ ...book, downloadUrl: url }) : book)));
+    return true;
+  };
+
   const uploadImage = async (file: File) => {
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
       setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
 
+    setUploadTarget('cover');
     try {
       return await runUpload(file, 'store');
     } catch (error) {
@@ -221,7 +295,7 @@ export default function AdminStorePage() {
     hardCopyStock: draft.hardCopyEnabled ? Number(draft.hardCopyStock) : Number(draft.hardCopyStock || 0),
     hardCopyEnabled: draft.hardCopyEnabled,
     softCopyEnabled: draft.softCopyEnabled,
-    downloadUrl: draft.downloadUrl.trim(),
+    downloadUrl: (pdfUrlRef.current.startsWith(PROJECT_BOOKS_UPLOAD_PREFIX) ? pdfUrlRef.current : draft.downloadUrl).trim(),
     bookContent: draft.bookContent.trim(),
     sortOrder: Number(draft.sortOrder || 0),
     isActive: draft.isActive,
@@ -246,8 +320,9 @@ export default function AdminStorePage() {
     setStatus('');
 
     try {
-      const response = await apiFetch(editingId ? `/api/admin/store/books/${editingId}` : '/api/admin/store/books', {
-        method: editingId ? 'PUT' : 'POST',
+      const id = editingIdRef.current;
+      const response = await apiFetch(id ? `/api/admin/store/books/${id}` : '/api/admin/store/books', {
+        method: id ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -262,7 +337,7 @@ export default function AdminStorePage() {
       await fetchBooks();
       setDialogOpen(false);
       resetEditor();
-      setStatus(editingId ? 'Book updated.' : 'Book created.');
+      setStatus(id ? 'Book updated.' : 'Book created.');
     } catch {
       setStatus('Unable to save book.');
     } finally {
@@ -271,7 +346,11 @@ export default function AdminStorePage() {
   };
 
   const startEditing = (book: StoreBook) => {
-    setEditingId(book.isBuiltIn ? null : book.id);
+    const id = book.isBuiltIn ? null : book.id;
+    editingIdRef.current = id;
+    setEditingId(id);
+    const savedPdf = book.downloadUrl || '';
+    pdfUrlRef.current = savedPdf.startsWith(PROJECT_BOOKS_UPLOAD_PREFIX) ? savedPdf : '';
     setDraft(toDraft(book));
     setUploadName('');
     setStatus(book.isBuiltIn ? 'Save this built-in book to customize it for the store.' : '');
@@ -432,7 +511,7 @@ export default function AdminStorePage() {
         }}
         title={editingId ? 'Edit book' : 'Create book'}
         description="Change prices, covers, and soft-copy settings."
-        saving={isSaving}
+        saving={isSaving || uploading || pdfUploading}
         saveLabel={editingId ? 'Save book' : 'Create book'}
         onSave={() => void saveBook()}
         onCancel={closeBookDialog}
@@ -570,16 +649,7 @@ export default function AdminStorePage() {
                   className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
                 />
                 {uploadName && <p className="mt-2 text-xs text-foreground/60">Selected: {uploadName}</p>}
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="store-book-download-url" className="text-sm font-medium text-foreground">Soft copy download URL</label>
-                <input
-                  id="store-book-download-url"
-                  value={draft.downloadUrl}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, downloadUrl: event.target.value }))}
-                  placeholder="Soft copy download URL (optional)"
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
+                <MediaUploadProgress uploading={uploading && uploadTarget === 'cover'} progress={progress} label="Uploading cover" />
               </div>
             </div>
           </div>
@@ -609,6 +679,44 @@ export default function AdminStorePage() {
               <input type="checkbox" checked={draft.softCopyEnabled} onChange={(event) => setDraft((prev) => ({ ...prev, softCopyEnabled: event.target.checked }))} />
               Soft copy
             </label>
+            {draft.softCopyEnabled ? (
+              <div className="space-y-2 rounded-xl border border-border bg-background px-4 py-3 sm:col-span-3">
+                <label htmlFor="store-book-pdf" className="text-sm font-medium text-foreground">Soft copy PDF</label>
+                <p className="text-xs text-foreground/60">The PDF is saved in the site uploads folder. After payment, the reader opens it in My Books.</p>
+                <input
+                  id="store-book-pdf"
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (!file) return;
+                    setPdfName(file.name);
+                    const url = await uploadPdf(file);
+                    if (!url) return;
+                    pdfUrlRef.current = url;
+                    setDraft((prev) => ({ ...prev, downloadUrl: url }));
+                    const saved = await saveDownloadUrl(url);
+                    setStatus(saved ? `Soft copy PDF saved as ${url}` : `Soft copy PDF uploaded as ${url}`);
+                  }}
+                  className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+                />
+                {pdfUploading ? <p className="text-xs text-foreground/60">Uploading PDF…</p> : null}
+                {draft.downloadUrl ? (
+                  <div className="space-y-1">
+                    <a href={draft.downloadUrl} target="_blank" rel="noreferrer" className="inline-block text-sm font-medium text-primary underline">
+                      {pdfName ? `Current PDF: ${pdfName}` : 'Open the current soft copy PDF'}
+                    </a>
+                    <p className="break-all text-xs text-foreground/60">{draft.downloadUrl}</p>
+                    {draft.downloadUrl.includes('cloudinary') ? (
+                      <p className="text-xs text-foreground/70">This is the previously saved Cloudinary link. Upload the PDF again to replace it with a file in the uploads folder.</p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-xs text-foreground/60">No PDF uploaded yet.</p>
+                )}
+              </div>
+            ) : null}
             <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm">
               <input type="checkbox" checked={draft.isActive} onChange={(event) => setDraft((prev) => ({ ...prev, isActive: event.target.checked }))} />
               Visible

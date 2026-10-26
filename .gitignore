@@ -29,6 +29,8 @@ next.config.compiled.js
 # User-uploaded homepage images (keep folder via .gitkeep)
 /public/uploads/page-images/*
 !/public/uploads/page-images/.gitkeep
+/public/uploads/books/*
+!/public/uploads/books/.gitkeep
 
 # misc
 .DS_Store

@@ -26,6 +26,8 @@ export const getDateInputValueInMalawi = (value: Date) => {
   return `${parts.year}-${parts.month}-${parts.day}`;
 };
 
+export const getTodayDateInputValueInMalawi = () => getDateInputValueInMalawi(new Date());
+
 export const getTomorrowDateInputValueInMalawi = () => {
   const tomorrow = new Date();
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);

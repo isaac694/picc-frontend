@@ -66,6 +66,9 @@ export async function uploadMediaFile(
   if (config.imageOnly && !file.type.startsWith('image/')) {
     throw new Error('Please upload an image file.');
   }
+  if (file.size > maxSizeMB * 1024 * 1024) {
+    throw new Error(`File size exceeds ${maxSizeMB}MB limit`);
+  }
 
   const onProgress = options.onProgress;
 

@@ -69,14 +69,6 @@ async function loadPublicKey(account?: string): Promise<string> {
   );
 }
 
-const PAYCHANGU_POPUP_SCRIPT_URL = 'https://in.paychangu.com/js/popup.js';
-
-declare global {
-  interface Window {
-    PaychanguCheckout?: (config: PaychanguConfig) => void;
-  }
-}
-
 function generateTxRef(): string {
   return `TX${Math.random().toString(36).slice(2, 11).toUpperCase()}`;
 }
@@ -91,56 +83,51 @@ function ensurePaychanguWrapper(): void {
   document.body.appendChild(wrapper);
 }
 
-function loadPaychanguPopupScript(): Promise<void> {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    return Promise.reject(new Error('PayChangu checkout must run in the browser.'));
-  }
-  if (typeof window.PaychanguCheckout === 'function') {
-    return Promise.resolve();
-  }
-
-  const existing = document.querySelector<HTMLScriptElement>(
-    `script[src="${PAYCHANGU_POPUP_SCRIPT_URL}"]`,
-  );
-  if (!existing) {
-    const script = document.createElement('script');
-    script.src = PAYCHANGU_POPUP_SCRIPT_URL;
-    script.async = true;
-    document.head.appendChild(script);
-  }
-
-  return new Promise((resolve, reject) => {
-    const deadline = Date.now() + 20_000;
-    const tick = () => {
-      if (typeof window.PaychanguCheckout === 'function') {
-        resolve();
-        return;
-      }
-      if (Date.now() >= deadline) {
-        reject(new Error('PayChangu checkout script did not load. Check your connection and try again.'));
-        return;
-      }
-      window.setTimeout(tick, 100);
-    };
-    tick();
+function openPaychanguCheckoutFrame(checkoutUrl: string) {
+  ensurePaychanguWrapper();
+  document.getElementById('iframe1')?.remove();
+  const iframe = document.createElement('iframe');
+  iframe.id = 'iframe1';
+  iframe.src = checkoutUrl;
+  iframe.title = 'PayChangu checkout';
+  iframe.setAttribute('class', 'checkout-iframe-block');
+  Object.assign(iframe.style, {
+    position: 'fixed',
+    top: '0',
+    right: '0',
+    bottom: '0',
+    width: '100%',
+    height: '100%',
+    border: 'none',
+    margin: '0',
+    padding: '0',
+    overflow: 'hidden',
+    zIndex: '9999',
   });
+  document.getElementById('wrapper')?.appendChild(iframe);
 }
 
-async function invokePaychanguCheckout(config: PaychanguConfig): Promise<void> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    try {
-      if (typeof window.PaychanguCheckout !== 'function') {
-        throw new Error('PayChanguCheckout is not available.');
-      }
-      window.PaychanguCheckout(config);
-      return;
-    } catch (error) {
-      lastError = error;
-      await new Promise((resolve) => window.setTimeout(resolve, 500));
-    }
+async function invokePaychanguCheckout(config: PaychanguConfig, account?: string): Promise<void> {
+  const response = await fetch('/api/paychangu/popup', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      account,
+      tx_ref: config.tx_ref,
+      amount: config.amount,
+      currency: config.currency,
+      callback_url: config.callback_url,
+      return_url: config.return_url,
+      customer: config.customer,
+      customization: config.customization,
+      meta: config.meta,
+    }),
+  });
+  const data = (await response.json().catch(() => null)) as { checkoutUrl?: string; error?: string } | null;
+  if (!response.ok || !data?.checkoutUrl) {
+    throw new Error(data?.error || 'Unable to open PayChangu checkout.');
   }
-  throw lastError instanceof Error ? lastError : new Error('Unable to open PayChangu checkout.');
+  openPaychanguCheckoutFrame(data.checkoutUrl);
 }
 
 function readPendingPaychanguCheckout(): { txRef?: string; account?: string } | null {
@@ -198,7 +185,6 @@ export async function openPaychanguPopupCheckout(input: ProcessPaychanguPaymentI
   const { callback_url, return_url } = buildPaychanguReturnUrls(returnPath, { account });
 
   ensurePaychanguWrapper();
-  await loadPaychanguPopupScript();
 
   const txPrefix = input.txRefPrefix === 'STORE' ? 'STORE' : 'PICC';
   const txRef = input.txRef || `${txPrefix}-${input.givingId}-${generateTxRef()}`;
@@ -243,7 +229,7 @@ export async function openPaychanguPopupCheckout(input: ProcessPaychanguPaymentI
     },
   };
 
-  await invokePaychanguCheckout(config);
+  await invokePaychanguCheckout(config, account);
 }
 
 /** After a giving record is saved, launch PayChangu popup checkout (all payment channels). */

@@ -267,3 +267,75 @@ html.admin-compact [data-slot='checkbox'] svg {
 html.admin-compact .h-72 {
   height: 12rem !important;
 }
+
+@media (max-width: 767px) {
+  html.admin-compact [data-admin-content] .overflow-x-auto:has(table),
+  html.admin-compact [data-admin-content] .overflow-auto:has(table) {
+    max-height: none !important;
+    overflow: visible !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  html.admin-compact [data-admin-content] table {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  html.admin-compact [data-admin-content] table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  html.admin-compact [data-admin-content] table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  html.admin-compact [data-admin-content] table tr {
+    display: block;
+    margin-bottom: 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--card);
+    padding: 0.35rem 0.7rem;
+  }
+
+  html.admin-compact [data-admin-content] table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100% !important;
+    min-width: 0 !important;
+    border: 0 !important;
+    padding: 0.4rem 0 !important;
+    text-align: right;
+    white-space: normal !important;
+  }
+
+  html.admin-compact [data-admin-content] table td::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    text-align: left;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  html.admin-compact [data-admin-content] table td:not([data-label])::before,
+  html.admin-compact [data-admin-content] table td[data-label='']::before {
+    content: none;
+  }
+
+  html.admin-compact [data-admin-content] table td .flex {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

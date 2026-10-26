@@ -8,9 +8,10 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
+import QuillEditor from '@/components/QuillEditor';
 import {
   getDateTimeInputValueInMalawi,
-  getTomorrowDateInputValueInMalawi,
+  getTodayDateInputValueInMalawi,
   toMalawiIsoInstant,
 } from '@/lib/timezone';
 import {
@@ -30,6 +31,19 @@ type DevotionRecord = {
   title: string | null;
   content: string;
 };
+
+const DEVOTION_EDITOR_MODULES = {
+  toolbar: [
+    [{ header: [2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    ['blockquote', 'link'],
+    ['clean'],
+  ],
+};
+
+const devotionPlainText = (value: string) =>
+  value.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -59,7 +73,7 @@ export default function DevotionsAdminPage() {
 
   const [devotionSearch, setDevotionSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [date, setDate] = useState(getTomorrowDateInputValueInMalawi);
+  const [date, setDate] = useState(getTodayDateInputValueInMalawi);
   const [publishTime, setPublishTime] = useState('01:00');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -148,7 +162,7 @@ export default function DevotionsAdminPage() {
   }, [token, status]);
 
   const requestPostConfirmation = () => {
-    if (!content.trim()) {
+    if (!devotionPlainText(content)) {
       setStatus('Please add devotion content before posting.');
       return;
     }
@@ -204,7 +218,7 @@ export default function DevotionsAdminPage() {
   };
 
   const openNewDialog = () => {
-    setDate(getTomorrowDateInputValueInMalawi());
+    setDate(getTodayDateInputValueInMalawi());
     setPublishTime('01:00');
     setDevotionId(null);
     setTitle('');
@@ -319,7 +333,7 @@ export default function DevotionsAdminPage() {
         saveLabel={hasExistingDevotion ? 'Save devotion' : 'Post devotion'}
         onSave={requestPostConfirmation}
         onCancel={closeDialog}
-        maxWidthClass="sm:max-w-2xl"
+        maxWidthClass="sm:max-w-3xl"
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -354,12 +368,13 @@ export default function DevotionsAdminPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Content</label>
-            <textarea
+            <QuillEditor
+              key={devotionId || 'new-devotion'}
               value={content}
-              onChange={(event) => setContent(event.target.value)}
-              rows={10}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+              onChange={setContent}
+              modules={DEVOTION_EDITOR_MODULES}
               placeholder="Write today's devotion..."
+              className="overflow-hidden rounded-xl border border-border bg-background"
             />
           </div>
           {hasExistingDevotion ? (
@@ -415,7 +430,7 @@ export default function DevotionsAdminPage() {
                 <tbody>
                   {filtered.map((devotion) => (
                     <tr key={devotion.id} className="border-t border-border/60">
-                      <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{devotion.publishAt.slice(0, 10)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{getDateTimeInputValueInMalawi(devotion.publishAt)?.date || devotion.publishAt.slice(0, 10)}</td>
                       <td className="px-3 py-2 font-medium text-foreground">{devotion.title || 'Untitled devotion'}</td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1">

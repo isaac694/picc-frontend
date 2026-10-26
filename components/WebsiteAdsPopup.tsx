@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import WebsiteAdThumbnail from '@/components/WebsiteAdThumbnail';
 import {
   parseWebsiteAds,
+  websiteAdInitials,
   websiteAdLinkUrl,
   websiteAdThumbnailSource,
   type WebsiteAd,
@@ -20,6 +21,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+
+const MOBILE_AD_DELAY_MS = 3 * 60 * 1000;
+const MOBILE_AD_DISMISS_KEY = 'picc-mobile-ad-dismissed';
 
 function navigateToAdLink(router: ReturnType<typeof useRouter>, href: string) {
   const trimmed = href.trim();
@@ -51,8 +55,13 @@ export default function WebsiteAdsPopup() {
   const [index, setIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [adsReady, setAdsReady] = useState(false);
+  const [mobileDismissed, setMobileDismissed] = useState(false);
+  const [mobileReady, setMobileReady] = useState(false);
 
-  const isAdminRoute = (pathname || '').startsWith('/admin');
+  const isHiddenRoute =
+    (pathname || '').startsWith('/admin') ||
+    pathname === '/store' ||
+    (pathname || '').startsWith('/store/');
 
   const visibleAds = useMemo(() => ads.filter((ad) => ad.isActive), [ads]);
 
@@ -89,7 +98,36 @@ export default function WebsiteAdsPopup() {
   }, []);
 
   useEffect(() => {
-    if (isAdminRoute) return;
+    try {
+      if (window.sessionStorage.getItem(MOBILE_AD_DISMISS_KEY) === '1') {
+        setMobileDismissed(true);
+      }
+    } catch {
+      // Session storage can be blocked; the in-memory flag still closes the chip.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isHiddenRoute || mobileDismissed || !adsReady || visibleAds.length === 0) return;
+
+    const timer = window.setTimeout(() => setMobileReady(true), MOBILE_AD_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [isHiddenRoute, mobileDismissed, adsReady, visibleAds.length]);
+
+  const dismissMobileAd = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setMobileDismissed(true);
+    setMobileReady(false);
+    try {
+      window.sessionStorage.setItem(MOBILE_AD_DISMISS_KEY, '1');
+    } catch {
+      // Ignore storage failures; the chip is already hidden for this visit.
+    }
+  };
+
+  useEffect(() => {
+    if (isHiddenRoute) return;
 
     let cancelled = false;
     (async () => {
@@ -111,7 +149,7 @@ export default function WebsiteAdsPopup() {
     return () => {
       cancelled = true;
     };
-  }, [isAdminRoute]);
+  }, [isHiddenRoute]);
 
   useEffect(() => {
     if (visibleAds.length === 0) {
@@ -124,33 +162,73 @@ export default function WebsiteAdsPopup() {
   }, [visibleAds.length, index]);
 
   useEffect(() => {
-    if (visibleAds.length <= 1 || open || isAdminRoute) return;
+    if (visibleAds.length <= 1 || open || isHiddenRoute) return;
 
     const timer = window.setInterval(() => {
       setIndex((prev) => (prev + 1) % visibleAds.length);
     }, 10_000);
 
     return () => window.clearInterval(timer);
-  }, [visibleAds.length, open, isAdminRoute]);
+  }, [visibleAds.length, open, isHiddenRoute]);
 
-  if (isAdminRoute || !adsReady || !current) return null;
+  if (isHiddenRoute || !adsReady || !current) return null;
 
   return (
     <>
-      {/* Bottom-left tab — same row as chat FAB (bottom-5), mirrored on the left */}
+      {/* Bottom-left announcement. Mobile is a card; desktop keeps the ticker. */}
       <div
         className={cn(
-          'pointer-events-none fixed bottom-5 left-5 z-[9995] w-[min(calc(100vw-5.5rem),22rem)] sm:w-[min(calc(100vw-6rem),26rem)] md:w-[min(calc(100vw-8rem),32rem)]',
+          'pointer-events-none fixed z-[9995]',
+          'bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 w-max max-w-[12.5rem]',
+          'md:bottom-5 md:left-5 md:w-[min(calc(100vw-8rem),32rem)] md:max-w-none',
           'transition-all duration-300 ease-out',
           mounted ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
         )}
         role="complementary"
         aria-label="Website announcements"
       >
+        <div
+          className={cn(
+            'items-center gap-1 md:hidden',
+            mobileReady && !mobileDismissed ? 'pointer-events-auto flex' : 'hidden',
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="flex h-8 min-w-0 items-center gap-1.5 rounded-full border border-[#d4af37]/50 bg-[#16324f] py-0.5 pl-0.5 pr-2.5 text-left text-white shadow-[0_8px_20px_rgba(15,23,42,0.35)] outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37]"
+          >
+            <span className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-[#d4af37]">
+              {hasThumbnail ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={websiteAdThumbnailSource(current)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-[#1a1a1a]">
+                  {websiteAdInitials(current.name)}
+                </span>
+              )}
+            </span>
+            <span className="max-w-[6.5rem] truncate text-[11px] font-semibold leading-none">
+              {floaterCopy.title}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={dismissMobileAd}
+            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#16324f] text-white shadow-md ring-1 ring-[#d4af37]/60 outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37]"
+            aria-label="Close announcement"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group pointer-events-auto relative flex h-9 w-full items-center gap-0 overflow-hidden rounded-md border border-[#1a1a1a]/30 bg-primary pl-0 pr-2 text-left text-primary-foreground shadow-[0_4px_14px_rgba(26,26,26,0.35),inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(26,26,26,0.2)] outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:pr-2.5"
+          className="group pointer-events-auto relative hidden h-10 w-full items-center gap-0 overflow-hidden rounded-md border border-[#1a1a1a]/30 bg-primary pl-0 pr-2.5 text-left text-primary-foreground shadow-[0_4px_14px_rgba(26,26,26,0.35),inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(26,26,26,0.2)] outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex"
         >
           <span className="flex h-full max-w-[min(52%,14rem)] shrink-0 items-stretch overflow-hidden rounded-l-md rounded-r-full bg-[#d4af37] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(26,26,26,0.15)] sm:max-w-[min(48%,16rem)]">
             <span

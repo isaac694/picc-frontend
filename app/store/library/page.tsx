@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, BookOpen, Library, LockKeyhole, RefreshCw, ShieldCheck } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import StoreMobileNav from '@/components/store/StoreMobileNav';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 
@@ -22,6 +23,7 @@ type LibraryPurchase = {
   paidAt?: string | null;
   createdAt: string;
   bookContent?: string | null;
+  downloadUrl?: string | null;
 };
 
 const STORE_TOKEN_KEY = 'store_token';
@@ -111,7 +113,7 @@ export default function StoreLibraryPage() {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen bg-[#f7f7fb] text-slate-950">
+      <main className="min-h-screen bg-[#f7f7fb] pb-20 text-slate-950 md:pb-0">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -211,7 +213,7 @@ export default function StoreLibraryPage() {
                     </div>
                   </div>
                 ) : (
-                  <article className="mx-auto max-w-3xl px-5 py-8 sm:px-8 lg:py-12">
+                  <article className={`mx-auto px-5 py-8 sm:px-8 lg:py-12 ${selectedPurchase.status === 'available' && selectedPurchase.downloadUrl ? 'max-w-6xl' : 'max-w-3xl'}`}>
                     <div className="border-b border-slate-200 pb-6">
                       <p className={`text-xs font-bold uppercase tracking-[0.2em] ${selectedPurchase.status === 'available' ? 'text-emerald-700' : selectedPurchase.status === 'cancelled' ? 'text-red-700' : 'text-orange-700'}`}>
                         {selectedPurchase.status === 'available' ? 'Ready to read' : selectedPurchase.status === 'cancelled' ? 'Cancelled' : 'Awaiting payment confirmation'}
@@ -229,6 +231,25 @@ export default function StoreLibraryPage() {
                     ) : selectedPurchase.status !== 'available' ? (
                       <div className="mt-8 border border-orange-200 bg-orange-50 p-5 text-sm leading-6 text-orange-900">
                         This book is in your library, but it will unlock after PayChangu confirms the payment.
+                      </div>
+                    ) : selectedPurchase.downloadUrl ? (
+                      <div className="mt-8 space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <p className="text-sm text-slate-600">Read the book below, or open the PDF in a new tab.</p>
+                          <a
+                            href={selectedPurchase.downloadUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center rounded-md bg-[#1688b4] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0f759c]"
+                          >
+                            Open PDF
+                          </a>
+                        </div>
+                        <iframe
+                          title={`${selectedPurchase.title} PDF`}
+                          src={selectedPurchase.downloadUrl}
+                          className="h-[75vh] w-full rounded-md border border-slate-200 bg-white"
+                        />
                       </div>
                     ) : (
                       <div className="prose prose-slate mt-8 max-w-none">
@@ -254,6 +275,7 @@ export default function StoreLibraryPage() {
         </div>
       </main>
       <Footer />
+      <StoreMobileNav />
     </>
   );
 }

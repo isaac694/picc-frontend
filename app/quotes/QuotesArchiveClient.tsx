@@ -32,7 +32,7 @@ export default function QuotesArchiveClient({ initialQuotes }: QuotesArchiveClie
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-4">Quotes Archive</h1>
             <p className="text-lg text-white/80 max-w-2xl mx-auto">
-              A collection of monthly wisdom and spiritual encouragement from our pastors.
+              Today&apos;s quote stays on the home page. Earlier quotes are kept here.
             </p>
           </div>
         </section>
@@ -43,7 +43,7 @@ export default function QuotesArchiveClient({ initialQuotes }: QuotesArchiveClie
             {quotes.length === 0 ? (
               <div className="text-center py-12">
                 <Quote className="w-12 h-12 text-primary/20 mx-auto mb-4" />
-                <p className="text-foreground/60 italic">No archived quotes found yet.</p>
+                <p className="text-foreground/60 italic">No past quotes yet.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -62,7 +62,7 @@ export default function QuotesArchiveClient({ initialQuotes }: QuotesArchiveClie
                     )}
                     <div className="p-6 flex-1 flex flex-col">
                       <Quote className="w-6 h-6 text-primary/40 mb-4" />
-                      <blockquote className="text-lg font-medium text-foreground mb-6 flex-1 italic">
+                      <blockquote className="whitespace-pre-wrap text-lg font-medium text-foreground mb-6 flex-1 italic">
                         &ldquo;{item.quote}&rdquo;
                       </blockquote>
                       <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/40">
@@ -70,10 +70,13 @@ export default function QuotesArchiveClient({ initialQuotes }: QuotesArchiveClie
                           <p className="font-bold text-primary text-sm">{item.author}</p>
                           <p className="text-xs text-foreground/50">
                             {item.monthLabel ||
-                              new Date(item.createdAt).toLocaleDateString('en-US', {
+                              new Date(item.createdAt).toLocaleString('en-US', {
                                 month: 'long',
+                                day: 'numeric',
                                 year: 'numeric',
-                                timeZone: 'UTC',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                timeZone: 'Africa/Blantyre',
                               })}
                           </p>
                         </div>

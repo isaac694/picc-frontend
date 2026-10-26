@@ -5,6 +5,7 @@ type QuoteSectionProps = {
   quote?: string | null;
   author?: string | null;
   imageUrl?: string | null;
+  publishedLabel?: string | null;
 };
 
 function isLocalUpstreamImage(url?: string | null) {
@@ -12,10 +13,8 @@ function isLocalUpstreamImage(url?: string | null) {
   return url.includes('://localhost') || url.includes('://127.0.0.1') || url.includes('://[::1]');
 }
 
-export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionProps) {
-  const resolvedQuote =
-    quote ||
-    'Prayer is what makes time conducive.  Prayer is what brings time to season (John 2:3-5).';
+export default function QuoteSection({ quote, author, imageUrl, publishedLabel }: QuoteSectionProps) {
+  const resolvedQuote = quote?.trim() || '';
   const resolvedAuthor = author || 'Pastor Esau Banda';
   const resolvedImage = imageUrl || '/pastor/pastor-photo.jpg';
   return (
@@ -76,18 +75,29 @@ export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionPr
             <p className="quote-label text-xs font-semibold tracking-[0.35em] uppercase text-white/70 mb-8">
               Quotes
             </p>
-            <blockquote className="quote-text text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight mb-8 max-w-6xl mx-auto">
-              &ldquo;{resolvedQuote}&rdquo;
-            </blockquote>
-            <p className="quote-author text-sm text-white/70 tracking-[0.18em] uppercase">
-              -- {resolvedAuthor}
-            </p>
+            {resolvedQuote ? (
+              <>
+                <blockquote className="quote-text whitespace-pre-wrap text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight mb-8 max-w-6xl mx-auto">
+                  &ldquo;{resolvedQuote}&rdquo;
+                </blockquote>
+                <p className="quote-author text-sm text-white/70 tracking-[0.18em] uppercase">
+                  -- {resolvedAuthor}
+                </p>
+                {publishedLabel ? (
+                  <p className="quote-author mt-3 text-xs text-white/55 tracking-[0.18em] uppercase">{publishedLabel}</p>
+                ) : null}
+              </>
+            ) : (
+              <p className="quote-text text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight mb-8 max-w-3xl mx-auto">
+                Today&apos;s quote has not been posted yet.
+              </p>
+            )}
             <div className="mt-8 quote-author">
               <Link
                 href="/quotes"
                 className="text-xs text-white/40 hover:text-white/70 transition-colors uppercase tracking-[0.2em] border-b border-white/10 pb-1"
               >
-                View Archive
+                Past quotes
               </Link>
             </div>
           </div>
@@ -95,7 +105,7 @@ export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionPr
         </div>
       </div>
 
-      {/* Bottom-right photo, partially visible like the reference */}
+      {resolvedQuote ? (
       <div className="absolute -bottom-12 sm:-bottom-14 md:-bottom-16 right-1/2 translate-x-1/2 md:right-6 md:translate-x-0">
         <div className="floating-photo relative w-[88vw] max-w-[420px] h-[200px] sm:h-[220px] md:w-[360px] md:h-[220px] lg:w-[460px] lg:h-[280px] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
           <Image
@@ -110,6 +120,7 @@ export default function QuoteSection({ quote, author, imageUrl }: QuoteSectionPr
           <div className="absolute inset-0 bg-black/20" />
         </div>
       </div>
+      ) : null}
     </section>
   );
 }

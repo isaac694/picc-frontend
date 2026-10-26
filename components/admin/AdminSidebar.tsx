@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { ComponentType } from 'react';
 import {
   Archive,
@@ -16,8 +16,10 @@ import {
   Layers2,
   MapPin,
   Megaphone,
+  Menu,
   MessageSquareText,
   Moon,
+  MoreHorizontal,
   Newspaper,
   PanelLeftClose,
   PanelLeftOpen,
@@ -33,7 +35,7 @@ import {
   Wallet,
   Receipt,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ADMIN_ACCESS_RIGHT, ADMIN_PAGE, MINISTRY_ADMIN_OPTIONS, canAccessAdminPage, canAccessEventCheckIn, canAccessEventPaymentPath, canAccessMinistry, canAccessMinistryEvents, canAccessRight } from '@/lib/admin-pages';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useAdminTheme } from '@/hooks/use-admin-theme';
@@ -116,6 +118,48 @@ const ARCHIVE_ITEMS: NavItem[] = [
   { label: 'Quotes Archive', href: '/quotes', icon: Archive },
 ];
 
+function MobileLinkList({
+  sections,
+  isActive,
+  onNavigate,
+}: {
+  sections: Array<{ title: string; items: NavItem[] }>;
+  isActive: (href: string) => boolean;
+  onNavigate: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {sections.filter((section) => section.items.length > 0).map((section) => (
+        <div key={section.title}>
+          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{section.title}</p>
+          <div className="space-y-0.5">
+            {section.items.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium',
+                    active
+                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
+                      : 'text-foreground active:bg-accent',
+                  )}
+                >
+                  {Icon ? <Icon className="h-4 w-4 shrink-0" /> : null}
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SidebarSection({
   title,
   items,
@@ -173,7 +217,9 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const { mounted, isDark, setTheme } = useAdminTheme();
   const { user } = useAdminAuth();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [sheet, setSheet] = useState<'main' | 'pay' | 'more' | null>(null);
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === href;
@@ -185,6 +231,10 @@ export default function AdminSidebar() {
   };
 
   const showThemeToggle = mounted;
+
+  useEffect(() => {
+    setSheet(null);
+  }, [pathname]);
 
   const filtered = useMemo(() => {
     // If profile isn't loaded yet, show the bare minimum (prevents a flash of extra links).
@@ -239,10 +289,43 @@ export default function AdminSidebar() {
     };
   }, [user]);
 
+  const closeSheet = () => setSheet(null);
+  const paymentsActive = filtered.payments.some((item) => isActive(item.href));
+  const mainActive = filtered.nav.some((item) => isActive(item.href));
+  const moreItems = [
+    ...filtered.settings,
+    ...filtered.site,
+    ...filtered.ministries,
+    ...filtered.ministryEvents,
+    ...(filtered.showArchives ? ARCHIVE_ITEMS : []),
+  ];
+  const moreActive = moreItems.some((item) => isActive(item.href));
+  const mobileTabs = [
+    { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'main' as const, label: 'Menu', icon: Menu },
+    ...(filtered.payments.length ? [{ id: 'pay' as const, label: 'Payments', icon: Wallet }] : []),
+    { id: 'more' as const, label: 'More', icon: MoreHorizontal },
+  ];
+  const selectedTab = sheet
+    || (pathname === '/admin' ? 'dashboard' : paymentsActive ? 'pay' : mainActive ? 'main' : moreActive ? 'more' : 'dashboard');
+
+  const sheetSections = sheet === 'main'
+    ? [{ title: 'Main', items: filtered.nav }]
+    : sheet === 'pay'
+      ? [{ title: 'Payments', items: filtered.payments }]
+      : [
+          { title: 'Settings', items: filtered.settings },
+          { title: 'Site Pages', items: filtered.site },
+          { title: 'Ministries', items: filtered.ministries },
+          { title: 'Ministry Events', items: filtered.ministryEvents },
+          { title: 'Archives', items: filtered.showArchives ? ARCHIVE_ITEMS : [] },
+        ];
+
   return (
+    <>
     <aside
       className={cn(
-        'flex h-full shrink-0 flex-col rounded-lg border border-border/60 bg-card shadow-sm transition-all duration-300 ease-in-out',
+        'hidden h-full shrink-0 flex-col rounded-lg border border-border/60 bg-card shadow-sm transition-all duration-300 ease-in-out md:flex',
         collapsed ? 'w-12' : 'w-52'
       )}
     >
@@ -313,5 +396,78 @@ export default function AdminSidebar() {
         </button>
       </div>
     </aside>
+
+    {sheet ? (
+      <button
+        type="button"
+        aria-label="Close admin menu"
+        className="fixed inset-0 bottom-16 z-30 bg-black/40 md:hidden"
+        onClick={closeSheet}
+      />
+    ) : null}
+    {sheet ? (
+      <div className="fixed inset-x-0 bottom-16 z-40 flex max-h-[min(72vh,32rem)] flex-col overflow-hidden rounded-t-3xl border border-border/70 bg-card shadow-2xl md:hidden">
+        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border" />
+        <div className="flex items-center justify-between px-4 py-2">
+          <p className="text-sm font-semibold text-foreground">
+            {sheet === 'main' ? 'Menu' : sheet === 'pay' ? 'Payments' : 'More'}
+          </p>
+          <button type="button" onClick={closeSheet} className="text-xs font-medium text-muted-foreground">
+            Close
+          </button>
+        </div>
+        <div className="overflow-y-auto px-2 pb-3">
+          <MobileLinkList sections={sheetSections} isActive={isActive} onNavigate={closeSheet} />
+          {sheet === 'more' ? (
+            <button
+              type="button"
+              onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              disabled={!showThemeToggle}
+              className="mt-2 flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-foreground"
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {isDark ? 'Light mode' : 'Dark mode'}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    ) : null}
+    <nav
+      aria-label="Admin"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+    >
+      <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${mobileTabs.length}, minmax(0, 1fr))` }}>
+        {mobileTabs.map((tab) => {
+          const Icon = tab.icon;
+          const selected = selectedTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                if (tab.id === 'dashboard') {
+                  closeSheet();
+                  if (pathname !== '/admin') router.push('/admin');
+                  return;
+                }
+                const next = tab.id;
+                setSheet((current) => (current === next ? null : next));
+              }}
+              className={cn(
+                'flex flex-col items-center justify-center gap-0.5',
+                selected ? 'text-blue-700 dark:text-blue-300' : 'text-muted-foreground',
+              )}
+              aria-current={selected ? 'page' : undefined}
+            >
+              <span className={cn('flex h-8 w-14 items-center justify-center rounded-full', selected && 'bg-blue-50 dark:bg-blue-500/15')}>
+                <Icon className="h-5 w-5" strokeWidth={selected ? 2.5 : 2} />
+              </span>
+              <span className="text-[11px] font-medium leading-none">{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+    </>
   );
 }

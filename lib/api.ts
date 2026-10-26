@@ -1,4 +1,7 @@
-import { PROJECT_PAGE_IMAGES_UPLOAD_PREFIX } from '@/lib/project-page-images-upload';
+import {
+  PROJECT_BOOKS_UPLOAD_PREFIX,
+  PROJECT_PAGE_IMAGES_UPLOAD_PREFIX,
+} from '@/lib/project-page-images-upload';
 
 const LOCAL_API_BASE_URL = 'http://localhost:5000';
 const PROD_API_BASE_URL = 'https://backend.piccworldwide.org';
@@ -68,7 +71,7 @@ export function resolveMediaImageUrl(url?: string | null): string | null {
   const trimmed = url?.trim();
   if (!trimmed) return null;
 
-  if (trimmed.startsWith(PROJECT_PAGE_IMAGES_UPLOAD_PREFIX)) {
+  if (trimmed.startsWith(PROJECT_PAGE_IMAGES_UPLOAD_PREFIX) || trimmed.startsWith(PROJECT_BOOKS_UPLOAD_PREFIX)) {
     return trimmed;
   }
 

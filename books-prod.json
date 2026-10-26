@@ -1,0 +1,1 @@
+{"error":"Internal server error","detail":"\nInvalid `prisma.storeBook.findMany()` invocation:\n\n\nThe column `StoreBook.hardCopyStock` does not exist in the current database."}
