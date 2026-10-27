@@ -159,141 +159,141 @@ export default function MomentsSection() {
 
   // Inner (multi-image) navigation is disabled for now.
 
-  return (
-    <section className="py-20 md:py-24 bg-background">
-      <div className="w-full px-0">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-bold text-primary">We Are Family</h2>
-          <p className="text-foreground/70 mt-2">
-            Snapshots of life together. Click any image to see the full post details.
-          </p>
-        </div>
+  // return (
+  //   // <section className="py-20 md:py-24 bg-background">
+  //   //   <div className="w-full px-0">
+  //   //     <div className="text-center mb-10">
+  //   //       <h2 className="text-3xl md:text-4xl font-bold text-primary">We Are Family</h2>
+  //   //       <p className="text-foreground/70 mt-2">
+  //   //         Snapshots of life together. Click any image to see the full post detailswwww.
+  //   //       </p>
+  //   //     </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {MOMENTS.map((item, index) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => {
-                setActiveIndex(index);
-                setActiveImageIndex(0);
-              }}
-              className="group relative block overflow-hidden shadow-lg text-left"
-              aria-label={`Open ${item.title}`}
-            >
-              <div className="relative h-[34rem] md:h-[36rem]">
-                <Image
-                  src={item.images[0]}
-                  alt={item.title}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
-                />
-              </div>
-              <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
-              <div className="absolute bottom-3 left-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                <div className="facebook-badge group/fb flex items-center gap-2 rounded-full bg-[#1877F2] text-white px-2.5 py-1 text-xs font-semibold shadow-lg">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-[#1877F2] font-bold">f</span>
-                  <span className="facebook-label max-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/fb:max-w-[120px]">
-                    View Details
-                  </span>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+  //   //     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+  //   //       {MOMENTS.map((item, index) => (
+  //   //         <button
+  //   //           key={item.id}
+  //   //           type="button"
+  //   //           onClick={() => {
+  //   //             setActiveIndex(index);
+  //   //             setActiveImageIndex(0);
+  //   //           }}
+  //   //           className="group relative block overflow-hidden shadow-lg text-left"
+  //   //           aria-label={`Open ${item.title}`}
+  //   //         >
+  //   //           <div className="relative h-[34rem] md:h-[36rem]">
+  //   //             <Image
+  //   //               src={item.images[0]}
+  //   //               alt={item.title}
+  //   //               fill
+  //   //               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+  //   //               className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
+  //   //             />
+  //   //           </div>
+  //   //           <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
+  //   //           <div className="absolute bottom-3 left-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+  //   //             <div className="facebook-badge group/fb flex items-center gap-2 rounded-full bg-[#1877F2] text-white px-2.5 py-1 text-xs font-semibold shadow-lg">
+  //   //               <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-[#1877F2] font-bold">f</span>
+  //   //               <span className="facebook-label max-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/fb:max-w-[120px]">
+  //   //                 View Details
+  //   //               </span>
+  //   //             </div>
+  //   //           </div>
+  //   //         </button>
+  //   //       ))}
+  //   //     </div>
+  //   //   </div>
 
-      {active && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={close}>
-          <div
-            className="relative w-full max-w-5xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                goPrev();
-              }}
-              className="hidden md:flex absolute -left-12 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white hover:bg-black/80"
-              aria-label="Previous post"
-            >
-              <ChevronLeft size={22} />
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                goNext();
-              }}
-              className="hidden md:flex absolute -right-12 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white hover:bg-black/80"
-              aria-label="Next post"
-            >
-              <ChevronRight size={22} />
-            </button>
-            <div
-              className="relative bg-white rounded-2xl overflow-hidden shadow-2xl grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr]"
-            >
-              <div className="relative min-h-[360px] md:min-h-[520px] bg-black">
-                <Image
-                  src={active.images[activeImageIndex]}
-                  alt={active.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 60vw"
-                  className="object-contain"
-                />
-                {/* Inner image navigation disabled for now */}
-              </div>
-              <div className="p-6 md:p-8">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">PICC Worldwide</p>
-                    <p className="text-xs text-foreground/60">{active.handle}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={close}
-                    className="rounded-full border border-border p-2 text-foreground/70 hover:text-foreground"
-                    aria-label="Close"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
+  //   //   {active && (
+  //   //     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={close}>
+  //   //       <div
+  //   //         className="relative w-full max-w-5xl"
+  //   //         onClick={(event) => event.stopPropagation()}
+  //   //       >
+  //   //         <button
+  //   //           type="button"
+  //   //           onClick={(event) => {
+  //   //             event.stopPropagation();
+  //   //             goPrev();
+  //   //           }}
+  //   //           className="hidden md:flex absolute -left-12 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white hover:bg-black/80"
+  //   //           aria-label="Previous post"
+  //   //         >
+  //   //           <ChevronLeft size={22} />
+  //   //         </button>
+  //   //         <button
+  //   //           type="button"
+  //   //           onClick={(event) => {
+  //   //             event.stopPropagation();
+  //   //             goNext();
+  //   //           }}
+  //   //           className="hidden md:flex absolute -right-12 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white hover:bg-black/80"
+  //   //           aria-label="Next post"
+  //   //         >
+  //   //           <ChevronRight size={22} />
+  //   //         </button>
+  //   //         <div
+  //   //           className="relative bg-white rounded-2xl overflow-hidden shadow-2xl grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr]"
+  //   //         >
+  //   //           <div className="relative min-h-[360px] md:min-h-[520px] bg-black">
+  //   //             <Image
+  //   //               src={active.images[activeImageIndex]}
+  //   //               alt={active.title}
+  //   //               fill
+  //   //               sizes="(max-width: 768px) 100vw, 60vw"
+  //   //               className="object-contain"
+  //   //             />
+  //   //             {/* Inner image navigation disabled for now */}
+  //   //           </div>
+  //   //           <div className="p-6 md:p-8">
+  //   //             <div className="flex items-start justify-between gap-4">
+  //   //               <div>
+  //   //                 <p className="text-sm font-semibold text-foreground">PICC Worldwide</p>
+  //   //                 <p className="text-xs text-foreground/60">{active.handle}</p>
+  //   //               </div>
+  //   //               <button
+  //   //                 type="button"
+  //   //                 onClick={close}
+  //   //                 className="rounded-full border border-border p-2 text-foreground/70 hover:text-foreground"
+  //   //                 aria-label="Close"
+  //   //               >
+  //   //                 <X size={18} />
+  //   //               </button>
+  //   //             </div>
 
-                <div className="mt-6 flex items-center justify-between text-xs text-foreground/50">
-                  <span>{active.date}</span>
-                  <span className="uppercase tracking-[0.2em]">Facebook</span>
-                </div>
+  //   //             <div className="mt-6 flex items-center justify-between text-xs text-foreground/50">
+  //   //               <span>{active.date}</span>
+  //   //               <span className="uppercase tracking-[0.2em]">Facebook</span>
+  //   //             </div>
 
-                <p className="mt-4 text-sm leading-relaxed text-foreground/80">
-                  {active.caption}
-                </p>
+  //   //             <p className="mt-4 text-sm leading-relaxed text-foreground/80">
+  //   //               {active.caption}
+  //   //             </p>
 
-                <div className="mt-6 flex items-center gap-6 text-sm text-foreground/70">
-                  <span className="inline-flex items-center gap-2">
-                    <Heart size={16} /> {active.likes}
-                  </span>
-                  <span className="inline-flex items-center gap-2">
-                    <MessageCircle size={16} /> {active.comments}
-                  </span>
-                </div>
+  //   //             <div className="mt-6 flex items-center gap-6 text-sm text-foreground/70">
+  //   //               <span className="inline-flex items-center gap-2">
+  //   //                 <Heart size={16} /> {active.likes}
+  //   //               </span>
+  //   //               <span className="inline-flex items-center gap-2">
+  //   //                 <MessageCircle size={16} /> {active.comments}
+  //   //               </span>
+  //   //             </div>
 
-                <div className="mt-6">
-                  <Link
-                    href={active.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
-                  >
-                    View on Facebook
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
-  );
+  //   //             <div className="mt-6">
+  //   //               <Link
+  //   //                 href={active.href}
+  //   //                 target="_blank"
+  //   //                 rel="noreferrer"
+  //   //                 className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
+  //   //               >
+  //   //                 View on Facebook
+  //   //               </Link>
+  //   //             </div>
+  //   //           </div>
+  //   //         </div>
+  //   //       </div>
+  //   //     </div>
+  //   //   )}
+  //   // </section>
+  // );
 }

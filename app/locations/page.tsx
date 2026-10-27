@@ -495,72 +495,7 @@ export default function LocationsPage() {
           </div>
         </section>
 
-        {/* We Are Family Section */}
-        <section className='py-20 md:py-28 bg-white'>
-          <div className='w-full px-4 sm:px-6 lg:px-8'>
-            <div className='text-center mb-10'>
-              <h2 className='text-3xl md:text-4xl font-bold text-black'>We Are Family</h2>
-              <p className='text-black/70 mt-2'>Snapshots of life together.</p>
-            </div>
-
-            <div className='relative overflow-hidden w-full'>
-              <div
-                className={slideTransition ? 'flex transition-transform duration-600' : 'flex'}
-                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-                onTransitionEnd={() => {
-                  if (currentSlide === 0) {
-                    setSlideTransition(false);
-                    setCurrentSlide(familySlides.length);
-                    requestAnimationFrame(() => {
-                      requestAnimationFrame(() => setSlideTransition(true));
-                    });
-                  } else if (currentSlide === extendedSlides.length - 1) {
-                    setSlideTransition(false);
-                    setCurrentSlide(1);
-                    requestAnimationFrame(() => {
-                      requestAnimationFrame(() => setSlideTransition(true));
-                    });
-                  }
-                }}
-              >
-                {extendedSlides.map((slide, slideIndex) => (
-                  <div key={slideIndex} className='min-w-full'>
-                    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2'>
-                      {slide.map((src, idx) => (
-                        <div key={`${src}-${idx}`} className='relative h-[16rem] sm:h-[20rem] md:h-[28rem]'>
-                          <Image
-                            src={src}
-                            alt='We are family moment'
-                            fill
-                            sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw'
-                            className='object-cover'
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type='button'
-                aria-label='Previous slide'
-                onClick={() => setCurrentSlide((s) => s - 1)}
-                className='absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90'
-              >
-                ‹
-              </button>
-              <button
-                type='button'
-                aria-label='Next slide'
-                onClick={() => setCurrentSlide((s) => s + 1)}
-                className='absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90'
-              >
-                ›
-              </button>
-            </div>
-          </div>
-        </section>
+        
       </main>
       <Footer />
     </>

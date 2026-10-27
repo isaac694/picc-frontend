@@ -383,6 +383,7 @@ export default async function HomePage() {
     ...slot,
     src: resolveSiteImage(siteImages[slot.key], slot.fallback),
   }));
+  console.log(heroImages);
   const missionImage = resolveSiteImage(siteImages['home-mission-image'], '/images/pastor-preaching-bw.jpeg');
   const growCards = GROW_CARD_SLOTS.map((slot) => ({
     ...slot,
@@ -407,6 +408,7 @@ export default async function HomePage() {
         <section className="relative h-[420px] sm:h-[520px] md:h-[700px] overflow-hidden flex items-center rounded-b-[28px] sm:rounded-b-[36px] md:rounded-b-[48px]">
           <div className="absolute inset-0 hero-collage p-2 sm:p-3 md:p-4" aria-hidden="true">
             <div className="grid h-full w-full grid-cols-2 md:grid-cols-6 grid-rows-3 md:grid-rows-3 gap-2 sm:gap-3 md:gap-4">
+             
               {heroImages.map((item, index) => (
                 <div key={item.key} className={`${item.className} relative overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]`}>
                   {item.src ? (
@@ -812,6 +814,8 @@ export default async function HomePage() {
   className="object-cover"
   unoptimized={isLocalUpstreamImage(seeYouBg)}
 />
+
+//ssss
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/35" />
 
