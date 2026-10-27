@@ -323,6 +323,11 @@ function isLocalUpstreamImage(url?: string | null) {
   return url.includes('://localhost') || url.includes('://127.0.0.1') || url.includes('://[::1]');
 }
 
+function usesDirectImageFile(url?: string | null) {
+  if (!url) return false;
+  return isLocalUpstreamImage(url) || url.startsWith('/uploads/');
+}
+
 export default async function HomePage() {
   const imageKeys = [
     ...HOME_HERO_SLOTS.map((slot) => slot.key),
@@ -366,7 +371,7 @@ export default async function HomePage() {
     : null;
 
   const confessionImageSrc = normalizeImageUrl(confession?.imageUrl);
-  const confessionImageUnoptimized = isLocalUpstreamImage(confessionImageSrc);
+  const confessionImageUnoptimized = usesDirectImageFile(confessionImageSrc);
 
   const quoteImageUrl = normalizeImageUrl(quoteOfMonth?.imageUrl);
   const quotePublishedLabel = quoteOfMonth?.publishAt
@@ -419,7 +424,7 @@ export default async function HomePage() {
                       sizes="(max-width: 768px) 50vw, 33vw"
                       priority={index < 2}
                       className="object-cover"
-                      unoptimized={isLocalUpstreamImage(item.src)}
+                      unoptimized={usesDirectImageFile(item.src)}
                     />
                   ) : (
                     <div className="h-full w-full bg-primary/20" />
@@ -583,7 +588,7 @@ export default async function HomePage() {
                             fill
                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                             className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-105"
-                            unoptimized={isLocalUpstreamImage(card.image)}
+                            unoptimized={usesDirectImageFile(card.image)}
                           />
                         ) : (
                           <div className="h-full w-full bg-primary/20" />
@@ -644,7 +649,7 @@ export default async function HomePage() {
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover object-top"
-                    unoptimized={isLocalUpstreamImage(pastorsImage)}
+                    unoptimized={usesDirectImageFile(pastorsImage)}
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center bg-white/10 text-white/60">Image removed</div>
@@ -666,7 +671,7 @@ export default async function HomePage() {
                     fill
                     sizes="100vw"
                     className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                    unoptimized={isLocalUpstreamImage(listenNowImage)}
+                    unoptimized={usesDirectImageFile(listenNowImage)}
                   />
                 ) : (
                   <div className="h-full w-full bg-primary/20" />
@@ -759,6 +764,7 @@ export default async function HomePage() {
                       fill
                       sizes="(max-width: 640px) 70vw, (max-width: 1024px) 44vw, 340px"
                       className="object-cover"
+                      unoptimized={usesDirectImageFile(item.image)}
                     />
                   ) : (
                     <div className="h-full w-full bg-primary/20" />
@@ -812,7 +818,7 @@ export default async function HomePage() {
   fill
   sizes="100vw"
   className="object-cover"
-  unoptimized={isLocalUpstreamImage(seeYouBg)}
+  unoptimized={usesDirectImageFile(seeYouBg)}
 />
 
 //ssss

@@ -15,6 +15,23 @@ html {
   scroll-behavior: smooth;
 }
 
+.devotion-scroll {
+  scroll-behavior: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--primary) 45%, transparent) transparent;
+}
+
+.devotion-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.devotion-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

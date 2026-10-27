@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { apiFetch, apiUrl } from '@/lib/api';
+import { CLOUDINARY_FOLDERS, uploadImageToCloudinary } from '@/lib/cloudinary-upload';
 import { PROJECT_PAGE_IMAGES_UPLOAD_PREFIX } from '@/lib/project-page-images-upload';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
@@ -169,31 +170,19 @@ export default function PageImagesAdminPage() {
       return null;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('purpose', 'page-images');
     try {
-      const response = await fetch('/api/uploads', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+      const uploaded = await uploadImageToCloudinary(file, CLOUDINARY_FOLDERS.PAGE_IMAGES, {
+        maxSizeMB: 1,
+        allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif'],
       });
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        setStatus(data?.error || 'Image upload failed.');
+      const url = uploaded.url.trim();
+      if (!url.startsWith('https://')) {
+        setStatus('Upload did not return a Cloudinary URL.');
         return null;
       }
-      const data = (await response.json()) as { url?: string };
-      const path = typeof data.url === 'string' ? data.url.trim() : '';
-      if (!path.startsWith(PROJECT_PAGE_IMAGES_UPLOAD_PREFIX)) {
-        setStatus('Upload did not return a project uploads path.');
-        return null;
-      }
-      return path;
-    } catch {
-      setStatus('Image upload failed.');
+      return url;
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Image upload failed.');
       return null;
     }
   }, [token]);

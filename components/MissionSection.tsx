@@ -23,6 +23,11 @@ export default function MissionSection({ imageUrl }: MissionSectionProps) {
                 className="object-cover contrast-125"
                 sizes="(max-width: 768px) 100vw, 50vw"
                 priority
+                unoptimized={
+                  resolvedImage.startsWith('/uploads/')
+                  || resolvedImage.includes('://localhost')
+                  || resolvedImage.includes('://127.0.0.1')
+                }
               />
             ) : (
               <div className="flex h-full items-center justify-center bg-primary/10 text-sm text-foreground/50">
