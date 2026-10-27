@@ -520,7 +520,7 @@ export default async function HomePage() {
                   </>
                 )}
               </div>
-              <div className="relative rounded-[24px] sm:rounded-[28px] border border-primary/10 bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-6 sm:p-8 md:p-10 shadow-xl min-h-[360px]">
+              <div className="devotion-scroll relative max-h-[min(78vh,760px)] min-h-[360px] overflow-y-auto overscroll-y-contain rounded-[24px] border border-primary/10 bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-6 shadow-xl sm:rounded-[28px] sm:p-8 md:p-10">
                 <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-3">
                   Daily Devotions
                 </p>
@@ -544,8 +544,8 @@ export default async function HomePage() {
                         </Button>
                       </Link>
                     </div>
-                    <div className="mt-8 min-h-0 border-t border-primary/10 pt-6">
-                      <DevotionReadMore content={devotionData.content} />
+                    <div className="mt-8 border-t border-primary/10 pt-6">
+                      <DevotionReadMore content={devotionData.content} scrollable={false} />
                     </div>
                   </>
                 ) : (
