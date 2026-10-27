@@ -10,6 +10,7 @@ type Tab = { label: string; href: string };
 const GIVING_TABS: Tab[] = [
   { label: 'Giving dashboard', href: '/admin/giving/dashboard' },
   { label: 'Giving payments', href: '/admin/giving/payments' },
+  { label: 'Giving types', href: '/admin/giving/types' },
 ];
 
 const STORE_TABS: Tab[] = [

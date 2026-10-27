@@ -54,6 +54,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/store': { title: 'Store Page', subtitle: 'Manage store content and products.' },
   '/admin/giving/dashboard': { title: 'Giving dashboard', subtitle: 'Donation KPIs and recent giving activity.' },
   '/admin/giving/payments': { title: 'Giving payments', subtitle: 'All giving and PayChangu donation records.' },
+  '/admin/giving/types': { title: 'Giving types', subtitle: 'Tick options shown on the public Give form.' },
   '/admin/forms': { title: 'Forms Page', subtitle: 'Review submitted forms.' },
   '/admin/sermons': { title: 'Sermons Page', subtitle: 'Publish sermon content.' },
   '/admin/give': { title: 'Give Page', subtitle: 'Manage giving page content.' },

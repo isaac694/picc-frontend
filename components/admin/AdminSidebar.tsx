@@ -73,6 +73,7 @@ const NAV_ITEMS: NavItem[] = [
 const PAYMENTS_ITEMS: NavItem[] = [
   { label: 'Giving dashboard', href: '/admin/giving/dashboard', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Wallet },
   { label: 'Giving payments', href: '/admin/giving/payments', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Receipt },
+  { label: 'Giving types', href: '/admin/giving/types', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: FileText },
   { label: 'Events payment dashboard', href: '/admin/event-payments/dashboard', pageKey: ADMIN_PAGE.EVENT_PAYMENTS_DASHBOARD, icon: Wallet },
   { label: 'Events payment', href: '/admin/event-payments', pageKey: ADMIN_PAGE.EVENT_PAYMENTS, icon: Receipt },
   { label: 'Ticket KPIs', href: '/admin/event-payments/tickets', pageKey: ADMIN_PAGE.EVENT_TICKET_KPIS, icon: Ticket },
@@ -89,7 +90,7 @@ const SITE_PAGE_ITEMS: NavItem[] = [
   { label: 'Book launch sales', href: '/admin/store/book-launch', pageKey: ADMIN_PAGE.STORE_PAGE, icon: Receipt },
   { label: 'Forms Page', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE, icon: FileText },
   { label: 'Sermons Page', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE, icon: BookOpen },
-  { label: 'Give Page', href: '/admin/give', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: FileText },
+  { label: 'Give Page', href: '/admin/giving/types', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: FileText },
   { label: 'Church Locations', href: '/admin/locations', pageKey: ADMIN_PAGE.LOCATIONS_PAGE, icon: MapPin },
   { label: 'Zones & Home Churches', href: '/admin/zones', pageKey: ADMIN_PAGE.HOME_CHURCHES_PAGE, icon: Layers2 },
 ];

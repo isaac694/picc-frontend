@@ -76,6 +76,8 @@ export default function GivingPaymentsPage() {
   const [reportStart, setReportStart] = useState(initialRange.start);
   const [reportEnd, setReportEnd] = useState(initialRange.end);
   const [reportStatus, setReportStatus] = useState('completed');
+  const [reportGivingType, setReportGivingType] = useState('');
+  const [givingTypes, setGivingTypes] = useState<string[]>([]);
   const [reportBusy, setReportBusy] = useState<'print' | 'pdf' | ''>('');
 
   const fetchList = useCallback(async () => {
@@ -110,6 +112,26 @@ export default function GivingPaymentsPage() {
     void fetchList();
   }, [fetchList]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await apiFetch('/api/giving-types');
+        if (!response.ok) return;
+        const data = (await response.json()) as { types?: unknown };
+        const types = Array.isArray(data.types)
+          ? data.types.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+          : [];
+        if (!cancelled) setGivingTypes(types);
+      } catch {
+        if (!cancelled) setGivingTypes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const loadReport = async () => {
     if (!token) return null;
     if (!reportStart || !reportEnd) {
@@ -120,7 +142,8 @@ export default function GivingPaymentsPage() {
       adminErrorToast('The start date must be on or before the end date.');
       return null;
     }
-    const response = await apiFetch(`/api/admin/giving/report?startDate=${reportStart}&endDate=${reportEnd}&status=${reportStatus}`, {
+    const typeQuery = reportGivingType ? `&givingType=${encodeURIComponent(reportGivingType)}` : '';
+    const response = await apiFetch(`/api/admin/giving/report?startDate=${reportStart}&endDate=${reportEnd}&status=${reportStatus}${typeQuery}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await response.json().catch(() => ({}));
@@ -185,7 +208,7 @@ export default function GivingPaymentsPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold">Giving report</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Totals by offering type for a week, a month, or dates you choose.</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Choose the offering type, then print or download the period you need.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => { const range = weekRange(); setReportStart(range.start); setReportEnd(range.end); }}>
@@ -196,7 +219,7 @@ export default function GivingPaymentsPage() {
             </Button>
           </div>
         </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_160px_auto]">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_160px_180px_auto]">
           <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Start date
             <input type="date" value={reportStart} onChange={(event) => setReportStart(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs normal-case tracking-normal text-foreground" />
@@ -204,6 +227,15 @@ export default function GivingPaymentsPage() {
           <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             End date
             <input type="date" value={reportEnd} onChange={(event) => setReportEnd(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs normal-case tracking-normal text-foreground" />
+          </label>
+          <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Giving type
+            <select value={reportGivingType} onChange={(event) => setReportGivingType(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs normal-case tracking-normal text-foreground">
+              <option value="">All types</option>
+              {givingTypes.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
           </label>
           <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Status

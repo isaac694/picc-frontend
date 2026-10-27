@@ -22,6 +22,7 @@ export type GivingReport = {
   startDate: string;
   endDate: string;
   status: string;
+  givingType?: string;
   count: number;
   categories: GivingReportCategory[];
   totals: Array<{ currency: string; count: number; total: number }>;
@@ -99,7 +100,7 @@ export function printGivingReport(report: GivingReport) {
   <p>Pentecost International Christian Centre</p>
   <h1>Giving report</h1>
   <p>${escapeHtml(period)}</p>
-  <p>${report.count} record${report.count === 1 ? '' : 's'}${report.status && report.status !== 'all' ? ` · ${escapeHtml(report.status)}` : ''}</p>
+  <p>${report.givingType && report.givingType !== 'all' ? `${escapeHtml(report.givingType)} · ` : ''}${report.count} record${report.count === 1 ? '' : 's'}${report.status && report.status !== 'all' ? ` · ${escapeHtml(report.status)}` : ''}</p>
   <h2>By offering type</h2>
   <table>
     <thead><tr><th>Type</th><th>Gifts</th><th>Total</th></tr></thead>
@@ -160,7 +161,7 @@ export async function downloadGivingReportPdf(report: GivingReport) {
   doc.setFontSize(11);
   doc.text(reportPeriodLabel(report.startDate, report.endDate), margin, y);
   y += 5;
-  doc.text(`${report.count} record${report.count === 1 ? '' : 's'}${report.status && report.status !== 'all' ? ` · ${report.status}` : ''}`, margin, y);
+  doc.text(`${report.givingType && report.givingType !== 'all' ? `${report.givingType} · ` : ''}${report.count} record${report.count === 1 ? '' : 's'}${report.status && report.status !== 'all' ? ` · ${report.status}` : ''}`, margin, y);
   y += 8;
 
   doc.setFont('times', 'bold');
@@ -207,5 +208,8 @@ export async function downloadGivingReportPdf(report: GivingReport) {
     y += lines.length * 4 + 1.5;
   });
 
-  doc.save(`giving-report-${report.startDate}-to-${report.endDate}.pdf`);
+  const typeSlug = report.givingType && report.givingType !== 'all'
+    ? `-${report.givingType.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+    : '';
+  doc.save(`giving-report-${report.startDate}-to-${report.endDate}${typeSlug}.pdf`);
 }
