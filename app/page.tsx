@@ -544,7 +544,7 @@ export default async function HomePage() {
                         </Button>
                       </Link>
                     </div>
-                    <div className="mt-8 border-t border-primary/10 pt-6">
+                    <div className="mt-8 min-h-0 border-t border-primary/10 pt-6">
                       <DevotionReadMore content={devotionData.content} />
                     </div>
                   </>
