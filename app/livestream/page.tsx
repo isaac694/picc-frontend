@@ -73,7 +73,7 @@ type YouTubePlayerStateChangeEvent = {
   target: YouTubePlayer;
 };
 
-const CHANNEL_ID = "UC6auo8Q1xb5cgyY_pGJbfdw";
+const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
 const YOUTH_CHURCH_CHANNEL_ID = "UC_aXxxQF62jKWRK3xjzOZPg";
 const RELATED_CHANNELS = [
   {
@@ -290,6 +290,33 @@ export default function LivestreamPage() {
     };
 
     const fetchHeroVideo = async () => {
+      try {
+        const response = await fetch("/api/youtube/channel-streams", { cache: "no-store" });
+        if (response.ok) {
+          const data = await response.json();
+          const stream = data?.live || data?.videos?.[0];
+          if (stream?.videoId) {
+            return {
+              videoId: stream.videoId,
+              title: stream.title || "",
+              publishedAt: "",
+              updatedAt: "",
+              channelTitle: data.channelTitle || "Pastor Esau Banda",
+              description: "",
+              thumbnail: stream.thumbnail || "",
+              url: stream.url,
+              embedUrl: stream.embedUrl,
+              isLive: Boolean(stream.isLive),
+              canEmbed: true,
+            } satisfies YouTubeVideo;
+          }
+        }
+      } catch {
+        // Fall through to the Data API when the public streams page cannot be read.
+      }
+
+      if (!YOUTUBE_API_KEY) return null;
+
       const liveUrl = new URL("https://www.googleapis.com/youtube/v3/search");
       liveUrl.searchParams.set("part", "snippet");
       liveUrl.searchParams.set("channelId", CHANNEL_ID);
@@ -310,22 +337,22 @@ export default function LivestreamPage() {
       return liveVideo || latestUpload;
     };
 
+    let hasVideos = false;
+
     const fetchVideos = async () => {
       try {
-        setIsLoading(true);
+        if (!hasVideos) setIsLoading(true);
         setLoadError(null);
-
-        if (!YOUTUBE_API_KEY) {
-          throw new Error("Missing API key");
-        }
 
         const [heroVideo, relatedVideos] = await Promise.all([
           fetchHeroVideo(),
-          Promise.all(
-            RELATED_CHANNEL_IDS.map((channelId) =>
-              fetchRelatedVideo(channelId),
-            ),
-          ),
+          YOUTUBE_API_KEY
+            ? Promise.all(
+                RELATED_CHANNEL_IDS.map((channelId) =>
+                  fetchRelatedVideo(channelId),
+                ),
+              )
+            : Promise.resolve([]),
         ]);
 
         const merged = [
@@ -336,7 +363,9 @@ export default function LivestreamPage() {
         );
 
         if (isMounted) {
-          setVideos(merged.slice(0, 4));
+          const nextVideos = merged.slice(0, 4);
+          if (nextVideos.length > 0) hasVideos = true;
+          setVideos(nextVideos);
         }
       } catch {
         if (isMounted) {
@@ -349,8 +378,10 @@ export default function LivestreamPage() {
     };
 
     fetchVideos();
+    const refreshId = window.setInterval(fetchVideos, 60_000);
     return () => {
       isMounted = false;
+      window.clearInterval(refreshId);
     };
   }, [YOUTUBE_API_KEY]);
 
@@ -501,6 +532,13 @@ export default function LivestreamPage() {
                     <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(360px,auto)] md:items-center">
                       <div className="min-w-0">
                         <h3 className="text-lg font-semibold">{heroStreamTitle}</h3>
+                        {featuredVideo ? (
+                          <p className="text-xs text-black/60 mt-1">
+                            {featuredVideo.isLive
+                              ? "Live now from Pastor Esau Banda"
+                              : "Latest stream from Pastor Esau Banda"}
+                          </p>
+                        ) : null}
                         {featuredVideo?.publishedAt && (
                           <p className="text-xs text-black/60 mt-1">
                             {formatDate(featuredVideo.publishedAt)}
