@@ -20,6 +20,7 @@ export type PublicEvent = {
   registrationForm: EventFormSchema | null;
   paymentForm: EventFormSchema | null;
   tickets: EventTicket[];
+  acceptsCoupons: boolean;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -74,6 +75,7 @@ export function normalizePublicEvent(value: unknown): PublicEvent | null {
     registrationForm: parseEventForm(value.registrationForm),
     paymentForm: parseEventForm(value.paymentForm),
     tickets: parseEventTickets(value.tickets),
+    acceptsCoupons: value.acceptsCoupons === true,
   };
 }
 

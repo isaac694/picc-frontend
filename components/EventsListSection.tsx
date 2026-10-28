@@ -53,6 +53,7 @@ interface Event {
   ministryName?: string | null;
   registrationForm?: EventFormSchema | null;
   paymentForm?: EventFormSchema | null;
+  acceptsCoupons?: boolean;
   imageUrl?: string | null;
   scope?: string | null;
 }
@@ -300,6 +301,7 @@ export default function EventsListSection({
                   : ministryNameForKey(typeof event.ministryKey === 'string' ? event.ministryKey : ''),
               registrationForm: parseEventForm(event.registrationForm),
               paymentForm: parseEventForm(event.paymentForm),
+              acceptsCoupons: event.acceptsCoupons === true,
               imageUrl: typeof event.imageUrl === 'string' ? event.imageUrl : null,
               scope: typeof event.scope === 'string' ? event.scope : null,
             }))
@@ -599,7 +601,7 @@ export default function EventsListSection({
             phone: normalizedPhone,
             ticketKey: ticket?.key,
             quantity,
-            ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+            ...(appliedCoupon && paymentEvent.acceptsCoupons ? { couponCode: appliedCoupon.code } : {}),
             paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
             paychanguAccount: paymentAccount,
           }),
@@ -1376,7 +1378,7 @@ export default function EventsListSection({
                 }}
               />
             </label>
-            {paymentEvent ? (
+            {paymentEvent?.acceptsCoupons ? (
               <EventCouponField
                 eventId={String(paymentEvent.id)}
                 ticketKey={selectedTicketKey}

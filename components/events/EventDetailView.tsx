@@ -194,7 +194,7 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
           phone,
           ticketKey: ticket?.key,
           quantity,
-          ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+          ...(appliedCoupon && event.acceptsCoupons ? { couponCode: appliedCoupon.code } : {}),
           paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
           paychanguAccount: event.paymentAccount,
         }),
@@ -366,16 +366,18 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
                   onChange={(item) => setTicketQuantity(Math.min(10, Math.max(1, Number.parseInt(item.target.value, 10) || 1)))}
                 />
               </label>
-              <div className="mt-4">
-                <EventCouponField
-                  eventId={event.id}
-                  ticketKey={ticket?.key}
-                  quantity={quantity}
-                  applied={appliedCoupon}
-                  onApplied={setAppliedCoupon}
-                  tone="dark"
-                />
-              </div>
+              {event.acceptsCoupons ? (
+                <div className="mt-4">
+                  <EventCouponField
+                    eventId={event.id}
+                    ticketKey={ticket?.key}
+                    quantity={quantity}
+                    applied={appliedCoupon}
+                    onApplied={setAppliedCoupon}
+                    tone="dark"
+                  />
+                </div>
+              ) : null}
               {paymentError ? <p className="mt-4 rounded-xl bg-red-500/20 px-3 py-2 text-sm">{paymentError}</p> : null}
               {paymentSuccess ? <p className="mt-4 rounded-xl bg-emerald-500/20 px-3 py-2 text-sm">{paymentSuccess}</p> : null}
               <div className="mt-4 space-y-3 text-[#10233f]">
