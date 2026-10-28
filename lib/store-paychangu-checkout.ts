@@ -67,7 +67,7 @@ export async function openStorePaychanguPopup(input: {
     reason: input.reason,
     account: 'main',
     returnPath: input.returnPath,
-    txRefPrefix: 'STORE',
+    txRef: input.orderReference,
     meta: { format: input.format },
   });
 }

@@ -97,6 +97,19 @@ export type MinistryAdminKey = (typeof MINISTRY_ADMIN_OPTIONS)[number]['key'];
 
 export const ministryAdminAccessKey = (ministryKey: string) => `MINISTRY:${ministryKey}`;
 export const ministryEventAccessKey = (ministryKey: string) => `MINISTRY_EVENTS:${ministryKey}`;
+export const eventForAccessKey = (eventForKey: string) => `EVENT_FOR:${eventForKey}`;
+
+export const EVENT_FOR_OPTIONS = [
+  { key: 'general', label: 'General' },
+  { key: 'icd', label: 'ICD' },
+  { key: 'men-of-valour', label: 'Men of Valour' },
+  { key: 'youth-church', label: 'Youth Church Ministry' },
+  { key: 'women-of-hope', label: 'Women of Hope' },
+  { key: 'wailing-woman', label: 'Wailing Woman' },
+  { key: 'rivers-of-hope', label: 'Rivers of Hope' },
+  { key: 'heritage', label: 'Heritage Ministry' },
+  { key: 'prison-ministry', label: 'Prison Ministry' },
+] as const;
 
 export const ADMIN_ACCESS_RIGHT = {
   ROLE_LIST: 'role.list',
@@ -110,7 +123,7 @@ export const ADMIN_ACCESS_RIGHT = {
   USER_DELETE: 'user.delete',
 } as const;
 
-export type AdminAccessRight = (typeof ADMIN_ACCESS_RIGHT)[keyof typeof ADMIN_ACCESS_RIGHT] | AdminPageKey | `MINISTRY:${string}` | `MINISTRY_EVENTS:${string}`;
+export type AdminAccessRight = (typeof ADMIN_ACCESS_RIGHT)[keyof typeof ADMIN_ACCESS_RIGHT] | AdminPageKey | `MINISTRY:${string}` | `MINISTRY_EVENTS:${string}` | `EVENT_FOR:${string}`;
 
 export type AdminAccessRightOption = {
   entity: string;
@@ -220,6 +233,16 @@ export const ADMIN_ACCESS_RIGHT_OPTIONS: AdminAccessRightOption[] = [
       description: `Can view ${option.label} events and registration applications.`,
     })),
   },
+  {
+    entity: 'event-for',
+    label: 'Event for',
+    description: 'Choose which Event for groups this role can create and see.',
+    rights: EVENT_FOR_OPTIONS.map((option) => ({
+      name: eventForAccessKey(option.key) as AdminAccessRight,
+      label: option.label,
+      description: `Can create and manage ${option.label} events.`,
+    })),
+  },
 ];
 
 const PAGE_ACCESS_RIGHTS = new Set<string>([
@@ -321,6 +344,22 @@ export function canAccessEventCheckIn(user: AdminUser | null): boolean {
   if (canAccessAdminPage(user, ADMIN_PAGE.EVENT_CHECK_IN)) return true;
   if (canAccessAdminPage(user, ADMIN_PAGE.EVENTS)) return true;
   return MINISTRY_ADMIN_OPTIONS.some((ministry) => canAccessMinistryEvents(user, ministry.key));
+}
+
+export function allowedEventForKeys(user: AdminUser | null): string[] | null {
+  if (!user) return [];
+  if (user.role === 'SUPER_ADMIN' || user.isSystem || user.assignedRole?.isSystem || user.adminAccessAll) return null;
+  const assigned = EVENT_FOR_OPTIONS
+    .map((option) => option.key)
+    .filter((key) => canAccessRight(user, eventForAccessKey(key)));
+  if (assigned.length) return [...assigned];
+  if (canAccessAdminPage(user, ADMIN_PAGE.EVENTS)) return null;
+  return [];
+}
+
+export function canAccessEventsAdmin(user: AdminUser | null): boolean {
+  if (canAccessAdminPage(user, ADMIN_PAGE.EVENTS)) return true;
+  return EVENT_FOR_OPTIONS.some((option) => canAccessRight(user, eventForAccessKey(option.key)));
 }
 
 export function canAccessAdminPage(user: AdminUser | null, page: AdminPageKey): boolean {

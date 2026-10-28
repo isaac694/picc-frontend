@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import EventCouponField, { type EventCouponQuote } from '@/components/events/EventCouponField';
 import EventFormFields from '@/components/events/EventFormFields';
 import { apiFetch } from '@/lib/api';
 import { PAYCHANGU_CHECKOUT_METHOD, processPaychanguPayment } from '@/lib/paychangu-initialize';
@@ -55,6 +56,7 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<EventCouponQuote | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +90,13 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
   );
   const canPay = Boolean(event?.acceptsOnlinePayment && (ticket || (event.paymentAmount && event.paymentAmount > 0)));
   const unitAmount = ticket?.price || event?.paymentAmount || 0;
-  const amount = unitAmount * Math.min(10, Math.max(1, ticketQuantity || 1));
+  const quantity = Math.min(10, Math.max(1, ticketQuantity || 1));
+  const subtotal = unitAmount * quantity;
+  const amount = appliedCoupon ? appliedCoupon.amount : subtotal;
+
+  useEffect(() => {
+    setAppliedCoupon(null);
+  }, [ticketKey, ticketQuantity]);
   const dateLabel = event
     ? [formatWhen(event.startDate), event.endDate && formatWhen(event.endDate) !== formatWhen(event.startDate) ? formatWhen(event.endDate) : '']
         .filter(Boolean)
@@ -185,7 +193,8 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
           email,
           phone,
           ticketKey: ticket?.key,
-          quantity: Math.min(10, Math.max(1, ticketQuantity || 1)),
+          quantity,
+          ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
           paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
           paychanguAccount: event.paymentAccount,
         }),
@@ -194,8 +203,19 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
       if (!paymentResponse.ok) throw new Error(paymentData?.error || 'Failed to save payment record.');
       const chargeId = typeof paymentData?.chargeId === 'string' ? paymentData.chargeId : '';
       if (!chargeId) throw new Error('Payment could not be started.');
+      const serverAmount = Number(paymentData?.payment?.amount);
+      const payable = Number.isFinite(serverAmount) ? serverAmount : amount;
+      if (paymentData?.free || payable <= 0) {
+        setPaymentSuccess('This coupon covered the full price. Your tickets are on the way to your email.');
+        setPaymentForm({ fullName: '', email: '', phone: '', phoneCountry: '+265' });
+        setPaymentAnswers(emptyAnswers(form));
+        setTicketQuantity(1);
+        setTicketKey(event.tickets[0]?.key || '');
+        setAppliedCoupon(null);
+        return;
+      }
       await processPaychanguPayment({
-        amount,
+        amount: payable,
         currency: event.paymentCurrency,
         email,
         firstName: nameParts[0],
@@ -302,6 +322,9 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
                 Tickets
               </div>
               <h2 className="mt-2 text-2xl font-semibold">{ticket ? ticket.name : 'Event ticket'}</h2>
+              {appliedCoupon ? (
+                <p className="mt-1 text-sm text-white/60 line-through">{money(event.paymentCurrency, subtotal)}</p>
+              ) : null}
               <p className="mt-1 text-3xl font-semibold">{money(event.paymentCurrency, amount)}</p>
               {event.tickets.length > 0 ? (
                 <fieldset className="mt-4 grid gap-2">
@@ -343,6 +366,16 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
                   onChange={(item) => setTicketQuantity(Math.min(10, Math.max(1, Number.parseInt(item.target.value, 10) || 1)))}
                 />
               </label>
+              <div className="mt-4">
+                <EventCouponField
+                  eventId={event.id}
+                  ticketKey={ticket?.key}
+                  quantity={quantity}
+                  applied={appliedCoupon}
+                  onApplied={setAppliedCoupon}
+                  tone="dark"
+                />
+              </div>
               {paymentError ? <p className="mt-4 rounded-xl bg-red-500/20 px-3 py-2 text-sm">{paymentError}</p> : null}
               {paymentSuccess ? <p className="mt-4 rounded-xl bg-emerald-500/20 px-3 py-2 text-sm">{paymentSuccess}</p> : null}
               <div className="mt-4 space-y-3 text-[#10233f]">

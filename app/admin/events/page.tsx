@@ -5,6 +5,7 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { allowedEventForKeys } from '@/lib/admin-pages';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
@@ -16,8 +17,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Search, Settings2, Trash2 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import EventFormBuilder from '@/components/events/EventFormBuilder';
 import {
   EMPTY_EVENT_FORM_DRAFT,
@@ -123,6 +125,7 @@ const buildSearchableDateParts = (value: string) => {
 export default function EventsAdminPage() {
   const {
     token,
+    user,
     email,
     password,
     loginError,
@@ -159,11 +162,22 @@ export default function EventsAdminPage() {
     [events],
   );
 
-  const filteredEvents = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return sortedEvents;
+  const eventForChoices = useMemo(() => {
+    const keys = allowedEventForKeys(user);
+    const options = [{ key: 'general', name: 'General' }, ...EVENT_MINISTRIES];
+    if (keys == null) return options;
+    return options.filter((option) => keys.includes(option.key));
+  }, [user]);
 
-    return sortedEvents.filter((event) => {
+  const filteredEvents = useMemo(() => {
+    const keys = allowedEventForKeys(user);
+    const audienceEvents = keys == null
+      ? sortedEvents
+      : sortedEvents.filter((event) => keys.includes(event.ministryKey || 'general'));
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return audienceEvents;
+
+    return audienceEvents.filter((event) => {
       const title = event.title.toLowerCase();
       const dateParts = [
         ...buildSearchableDateParts(event.startDate),
@@ -176,7 +190,7 @@ export default function EventsAdminPage() {
         dateParts.some((part) => part.includes(query))
       );
     });
-  }, [searchQuery, sortedEvents]);
+  }, [searchQuery, sortedEvents, user]);
 
   const uploadImage = async (file: File) => {
     if (file.size > 1024 * 1024) {
@@ -304,7 +318,9 @@ export default function EventsAdminPage() {
   };
 
   const openAddDialog = () => {
-    handleClearSelection();
+    setSelectedEventId(null);
+    setEventDraft({ ...DEFAULT_EVENT_DRAFT, ministryKey: eventForChoices[0]?.key || 'general' });
+    updateUploadName('event-draft', '');
     setDialogOpen(true);
   };
 
@@ -331,40 +347,10 @@ export default function EventsAdminPage() {
       setStatus('End date cannot be earlier than start date.');
       return;
     }
-    const ticketRows = eventDraft.tickets.filter((ticket) => ticket.name.trim() || ticket.price.trim());
-    if (eventDraft.acceptsOnlinePayment && ticketRows.length === 0 && (!Number(eventDraft.paymentAmount) || Number(eventDraft.paymentAmount) <= 0)) {
-      setStatus('Add a ticket type and price, or enter one payment amount.');
-      return;
-    }
-    if (eventDraft.acceptsOnlinePayment && ticketRows.length === 0 && (!Number.isInteger(Number(eventDraft.paymentTicketCount)) || Number(eventDraft.paymentTicketCount) < 1)) {
-      setStatus('Enter the number of tickets for this event.');
-      return;
-    }
-    if (eventDraft.acceptsOnlinePayment) {
-      for (const ticket of ticketRows) {
-        if (!ticket.name.trim()) {
-          setStatus('Each ticket type needs a name.');
-          return;
-        }
-        if (!Number(ticket.price) || Number(ticket.price) <= 0) {
-          setStatus(`Enter a price greater than 0 for ${ticket.name.trim()}.`);
-          return;
-        }
-        if (!Number.isInteger(Number(ticket.expected)) || Number(ticket.expected) < 1) {
-          setStatus(`Enter the number of tickets for ${ticket.name.trim() || 'this ticket'}.`);
-          return;
-        }
-      }
-    }
     const isGeneralEvent = !eventDraft.ministryKey || eventDraft.ministryKey === 'general';
     const registrationForm = eventDraft.requiresRegistration ? draftToPayload(eventDraft.registrationForm) : { form: null };
     if ('error' in registrationForm) {
       setStatus(registrationForm.error);
-      return;
-    }
-    const paymentForm = eventDraft.acceptsOnlinePayment ? draftToPayload(eventDraft.paymentForm) : { form: null };
-    if ('error' in paymentForm) {
-      setStatus(paymentForm.error);
       return;
     }
     setStatus('');
@@ -379,23 +365,6 @@ export default function EventsAdminPage() {
       ministryKey: isGeneralEvent ? null : eventDraft.ministryKey,
       requiresRegistration: eventDraft.requiresRegistration,
       registrationForm: eventFormForApi(registrationForm.form),
-      acceptsOnlinePayment: eventDraft.acceptsOnlinePayment,
-      paymentAmount: eventDraft.acceptsOnlinePayment && ticketRows.length === 0 ? Number(eventDraft.paymentAmount) : null,
-      paymentCurrency: eventDraft.acceptsOnlinePayment ? eventDraft.paymentCurrency : 'MWK',
-      tickets: eventDraft.acceptsOnlinePayment
-        ? (ticketRows.length
-          ? ticketRows.map((ticket) => ({
-            name: ticket.name.trim(),
-            price: Number(ticket.price),
-            expected: Number(ticket.expected),
-          }))
-          : [{
-            name: 'Standard',
-            price: Number(eventDraft.paymentAmount),
-            expected: Number(eventDraft.paymentTicketCount),
-          }])
-        : [],
-      paymentForm: eventFormForApi(paymentForm.form),
       isPublished: selectedEventId
         ? events.find((event) => event.id === selectedEventId)?.isPublished !== false
         : true,
@@ -502,8 +471,7 @@ export default function EventsAdminPage() {
           className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
           aria-label="Event for"
         >
-          <option value="general">General</option>
-          {EVENT_MINISTRIES.map((ministry) => (
+          {eventForChoices.map((ministry) => (
             <option key={ministry.key} value={ministry.key}>
               {ministry.name}
             </option>
@@ -629,151 +597,6 @@ export default function EventsAdminPage() {
           draft={eventDraft.registrationForm}
           onChange={(registrationForm) => setEventDraft((prev) => ({ ...prev, registrationForm }))}
         />
-      ) : null}
-      <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground">
-        <input
-          type="checkbox"
-          checked={eventDraft.acceptsOnlinePayment}
-          onChange={(event) =>
-            setEventDraft((prev) => ({
-              ...prev,
-              acceptsOnlinePayment: event.target.checked,
-              paymentAmount: event.target.checked ? prev.paymentAmount : '',
-              paymentTicketCount: event.target.checked ? prev.paymentTicketCount : '',
-              paymentCurrency: event.target.checked ? prev.paymentCurrency : 'MWK',
-              tickets: event.target.checked ? prev.tickets : [],
-              paymentForm: event.target.checked ? prev.paymentForm : { ...EMPTY_EVENT_FORM_DRAFT, fields: [] },
-            }))
-          }
-          className="h-4 w-4"
-        />
-        <span>Allow users to pay for this event on the website</span>
-      </label>
-      {eventDraft.acceptsOnlinePayment ? (
-        <div className="space-y-3">
-          <div className="space-y-3 rounded-xl border border-border bg-background p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-foreground">Ticket types</p>
-              <select
-                value={eventDraft.paymentCurrency}
-                onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentCurrency: event.target.value }))}
-                className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
-                aria-label="Event payment currency"
-              >
-                <option value="MWK">MWK</option>
-                <option value="USD">USD</option>
-              </select>
-            </div>
-            {eventDraft.tickets.map((ticket) => (
-              <div key={ticket.clientId} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_140px_140px_auto]">
-                <input
-                  type="text"
-                  placeholder="Ticket name"
-                  value={ticket.name}
-                  onChange={(event) =>
-                    setEventDraft((prev) => ({
-                      ...prev,
-                      tickets: prev.tickets.map((row) =>
-                        row.clientId === ticket.clientId ? { ...row, name: event.target.value } : row,
-                      ),
-                    }))
-                  }
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-                <input
-                  type="number"
-                  min="1"
-                  step="any"
-                  placeholder="Price"
-                  value={ticket.price}
-                  onChange={(event) =>
-                    setEventDraft((prev) => ({
-                      ...prev,
-                      tickets: prev.tickets.map((row) =>
-                        row.clientId === ticket.clientId ? { ...row, price: event.target.value } : row,
-                      ),
-                    }))
-                  }
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  required
-                  placeholder="Number of tickets"
-                  value={ticket.expected}
-                  onChange={(event) =>
-                    setEventDraft((prev) => ({
-                      ...prev,
-                      tickets: prev.tickets.map((row) =>
-                        row.clientId === ticket.clientId ? { ...row, expected: event.target.value } : row,
-                      ),
-                    }))
-                  }
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEventDraft((prev) => ({
-                      ...prev,
-                      tickets: prev.tickets.filter((row) => row.clientId !== ticket.clientId),
-                    }))
-                  }
-                  className="rounded-xl border border-border px-4 py-3 text-sm text-foreground"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                setEventDraft((prev) => ({
-                  ...prev,
-                  tickets: [
-                    ...prev.tickets,
-                    { clientId: `ticket-${Date.now()}-${prev.tickets.length}`, name: '', price: '', expected: '' },
-                  ],
-                }))
-              }
-              className="rounded-full border border-border px-4 py-2 text-sm text-foreground"
-            >
-              Add ticket type
-            </button>
-            {eventDraft.tickets.length === 0 ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  required
-                  placeholder="Number of tickets"
-                  value={eventDraft.paymentTicketCount}
-                  onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentTicketCount: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-                <input
-                  type="number"
-                  min="1"
-                  step="any"
-                  placeholder="One price for everyone"
-                  value={eventDraft.paymentAmount}
-                  onChange={(event) => setEventDraft((prev) => ({ ...prev, paymentAmount: event.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-                />
-              </div>
-            ) : (
-              <p className="text-xs text-foreground/60">Each ticket is charged at its own price.</p>
-            )}
-          </div>
-          <EventFormBuilder
-            heading="Payment form"
-            draft={eventDraft.paymentForm}
-            onChange={(paymentForm) => setEventDraft((prev) => ({ ...prev, paymentForm }))}
-          />
-        </div>
       ) : null}
     </div>
   );
@@ -930,6 +753,12 @@ export default function EventsAdminPage() {
                               {togglingEventId === event.id ? 'Saving...' : 'Activate'}
                             </Button>
                           )}
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/admin/events/${event.id}`}>
+                              <Settings2 className="h-4 w-4" />
+                              Manage
+                            </Link>
+                          </Button>
                           <Button
                             type="button"
                             size="icon"

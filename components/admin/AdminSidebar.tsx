@@ -36,7 +36,7 @@ import {
   Receipt,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { ADMIN_ACCESS_RIGHT, ADMIN_PAGE, MINISTRY_ADMIN_OPTIONS, canAccessAdminPage, canAccessEventCheckIn, canAccessEventPaymentPath, canAccessMinistry, canAccessMinistryEvents, canAccessRight } from '@/lib/admin-pages';
+import { ADMIN_ACCESS_RIGHT, ADMIN_PAGE, MINISTRY_ADMIN_OPTIONS, canAccessAdminPage, canAccessEventCheckIn, canAccessEventPaymentPath, canAccessEventsAdmin, canAccessMinistry, canAccessMinistryEvents, canAccessRight } from '@/lib/admin-pages';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useAdminTheme } from '@/hooks/use-admin-theme';
 import type { AdminPageKey } from '@/lib/admin-pages';
@@ -74,8 +74,6 @@ const PAYMENTS_ITEMS: NavItem[] = [
   { label: 'Giving dashboard', href: '/admin/giving/dashboard', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Wallet },
   { label: 'Giving payments', href: '/admin/giving/payments', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: Receipt },
   { label: 'Giving types', href: '/admin/giving/types', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: FileText },
-  { label: 'Events payment dashboard', href: '/admin/event-payments/dashboard', pageKey: ADMIN_PAGE.EVENT_PAYMENTS_DASHBOARD, icon: Wallet },
-  { label: 'Events payment', href: '/admin/event-payments', pageKey: ADMIN_PAGE.EVENT_PAYMENTS, icon: Receipt },
   { label: 'Ticket KPIs', href: '/admin/event-payments/tickets', pageKey: ADMIN_PAGE.EVENT_TICKET_KPIS, icon: Ticket },
   { label: 'Store dashboard', href: '/admin/store/dashboard', pageKey: ADMIN_PAGE.STORE_PAGE, icon: LayoutDashboard },
   { label: 'Book store payments', href: '/admin/store/payments', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
@@ -253,6 +251,7 @@ export default function AdminSidebar() {
 
     const canSee = (item: NavItem) => {
       if (!item.pageKey) return true;
+      if (item.href === '/admin/events') return canAccessEventsAdmin(user);
       return canAccessAdminPage(user, item.pageKey);
     };
     const nav = NAV_ITEMS.filter(canSee);

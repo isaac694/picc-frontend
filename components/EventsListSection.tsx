@@ -18,6 +18,7 @@ import { sendEventRegistrationNotification } from '@/lib/email';
 import { apiFetch, apiUrl } from '@/lib/api';
 import { PAYCHANGU_CHECKOUT_METHOD, processPaychanguPayment } from '@/lib/paychangu-initialize';
 import { publicEventPath } from '@/lib/public-event';
+import EventCouponField, { type EventCouponQuote } from '@/components/events/EventCouponField';
 import EventFormFields from '@/components/events/EventFormFields';
 import {
   contactFromEventAnswers,
@@ -236,6 +237,7 @@ export default function EventsListSection({
   const [paymentAnswers, setPaymentAnswers] = useState<EventAnswers>({});
   const [selectedTicketKey, setSelectedTicketKey] = useState('');
   const [ticketQuantity, setTicketQuantity] = useState(1);
+  const [appliedCoupon, setAppliedCoupon] = useState<EventCouponQuote | null>(null);
   const pageSize = 3;
 
   useEffect(() => {
@@ -525,6 +527,7 @@ export default function EventsListSection({
     setPaymentAnswers(emptyAnswers(event.paymentForm || null));
     setPaymentError(null);
     setPaymentSuccess(null);
+    setAppliedCoupon(null);
     setIsPaymentOpen(true);
   };
 
@@ -577,7 +580,7 @@ export default function EventsListSection({
     const lastName = nameParts.slice(1).join(' ');
     const quantity = Math.min(10, Math.max(1, ticketQuantity || 1));
     const unitAmount = ticket ? ticket.price : Number(paymentEvent.paymentAmount || 0);
-    const amount = unitAmount * quantity;
+    const amount = appliedCoupon ? appliedCoupon.amount : unitAmount * quantity;
     const currency = paymentEvent.paymentCurrency || 'MWK';
     const reason = `Event: ${paymentEvent.title}`;
     const paymentAccount =
@@ -596,6 +599,7 @@ export default function EventsListSection({
             phone: normalizedPhone,
             ticketKey: ticket?.key,
             quantity,
+            ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
             paymentMethod: PAYCHANGU_CHECKOUT_METHOD,
             paychanguAccount: paymentAccount,
           }),
@@ -608,9 +612,18 @@ export default function EventsListSection({
         if (!chargeId) {
           throw new Error('Payment could not be started.');
         }
+        const serverAmount = Number(paymentData?.payment?.amount);
+        const payable = Number.isFinite(serverAmount) ? serverAmount : amount;
+
+        if (paymentData?.free || payable <= 0) {
+          setPaymentSuccess('This coupon covered the full price. Your tickets are on the way to your email.');
+          setAppliedCoupon(null);
+          setTicketQuantity(1);
+          return;
+        }
 
         await processPaychanguPayment({
-          amount,
+          amount: payable,
           currency,
           email,
           firstName,
@@ -1302,6 +1315,7 @@ export default function EventsListSection({
           if (!open) {
             setPaymentEvent(null);
             setTicketQuantity(1);
+            setAppliedCoupon(null);
             setPaymentError(null);
             setPaymentSuccess(null);
           }
@@ -1335,7 +1349,10 @@ export default function EventsListSection({
                       name={`ticket-${paymentEvent.id}`}
                       value={ticket.key}
                       checked={selectedTicketKey === ticket.key}
-                      onChange={() => setSelectedTicketKey(ticket.key)}
+                      onChange={() => {
+                        setSelectedTicketKey(ticket.key);
+                        setAppliedCoupon(null);
+                      }}
                       className="h-4 w-4 accent-primary"
                     />
                     <span>
@@ -1353,9 +1370,28 @@ export default function EventsListSection({
                 min={1}
                 max={10}
                 value={ticketQuantity}
-                onChange={(event) => setTicketQuantity(Math.min(10, Math.max(1, Number.parseInt(event.target.value, 10) || 1)))}
+                onChange={(event) => {
+                  setTicketQuantity(Math.min(10, Math.max(1, Number.parseInt(event.target.value, 10) || 1)));
+                  setAppliedCoupon(null);
+                }}
               />
             </label>
+            {paymentEvent ? (
+              <EventCouponField
+                eventId={String(paymentEvent.id)}
+                ticketKey={selectedTicketKey}
+                quantity={Math.min(10, Math.max(1, ticketQuantity || 1))}
+                applied={appliedCoupon}
+                onApplied={setAppliedCoupon}
+              />
+            ) : null}
+            {appliedCoupon ? (
+              <p className="text-sm text-foreground/70">
+                <span className="line-through">{appliedCoupon.currency} {appliedCoupon.subtotal.toLocaleString('en-US')}</span>
+                {' '}
+                {appliedCoupon.currency} {appliedCoupon.amount.toLocaleString('en-US')} after {appliedCoupon.code}
+              </p>
+            ) : null}
             {paymentEvent?.paymentForm ? (
               <EventFormFields
                 form={paymentEvent.paymentForm}

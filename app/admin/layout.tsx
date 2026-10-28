@@ -10,6 +10,7 @@ import {
   ADMIN_ACCESS_RIGHT,
   ADMIN_PAGE,
   canAccessAdminPage,
+  canAccessEventsAdmin,
   canAccessEventCheckIn,
   canAccessEventPaymentPath,
   canAccessMinistry,
@@ -193,6 +194,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     if (ministryEventKey) return canAccessMinistryEvents(user, ministryEventKey);
     if ((pathname || '').startsWith('/admin/event-check-in')) return canAccessEventCheckIn(user);
     if ((pathname || '').startsWith('/admin/event-payments')) return canAccessEventPaymentPath(user, pathname);
+    if ((pathname || '').startsWith('/admin/events')) return canAccessEventsAdmin(user);
     if (!requiredPage) return true;
     return canAccessAdminPage(user, requiredPage);
   })();
