@@ -131,7 +131,9 @@ export default function StorePage() {
     const normalizedSearch = searchInput.trim().toLowerCase();
 
     return bookProducts.filter((product) => {
-      const matchesGenre = selectedBookGenre === 'All' || product.genre === selectedBookGenre;
+      const matchesGenre =
+        selectedBookGenre === 'All' ||
+        (product.genre || '').trim().toLowerCase() === selectedBookGenre.toLowerCase();
       const matchesSearch =
         normalizedSearch.length === 0 ||
         [product.name, product.author, product.genre, product.category]
@@ -141,26 +143,20 @@ export default function StorePage() {
       return matchesGenre && matchesSearch;
     });
   }, [bookProducts, searchInput, selectedBookGenre]);
-  const visibleBookProductsWithImages = useMemo(
-    () => visibleBookProducts.filter((product) => !product.image.includes('placeholder')),
-    [visibleBookProducts]
-  );
 
   const classicTrendingProducts = useMemo(() => {
-    const active = visibleBookProductsWithImages.length ? visibleBookProductsWithImages : visibleBookProducts;
+    const active = [...visibleBookProducts];
 
     if (trendingTab === 'New arrivals') {
-      return [...active].slice(-8).reverse();
+      return active.reverse();
     }
 
     if (trendingTab === 'Best sellers') {
-      return [...active]
-        .sort((a, b) => b.price - a.price)
-        .slice(0, 8);
+      return active.sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));
     }
 
-    return active.slice(0, 8);
-  }, [trendingTab, visibleBookProducts, visibleBookProductsWithImages]);
+    return active;
+  }, [trendingTab, visibleBookProducts]);
 
   const compactProductGroups = useMemo(() => {
     const findBook = (id: string) => storeProducts.find((product) => product.id === id) || bookProductsWithImages[0] || storeProducts[0];
@@ -193,11 +189,15 @@ export default function StorePage() {
 
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    document.getElementById('store-products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const selectBookGenre = (genre: 'All' | (typeof bookGenres)[number]) => {
     setSelectedBookGenre(genre);
     setTrendingTab('Featured');
+    window.requestAnimationFrame(() => {
+      document.getElementById('store-products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   const swapImage = (fallback: string) => (event: SyntheticEvent<HTMLImageElement>) => {
