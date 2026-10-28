@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import EventCouponField, { type EventCouponQuote } from '@/components/events/EventCouponField';
+import EventShareButton from '@/components/events/EventShareButton';
 import EventFormFields from '@/components/events/EventFormFields';
 import { apiFetch } from '@/lib/api';
 import { PAYCHANGU_CHECKOUT_METHOD, processPaychanguPayment } from '@/lib/paychangu-initialize';
@@ -281,6 +282,7 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
               <MapPin className="h-4 w-4" />
               {event.location}
             </span>
+            <EventShareButton eventId={event.id} title={event.title} tone="hero" />
           </div>
         </div>
       </section>

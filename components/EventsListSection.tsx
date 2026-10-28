@@ -19,6 +19,7 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { PAYCHANGU_CHECKOUT_METHOD, processPaychanguPayment } from '@/lib/paychangu-initialize';
 import { publicEventPath } from '@/lib/public-event';
 import EventCouponField, { type EventCouponQuote } from '@/components/events/EventCouponField';
+import EventShareButton from '@/components/events/EventShareButton';
 import EventFormFields from '@/components/events/EventFormFields';
 import {
   contactFromEventAnswers,
@@ -896,9 +897,12 @@ export default function EventsListSection({
                                   <td className="px-3 py-3 text-foreground/70">{event.location || '—'}</td>
                                   <td className="px-3 py-3 text-right">
                                     {detailPath ? (
-                                      <Button asChild size="sm" className="rounded-full">
-                                        <Link href={detailPath}>{detailAction}</Link>
-                                      </Button>
+                                      <div className="flex justify-end gap-2">
+                                        <Button asChild size="sm" className="rounded-full">
+                                          <Link href={detailPath}>{detailAction}</Link>
+                                        </Button>
+                                        <EventShareButton eventId={String(event.id)} title={event.title} />
+                                      </div>
                                     ) : null}
                                   </td>
                                 </tr>
@@ -956,11 +960,14 @@ export default function EventsListSection({
                                   {event.description ? (
                                     <p className="text-sm leading-6 text-foreground/75 mt-3">{event.description}</p>
                                   ) : null}
-                                  <div className="mt-4">
+                                  <div className="mt-4 flex flex-wrap items-center gap-3">
                                     {detailPath ? (
-                                      <Button asChild className="rounded-full px-5 text-sm">
-                                        <Link href={detailPath}>{detailAction}</Link>
-                                      </Button>
+                                      <>
+                                        <Button asChild className="rounded-full px-5 text-sm">
+                                          <Link href={detailPath}>{detailAction}</Link>
+                                        </Button>
+                                        <EventShareButton eventId={String(event.id)} title={event.title} />
+                                      </>
                                     ) : (
                                       <>
                                         <Button
@@ -1060,9 +1067,12 @@ export default function EventsListSection({
                                     ) : null}
                                     <div className="mt-4 flex flex-wrap items-center gap-3">
                                       {detailPath ? (
-                                        <Button asChild className="rounded-full px-5 text-sm">
-                                          <Link href={detailPath}>{detailAction}</Link>
-                                        </Button>
+                                        <>
+                                          <Button asChild className="rounded-full px-5 text-sm">
+                                            <Link href={detailPath}>{detailAction}</Link>
+                                          </Button>
+                                          <EventShareButton eventId={String(event.id)} title={event.title} />
+                                        </>
                                       ) : (
                                         <>
                                           <Button
