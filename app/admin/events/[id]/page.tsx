@@ -280,6 +280,11 @@ function newTicketDraft(): EventTicketDraft {
   return { clientId: `ticket-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: '', price: '', expected: '' };
 }
 
+function ticketExpectedForPayload(value: string) {
+  const count = Number(String(value ?? '').trim());
+  return Number.isInteger(count) && count >= 1 ? count : null;
+}
+
 export default function ManageEventPage() {
   const params = useParams<{ id: string }>();
   const eventId = String(params?.id || '');
@@ -590,9 +595,10 @@ export default function ManageEventPage() {
         body: JSON.stringify({
           paymentCurrency: nextCurrency,
           tickets: rows.map((ticket) => ({
+            ...(ticket.key ? { key: ticket.key } : {}),
             name: ticket.name.trim(),
             price: Number(ticket.price),
-            expected: Number(ticket.expected),
+            expected: ticketExpectedForPayload(ticket.expected),
           })),
         }),
       });

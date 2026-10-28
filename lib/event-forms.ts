@@ -317,6 +317,7 @@ export type EventTicket = {
 
 export type EventTicketDraft = {
   clientId: string;
+  key?: string;
   name: string;
   price: string;
   expected: string;
@@ -344,6 +345,7 @@ export function parseEventTickets(value: unknown): EventTicket[] {
 export function ticketsToDraft(tickets: EventTicket[]): EventTicketDraft[] {
   return tickets.map((ticket, index) => ({
     clientId: `ticket-${index}-${ticket.key}`,
+    key: ticket.key,
     name: ticket.name,
     price: String(ticket.price),
     expected: ticket.expected == null ? '' : String(ticket.expected),
