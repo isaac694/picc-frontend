@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { publicEventPath } from '@/lib/public-event';
+import { publicEventPath, publicSiteOrigin } from '@/lib/public-event';
 
 type EventShareButtonProps = {
   eventId: string;
@@ -28,7 +28,7 @@ export default function EventShareButton({ eventId, title, tone = 'light' }: Eve
   useEffect(() => {
     const path = publicEventPath(eventId);
     if (!path) return;
-    setPageUrl(`${window.location.origin}${path}`);
+    setPageUrl(`${publicSiteOrigin()}${path}`);
     setCanNativeShare(typeof navigator.share === 'function');
   }, [eventId]);
 

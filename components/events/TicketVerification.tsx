@@ -43,7 +43,7 @@ export function TicketVerification({
     : checkedIn
       ? 'border-amber-500/40 bg-amber-500/10 text-amber-800'
       : 'border-red-500/40 bg-red-500/10 text-red-700';
-  const label = ticket.valid ? 'Valid ticket' : checkedIn ? 'Already checked in' : 'Not paid';
+  const label = ticket.valid ? 'Redeem please' : checkedIn ? 'Redeemed' : 'Not paid';
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 text-foreground shadow-sm">
@@ -72,7 +72,7 @@ export function TicketVerification({
           disabled={checkingIn}
           className="mt-6 w-full rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
         >
-          {checkingIn ? 'Checking in...' : 'Mark as arrived'}
+          {checkingIn ? 'Redeeming...' : 'Redeem please'}
         </button>
       ) : null}
     </div>

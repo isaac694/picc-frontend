@@ -26,6 +26,15 @@ export type PublicEvent = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const PUBLIC_FRONTEND_URL = 'https://www.piccworldwide.org';
+
+export function publicSiteOrigin() {
+  if (typeof window === 'undefined') return PUBLIC_FRONTEND_URL;
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') return PUBLIC_FRONTEND_URL;
+  return window.location.origin.replace(/\/+$/, '');
+}
+
 export function publicEventPath(id: unknown) {
   const value = String(id ?? '').trim();
   if (!value || /^\d+$/.test(value) || value === 'fallback') return '';
