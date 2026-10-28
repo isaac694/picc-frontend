@@ -628,7 +628,7 @@ export default function HomeChurchesPage() {
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            <div className="max-w-3xl mt-32 md:mt-40">
+            <div className="max-w-3xl mt-8 sm:mt-16 md:mt-40">
 
               <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3 flex-wrap">
 

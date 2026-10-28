@@ -410,7 +410,7 @@ export default async function HomePage() {
       <main className="min-h-screen">
         <div id="top" className="sr-only" aria-hidden="true" />
         {/* Hero Section */}
-        <section className="relative h-[420px] sm:h-[520px] md:h-[700px] overflow-hidden flex items-center rounded-b-[28px] sm:rounded-b-[36px] md:rounded-b-[48px]">
+        <section className="relative flex min-h-[34rem] items-center overflow-hidden rounded-b-[28px] py-16 sm:h-[520px] sm:min-h-0 sm:rounded-b-[36px] sm:py-0 md:h-[700px] md:rounded-b-[48px]">
           <div className="absolute inset-0 hero-collage p-2 sm:p-3 md:p-4" aria-hidden="true">
             <div className="grid h-full w-full grid-cols-2 md:grid-cols-6 grid-rows-3 md:grid-rows-3 gap-2 sm:gap-3 md:gap-4">
              
@@ -445,12 +445,12 @@ export default async function HomePage() {
                 A place of worship, fellowship, and spiritual growth for all
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/livestream">
+                <Link href="/livestream" className="w-full sm:w-auto">
                   <Button className="w-full sm:w-auto bg-primary text-primary-foreground border border-primary-foreground/60 hover:bg-primary/90 text-base px-8 py-6">
                     Livestream
                   </Button>
                 </Link>
-                <Link href="/give">
+                <Link href="/give" className="w-full sm:w-auto">
                   <Button className="w-full sm:w-auto bg-secondary text-secondary-foreground hover:bg-secondary/90 text-base px-8 py-6">
                     Give Online
                   </Button>

@@ -796,7 +796,7 @@ export default function EventsListSection({
                   }}
                 />
               </div>
-              <div className="relative flex items-center gap-2">
+              <div className="relative flex flex-wrap items-center gap-2">
                 <Button className="rounded-full px-6 bg-[#7C9BFF] text-white hover:bg-[#6B8BF5]">
                   Find Events
                 </Button>

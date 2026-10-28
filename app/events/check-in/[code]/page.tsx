@@ -14,11 +14,6 @@ export default function EventTicketCheckInPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
-  const [canCheckIn, setCanCheckIn] = useState(false);
-
-  useEffect(() => {
-    setCanCheckIn(Boolean(window.localStorage.getItem('admin_token')));
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -43,18 +38,13 @@ export default function EventTicketCheckInPage() {
   }, [code]);
 
   const checkIn = async () => {
-    const token = window.localStorage.getItem('admin_token');
-    if (!token || !ticket) return;
+    if (!ticket || checkingIn) return;
     setCheckingIn(true);
     setError('');
     try {
-      const response = await apiFetch('/api/admin/event-tickets/check-in', {
+      const response = await apiFetch(`/api/event-tickets/${encodeURIComponent(ticket.ticketCode)}/redeem`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ code: ticket.ticketCode }),
+        headers: { 'Content-Type': 'application/json' },
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
@@ -76,7 +66,7 @@ export default function EventTicketCheckInPage() {
           {loading ? <p className="text-sm text-foreground/60">Looking up ticket...</p> : null}
           {error ? <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700">{error}</p> : null}
           {ticket ? (
-            <TicketVerification ticket={ticket} canCheckIn={canCheckIn} checkingIn={checkingIn} onCheckIn={checkIn} />
+            <TicketVerification ticket={ticket} canCheckIn checkingIn={checkingIn} onCheckIn={checkIn} />
           ) : null}
         </div>
       </main>

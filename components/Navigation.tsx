@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { ChevronDown, Menu, X } from 'lucide-react';
 
@@ -66,6 +66,19 @@ const closeMenu = () => {
   setMobileResourcesOpen(false);
 };
 
+useEffect(() => {
+  closeMenu();
+}, [pathname]);
+
+useEffect(() => {
+  if (!isOpen) return;
+  const previous = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';
+  return () => {
+    document.body.style.overflow = previous;
+  };
+}, [isOpen]);
+
   return (
     <nav
       className={
@@ -75,7 +88,7 @@ const closeMenu = () => {
       }
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="relative z-50 flex justify-between items-center h-16">
           {/* Logo */}
           <Link
             href="/"
@@ -327,7 +340,11 @@ const closeMenu = () => {
 
           {/* Mobile Menu Button */}
           <button
-            className={isDarkNav ? 'lg:hidden text-white' : 'lg:hidden'}
+            className={
+              isDarkNav
+                ? 'inline-flex h-11 w-11 items-center justify-center rounded-full lg:hidden text-white'
+                : 'inline-flex h-11 w-11 items-center justify-center rounded-full lg:hidden'
+            }
             onClick={handleToggleMenu}
             aria-label="Toggle menu"
           >
@@ -347,8 +364,8 @@ const closeMenu = () => {
             <div
               className={
                 isDarkNav
-                  ? 'relative z-50 pb-4 space-y-2 bg-black'
-                  : 'relative z-50 pb-4 space-y-2 bg-background'
+                  ? 'fixed inset-x-0 top-16 bottom-0 z-50 space-y-1 overflow-y-auto overscroll-contain bg-black px-2 pb-10'
+                  : 'fixed inset-x-0 top-16 bottom-0 z-50 space-y-1 overflow-y-auto overscroll-contain bg-background px-2 pb-10'
               }
             >
               <div className="flex items-center justify-end px-4 pt-3">

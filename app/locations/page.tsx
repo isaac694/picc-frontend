@@ -387,7 +387,7 @@ export default function LocationsPage() {
             <div className='absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35' />
           </div>
           <div className='relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-            <div className='max-w-3xl mt-32 md:mt-40'>
+            <div className='max-w-3xl mt-8 sm:mt-16 md:mt-40'>
               <div className='text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3'>
                 <a href='/' className='hover:text-white transition-colors'>Home</a>
                 <span className='text-white/50'>/</span>

@@ -141,7 +141,7 @@ export default function AboutPage() {
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
           </div>
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mt-24 md:mt-32">
+            <div className="max-w-3xl mt-8 sm:mt-16 md:mt-32">
               <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3">
                 <Link href="/" className="hover:text-white">Home</Link>
                 <span className="text-white/50">/</span>
@@ -156,7 +156,7 @@ export default function AboutPage() {
         <section className="py-16 sm:py-20 md:py-24 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-start">
-              <div className="relative h-[26rem] sm:h-[34rem] md:h-[50rem] lg:h-[60rem] rounded-3xl overflow-hidden shadow-xl">
+              <div className="relative h-72 overflow-hidden rounded-3xl shadow-xl sm:h-[28rem] lg:h-[60rem]">
                 <Image
                   src={resolveImage('about-tenets-image', '/about/tenets-1.JPG')}
                   alt="Our church family"
@@ -165,7 +165,7 @@ export default function AboutPage() {
                   className="object-cover"
                 />
               </div>
-              <div className="h-[26rem] sm:h-[34rem] md:h-[50rem] lg:h-[60rem] flex flex-col">
+              <div className="flex h-auto min-h-[24rem] flex-col lg:h-[60rem]">
                 <h2 className="text-3xl md:text-4xl font-semibold text-foreground leading-tight mb-4">
                   THE <span className="text-secondary">PICC</span> TENETS
                   <br />
@@ -367,7 +367,7 @@ export default function AboutPage() {
                   );
                 })}
               </div>
-              <div className="relative h-[26rem] sm:h-[34rem] md:h-[50rem] lg:h-[60rem] rounded-3xl overflow-hidden shadow-xl">
+              <div className="relative h-72 overflow-hidden rounded-3xl shadow-xl sm:h-[28rem] lg:h-[60rem]">
                 <Image
                   src={resolveImage('about-core-values-image', '/about/core-values.JPG')}
                   alt="PICC core values"

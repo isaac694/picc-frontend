@@ -335,7 +335,7 @@ export default function ContactPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
               {/* Image */}
-              <div className="relative min-h-[360px] sm:min-h-[440px] md:min-h-[520px] rounded-2xl overflow-hidden">
+              <div className="relative min-h-64 overflow-hidden rounded-2xl sm:min-h-[440px] md:min-h-[520px]">
                 <Image
                   src={resolveImage('contact-send-message-image', '/images/send-message-2.JPG')}
                   alt="Send us a message"
@@ -348,7 +348,7 @@ export default function ContactPage() {
               {/* Contact Form */}
               <div>
                 <h2 className="text-2xl font-bold text-primary mb-6">Send us a Message</h2>
-                <Card className="p-8">
+                <Card className="p-4 sm:p-8">
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Name</label>

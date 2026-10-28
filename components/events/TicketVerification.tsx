@@ -47,7 +47,18 @@ export function TicketVerification({
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 text-foreground shadow-sm">
-      <p className={`rounded-full border px-3 py-1 text-center text-sm font-semibold ${tone}`}>{label}</p>
+      {ticket.valid && onCheckIn ? (
+        <button
+          type="button"
+          onClick={onCheckIn}
+          disabled={checkingIn}
+          className={`w-full rounded-full border px-3 py-3 text-center text-sm font-semibold disabled:opacity-60 ${tone}`}
+        >
+          {checkingIn ? 'Redeeming...' : 'Redeem please'}
+        </button>
+      ) : (
+        <p className={`rounded-full border px-3 py-1 text-center text-sm font-semibold ${tone}`}>{label}</p>
+      )}
       <h1 className="mt-4 text-2xl font-semibold">{ticket.event.title}</h1>
       <p className="mt-2 text-sm text-foreground/70">{formatTicketWhen(ticket)}</p>
       <p className="text-sm text-foreground/70">{ticket.event.location || 'Location to be announced'}</p>
@@ -72,7 +83,7 @@ export function TicketVerification({
           disabled={checkingIn}
           className="mt-6 w-full rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
         >
-          {checkingIn ? 'Redeeming...' : 'Redeem please'}
+          {checkingIn ? 'Redeeming...' : 'Redeem'}
         </button>
       ) : null}
     </div>

@@ -15,6 +15,13 @@ html {
   scroll-behavior: auto;
 }
 
+@media (max-width: 767px) {
+  body:not(:has([data-admin-content])) {
+    overflow-x: clip;
+    max-width: 100%;
+  }
+}
+
 .devotion-scroll {
   scroll-behavior: auto;
   overscroll-behavior: contain;

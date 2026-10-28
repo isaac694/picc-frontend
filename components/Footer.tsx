@@ -121,7 +121,7 @@ export default function Footer() {
   return (
     <footer className="bg-[#0b0b0b] text-white rounded-t-[36px] overflow-hidden">
       <div className="w-full px-0 pt-20 pb-0">
-        <div className="w-full rounded-t-[36px] rounded-b-none bg-[#0b0b0b] px-8 pt-16 pb-6 md:px-12 md:pt-20 md:pb-8 shadow-2xl min-h-130">
+        <div className="w-full rounded-t-[36px] rounded-b-none bg-[#0b0b0b] px-4 pt-12 pb-8 sm:px-8 md:px-12 md:pt-20 md:pb-8 shadow-2xl">
           <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.8fr_1fr] gap-10 md:gap-12">
             <div>
               <div className="flex items-center gap-4 mb-6">
@@ -152,7 +152,7 @@ export default function Footer() {
 
             <div>
               <h3 className="text-lg font-semibold mb-4">Address</h3>
-              <p className="text-sm text-white/80 leading-relaxed">
+              <p className="whitespace-pre-line text-sm text-white/80 leading-relaxed">
                 Pentecost International Christian Centre (PICC)
 Along Kaunda Road, Near Best Oil Filling Station, Area 49
 Post Office Box 31841
@@ -221,7 +221,7 @@ Malawi
           </div>
 
           {/* Subscription Section */}
-          <div className="mt-16 grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8 rounded-2xl border border-white/10 bg-white/5 px-6 py-8">
+          <div className="mt-12 grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8 rounded-2xl border border-white/10 bg-white/5 px-4 py-6 sm:px-6 sm:py-8">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-white/60 mb-2">Stay Connected</p>
               <h3 className="text-2xl font-semibold">Subscribe to Sermon Updates</h3>
@@ -231,8 +231,8 @@ Malawi
             </div>
             <div className="flex flex-col justify-center">
               <form onSubmit={handleSubscribe} className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="flex-1">
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="min-w-0 flex-1">
                     <Input
                       type="email"
                       placeholder="Enter your email address"
@@ -245,7 +245,7 @@ Malawi
                   <Button
                     type="submit"
                     disabled={isSubscribing}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-6 sm:w-auto"
                   >
                     {isSubscribing ? (
                       <>
@@ -276,7 +276,7 @@ Malawi
             </div>
           </div>
 
-          <div id="faq" className="mt-16 grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8 rounded-2xl border border-white/10 bg-white/5 px-6 py-8">
+          <div id="faq" className="mt-10 grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8 rounded-2xl border border-white/10 bg-white/5 px-4 py-6 sm:px-6 sm:py-8">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-white/60 mb-2">FAQ</p>
               <h3 className="text-2xl font-semibold">Frequently Asked Questions</h3>
