@@ -805,7 +805,7 @@ export default async function HomePage() {
           </div>
         </section>
         {/* Moments Section */}
-        <MomentsSection />
+        {/* <MomentsSection /> */}
 
         {/* Service Times Section */}
         <section id="see-you-in-church" className="py-16 sm:py-16 sm:py-20 md:py-24 bg-background scroll-mt-24">

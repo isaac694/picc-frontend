@@ -8,6 +8,7 @@ import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
+import { CLOUDINARY_FOLDERS, uploadImageToCloudinary } from '@/lib/cloudinary-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { apiFetch } from '@/lib/api';
 import { PROJECT_BOOKS_UPLOAD_PREFIX } from '@/lib/project-page-images-upload';
@@ -142,7 +143,7 @@ export default function AdminStorePage() {
   const [draft, setDraft] = useState<StoreBookDraft>(EMPTY_DRAFT);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
-  const { runUpload, progress, uploading } = useMediaUpload();
+  const { progress, uploading, setProgress, setUploading } = useMediaUpload();
   const [search, setSearch] = useState('');
   const [uploadName, setUploadName] = useState('');
   const [pdfName, setPdfName] = useState('');
@@ -269,17 +270,41 @@ export default function AdminStorePage() {
   };
 
   const uploadImage = async (file: File) => {
-    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
-      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+    const looksLikeImage = file.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|avif|heic|heif)$/i.test(file.name);
+    if (!looksLikeImage) {
+      setStatus('Upload an image for the book cover.');
       return null;
     }
 
     setUploadTarget('cover');
+    setUploading(true);
+    setProgress(0);
     try {
-      return await runUpload(file, 'store');
+      const result = await uploadImageToCloudinary(file, CLOUDINARY_FOLDERS.STORE_COVERS, {
+        maxSizeMB: 10,
+        allowedTypes: [
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'image/gif',
+          'image/avif',
+          'image/heic',
+          'image/heif',
+          file.type || 'image/jpeg',
+        ],
+        onProgress: setProgress,
+      });
+      if (!result.url.includes('res.cloudinary.com')) {
+        setStatus('Cover upload did not reach Cloudinary.');
+        return null;
+      }
+      return result.url;
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Cover upload failed.');
       return null;
+    } finally {
+      setUploading(false);
+      window.setTimeout(() => setProgress(0), 500);
     }
   };
 
@@ -634,6 +659,7 @@ export default function AdminStorePage() {
               </div>
               <div className="space-y-2">
                 <label htmlFor="store-book-cover-upload" className="block text-sm font-medium text-foreground">Upload cover image</label>
+                <p className="text-xs text-foreground/60">Cover images are stored on Cloudinary.</p>
                 <input
                   id="store-book-cover-upload"
                   type="file"

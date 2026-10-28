@@ -10,6 +10,7 @@ import Footer from '@/components/Footer';
 import StoreMobileNav from '@/components/store/StoreMobileNav';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
+import ProtectedBookReader from '@/components/store/ProtectedBookReader';
 
 type LibraryPurchase = {
   id: string;
@@ -24,19 +25,14 @@ type LibraryPurchase = {
   createdAt: string;
   bookContent?: string | null;
   downloadUrl?: string | null;
+  canRead?: boolean;
 };
 
 const STORE_TOKEN_KEY = 'store_token';
 const STORE_USER_KEY = 'store_user';
 
-const SAMPLE_CONTENT = [
-  'This soft-copy reader is ready for the full book content. Once the admin adds chapters or reading material for this book, the saved content will appear here for users who have paid.',
-  'Sample Chapter 1: Walking in Faith\nFaith grows through hearing, meditation, and obedience. This opening section can later be replaced with the real chapter text from the admin dashboard.',
-  'Sample Chapter 2: Practical Application\nReaders can use this space to follow lessons, prayers, declarations, and study notes. The layout is designed for comfortable reading on phones, tablets, and desktop screens.',
-];
-
 function splitContent(content?: string | null) {
-  const source = content?.trim() ? content : SAMPLE_CONTENT.join('\n\n');
+  const source = content?.trim() || '';
   return source
     .split(/\n{2,}/)
     .map((item) => item.trim())
@@ -83,9 +79,11 @@ export default function StoreLibraryPage() {
       }
 
       const data = await response.json();
-      const nextPurchases = Array.isArray(data?.purchases) ? data.purchases : [];
+      const nextPurchases = (Array.isArray(data?.purchases) ? data.purchases : []).filter(
+        (purchase: LibraryPurchase) => purchase.status === 'available',
+      );
       setPurchases(nextPurchases);
-      setSelectedId((current) => current || nextPurchases.find((purchase: LibraryPurchase) => purchase.status === 'available')?.id || nextPurchases[0]?.id || '');
+      setSelectedId((current) => current || nextPurchases[0]?.id || '');
     } catch {
       setError('Unable to load your books right now.');
     } finally {
@@ -107,7 +105,7 @@ export default function StoreLibraryPage() {
     () => purchases.filter((purchase) => purchase.status === 'available'),
     [purchases],
   );
-  const selectedPurchase = purchases.find((purchase) => purchase.id === selectedId) || availablePurchases[0] || purchases[0] || null;
+  const selectedPurchase = availablePurchases.find((purchase) => purchase.id === selectedId) || availablePurchases[0] || null;
   const contentBlocks = splitContent(selectedPurchase?.bookContent);
 
   return (
@@ -161,14 +159,14 @@ export default function StoreLibraryPage() {
                 <div className="max-h-[560px] overflow-y-auto p-3">
                   {isLoading ? (
                     <p className="p-4 text-sm text-white/60">Loading books...</p>
-                  ) : purchases.length === 0 ? (
+                  ) : availablePurchases.length === 0 ? (
                     <div className="p-4 text-sm text-white/60">
                       <BookOpen className="mb-3 h-8 w-8 text-white/25" />
                       No soft-copy purchases yet.
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {purchases.map((purchase) => {
+                      {availablePurchases.map((purchase) => {
                         const isAvailable = purchase.status === 'available';
                         const isSelected = selectedPurchase?.id === purchase.id;
                         return (
@@ -213,7 +211,7 @@ export default function StoreLibraryPage() {
                     </div>
                   </div>
                 ) : (
-                  <article className={`mx-auto px-5 py-8 sm:px-8 lg:py-12 ${selectedPurchase.status === 'available' && selectedPurchase.downloadUrl ? 'max-w-6xl' : 'max-w-3xl'}`}>
+                  <article className={`mx-auto px-5 py-8 sm:px-8 lg:py-12 ${selectedPurchase.canRead ? 'max-w-6xl' : 'max-w-3xl'}`}>
                     <div className="border-b border-slate-200 pb-6">
                       <p className={`text-xs font-bold uppercase tracking-[0.2em] ${selectedPurchase.status === 'available' ? 'text-emerald-700' : selectedPurchase.status === 'cancelled' ? 'text-red-700' : 'text-orange-700'}`}>
                         {selectedPurchase.status === 'available' ? 'Ready to read' : selectedPurchase.status === 'cancelled' ? 'Cancelled' : 'Awaiting payment confirmation'}
@@ -224,33 +222,10 @@ export default function StoreLibraryPage() {
                       </p>
                     </div>
 
-                    {selectedPurchase.status === 'cancelled' ? (
-                      <div className="mt-8 border border-red-200 bg-red-50 p-5 text-sm leading-6 text-red-800">
-                        This purchase was cancelled, so the book stays locked.
-                      </div>
-                    ) : selectedPurchase.status !== 'available' ? (
-                      <div className="mt-8 border border-orange-200 bg-orange-50 p-5 text-sm leading-6 text-orange-900">
-                        This book is in your library, but it will unlock after PayChangu confirms the payment.
-                      </div>
-                    ) : selectedPurchase.downloadUrl ? (
-                      <div className="mt-8 space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-sm text-slate-600">Read the book below, or open the PDF in a new tab.</p>
-                          <a
-                            href={selectedPurchase.downloadUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center rounded-md bg-[#1688b4] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0f759c]"
-                          >
-                            Open PDF
-                          </a>
-                        </div>
-                        <iframe
-                          title={`${selectedPurchase.title} PDF`}
-                          src={selectedPurchase.downloadUrl}
-                          className="h-[75vh] w-full rounded-md border border-slate-200 bg-white"
-                        />
-                      </div>
+                    {selectedPurchase.canRead && token ? (
+                      <ProtectedBookReader purchaseId={selectedPurchase.id} title={selectedPurchase.title} token={token} />
+                    ) : contentBlocks.length === 0 ? (
+                      <p className="mt-8 text-sm text-slate-600">This paid book does not have a file yet.</p>
                     ) : (
                       <div className="prose prose-slate mt-8 max-w-none">
                         {contentBlocks.map((block, index) => {

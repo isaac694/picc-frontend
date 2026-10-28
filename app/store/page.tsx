@@ -607,7 +607,7 @@ export default function StorePage() {
 
       const data = await response.json();
       const purchases = Array.isArray(data?.purchases) ? data.purchases.map(mapStorePurchase) : [];
-      setDigitalLibrary(purchases);
+      setDigitalLibrary(purchases.filter((purchase) => purchase.status === 'available'));
     } catch {
       // Keep the current view if the library request is temporarily unavailable.
     }

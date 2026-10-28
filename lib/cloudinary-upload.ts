@@ -218,6 +218,7 @@ export const CLOUDINARY_FOLDERS = {
   SCHOOL: 'picc/school',
   MINISTRY: 'picc/ministry',
   STORE: 'picc/store',
+  STORE_COVERS: 'picc/store/covers',
   SERMONS: 'picc/sermons',
   USER_AVATARS: 'picc/avatars',
   DOCUMENTS: 'picc/documents',

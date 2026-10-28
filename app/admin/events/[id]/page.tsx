@@ -20,6 +20,7 @@ import {
 import { formatAdminDate, formatMoney } from '@/lib/admin-payments';
 import { downloadRegistrationsExcel, downloadRegistrationsPdf, type ExportColumn } from '@/lib/event-registration-export';
 import { ticketsToDraft, type EventTicket, type EventTicketDraft } from '@/lib/event-forms';
+import EventShareButton from '@/components/events/EventShareButton';
 
 type ManagedEvent = {
   id: string;
@@ -56,6 +57,8 @@ type EventKpis = {
   pendingOrders: number;
   revenue: { currency: string; amount: number }[];
   pendingAmount: { currency: string; amount: number }[];
+  expectedRevenue: number | null;
+  expectedRevenueCurrency?: string;
   fillRate: number | null;
   tickets: TicketKpi[];
 };
@@ -314,6 +317,10 @@ export default function ManageEventPage() {
   const [exporting, setExporting] = useState<'tickets' | 'registrations' | null>(null);
   const [ticketFilter, setTicketFilter] = useState('');
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [issueOpen, setIssueOpen] = useState(false);
+  const [issueForm, setIssueForm] = useState({ name: '', email: '', ticketKey: '' });
+  const [issueStatus, setIssueStatus] = useState('');
+  const [issuing, setIssuing] = useState(false);
   const [coupons, setCoupons] = useState<EventCoupon[]>([]);
   const [couponModal, setCouponModal] = useState<CouponDraft | null>(null);
   const [couponModalStatus, setCouponModalStatus] = useState('');
@@ -471,6 +478,29 @@ export default function ManageEventPage() {
         quantity: String(ticketsSold),
         amount: totalAmount,
       });
+      if (format === 'pdf') {
+        const summaryTickets = (kpis?.tickets || []).filter((ticket) => !ticketFilter || ticket.name === ticketFilter);
+        rows.push(emptyExportRow(columns));
+        rows.push({
+          ...emptyExportRow(columns),
+          name: 'EXPECTED REVENUE IF ALL TICKETS SELL',
+          amount: kpis?.expectedRevenue == null
+            ? 'Set a ticket count to calculate this'
+            : formatMoney(kpis.expectedRevenue, kpis.expectedRevenueCurrency || currency),
+        });
+        for (const ticket of summaryTickets) {
+          rows.push({
+            ...emptyExportRow(columns),
+            name: `CHECKED IN — ${ticket.name}`,
+            ticketType: ticket.name,
+            quantity: `${ticket.checkedIn} of ${ticket.sold} bought`,
+            amount: ticket.expected != null && ticket.price != null
+              ? formatMoney(Number(ticket.price) * Number(ticket.expected), ticket.currency || currency)
+              : '',
+            redeemed: `${ticket.checkedIn} checked in`,
+          });
+        }
+      }
       const day = new Date().toISOString().slice(0, 10);
       const slug = exportFileSlug(event?.title || 'event');
       const scope = ticketFilter ? ` — ${ticketFilter}` : '';
@@ -745,6 +775,50 @@ export default function ManageEventPage() {
     });
   };
 
+  const sendManualTicket = async () => {
+    if (!token) return;
+    if (!issueForm.name.trim()) {
+      setIssueStatus('Enter the buyer name.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(issueForm.email.trim())) {
+      setIssueStatus('Enter a valid email address.');
+      return;
+    }
+    if (!issueForm.ticketKey) {
+      setIssueStatus('Choose a ticket type.');
+      return;
+    }
+    setIssuing(true);
+    setIssueStatus('');
+    try {
+      const response = await apiFetch(`/api/admin/events/${eventId}/manual-ticket`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: issueForm.name.trim(),
+          email: issueForm.email.trim(),
+          ticketKey: issueForm.ticketKey,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setIssueStatus(data.error || 'Unable to send this ticket.');
+        return;
+      }
+      setIssueOpen(false);
+      setStatus(data.message || `Ticket sent to ${issueForm.email.trim()}.`);
+      await Promise.all([loadEvent(), loadBuyers()]);
+    } catch {
+      setIssueStatus('Unable to send this ticket.');
+    } finally {
+      setIssuing(false);
+    }
+  };
+
   const resendTicket = async (buyer: BuyerRow) => {
     if (!token) return;
     setResendingId(buyer.id);
@@ -800,6 +874,13 @@ export default function ManageEventPage() {
       icon: Banknote,
     },
     {
+      key: 'expected-revenue',
+      label: 'Expected revenue',
+      value: kpis?.expectedRevenue == null ? '—' : formatMoney(kpis.expectedRevenue, kpis.expectedRevenueCurrency || currency),
+      hint: 'If every ticket sells',
+      icon: Banknote,
+    },
+    {
       key: 'available',
       label: 'Still available',
       value: kpis?.expected == null ? '—' : Math.max(kpis.remaining ?? 0, 0).toLocaleString(),
@@ -836,11 +917,14 @@ export default function ManageEventPage() {
           <ArrowLeft className="h-4 w-4" />
           Events
         </Link>
-        <div>
-          <h1 className="text-3xl font-semibold text-foreground">{event?.title || 'Event'}</h1>
-          <p className="mt-2 text-sm text-foreground/70">
-            {[when, event?.time, event?.location].filter(Boolean).join(' · ') || 'Manage tickets for this event.'}
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold text-foreground">{event?.title || 'Event'}</h1>
+            <p className="mt-2 text-sm text-foreground/70">
+              {[when, event?.time, event?.location].filter(Boolean).join(' · ') || 'Manage tickets for this event.'}
+            </p>
+          </div>
+          {event ? <EventShareButton eventId={event.id} title={event.title || 'Event'} /> : null}
         </div>
       </div>
 
@@ -893,10 +977,12 @@ export default function ManageEventPage() {
                   <div className={`h-full rounded-full ${over ? 'bg-amber-500' : 'bg-primary'}`} style={{ width: `${ratio}%` }} />
                 </div>
                 <p className="mt-2 text-xs text-foreground/60">
+                  {`${ticket.checkedIn.toLocaleString()} checked in of ${ticket.sold.toLocaleString()} bought`}
+                </p>
+                <p className="mt-1 text-xs text-foreground/60">
                   {capped
                     ? `${ticket.sold.toLocaleString()} of ${Number(ticket.expected).toLocaleString()} · ${over ? `${Math.abs(ticket.remaining || 0).toLocaleString()} over` : `${(ticket.remaining ?? 0).toLocaleString()} left`}`
                     : 'No limit set'}
-                  {` · ${ticket.checkedIn.toLocaleString()} checked in`}
                 </p>
               </button>
             );
@@ -985,6 +1071,23 @@ export default function ManageEventPage() {
               </select>
             </label>
             <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setIssueStatus('');
+                  setIssueForm({
+                    name: '',
+                    email: '',
+                    ticketKey: event?.tickets?.[0]?.key || '',
+                  });
+                  setIssueOpen(true);
+                }}
+                disabled={!event?.tickets?.length}
+              >
+                <Mail className="h-4 w-4" />
+                Send ticket
+              </Button>
               <Button type="button" variant="outline" size="sm" disabled={exporting === 'tickets'} onClick={() => void exportTickets('excel')}>
                 <FileSpreadsheet className="h-4 w-4" />
                 Excel
@@ -1134,6 +1237,61 @@ export default function ManageEventPage() {
           onExport={(format) => void exportRegistrations(format)}
         />
       )}
+
+      <Dialog open={issueOpen} onOpenChange={(open) => { if (!open && !issuing) setIssueOpen(false); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send a ticket</DialogTitle>
+            <DialogDescription>
+              The buyer receives the ticket by email. That sale is counted on the ticket type and added to the revenue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="block text-sm text-foreground">
+              Buyer name
+              <input
+                type="text"
+                value={issueForm.name}
+                onChange={(change) => setIssueForm((current) => ({ ...current, name: change.target.value }))}
+                className={`${inputClass} mt-1`}
+              />
+            </label>
+            <label className="block text-sm text-foreground">
+              Email
+              <input
+                type="email"
+                value={issueForm.email}
+                onChange={(change) => setIssueForm((current) => ({ ...current, email: change.target.value }))}
+                className={`${inputClass} mt-1`}
+              />
+            </label>
+            <label className="block text-sm text-foreground">
+              Ticket type
+              <select
+                value={issueForm.ticketKey}
+                onChange={(change) => setIssueForm((current) => ({ ...current, ticketKey: change.target.value }))}
+                className={`${inputClass} mt-1`}
+              >
+                <option value="">Choose a ticket type</option>
+                {(event?.tickets || []).map((ticket) => (
+                  <option key={ticket.key} value={ticket.key}>
+                    {ticket.name} · {formatMoney(ticket.price, currency)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {issueStatus ? <p className="text-sm text-red-600">{issueStatus}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIssueOpen(false)} disabled={issuing}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void sendManualTicket()} disabled={issuing}>
+              {issuing ? 'Sending...' : 'Send ticket'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={Boolean(ticketModal)} onOpenChange={(open) => { if (!open) setTicketModal(null); }}>
         <DialogContent className="sm:max-w-lg">

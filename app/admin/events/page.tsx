@@ -21,6 +21,7 @@ import { Pencil, Plus, Search, Settings2, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import EventFormBuilder from '@/components/events/EventFormBuilder';
+import EventShareButton from '@/components/events/EventShareButton';
 import {
   EMPTY_EVENT_FORM_DRAFT,
   EVENT_MINISTRIES,
@@ -759,6 +760,7 @@ export default function EventsAdminPage() {
                               Manage
                             </Link>
                           </Button>
+                          <EventShareButton eventId={event.id} title={event.title || 'Event'} />
                           <Button
                             type="button"
                             size="icon"

@@ -61,6 +61,7 @@
     "nodemailer": "^10.1.0",
     "paychangu": "^2.1.1",
     "paychangu-js": "^2.1.2",
+    "pdfjs-dist": "^6.4.299",
     "qrcode": "^1.5.4",
     "quill": "^2.0.2",
     "react": "19.2.4",
