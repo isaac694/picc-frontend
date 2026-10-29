@@ -9,31 +9,40 @@ export const runtime = 'nodejs';
 const MAX_BYTES = 40 * 1024 * 1024;
 
 function localBookPath(downloadUrl: string) {
-  if (!downloadUrl.startsWith(PROJECT_BOOKS_UPLOAD_PREFIX)) return null;
-  const filename = path.basename(downloadUrl);
-  if (!/^[a-z0-9.-]+\.pdf$/i.test(filename)) return null;
+  let pathname = downloadUrl;
+  try {
+    pathname = decodeURIComponent(new URL(downloadUrl, 'http://local').pathname);
+  } catch {
+    return null;
+  }
+  if (!pathname.includes(PROJECT_BOOKS_UPLOAD_PREFIX)) return null;
+  const filename = path.basename(pathname);
+  if (!/\.pdf$/i.test(filename)) return null;
   const filePath = path.resolve(PROJECT_BOOKS_DIR, filename);
   if (!filePath.startsWith(path.resolve(PROJECT_BOOKS_DIR))) return null;
   return filePath;
 }
 
-async function readBookBytes(downloadUrl: string) {
+async function readBookBytes(downloadUrl: string, origin: string) {
   const localPath = localBookPath(downloadUrl);
   if (localPath) {
-    const bytes = await readFile(localPath);
-    if (bytes.byteLength > MAX_BYTES) return null;
-    return bytes;
+    const bytes = await readFile(localPath).catch(() => null);
+    if (bytes) return bytes.byteLength > MAX_BYTES ? null : bytes;
   }
 
+  // Not on this server's disk: fetch it from wherever the link points (relative links use this site).
   let url: URL;
   try {
-    url = new URL(downloadUrl);
+    url = new URL(downloadUrl, origin);
   } catch {
     return null;
   }
-  if (url.protocol !== 'https:' || url.hostname !== 'res.cloudinary.com') return null;
-  const response = await fetch(url, { redirect: 'error', cache: 'no-store' });
-  if (!response.ok) return null;
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) {
+    console.error(`Book file fetch failed (${response.status}) for ${url.toString()}`);
+    return null;
+  }
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.byteLength > MAX_BYTES) return null;
   return bytes;
@@ -56,8 +65,14 @@ export async function GET(request: Request) {
   }
 
   const downloadUrl = String(accessData?.downloadUrl || '').trim();
-  const bytes = downloadUrl ? await readBookBytes(downloadUrl).catch(() => null) : null;
+  const bytes = downloadUrl
+    ? await readBookBytes(downloadUrl, new URL(request.url).origin).catch((readError: unknown) => {
+        console.error('Book file read failed', readError);
+        return null;
+      })
+    : null;
   if (!bytes) {
+    if (!downloadUrl) console.error(`Purchase ${purchaseId} has no book file link`);
     return NextResponse.json({ error: 'This book file could not be opened.' }, { status: 404 });
   }
 
