@@ -289,10 +289,12 @@ export default function EventDetailView({ eventId }: { eventId: string }) {
 
       <section className="mx-auto grid max-w-3xl gap-5 px-4 py-8 sm:px-6">
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm">
-            <div className="relative aspect-[16/7] max-h-64">
-              <Image src={event.image} alt={event.title} fill className="object-cover" unoptimized />
-            </div>
+          <div className="mx-auto w-fit max-w-full overflow-hidden rounded-3xl border border-border/70 bg-muted/30 shadow-sm">
+            <img
+              src={event.image}
+              alt={event.title}
+              className="mx-auto block h-auto max-h-[min(80vh,760px)] w-auto max-w-full object-contain"
+            />
           </div>
           <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm md:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/70">About this gathering</p>
