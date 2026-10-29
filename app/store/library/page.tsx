@@ -223,7 +223,7 @@ export default function StoreLibraryPage() {
                     </div>
 
                     {selectedPurchase.canRead && token ? (
-                      <ProtectedBookReader purchaseId={selectedPurchase.id} title={selectedPurchase.title} token={token} />
+                      <ProtectedBookReader key={selectedPurchase.id} purchaseId={selectedPurchase.id} title={selectedPurchase.title} token={token} coverUrl={selectedPurchase.imageUrl} />
                     ) : contentBlocks.length === 0 ? (
                       <p className="mt-8 text-sm text-slate-600">This paid book does not have a file yet.</p>
                     ) : (
