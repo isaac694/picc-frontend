@@ -10,9 +10,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiFetch } from '@/lib/api';
 
+type Prayerline = { id: string; phoneNumber: string; whatsapp: boolean };
+
+const FALLBACK_PRAYERLINES: Prayerline[] = [
+  { id: 'airtel', phoneNumber: '+265 996 80 08 00', whatsapp: true },
+  { id: 'tnm', phoneNumber: '+265 886 80 08 00', whatsapp: true },
+];
+
+function prayerlineHref(line: Prayerline) {
+  const digits = line.phoneNumber.replace(/[^0-9]/g, '');
+  return line.whatsapp ? `https://wa.me/${digits}` : `tel:+${digits}`;
+}
+
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-  const prayerlineNumbers = ['+265 996 80 08 00', '+265 886 80 08 00'];
+  // Shown until the managed list loads, and kept if the API cannot be reached.
+  const [prayerlines, setPrayerlines] = useState<Prayerline[]>(FALLBACK_PRAYERLINES);
   const piccEmail = 'info@piccworldwide.org';
   const piccPhone = '+265 992 433 333';
   const gmailHref = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(piccEmail)}`;
@@ -57,6 +70,19 @@ export default function Footer() {
       }
     };
     fetchFaqs();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    apiFetch('/api/prayerlines')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (active && Array.isArray(data?.prayerlines)) setPrayerlines(data.prayerlines);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -161,20 +187,22 @@ Malawi
 
               </p>
               <div className="mt-5 space-y-4 text-sm text-white/80">
-                <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-white">Prayerline:</span>
-                  {prayerlineNumbers.map((number) => (
-                    <a
-                      key={number}
-                      href={`https://wa.me/${number.replace(/[^0-9]/g, '')}`}
-                      className="hover:text-white underline underline-offset-4"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {number}
-                    </a>
-                  ))}
-                </div>
+                {prayerlines.length > 0 ? (
+                  <div className="flex flex-col gap-1">
+                    <span className="font-semibold text-white">Prayerline:</span>
+                    {prayerlines.map((line) => (
+                      <a
+                        key={line.id}
+                        href={prayerlineHref(line)}
+                        className="hover:text-white underline underline-offset-4"
+                        target={line.whatsapp ? '_blank' : undefined}
+                        rel={line.whatsapp ? 'noreferrer' : undefined}
+                      >
+                        {line.phoneNumber}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
                 <p>
                   <span className="font-semibold text-white">Email:</span>{' '}
                   <a

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { MoveHorizontal } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { apiFetch, apiUrl } from '@/lib/api';
@@ -58,12 +59,12 @@ function Avatar({ person, className }: { person: Member; className: string }) {
 function Portrait({ person, isRoot }: { person: Member; isRoot: boolean }) {
   return (
     <article
-      className={`flex w-[184px] shrink-0 flex-col overflow-hidden rounded-2xl border bg-white text-center transition-shadow hover:shadow-md sm:w-[198px] ${isRoot ? 'border-amber-300 shadow-md' : 'border-slate-200 shadow-sm'
+      className={`flex w-[148px] shrink-0 flex-col overflow-hidden rounded-2xl border bg-white text-center transition-shadow hover:shadow-md sm:w-[198px] ${isRoot ? 'border-amber-300 shadow-md' : 'border-slate-200 shadow-sm'
         }`}
     >
       <div className={`h-1 shrink-0 ${isRoot ? 'bg-amber-500' : 'bg-amber-200'}`} />
-      <div className="flex flex-col items-center px-3 pb-4 pt-4">
-        <div className="h-[76px] w-[76px] shrink-0 overflow-hidden rounded-full border-[3px] border-amber-100 bg-slate-100 sm:h-[84px] sm:w-[84px]">
+      <div className="flex flex-col items-center px-2.5 pb-3.5 pt-3.5 sm:px-3 sm:pb-4 sm:pt-4">
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border-[3px] border-amber-100 bg-slate-100 sm:h-[84px] sm:w-[84px]">
           <Avatar person={person} className="h-full w-full" />
         </div>
 
@@ -114,7 +115,7 @@ function ChartBranch({
             {children.map((child) => (
               <li
                 key={child.id}
-                className="relative flex flex-none flex-col items-center px-3 pt-6 before:absolute before:left-0 before:top-0 before:w-1/2 before:border-t before:border-amber-300 after:absolute after:right-0 after:top-0 after:w-1/2 after:border-t after:border-amber-300 first:before:hidden last:after:hidden only:before:hidden only:after:hidden"
+                className="relative flex flex-none flex-col items-center px-1.5 pt-6 sm:px-3 before:absolute before:left-0 before:top-0 before:w-1/2 before:border-t before:border-amber-300 after:absolute after:right-0 after:top-0 after:w-1/2 after:border-t after:border-amber-300 first:before:hidden last:after:hidden only:before:hidden only:after:hidden"
               >
                 {/* Each child is centered below its portion of the connector. */}
                 <span
@@ -132,6 +133,52 @@ function ChartBranch({
           </ul>
         </>
       )}
+    </div>
+  );
+}
+
+// Scrollable organogram frame. When the chart is wider than the screen it starts centred on
+// the top leader and tells the reader to swipe, instead of silently cutting cards off.
+function ChartViewport({ label, children }: { label: string; children: ReactNode }) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return undefined;
+    let centred = false;
+    const measure = () => {
+      const wider = frame.scrollWidth > frame.clientWidth + 1;
+      setOverflowing(wider);
+      if (wider && !centred) {
+        frame.scrollLeft = (frame.scrollWidth - frame.clientWidth) / 2;
+        centred = true;
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    if (frame.firstElementChild) observer.observe(frame.firstElementChild);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div>
+      {overflowing ? (
+        <p className="mb-2 flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500">
+          <MoveHorizontal className="h-4 w-4 text-amber-600" aria-hidden="true" />
+          Swipe sideways to see the whole chart
+        </p>
+      ) : null}
+      <div
+        ref={frameRef}
+        className="max-w-full overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-6"
+        role="region"
+        aria-label={label}
+        tabIndex={0}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -324,7 +371,7 @@ const { roots, childrenByParent } = useMemo(() => {
     <>
       <Navigation />
       <main className="min-h-screen bg-white">
-        <section className="relative isolate overflow-hidden bg-slate-950 py-24 text-white sm:py-32">
+        <section className="relative isolate overflow-hidden bg-slate-950 py-16 text-white sm:py-32">
           <div
             className="absolute inset-0 -z-10 bg-cover bg-center opacity-30"
             style={{ backgroundImage: "url('/about/header.JPG')" }}
@@ -341,7 +388,7 @@ const { roots, childrenByParent } = useMemo(() => {
             <span className="inline-block rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[.18em] text-amber-300">
               Leadership &amp; Governance
             </span>
-            <h1 className="mt-6 max-w-4xl text-4xl font-semibold tracking-tight sm:text-6xl">
+            <h1 className="mt-6 max-w-4xl text-[2rem] font-semibold leading-tight tracking-tight sm:text-6xl">
               Leading with faith.<br />
               <span className="text-amber-300">Serving with purpose.</span>
             </h1>
@@ -351,7 +398,7 @@ const { roots, childrenByParent } = useMemo(() => {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-8">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-8 sm:py-16">
           <div className="text-center">
             <p className="text-[11px] font-bold uppercase tracking-[.2em] text-amber-700">Our organizational structure</p>
             <h2 className="mt-3 text-3xl font-semibold text-slate-900 sm:text-4xl">Church Leadership</h2>
@@ -378,7 +425,7 @@ const { roots, childrenByParent } = useMemo(() => {
             ))}
           </div>
 
-          <div className="mt-12">
+          <div className="mt-10 sm:mt-12">
             <div className="mb-6 text-center">
               <h3 className="text-xl font-bold text-slate-900 sm:text-2xl">{title}</h3>
               <p className="mt-1 text-xs text-slate-500 sm:text-sm">Leadership arranged according to the current official hierarchy</p>
@@ -416,18 +463,13 @@ const { roots, childrenByParent } = useMemo(() => {
                 </div>
 
                 {viewMode === 'chart' ? (
-                  <div
-                    className="max-w-full overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-6"
-                    role="region"
-                    aria-label={`${title} organogram`}
-                    tabIndex={0}
-                  >
-                    <div className="flex w-max min-w-full flex-col items-center gap-12 py-4">
+                  <ChartViewport key={group} label={`${title} organogram`}>
+                    <div className="flex w-max min-w-full flex-col items-center gap-8 py-2 sm:gap-12 sm:py-4">
                       {roots.map((root) => (
                         <ChartBranch key={`${group}-${root.id}`} person={root} childrenByParent={childrenByParent} />
                       ))}
                     </div>
-                  </div>
+                  </ChartViewport>
                 ) : (
                   <ul className="mx-auto max-w-3xl space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-6" aria-label={`${title} hierarchy`}>
                     {roots.map((root) => (

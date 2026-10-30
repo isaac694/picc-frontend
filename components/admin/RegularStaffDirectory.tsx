@@ -66,7 +66,7 @@ export default function RegularStaffDirectory({
 
   return (
     <section
-      className="mt-20 border-t border-slate-200 pt-16"
+      className="mt-14 border-t border-slate-200 pt-12 sm:mt-20 sm:pt-16"
       aria-labelledby="regular-staff-heading"
     >
       {/* Section header */}
@@ -95,7 +95,7 @@ export default function RegularStaffDirectory({
       </div>
 
       {/* Search */}
-      <div className="mt-10 flex justify-end">
+      <div className="mt-8 flex justify-end sm:mt-10">
         <div className="relative w-full sm:w-72">
           <Search
             className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
@@ -117,16 +117,16 @@ export default function RegularStaffDirectory({
 
       {/* Staff grid */}
       {filteredMembers.length > 0 ? (
-        <div className="mt-8 flex flex-wrap justify-center gap-6">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:flex sm:flex-wrap sm:justify-center sm:gap-6">
           {filteredMembers.map((person) => (
             <article
               key={person.id}
-              className="group w-full max-w-[280px] shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-amber-200 hover:shadow-lg sm:w-[280px]"
+              className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-amber-200 hover:shadow-lg sm:w-[280px] sm:shrink-0"
             >
               <div className="h-1 bg-amber-400" />
 
-              <div className="flex flex-col items-center p-6 text-center">
-                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-amber-50 bg-slate-100 shadow-sm">
+              <div className="flex flex-col items-center p-4 text-center sm:p-6">
+                <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-amber-50 bg-slate-100 shadow-sm sm:h-28 sm:w-28">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={pictureUrl(person.imageLinkPath)}
@@ -142,11 +142,11 @@ export default function RegularStaffDirectory({
                   />
                 </div>
 
-                <h3 className="mt-5 text-base font-bold leading-snug text-slate-900">
+                <h3 className="mt-3 w-full break-words text-sm font-bold leading-snug text-slate-900 sm:mt-5 sm:text-base">
                   {person.user.name}
                 </h3>
 
-                <p className="mt-2 text-xs font-semibold leading-relaxed text-amber-700">
+                <p className="mt-1.5 w-full break-words text-[11px] font-semibold leading-relaxed text-amber-700 sm:mt-2 sm:text-xs">
                   {person.designation}
                 </p>
               </div>

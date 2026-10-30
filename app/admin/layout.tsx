@@ -37,13 +37,14 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/ministry-events': { title: 'Ministry Events', subtitle: 'Review event registration applications for one ministry.' },
   '/admin/hr/dashboard': { title: 'HR Dashboard', subtitle: 'Track vacancies, applicants, applications, and hiring progress.' },
   '/admin/hr/applications': { title: 'Application Details', subtitle: 'Review the full applicant profile, answers, and documents.' },
-  '/admin/hr/leadership': { title: 'Leadership Management', subtitle: 'Manage church administration and secretariat leadership structure.' },
   '/admin/hr': { title: 'HR Vacancies', subtitle: 'Manage vacancies and applicant reviews.' },
   '/admin/quote-of-month': { title: 'Qoutes', subtitle: 'Manage daily quotes.' },
   '/admin/page-images': { title: 'Homepage Images', subtitle: 'Update site imagery and page visuals.' },
   '/admin/ads-management': { title: 'Ads Management', subtitle: 'Manage promotional ads and placements.' },
   '/admin/video-declarations': { title: 'Video Declarations', subtitle: 'Publish video and audio declarations.' },
   '/admin/faqs': { title: 'FAQ', subtitle: 'Manage footer frequently asked questions.' },
+  '/admin/prayerlines': { title: 'Prayerline', subtitle: 'Add, edit, hide, and order the prayerline numbers shown in the website footer.' },
+  '/admin/hr/leadership': { title: 'Leadership Management', subtitle: 'Manage church administration and secretariat leadership, and choose who appears on the website.' },
   '/admin/livechat': { title: 'Live Chat Archive', subtitle: 'Review livestream chat messages.' },
   '/admin/about-page': { title: 'About Page', subtitle: 'Update about page content.' },
   '/admin/contact': { title: 'Contact Page', subtitle: 'Manage contact page details.' },
@@ -97,6 +98,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/give')) return ADMIN_PAGE.GIVE_PAGE;
   if (path.startsWith('/admin/zones')) return ADMIN_PAGE.HOME_CHURCHES_PAGE;
   if (path.startsWith('/admin/locations')) return ADMIN_PAGE.LOCATIONS_PAGE;
+  if (path.startsWith('/admin/prayerlines')) return ADMIN_PAGE.PRAYERLINES;
   return null;
 };
 

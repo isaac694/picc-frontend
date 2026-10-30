@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Eye,
+  EyeOff,
   GitFork,
   ArrowUpDown,
   Search,
@@ -85,6 +86,8 @@ export default function LeadershipManager() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const { runUpload, progress, uploading } = useMediaUpload();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -286,15 +289,47 @@ export default function LeadershipManager() {
   }
 
   const filteredRecords = useMemo(() => {
-    if (!search.trim()) return records;
+    const byStatus = records.filter((r) =>
+      statusFilter === 'all' ? true : statusFilter === 'active' ? r.isPublished : !r.isPublished
+    );
+    if (!search.trim()) return byStatus;
     const q = search.toLowerCase();
-    return records.filter(
+    return byStatus.filter(
       (r) =>
         r.user.name.toLowerCase().includes(q) ||
         r.designation.toLowerCase().includes(q) ||
         r.user.email.toLowerCase().includes(q)
     );
-  }, [records, search]);
+  }, [records, search, statusFilter]);
+
+  const activeCount = records.filter((r) => r.isPublished).length;
+
+  // Show or hide one profile on /about/leadership without opening the edit form.
+  async function toggleActive(person: Person) {
+    if (!token) return;
+    const next = !person.isPublished;
+    setTogglingId(person.id);
+    try {
+      const response = await apiFetch(`/api/${group}/${person.id}/status`, {
+        method: 'PATCH',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublished: next }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? 'Could not change this profile.');
+      setRecords((current) => current.map((r) => (r.id === person.id ? { ...r, isPublished: next } : r)));
+      if (editing === person.id) setForm((p) => ({ ...p, isPublished: next }));
+      adminSuccessToast(
+        next
+          ? `${person.user.name} is now showing on the website.`
+          : `${person.user.name} is now hidden from the website. Anyone reporting to them moves up to the next active person.`
+      );
+    } catch (e) {
+      adminErrorToast(e instanceof Error ? e.message : 'Could not change this profile.');
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   const activeGroupLabel = group === 'church-admins' ? 'Church Administration' : 'The Secretariat';
   const secretariatStats = useMemo(() => {
@@ -700,9 +735,9 @@ export default function LeadershipManager() {
                   className="h-4 w-4 rounded border-input text-amber-600 focus:ring-amber-500"
                 />
                 <div>
-                  <span className="font-semibold">Published on Public Website</span>
+                  <span className="font-semibold">Active on the website</span>
                   <p className="text-[11px] text-muted-foreground">
-                    When checked, this profile is visible to visitors on /about/leadership.
+                    When checked, this profile is visible to visitors on /about/leadership. Untick to deactivate it without deleting it.
                   </p>
                 </div>
               </label>
@@ -737,8 +772,25 @@ export default function LeadershipManager() {
                   Current Directory ({activeGroupLabel})
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Profiles are arranged by sort order and hierarchy.
+                  {activeCount} of {records.length} showing on the website. Profiles are arranged by sort order and hierarchy.
                 </p>
+                <div className="mt-2 inline-flex rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label="Filter by status">
+                  {([
+                    ['all', `All (${records.length})`],
+                    ['active', `Active (${activeCount})`],
+                    ['inactive', `Inactive (${records.length - activeCount})`],
+                  ] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={statusFilter === key}
+                      onClick={() => setStatusFilter(key)}
+                      className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${statusFilter === key ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -817,7 +869,7 @@ export default function LeadershipManager() {
                                 : 'bg-muted text-muted-foreground'
                                 }`}
                             >
-                              {r.isPublished ? 'Published' : 'Draft'}
+                              {r.isPublished ? 'Active' : 'Inactive'}
                             </span>
                           </div>
 
@@ -848,6 +900,21 @@ export default function LeadershipManager() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={r.isPublished}
+                          disabled={busy || togglingId === r.id}
+                          onClick={() => void toggleActive(r)}
+                          title={r.isPublished ? 'Hide this profile from the website' : 'Show this profile on the website'}
+                          className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${r.isPublished
+                            ? 'border-border bg-background text-foreground hover:bg-muted'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300'
+                            }`}
+                        >
+                          {r.isPublished ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          {togglingId === r.id ? 'Saving...' : r.isPublished ? 'Deactivate' : 'Activate'}
+                        </button>
                         <button
                           type="button"
                           disabled={busy}
