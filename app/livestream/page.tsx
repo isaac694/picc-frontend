@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { BookOpenText, MessageSquareText, StickyNote } from 'lucide-react';
 import { useYouTubeVideoTitle } from '@/hooks/use-youtube-video-title';
 import { pickYouTubeVideoTitle } from '@/lib/youtube-client';
+import { LIVE_CHANNELS, type ChannelStream } from '@/lib/youtube-channel-streams';
 
 type ToolKey = "bible" | "notepad" | "chat" | "testimony" | "prayer" | "give" | null;
 
@@ -33,34 +34,14 @@ type YouTubeVideo = {
   canEmbed?: boolean;
 };
 
-type YouTubeThumbnail = {
-  url?: string;
-};
-
-type YouTubeSnippet = {
-  title?: string;
-  publishedAt?: string;
-  channelTitle?: string;
-  description?: string;
-  liveBroadcastContent?: string;
-  thumbnails?: {
-    high?: YouTubeThumbnail;
-    medium?: YouTubeThumbnail;
-  };
-};
-
-type YouTubeSearchItem = {
-  id?: {
-    videoId?: string;
-  };
-  snippet?: YouTubeSnippet;
-};
-
-type YouTubePlaylistItem = {
-  contentDetails?: {
-    videoId?: string;
-  };
-  snippet?: YouTubeSnippet;
+type ChannelStreams = {
+  key: string;
+  name: string;
+  channelId: string;
+  streamsUrl: string;
+  live: ChannelStream | null;
+  videos: ChannelStream[];
+  error?: string | null;
 };
 
 type YouTubePlayer = {
@@ -73,30 +54,24 @@ type YouTubePlayerStateChangeEvent = {
   target: YouTubePlayer;
 };
 
-const CHANNEL_ID = "UC5iA3dWaUBlP_PBlGSQvgNQ";
-const YOUTH_CHURCH_CHANNEL_ID = "UC_aXxxQF62jKWRK3xjzOZPg";
-const RELATED_CHANNELS = [
-  {
-    channelId: "UC8JUC-G4wKhrrPr7xjxYWJw",
-    title: "Watch on YouTube",
-    channelTitle: "PICC Ministry Channel",
-    url: "https://www.youtube.com/channel/UC8JUC-G4wKhrrPr7xjxYWJw",
-  },
-  {
-    channelId: YOUTH_CHURCH_CHANNEL_ID,
-    title: "Watch on YouTube",
-    channelTitle: "PICC Youth Church",
-    url: `https://www.youtube.com/channel/${YOUTH_CHURCH_CHANNEL_ID}`,
-  },
-  {
-    channelId: "UC5iA3dWaUBlP_PBlGSQvgNQ",
-    title: "Watch on YouTube",
-    channelTitle: "PICC Worldwide",
-    url: "https://www.youtube.com/channel/UC5iA3dWaUBlP_PBlGSQvgNQ",
-  },
-];
-const RELATED_CHANNEL_IDS = RELATED_CHANNELS.map((channel) => channel.channelId);
 const FALLBACK_HERO_ID = "ydTADwZRquA";
+const RECENT_STREAM_COUNT = 4;
+
+function toVideo(stream: ChannelStream, channelTitle: string): YouTubeVideo {
+  return {
+    videoId: stream.videoId,
+    title: stream.title,
+    publishedAt: "",
+    updatedAt: "",
+    channelTitle,
+    description: "",
+    thumbnail: stream.thumbnail,
+    url: stream.url,
+    embedUrl: stream.embedUrl,
+    isLive: stream.isLive,
+    canEmbed: true,
+  };
+}
 
 const TOOL_TABS: Array<{
   key: ToolKey;
@@ -116,14 +91,29 @@ export default function LivestreamPage() {
   const [activeTool, setActiveTool] = useState<ToolKey>(null);
   const [activeCardTool, setActiveCardTool] = useState<ToolKey>(null);
   const [activeCardVideoId, setActiveCardVideoId] = useState<string | null>(null);
-  const [videos, setVideos] = useState<YouTubeVideo[]>([]);
+  const [channels, setChannels] = useState<ChannelStreams[]>([]);
+  const [chosenChannelKey, setChosenChannelKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileResumeAt, setMobileResumeAt] = useState<number | null>(null);
   const playersRef = useRef<Map<string, YouTubePlayer>>(new Map());
 
-  const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
+  // Until the viewer picks a channel, show whichever one is live (PICC Worldwide first).
+  const selectedChannel =
+    channels.find((channel) => channel.key === chosenChannelKey) ||
+    channels.find((channel) => channel.live) ||
+    channels.find((channel) => channel.videos.length > 0) ||
+    channels[0] ||
+    null;
+  const selectedChannelName =
+    selectedChannel?.name || LIVE_CHANNELS.find((channel) => channel.key === chosenChannelKey)?.name || LIVE_CHANNELS[0].name;
+  const videos: YouTubeVideo[] = selectedChannel
+    ? [
+        ...(selectedChannel.live ? [selectedChannel.live] : []),
+        ...selectedChannel.videos.filter((video) => video.videoId !== selectedChannel.live?.videoId),
+      ].map((stream) => toVideo(stream, selectedChannel.name))
+    : [];
 
   const featuredVideo = videos[0] || null;
   const primaryVideoId = featuredVideo?.videoId || FALLBACK_HERO_ID;
@@ -134,22 +124,8 @@ export default function LivestreamPage() {
     (isLoading || heroTitleLoading ? 'Loading stream title…' : 'Live stream');
   const heroChatTitle = pickYouTubeVideoTitle(featuredVideo?.title, youTubeHeroTitle);
 
-  const gridVideos = videos.slice(1, 4);
-  const fallbackGridVideos: YouTubeVideo[] = RELATED_CHANNELS.map((channel) => ({
-    videoId: channel.channelId,
-    title: channel.title,
-    publishedAt: "",
-    updatedAt: "",
-    channelTitle: channel.channelTitle,
-    description: "",
-    thumbnail: "",
-    url: channel.url,
-    embedUrl: "",
-    canEmbed: false,
-  }));
-  const displayGridVideos = (
-    gridVideos.length > 0 ? gridVideos : fallbackGridVideos
-  ).filter((_, index) => index !== 1);
+  const displayGridVideos = videos.slice(1, 1 + RECENT_STREAM_COUNT);
+  const visibleVideoIds = [primaryVideoId, ...displayGridVideos.map((video) => video.videoId)].join(",");
 
   const formatDate = (value: string) => {
     if (!value) return "";
@@ -165,225 +141,36 @@ export default function LivestreamPage() {
 
   useEffect(() => {
     let isMounted = true;
+    let hasChannels = false;
 
-    const toVideoFromSearch = (
-      item?: YouTubeSearchItem,
-      canEmbed = true,
-    ): YouTubeVideo | null => {
-      const videoId = item?.id?.videoId;
-      if (!videoId) return null;
-      const snippet = item.snippet || {};
-      return {
-        videoId,
-        title: snippet.title || "",
-        publishedAt: snippet.publishedAt || "",
-        updatedAt: snippet.publishedAt || "",
-        channelTitle: snippet.channelTitle || "",
-        description: snippet.description || "",
-        thumbnail:
-          snippet.thumbnails?.high?.url ||
-          snippet.thumbnails?.medium?.url ||
-          "",
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        embedUrl: `https://www.youtube.com/embed/${videoId}`,
-        isLive: snippet.liveBroadcastContent === "live",
-        canEmbed,
-      };
-    };
-
-    const toVideoFromPlaylist = (
-      item?: YouTubePlaylistItem,
-      canEmbed = true,
-    ): YouTubeVideo | null => {
-      const videoId = item?.contentDetails?.videoId;
-      if (!videoId) return null;
-      const snippet = item.snippet || {};
-      return {
-        videoId,
-        title: snippet.title || "",
-        publishedAt: snippet.publishedAt || "",
-        updatedAt: snippet.publishedAt || "",
-        channelTitle: snippet.channelTitle || "",
-        description: snippet.description || "",
-        thumbnail:
-          snippet.thumbnails?.high?.url ||
-          snippet.thumbnails?.medium?.url ||
-          "",
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        embedUrl: `https://www.youtube.com/embed/${videoId}`,
-        isLive: false,
-        canEmbed,
-      };
-    };
-
-    const fetchJson = async (url: string) => {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Failed to load videos");
-      }
-      return response.json();
-    };
-
-    const fetchLatestUpload = async (
-      channelId: string,
-      canEmbed = true,
-      maxResults = 1,
-    ) => {
-      const channelUrl = new URL(
-        "https://www.googleapis.com/youtube/v3/channels",
-      );
-      channelUrl.searchParams.set("part", "contentDetails");
-      channelUrl.searchParams.set("id", channelId);
-      channelUrl.searchParams.set("key", YOUTUBE_API_KEY);
-
-      const channelData = await fetchJson(channelUrl.toString());
-      const uploadsPlaylistId =
-        channelData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
-
-      if (!uploadsPlaylistId) return null;
-
-      const uploadsUrl = new URL(
-        "https://www.googleapis.com/youtube/v3/playlistItems",
-      );
-      uploadsUrl.searchParams.set("part", "snippet,contentDetails");
-      uploadsUrl.searchParams.set("playlistId", uploadsPlaylistId);
-      uploadsUrl.searchParams.set("maxResults", String(maxResults));
-      uploadsUrl.searchParams.set("key", YOUTUBE_API_KEY);
-
-      const uploadsData = await fetchJson(uploadsUrl.toString());
-      const playlistVideos: YouTubeVideo[] = Array.isArray(uploadsData?.items)
-        ? uploadsData.items
-            .map((item: YouTubePlaylistItem) =>
-              toVideoFromPlaylist(item, canEmbed),
-            )
-            .filter((item: YouTubeVideo | null): item is YouTubeVideo =>
-              Boolean(item),
-            )
-        : [];
-
-      return playlistVideos[0] || null;
-    };
-
-    const fetchLatestEmbeddableVideo = async (channelId: string) => {
-      const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
-      searchUrl.searchParams.set("part", "snippet");
-      searchUrl.searchParams.set("channelId", channelId);
-      searchUrl.searchParams.set("type", "video");
-      searchUrl.searchParams.set("order", "date");
-      searchUrl.searchParams.set("videoEmbeddable", "true");
-      searchUrl.searchParams.set("maxResults", "1");
-      searchUrl.searchParams.set("key", YOUTUBE_API_KEY);
-
-      const searchData = await fetchJson(searchUrl.toString());
-      return Array.isArray(searchData?.items)
-        ? toVideoFromSearch(searchData.items[0])
-        : null;
-    };
-
-    const fetchRelatedVideo = async (channelId: string) => {
-      const [embeddableVideo, latestUpload] = await Promise.all([
-        fetchLatestEmbeddableVideo(channelId),
-        fetchLatestUpload(channelId, false),
-      ]);
-
-      return embeddableVideo || latestUpload;
-    };
-
-    const fetchHeroVideo = async () => {
+    const fetchChannels = async () => {
       try {
+        if (!hasChannels) setIsLoading(true);
         const response = await fetch("/api/youtube/channel-streams", { cache: "no-store" });
-        if (response.ok) {
-          const data = await response.json();
-          const stream = data?.live || data?.videos?.[0];
-          if (stream?.videoId) {
-            return {
-              videoId: stream.videoId,
-              title: stream.title || "",
-              publishedAt: "",
-              updatedAt: "",
-              channelTitle: data.channelTitle || "Pastor Esau Banda",
-              description: "",
-              thumbnail: stream.thumbnail || "",
-              url: stream.url,
-              embedUrl: stream.embedUrl,
-              isLive: Boolean(stream.isLive),
-              canEmbed: true,
-            } satisfies YouTubeVideo;
-          }
+        const data = await response.json().catch(() => null);
+        const nextChannels: ChannelStreams[] = Array.isArray(data?.channels) ? data.channels : [];
+        if (!isMounted) return;
+        if (nextChannels.some((channel) => channel.videos.length > 0)) {
+          hasChannels = true;
+          setChannels(nextChannels);
+          setLoadError(null);
+        } else if (!hasChannels) {
+          setLoadError("Unable to load the latest streams right now.");
         }
       } catch {
-        // Fall through to the Data API when the public streams page cannot be read.
-      }
-
-      if (!YOUTUBE_API_KEY) return null;
-
-      const liveUrl = new URL("https://www.googleapis.com/youtube/v3/search");
-      liveUrl.searchParams.set("part", "snippet");
-      liveUrl.searchParams.set("channelId", CHANNEL_ID);
-      liveUrl.searchParams.set("eventType", "live");
-      liveUrl.searchParams.set("type", "video");
-      liveUrl.searchParams.set("maxResults", "1");
-      liveUrl.searchParams.set("key", YOUTUBE_API_KEY);
-
-      const [liveData, latestUpload] = await Promise.all([
-        fetchJson(liveUrl.toString()),
-        fetchLatestUpload(CHANNEL_ID, true),
-      ]);
-
-      const liveVideo = Array.isArray(liveData?.items)
-        ? toVideoFromSearch(liveData.items[0])
-        : null;
-
-      return liveVideo || latestUpload;
-    };
-
-    let hasVideos = false;
-
-    const fetchVideos = async () => {
-      try {
-        if (!hasVideos) setIsLoading(true);
-        setLoadError(null);
-
-        const [heroVideo, relatedVideos] = await Promise.all([
-          fetchHeroVideo(),
-          YOUTUBE_API_KEY
-            ? Promise.all(
-                RELATED_CHANNEL_IDS.map((channelId) =>
-                  fetchRelatedVideo(channelId),
-                ),
-              )
-            : Promise.resolve([]),
-        ]);
-
-        const merged = [
-          heroVideo,
-          ...relatedVideos,
-        ].filter((item: YouTubeVideo | null): item is YouTubeVideo =>
-          Boolean(item),
-        );
-
-        if (isMounted) {
-          const nextVideos = merged.slice(0, 4);
-          if (nextVideos.length > 0) hasVideos = true;
-          setVideos(nextVideos);
-        }
-      } catch {
-        if (isMounted) {
-          setLoadError("Unable to load the latest videos right now.");
-          setVideos([]);
-        }
+        if (isMounted && !hasChannels) setLoadError("Unable to load the latest streams right now.");
       } finally {
         if (isMounted) setIsLoading(false);
       }
     };
 
-    fetchVideos();
-    const refreshId = window.setInterval(fetchVideos, 60_000);
+    fetchChannels();
+    const refreshId = window.setInterval(fetchChannels, 60_000);
     return () => {
       isMounted = false;
       window.clearInterval(refreshId);
     };
-  }, [YOUTUBE_API_KEY]);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -435,6 +222,11 @@ export default function LivestreamPage() {
     const iframes = Array.from(
       document.querySelectorAll<HTMLIFrameElement>("[data-yt-id]"),
     );
+    const onScreen = new Set(iframes.map((iframe) => iframe.dataset.ytId));
+    // Switching channels swaps the iframes, so forget players whose video left the page.
+    players.forEach((_, videoId) => {
+      if (!onScreen.has(videoId)) players.delete(videoId);
+    });
 
     iframes.forEach((iframe) => {
       const videoId = iframe.dataset.ytId;
@@ -454,7 +246,7 @@ export default function LivestreamPage() {
       });
       players.set(videoId, player);
     });
-  }, [ytReady, activeTool]);
+  }, [ytReady, activeTool, visibleVideoIds]);
 
   const mobilePlayerActive = isMobileViewport && activeTool;
   const activeEmbedTool = TOOL_TABS.find(t => t.key === activeTool && t.kind === "embed") as { url: string; label: string } | undefined;
@@ -513,12 +305,62 @@ export default function LivestreamPage() {
                 </p>
               </div>
             </section>
+            {/* Channel picker */}
+            <section className="bg-black" aria-label="Choose a channel">
+              <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/50">Choose a channel</p>
+                <div role="tablist" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {LIVE_CHANNELS.map((channel) => {
+                    const streams = channels.find((item) => item.key === channel.key);
+                    const selected = (selectedChannel?.key || LIVE_CHANNELS[0].key) === channel.key;
+                    return (
+                      <button
+                        key={channel.key}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected}
+                        onClick={() => {
+                          setChosenChannelKey(channel.key);
+                          setActiveCardVideoId(null);
+                          setActiveCardTool(null);
+                        }}
+                        className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+                          selected
+                            ? "border-white bg-white text-black"
+                            : "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                        }`}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold">{channel.name}</span>
+                          <span className={`block text-xs ${selected ? "text-black/60" : "text-white/50"}`}>
+                            {isLoading && !streams
+                              ? "Checking..."
+                              : streams?.live
+                                ? "Streaming now"
+                                : streams?.error
+                                  ? "Unavailable right now"
+                                  : "Not live · latest stream"}
+                          </span>
+                        </span>
+                        {streams?.live ? (
+                          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                            Live
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
             {/* Sunday Livestream Section */}
-            <section className="py-12 md:py-16 bg-black">
+            <section className="py-8 md:py-10 bg-black">
               <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5">
                   <div className="relative aspect-video bg-black">
                     <iframe
+                      key={primaryVideoId}
                       className="h-full w-full"
                       data-yt-id={primaryVideoId}
                       id="yt-hero"
@@ -535,8 +377,8 @@ export default function LivestreamPage() {
                         {featuredVideo ? (
                           <p className="text-xs text-black/60 mt-1">
                             {featuredVideo.isLive
-                              ? "Live now from Pastor Esau Banda"
-                              : "Latest stream from Pastor Esau Banda"}
+                              ? `Live now from ${selectedChannelName}`
+                              : `Latest stream from ${selectedChannelName}`}
                           </p>
                         ) : null}
                         {featuredVideo?.publishedAt && (
@@ -680,6 +522,7 @@ export default function LivestreamPage() {
                 <div className="h-full flex flex-col">
                   <div className="flex-[0_0_40%] bg-black">
                     <iframe
+                      key={mobileVideoId}
                       className="h-full w-full"
                       data-yt-id={mobileVideoId}
                       id="yt-hero-mobile"
@@ -853,15 +696,28 @@ export default function LivestreamPage() {
             {isLoading ? (
               <div className="text-center py-12">
                 <p className="text-lg text-white/70">
-                  Loading videos from other channels...
+                  Loading recent streams...
                 </p>
               </div>
             ) : (
               <>
               {loadError && (
                 <p className="mb-6 text-center text-sm text-white/60">
-                  {loadError} Showing direct channel links instead.
+                  {loadError}{" "}
+                  <Link href={selectedChannel?.streamsUrl || `https://www.youtube.com/@${LIVE_CHANNELS[0].handle}/streams`} target="_blank" rel="noreferrer" className="underline">
+                    Watch on YouTube
+                  </Link>
                 </p>
+              )}
+              {displayGridVideos.length > 0 && (
+                <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+                  <h2 className="text-2xl font-bold">Recent streams from {selectedChannelName}</h2>
+                  {selectedChannel?.streamsUrl && (
+                    <Link href={selectedChannel.streamsUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-white/70 hover:text-white">
+                      See all on YouTube
+                    </Link>
+                  )}
+                </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                 {displayGridVideos.map((stream) => (

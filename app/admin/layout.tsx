@@ -51,6 +51,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/store/dashboard': { title: 'Store dashboard', subtitle: 'Bookshop payment KPIs and recent sales.' },
   '/admin/store/payments': { title: 'Book store payments', subtitle: 'All store PayChangu purchase records.' },
   '/admin/store/merchandise': { title: 'Branded items', subtitle: 'Add shirts, stickers, and other Hope Store goods.' },
+  '/admin/store/branded-sales': { title: 'Branded item sales', subtitle: 'Sales of PICC branded items in person and on the website, with buyers, totals, and exports.' },
   '/admin/store/book-launch': { title: 'Book launch sales', subtitle: 'Record name, quantity, amount, contact, payment, and collection for book-launch purchases.' },
   '/admin/store': { title: 'Store Page', subtitle: 'Manage store content and products.' },
   '/admin/giving/dashboard': { title: 'Giving dashboard', subtitle: 'Donation KPIs and recent giving activity.' },

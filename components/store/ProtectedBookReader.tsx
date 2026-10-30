@@ -2,18 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent, type TouchEvent } from 'react';
 import { createPortal } from 'react-dom';
-import Image from 'next/image';
-import { BookOpen, ChevronLeft, ChevronRight, Loader2, Maximize, Minimize, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Maximize, Minimize, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+
+export type ReadingProgress = { page: number; pageCount: number };
 
 type ProtectedBookReaderProps = {
   purchaseId: string;
   title: string;
   token: string;
-  coverUrl?: string | null;
-};
-
-type FlipbookProps = Omit<ProtectedBookReaderProps, 'coverUrl'> & {
+  initialPage?: number;
+  onProgress?: (progress: ReadingProgress) => void;
   onClose: () => void;
 };
 
@@ -22,6 +21,7 @@ type SpreadPages = [number | null, number | null];
 
 const RENDER_WIDTH = 1400;
 const FLIP_MS = 700;
+const PROGRESS_DELAY_MS = 800;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 2.5;
 
@@ -82,13 +82,17 @@ function PageFace({
   );
 }
 
-function FlipbookLightbox({ purchaseId, title, token, onClose }: FlipbookProps) {
+function FlipbookLightbox({ purchaseId, title, token, initialPage = 1, onProgress, onClose }: ProtectedBookReaderProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
   const requestedRef = useRef(new Set<number>());
   const pageUrlsRef = useRef<string[]>([]);
   const touchStartRef = useRef<number | null>(null);
+  const initialPageRef = useRef(initialPage);
+  const onProgressRef = useRef(onProgress);
+  const pendingProgressRef = useRef<ReadingProgress | null>(null);
+  const progressTimerRef = useRef<number | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [ratio, setRatio] = useState(0.707);
   const [images, setImages] = useState<Record<number, string>>({});
@@ -164,6 +168,7 @@ function FlipbookLightbox({ purchaseId, title, token, onClose }: FlipbookProps) 
       pdfRef.current = pdf;
       setRatio(viewport.width / viewport.height);
       setPageCount(pdf.numPages);
+      setCurrent(Math.min(Math.max(1, Math.floor(initialPageRef.current) || 1), pdf.numPages));
     };
 
     openBook()
@@ -215,6 +220,31 @@ function FlipbookLightbox({ purchaseId, title, token, onClose }: FlipbookProps) 
       });
     });
   }, [current, double, pageCount, renderPage]);
+
+  useEffect(() => {
+    onProgressRef.current = onProgress;
+  }, [onProgress]);
+
+  // Save the last page on screen shortly after the reader settles, and once more on close.
+  useEffect(() => {
+    if (!pageCount) return;
+    const [left, right] = spreadPages(spreadOf(current, double), double, pageCount);
+    pendingProgressRef.current = { page: right ?? left ?? current, pageCount };
+    if (progressTimerRef.current) window.clearTimeout(progressTimerRef.current);
+    progressTimerRef.current = window.setTimeout(() => {
+      progressTimerRef.current = null;
+      const pending = pendingProgressRef.current;
+      pendingProgressRef.current = null;
+      if (pending) onProgressRef.current?.(pending);
+    }, PROGRESS_DELAY_MS);
+  }, [current, double, pageCount]);
+
+  useEffect(() => () => {
+    if (progressTimerRef.current) window.clearTimeout(progressTimerRef.current);
+    const pending = pendingProgressRef.current;
+    pendingProgressRef.current = null;
+    if (pending) onProgressRef.current?.(pending);
+  }, []);
 
   const spread = spreadOf(current, double);
   const lastSpread = pageCount ? lastSpreadOf(pageCount, double) : 0;
@@ -456,12 +486,9 @@ function FlipbookLightbox({ purchaseId, title, token, onClose }: FlipbookProps) 
   );
 }
 
-export default function ProtectedBookReader({ purchaseId, title, token, coverUrl }: ProtectedBookReaderProps) {
-  const [open, setOpen] = useState(false);
-  const closeReader = useCallback(() => setOpen(false), []);
-
+export default function ProtectedBookReader(props: ProtectedBookReaderProps) {
   return (
-    <div className="mt-8">
+    <>
       <style>{`
         @media print {
           .protected-book, .protected-book * { display: none !important; }
@@ -470,41 +497,7 @@ export default function ProtectedBookReader({ purchaseId, title, token, coverUrl
         @keyframes flipbook-backward { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
         @keyframes flipbook-return { from { transform: rotateY(-180deg); } to { transform: rotateY(0deg); } }
       `}</style>
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="group relative aspect-[3/4] w-48 shrink-0 overflow-hidden rounded-r-md bg-slate-800 shadow-[0_18px_35px_-12px_rgba(15,23,42,0.55)] transition duration-300 hover:-translate-y-1"
-          aria-label={`Open ${title}`}
-        >
-          {coverUrl ? (
-            <Image src={coverUrl} alt={title} fill sizes="192px" className="object-cover" />
-          ) : (
-            <span className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1688b4] to-slate-900 p-5 text-center text-lg font-bold leading-tight text-white">
-              {title}
-            </span>
-          )}
-          <span className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/35 to-transparent" />
-          <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/55 text-sm font-semibold text-white opacity-0 transition group-hover:opacity-100">
-            <BookOpen className="h-7 w-7" />
-            Open book
-          </span>
-        </button>
-        <div className="text-center sm:text-left">
-          <p className="max-w-sm text-sm leading-6 text-slate-600">
-            Click the cover to read {title} as a flipbook. Downloading and printing are turned off.
-          </p>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#1688b4] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f759c]"
-          >
-            <BookOpen className="h-4 w-4" />
-            Open book
-          </button>
-        </div>
-      </div>
-      {open ? <FlipbookLightbox purchaseId={purchaseId} title={title} token={token} onClose={closeReader} /> : null}
-    </div>
+      <FlipbookLightbox {...props} />
+    </>
   );
 }

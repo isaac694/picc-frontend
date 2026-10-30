@@ -1,7 +1,22 @@
-export const PASTOR_ESAU_CHANNEL_ID = 'UC5iA3dWaUBlP_PBlGSQvgNQ';
-export const PASTOR_ESAU_STREAMS_URL = 'https://www.youtube.com/@PastorEsauBanda/streams';
+export type LiveChannel = {
+  key: string;
+  name: string;
+  channelId: string;
+  handle: string;
+};
 
-export type PastorEsauStream = {
+/** Channels the livestream page lets viewers choose between, in display order. */
+export const LIVE_CHANNELS: LiveChannel[] = [
+  { key: 'picc-worldwide', name: 'PICC Worldwide', channelId: 'UC6auo8Q1xb5cgyY_pGJbfdw', handle: 'piccworldwide' },
+  { key: 'pastor-esau-banda', name: 'Pastor Esau Banda', channelId: 'UC5iA3dWaUBlP_PBlGSQvgNQ', handle: 'PastorEsauBanda' },
+  { key: 'pastor-loyce-banda', name: 'Pastor Loyce Banda', channelId: 'UC8JUC-G4wKhrrPr7xjxYWJw', handle: 'PastorLoyceBanda' },
+];
+
+export function channelStreamsUrl(channel: LiveChannel) {
+  return `https://www.youtube.com/@${channel.handle}/streams`;
+}
+
+export type ChannelStream = {
   videoId: string;
   title: string;
   thumbnail: string;
@@ -19,8 +34,8 @@ const decodeTitle = (value: string) => {
   }
 };
 
-export function parsePastorEsauStreams(html: string): PastorEsauStream[] {
-  const videos: PastorEsauStream[] = [];
+export function parseChannelStreams(html: string): ChannelStream[] {
+  const videos: ChannelStream[] = [];
   const seen = new Set<string>();
 
   for (const chunk of html.split('lockupViewModel').slice(1)) {
@@ -48,8 +63,8 @@ export function parsePastorEsauStreams(html: string): PastorEsauStream[] {
   return [...live, ...rest];
 }
 
-export async function fetchPastorEsauStreams(): Promise<PastorEsauStream[]> {
-  const response = await fetch(PASTOR_ESAU_STREAMS_URL, {
+export async function fetchChannelStreams(channel: LiveChannel): Promise<ChannelStream[]> {
+  const response = await fetch(channelStreamsUrl(channel), {
     headers: {
       'User-Agent': 'Mozilla/5.0',
       'Accept-Language': 'en',
@@ -61,5 +76,5 @@ export async function fetchPastorEsauStreams(): Promise<PastorEsauStream[]> {
     throw new Error('Unable to load the YouTube streams page.');
   }
 
-  return parsePastorEsauStreams(await response.text());
+  return parseChannelStreams(await response.text());
 }
