@@ -7,6 +7,9 @@ export type PaginatedQuery = {
   format?: string;
   email?: string;
   search?: string;
+  productId?: string;
+  from?: string;
+  to?: string;
 };
 
 export function buildAdminQuery(params: PaginatedQuery): string {
@@ -19,6 +22,9 @@ export function buildAdminQuery(params: PaginatedQuery): string {
   if (params.format) search.set('format', params.format);
   if (params.email) search.set('email', params.email);
   if (params.search) search.set('search', params.search);
+  if (params.productId) search.set('productId', params.productId);
+  if (params.from) search.set('from', params.from);
+  if (params.to) search.set('to', params.to);
   const qs = search.toString();
   return qs ? `?${qs}` : '';
 }

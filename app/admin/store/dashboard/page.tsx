@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { adminErrorToast } from '@/components/admin/admin-toast';
 import { StorePaymentsTabs } from '@/components/admin/payments/PaymentsSectionTabs';
+import { StoreBookPerformance, type BookPerformance } from '@/components/admin/payments/StoreBookPerformance';
 import { formatAdminDate, formatMoney, paymentStatusBadgeClass } from '@/lib/admin-payments';
 
 type StoreKpis = {
@@ -46,14 +47,23 @@ export default function StoreDashboardPage() {
   const [loading, setLoading] = useState(false);
   const [kpis, setKpis] = useState<StoreKpis | null>(null);
   const [recent, setRecent] = useState<RecentPurchase[]>([]);
+  const [bookStats, setBookStats] = useState<BookPerformance | null>(null);
 
   const fetchDashboard = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const response = await apiFetch(`/api/admin/store/dashboard/kpis?days=${days}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const headers = { Authorization: `Bearer ${token}` };
+      const [response, booksResponse] = await Promise.all([
+        apiFetch(`/api/admin/store/dashboard/kpis?days=${days}`, { headers }),
+        apiFetch(`/api/admin/store/dashboard/books?days=${days}`, { headers }),
+      ]);
+      const booksData = await booksResponse.json().catch(() => ({}));
+      if (booksResponse.ok && Array.isArray(booksData.books)) {
+        setBookStats(booksData as BookPerformance);
+      } else {
+        adminErrorToast(booksData.error || 'Unable to load book performance.');
+      }
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         adminErrorToast(data.error || data.message || 'Unable to load store dashboard.');
@@ -85,7 +95,8 @@ export default function StoreDashboardPage() {
   }, [days, token]);
 
   useEffect(() => {
-    void fetchDashboard();
+    const id = setTimeout(() => void fetchDashboard(), 0);
+    return () => clearTimeout(id);
   }, [fetchDashboard]);
 
   const statusRows = Object.entries(kpis?.byStatus || {}).map(([label, value]) => ({ label, value: num(value) }));
@@ -150,6 +161,8 @@ export default function StoreDashboardPage() {
           {formatRows.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No data yet.</p> : null}
         </ChartCard>
       </div>
+
+      <StoreBookPerformance data={bookStats} loading={loading} />
 
       <div className="rounded-lg border border-border/60 bg-card shadow-sm">
         <div className="border-b border-border/60 px-4 py-3">
