@@ -19,7 +19,14 @@ import {
 } from '@/components/ui/dialog';
 import { formatAdminDate, formatMoney } from '@/lib/admin-payments';
 import { downloadRegistrationsExcel, downloadRegistrationsPdf, type ExportColumn } from '@/lib/event-registration-export';
-import { ticketsToDraft, type EventTicket, type EventTicketDraft } from '@/lib/event-forms';
+import {
+  parseEventForm,
+  ticketsToDraft,
+  type EventFormField,
+  type EventFormSchema,
+  type EventTicket,
+  type EventTicketDraft,
+} from '@/lib/event-forms';
 import EventShareButton from '@/components/events/EventShareButton';
 
 type ManagedEvent = {
@@ -31,6 +38,7 @@ type ManagedEvent = {
   location?: string;
   paymentCurrency?: string;
   tickets?: EventTicket[];
+  registrationForm?: unknown;
   isPublished?: boolean;
 };
 
@@ -95,6 +103,7 @@ type RegistrationRow = {
   email?: string | null;
   phone?: string | null;
   createdAt?: string;
+  answers?: Record<string, unknown>;
   answerRows?: unknown;
 };
 
@@ -158,16 +167,65 @@ function couponState(coupon: EventCoupon) {
   return 'Active';
 }
 
-function registrationAnswers(rows: unknown) {
+type AnswerColumn = {
+  key: string;
+  label: string;
+  field?: EventFormField;
+};
+
+const CONTACT_LABELS = new Set(['full name', 'name', 'email', 'email address', 'phone', 'phone number']);
+const CONTACT_KEYS = new Set(['full_name', 'name', 'email', 'email_address', 'phone', 'phone_number']);
+
+function normalizeLabel(value: unknown) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function answerRowPairs(rows: unknown) {
   if (!Array.isArray(rows)) return [];
-  const hidden = new Set(['full name', 'name', 'email', 'email address', 'phone', 'phone number']);
   return rows.flatMap((row) => {
     if (!Array.isArray(row) || row.length < 2) return [];
     const label = String(row[0] || '').trim();
-    const value = String(row[1] || '').trim();
-    if (!label || !value || hidden.has(label.toLowerCase())) return [];
-    return [{ label, value }];
+    return label ? [{ label, value: row[1] as unknown }] : [];
   });
+}
+
+function formatAnswer(value: unknown, field?: EventFormField) {
+  if (value == null || value === '') return '';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  const optionLabel = (item: unknown) =>
+    field?.options?.find((option) => option.value === String(item))?.label || String(item);
+  if (Array.isArray(value)) return value.map(optionLabel).filter(Boolean).join(', ');
+  return optionLabel(value).trim();
+}
+
+// One column per registration form field, plus any submitted answers the current form no longer has.
+function registrationAnswerColumns(form: EventFormSchema | null, registrations: RegistrationRow[]) {
+  const columns: AnswerColumn[] = [];
+  const seenLabels = new Set<string>();
+  for (const field of form?.fields || []) {
+    const label = normalizeLabel(field.label);
+    if (CONTACT_KEYS.has(field.key) || CONTACT_LABELS.has(label) || seenLabels.has(label)) continue;
+    seenLabels.add(label);
+    columns.push({ key: `field:${field.key}`, label: field.label, field });
+  }
+  for (const person of registrations) {
+    for (const pair of answerRowPairs(person.answerRows)) {
+      const label = normalizeLabel(pair.label);
+      if (CONTACT_LABELS.has(label) || seenLabels.has(label)) continue;
+      seenLabels.add(label);
+      columns.push({ key: `answer:${label}`, label: pair.label });
+    }
+  }
+  return columns;
+}
+
+function registrationAnswer(person: RegistrationRow, column: AnswerColumn) {
+  if (column.field && person.answers && column.field.key in person.answers) {
+    return formatAnswer(person.answers[column.field.key], column.field);
+  }
+  const label = normalizeLabel(column.label);
+  const match = answerRowPairs(person.answerRows).find((pair) => normalizeLabel(pair.label) === label);
+  return match ? formatAnswer(match.value, column.field) : '';
 }
 
 function buyerPasses(buyer: BuyerRow) {
@@ -188,6 +246,7 @@ function emptyExportRow(columns: ExportColumn[]) {
 
 function RegistrationTable({
   registrations,
+  form,
   total,
   query,
   onQueryChange,
@@ -195,6 +254,7 @@ function RegistrationTable({
   onExport,
 }: {
   registrations: RegistrationRow[];
+  form: EventFormSchema | null;
   total: number;
   query: string;
   onQueryChange: (value: string) => void;
@@ -207,6 +267,7 @@ function RegistrationTable({
         [person.name, person.email, person.phone].some((value) => String(value || '').toLowerCase().includes(needle)),
       )
     : registrations;
+  const answerColumns = registrationAnswerColumns(form, registrations);
 
   return (
     <div className="space-y-3">
@@ -247,30 +308,24 @@ function RegistrationTable({
                 <th className="px-3 py-2 font-medium">Name</th>
                 <th className="px-3 py-2 font-medium">Email</th>
                 <th className="px-3 py-2 font-medium">Phone</th>
+                {answerColumns.map((column) => (
+                  <th key={column.key} className="min-w-40 px-3 py-2 font-medium">{column.label}</th>
+                ))}
                 <th className="px-3 py-2 font-medium">Registered</th>
-                <th className="px-3 py-2 font-medium">Details</th>
               </tr>
             </thead>
             <tbody>
-              {visible.map((person) => {
-                const details = registrationAnswers(person.answerRows);
-                return (
-                  <tr key={person.id} className="border-t border-border/60 align-top">
-                    <td className="px-3 py-3 font-medium text-foreground">{person.name || '—'}</td>
-                    <td className="px-3 py-3 text-foreground/70">{person.email || '—'}</td>
-                    <td className="px-3 py-3 text-foreground/70">{person.phone || '—'}</td>
-                    <td className="px-3 py-3 whitespace-nowrap text-foreground/70">{person.createdAt ? formatAdminDate(person.createdAt) : '—'}</td>
-                    <td className="px-3 py-3 text-foreground/70">
-                      {details.length === 0 ? '—' : details.map((detail) => (
-                        <p key={detail.label}>
-                          <span className="text-foreground/50">{detail.label}: </span>
-                          {detail.value}
-                        </p>
-                      ))}
-                    </td>
-                  </tr>
-                );
-              })}
+              {visible.map((person) => (
+                <tr key={person.id} className="border-t border-border/60 align-top">
+                  <td className="px-3 py-3 font-medium text-foreground">{person.name || '—'}</td>
+                  <td className="px-3 py-3 text-foreground/70">{person.email || '—'}</td>
+                  <td className="px-3 py-3 text-foreground/70">{person.phone || '—'}</td>
+                  {answerColumns.map((column) => (
+                    <td key={column.key} className="px-3 py-3 text-foreground/70">{registrationAnswer(person, column) || '—'}</td>
+                  ))}
+                  <td className="px-3 py-3 whitespace-nowrap text-foreground/70">{person.createdAt ? formatAdminDate(person.createdAt) : '—'}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -539,19 +594,20 @@ export default function ManageEventPage() {
         setStatus('There are no registrations to export.');
         return;
       }
+      const answerColumns = registrationAnswerColumns(registrationForm, visible);
       const columns: ExportColumn[] = [
         { key: 'name', label: 'Name' },
         { key: 'email', label: 'Email' },
         { key: 'phone', label: 'Phone' },
+        ...answerColumns.map((column) => ({ key: column.key, label: column.label })),
         { key: 'registered', label: 'Registered' },
-        { key: 'details', label: 'Details' },
       ];
       const rows: Array<Record<string, string>> = visible.map((person) => ({
         name: person.name || '',
         email: person.email || '',
         phone: person.phone || '',
+        ...Object.fromEntries(answerColumns.map((column) => [column.key, registrationAnswer(person, column)])),
         registered: person.createdAt ? formatAdminDate(person.createdAt) : '',
-        details: registrationAnswers(person.answerRows).map((detail) => `${detail.label}: ${detail.value}`).join('; '),
       }));
       rows.push(emptyExportRow(columns));
       rows.push({
@@ -604,6 +660,8 @@ export default function ManageEventPage() {
     }
     return [...names];
   }, [buyers, event?.tickets]);
+
+  const registrationForm = parseEventForm(event?.registrationForm);
 
   const visibleBuyers = useMemo(() => {
     if (!ticketFilter) return buyers;
@@ -1230,6 +1288,7 @@ export default function ManageEventPage() {
       ) : (
         <RegistrationTable
           registrations={registrations}
+          form={registrationForm}
           total={registrationTotal}
           query={registrationQuery}
           onQueryChange={setRegistrationQuery}
