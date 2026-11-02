@@ -17,6 +17,9 @@ import {
   MapPin,
   Megaphone,
   Menu,
+  BarChart3,
+  IdCard,
+  SlidersHorizontal,
   MessageSquareText,
   Moon,
   MoreHorizontal,
@@ -71,6 +74,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Discipleship', href: '/admin/schools/discipleship', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT, icon: School },
   { label: 'PICC Secondary', href: '/admin/schools/picc-secondary', pageKey: ADMIN_PAGE.SCHOOLS_ENROLLMENT, icon: School },
   { label: 'Live Chat Archive', href: '/admin/livechat', pageKey: ADMIN_PAGE.LIVECHAT, icon: MessageSquareText },
+  { label: 'Membership register', href: '/admin/membership', pageKey: ADMIN_PAGE.MEMBERSHIP, icon: IdCard },
+  { label: 'Membership dashboard', href: '/admin/membership/dashboard', pageKey: ADMIN_PAGE.MEMBERSHIP, icon: BarChart3 },
+  { label: 'Membership fields', href: '/admin/membership/fields', pageKey: ADMIN_PAGE.MEMBERSHIP, icon: SlidersHorizontal },
 ];
 
 const PAYMENTS_ITEMS: NavItem[] = [
@@ -85,13 +91,16 @@ const PAYMENTS_ITEMS: NavItem[] = [
 const SITE_PAGE_ITEMS: NavItem[] = [
   { label: 'About Page', href: '/admin/about-page', pageKey: ADMIN_PAGE.ABOUT_PAGE, icon: Newspaper },
   { label: 'Contact Page', href: '/admin/contact', pageKey: ADMIN_PAGE.CONTACT_PAGE, icon: MessageSquareText },
+  { label: 'News', href: '/admin/news', pageKey: ADMIN_PAGE.NEWS, icon: Newspaper },
   { label: 'Media Page', href: '/admin/media', pageKey: ADMIN_PAGE.MEDIA_PAGE, icon: ImageIcon },
   { label: 'Store Page', href: '/admin/store', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
   { label: 'Branded items', href: '/admin/store/merchandise', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
+  { label: 'Branded item stats', href: '/admin/store/merchandise/stats', pageKey: ADMIN_PAGE.STORE_PAGE, icon: BarChart3 },
   { label: 'Branded item sales', href: '/admin/store/branded-sales', pageKey: ADMIN_PAGE.STORE_PAGE, icon: Shirt },
   { label: 'Book launch sales', href: '/admin/store/book-launch', pageKey: ADMIN_PAGE.STORE_PAGE, icon: Receipt },
   { label: 'Forms Page', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE, icon: FileText },
   { label: 'Sermons Page', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE, icon: BookOpen },
+  { label: 'Sermon analytics', href: '/admin/sermons/dashboard', pageKey: ADMIN_PAGE.SERMONS_PAGE, icon: BarChart3 },
   { label: 'Give Page', href: '/admin/giving/types', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: FileText },
   { label: 'Church Locations', href: '/admin/locations', pageKey: ADMIN_PAGE.LOCATIONS_PAGE, icon: MapPin },
   { label: 'Zones & Home Churches', href: '/admin/zones', pageKey: ADMIN_PAGE.HOME_CHURCHES_PAGE, icon: Layers2 },
@@ -230,6 +239,7 @@ export default function AdminSidebar() {
     if (href === '/admin/store') return pathname === href;
     if (href === '/admin/give') return pathname === href;
     if (href === '/admin/event-payments') return pathname === href;
+    if (href === '/admin/membership' || href === '/admin/sermons' || href === '/admin/store/merchandise') return pathname === href;
     return pathname?.startsWith(href);
   };
 

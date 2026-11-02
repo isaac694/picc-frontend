@@ -11,9 +11,52 @@ export type WebsiteAd = {
   /** Legacy / duplicate of banner when API also sends `imageUrl`. */
   imageUrl: string;
   isActive: boolean;
+  /** Page groups the ad appears on (see WEBSITE_AD_PLACEMENTS). */
+  placements: string[];
   createdAt?: string;
   updatedAt?: string;
 };
+
+export const WEBSITE_AD_PLACEMENTS: Array<{ key: string; label: string; hint: string }> = [
+  { key: 'all', label: 'All pages', hint: 'Every page except the store' },
+  { key: 'home', label: 'Home page', hint: '/' },
+  { key: 'careers', label: 'Careers', hint: 'Vacancies and applicant portal' },
+  { key: 'store', label: 'Stores', hint: 'Bookshop and branded items' },
+  { key: 'schools', label: 'Schools', hint: 'PICC Secondary, Hope School, Discipleship' },
+  { key: 'ministries', label: 'Ministries', hint: 'All ministry pages' },
+  { key: 'events', label: 'Events', hint: 'Events and tickets' },
+  { key: 'sermons', label: 'Sermons', hint: 'Sermons and archive' },
+  { key: 'media', label: 'Media & news', hint: 'Media, news, magazines' },
+  { key: 'give', label: 'Give', hint: 'Giving page' },
+];
+
+/** Which placement group a public path belongs to; null for pages without their own group. */
+export function websiteAdPlacementForPath(pathname: string): string | null {
+  const path = pathname || '/';
+  if (path === '/') return 'home';
+  const groups: Array<[string, string[]]> = [
+    ['careers', ['/careers']],
+    ['store', ['/store']],
+    ['schools', ['/schools']],
+    ['ministries', ['/ministries']],
+    ['events', ['/events']],
+    ['sermons', ['/sermons']],
+    ['media', ['/media', '/news']],
+    ['give', ['/give']],
+  ];
+  for (const [key, prefixes] of groups) {
+    if (prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) return key;
+  }
+  return null;
+}
+
+/** "All pages" ads skip the store, which only shows ads aimed at it. */
+export function websiteAdShowsOnPath(ad: Pick<WebsiteAd, 'placements'>, pathname: string): boolean {
+  const placements = ad.placements?.length ? ad.placements : ['all'];
+  const group = websiteAdPlacementForPath(pathname);
+  if (group && placements.includes(group)) return true;
+  return placements.includes('all') && group !== 'store';
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -50,6 +93,9 @@ export function parseWebsiteAd(value: unknown): WebsiteAd | null {
     link,
     imageUrl: banner || explicitImage,
     isActive: value.isActive !== false,
+    placements: Array.isArray(value.placements)
+      ? value.placements.filter((entry): entry is string => typeof entry === 'string')
+      : ['all'],
     createdAt: typeof value.createdAt === 'string' ? value.createdAt : undefined,
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : undefined,
   };

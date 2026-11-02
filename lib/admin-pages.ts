@@ -28,6 +28,8 @@ export const ADMIN_PAGE = {
   PRAYERLINES: 'PRAYERLINES',
   WEBSITE_ADS: 'WEBSITE_ADS',
   MINISTRIES: 'MINISTRIES',
+  NEWS: 'NEWS',
+  MEMBERSHIP: 'MEMBERSHIP',
 } as const;
 
 export type AdminPageKey = (typeof ADMIN_PAGE)[keyof typeof ADMIN_PAGE];
@@ -82,6 +84,8 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.LEADERSHIP, label: 'Leadership Management' },
   { key: ADMIN_PAGE.PRAYERLINES, label: 'Prayerline (Footer)' },
   { key: ADMIN_PAGE.WEBSITE_ADS, label: 'Ads Management' },
+  { key: ADMIN_PAGE.NEWS, label: 'News' },
+  { key: ADMIN_PAGE.MEMBERSHIP, label: 'Membership register' },
 ];
 
 export const MINISTRY_ADMIN_OPTIONS = [

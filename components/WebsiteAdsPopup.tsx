@@ -10,6 +10,7 @@ import {
   websiteAdInitials,
   websiteAdLinkUrl,
   websiteAdThumbnailSource,
+  websiteAdShowsOnPath,
   type WebsiteAd,
 } from '@/lib/website-ads';
 import { Button } from '@/components/ui/button';
@@ -58,12 +59,13 @@ export default function WebsiteAdsPopup() {
   const [mobileDismissed, setMobileDismissed] = useState(false);
   const [mobileReady, setMobileReady] = useState(false);
 
-  const isHiddenRoute =
-    (pathname || '').startsWith('/admin') ||
-    pathname === '/store' ||
-    (pathname || '').startsWith('/store/');
+  const isHiddenRoute = (pathname || '').startsWith('/admin');
 
-  const visibleAds = useMemo(() => ads.filter((ad) => ad.isActive), [ads]);
+  // Each ad chooses its pages; the store only shows ads aimed at it.
+  const visibleAds = useMemo(
+    () => ads.filter((ad) => ad.isActive && websiteAdShowsOnPath(ad, pathname || '/')),
+    [ads, pathname],
+  );
 
   const safeIndex = Math.min(index, Math.max(visibleAds.length - 1, 0));
   const current = visibleAds[safeIndex];

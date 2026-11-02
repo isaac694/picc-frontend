@@ -44,6 +44,7 @@ import {
   websiteAdBannerUrlForApi,
   websiteAdLinkForApi,
   websiteAdLinkUrl,
+  WEBSITE_AD_PLACEMENTS,
   type WebsiteAd,
 } from '@/lib/website-ads';
 
@@ -83,6 +84,7 @@ export default function AdsManager({ token }: { token: string }) {
   const [bannerPath, setBannerPath] = useState('');
   const [linkMode, setLinkMode] = useState<'none' | 'page' | 'custom'>('none');
   const [linkedPagePath, setLinkedPagePath] = useState('');
+  const [placements, setPlacements] = useState<string[]>(['all']);
 
   const pagesByGroup = useMemo(() => publicSitePagesByGroup(), []);
 
@@ -120,6 +122,7 @@ export default function AdsManager({ token }: { token: string }) {
     setBannerPath('');
     setLinkMode('none');
     setLinkedPagePath('');
+    setPlacements(['all']);
     if (bannerInputRef.current) bannerInputRef.current.value = '';
   };
 
@@ -140,6 +143,7 @@ export default function AdsManager({ token }: { token: string }) {
     syncLinkModeFromUrl(link);
     setBannerPath(normalizeWebsiteAdStoragePath(banner));
     setBannerUploadName('');
+    setPlacements(ad.placements?.length ? ad.placements : ['all']);
     setModalOpen(true);
   };
 
@@ -208,9 +212,10 @@ export default function AdsManager({ token }: { token: string }) {
 
     setSaving(true);
     try {
-      const payload: Record<string, string> = {
+      const payload: Record<string, string | string[]> = {
         name: draft.name.trim(),
         description: draft.description.trim(),
+        placements: placements.length ? placements : ['all'],
       };
       if (bannerForApi) payload.url = bannerForApi;
       if (linkForApi) payload.link = linkForApi;
@@ -335,6 +340,13 @@ export default function AdsManager({ token }: { token: string }) {
                 >
                   {ad.isActive ? 'Active' : 'Inactive'}
                 </Badge>
+              </div>
+              <div className="flex flex-wrap gap-1 px-3 pt-3">
+                {(ad.placements?.length ? ad.placements : ['all']).map((key) => (
+                  <span key={key} className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    {WEBSITE_AD_PLACEMENTS.find((entry) => entry.key === key)?.label || key}
+                  </span>
+                ))}
               </div>
               <div className="flex flex-1 flex-col gap-2 p-3">
                 <div className="flex items-start justify-between gap-2">
@@ -569,6 +581,40 @@ export default function AdsManager({ token }: { token: string }) {
               </div>
               <MediaUploadProgress uploading={uploadingBanner} progress={progress} />
               <p className="text-xs text-muted-foreground">Shown on admin cards and in the popup.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Show this ad on</Label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {WEBSITE_AD_PLACEMENTS.map((entry) => {
+                  const checked = placements.includes(entry.key);
+                  return (
+                    <label
+                      key={entry.key}
+                      className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-xs ${checked ? 'border-primary bg-primary/5' : 'border-border'}`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={checked}
+                        onChange={(event) => {
+                          setPlacements((prev) => {
+                            if (entry.key === 'all') return event.target.checked ? ['all'] : [];
+                            const next = event.target.checked
+                              ? [...prev.filter((key) => key !== 'all'), entry.key]
+                              : prev.filter((key) => key !== entry.key);
+                            return next.length ? next : ['all'];
+                          });
+                        }}
+                      />
+                      <span>
+                        <span className="block font-semibold text-foreground">{entry.label}</span>
+                        <span className="text-muted-foreground">{entry.hint}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

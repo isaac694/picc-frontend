@@ -18,6 +18,9 @@ export type Product = {
   bookContent?: string | null;
   sortOrder?: number;
   isActive?: boolean;
+  /** Marked by the store admin as the latest book being marketed. */
+  isFeatured?: boolean;
+  featuredTagline?: string | null;
 };
 
 export const categories = [

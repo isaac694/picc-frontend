@@ -198,14 +198,25 @@ const isStoredEvent = (event: Pick<Event, 'id'>) => !/^\d+$/.test(String(event.i
 export default function EventsListSection({
   apiPath = '/api/events',
   layout = 'expanded',
+  initialFilter = 'today',
+  kicker,
+  title,
+  description,
+  sectionClassName = 'bg-background',
 }: {
   apiPath?: string;
   layout?: 'classic' | 'expanded';
+  /** Ministry pages start on the whole year so their events are not hidden behind "Today". */
+  initialFilter?: 'today' | 'week' | 'month' | 'year';
+  kicker?: string;
+  title?: string;
+  description?: string;
+  sectionClassName?: string;
 }) {
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null;
 
-  const [filter, setFilter] = useState<'today' | 'week' | 'month' | 'year'>('today');
+  const [filter, setFilter] = useState<'today' | 'week' | 'month' | 'year'>(initialFilter);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -779,8 +790,16 @@ export default function EventsListSection({
 
   return (
     <>
-      <section className="py-16 md:py-20 bg-background">
+      <section className={`py-16 md:py-20 ${sectionClassName}`}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          {title ? (
+            <div className="mb-10 text-center">
+              {kicker ? <p className="mb-3 text-xs uppercase tracking-[0.45em] text-primary/70">{kicker}</p> : null}
+              <h2 className="text-3xl font-semibold text-foreground md:text-5xl">{title}</h2>
+              <div className="mx-auto mt-4 h-[3px] w-14 rounded-full bg-primary" />
+              {description ? <p className="mx-auto mt-4 max-w-2xl text-foreground/70">{description}</p> : null}
+            </div>
+          ) : null}
           <div className="rounded-2xl border border-border bg-white shadow-sm p-6 md:p-8">
             <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
               <div className="flex-1 flex items-center gap-3 rounded-xl border border-border bg-white px-4 py-3">
