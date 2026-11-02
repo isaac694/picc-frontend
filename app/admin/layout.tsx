@@ -49,6 +49,12 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/about-page': { title: 'About Page', subtitle: 'Update about page content.' },
   '/admin/contact': { title: 'Contact Page', subtitle: 'Manage contact page details.' },
   '/admin/media': { title: 'Media Page', subtitle: 'Manage media page content.' },
+  '/admin/news': { title: 'News', subtitle: 'Write, activate, deactivate and feature church and ministry news.' },
+  '/admin/membership/dashboard': { title: 'Membership dashboard', subtitle: 'Membership statistics from the register.' },
+  '/admin/membership/fields': { title: 'Membership fields', subtitle: 'Choose the details recorded for each member.' },
+  '/admin/membership': { title: 'Membership register', subtitle: 'Add, edit, search and download member records.' },
+  '/admin/sermons/dashboard': { title: 'Sermon analytics', subtitle: 'How many people watch and listen to sermons.' },
+  '/admin/store/merchandise/stats': { title: 'Branded item statistics', subtitle: 'Sales, revenue and stock for every branded item.' },
   '/admin/store/dashboard': { title: 'Store dashboard', subtitle: 'Bookshop payment KPIs and recent sales.' },
   '/admin/store/payments': { title: 'Book store payments', subtitle: 'All store PayChangu purchase records.' },
   '/admin/store/merchandise': { title: 'Branded items', subtitle: 'Add shirts, stickers, and other Hope Store goods.' },
@@ -99,6 +105,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/zones')) return ADMIN_PAGE.HOME_CHURCHES_PAGE;
   if (path.startsWith('/admin/locations')) return ADMIN_PAGE.LOCATIONS_PAGE;
   if (path.startsWith('/admin/prayerlines')) return ADMIN_PAGE.PRAYERLINES;
+  if (path.startsWith('/admin/membership')) return ADMIN_PAGE.MEMBERSHIP;
   return null;
 };
 

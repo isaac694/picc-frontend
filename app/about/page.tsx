@@ -1,54 +1,73 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { apiFetch, apiUrl } from '@/lib/api';
+import {
+  CONTENT_COLLECTIONS,
+  fetchContentCollections,
+  seedsToItems,
+  type ContentItem,
+} from '@/lib/content-items';
+import { ABOUT_CORE_VALUE_SEEDS, ABOUT_TENET_SEEDS, splitThemeText, yearlyThemeSeeds } from '@/lib/about-defaults';
+
+type Theme = { id: string; year: number; theme: string; scripture: string; body: string };
+
+const toThemes = (items: ContentItem[]): Theme[] =>
+  items
+    .map((item) => ({
+      id: item.id,
+      year: Number(item.data.year),
+      theme: item.title,
+      scripture: item.subtitle,
+      body: item.body,
+    }))
+    .filter((entry) => Number.isFinite(entry.year) && entry.theme)
+    .sort((a, b) => b.year - a.year);
+
+function Accordion({ items, openIndex, onToggle }: { items: ContentItem[]; openIndex: number | null; onToggle: (index: number | null) => void }) {
+  return (
+    <>
+      {items.map((entry, index) => {
+        const isOpen = openIndex === index;
+        return (
+          <div key={entry.id} className="rounded-2xl border border-border/60 bg-background/80 px-4 py-4 shadow-sm transition-shadow hover:shadow-md">
+            <button
+              type="button"
+              onClick={() => onToggle(isOpen ? null : index)}
+              className="flex w-full items-center justify-between gap-4 text-left"
+              aria-expanded={isOpen}
+            >
+              <span className="text-lg font-semibold text-foreground">{entry.title}</span>
+              <span
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/30 text-xl leading-none text-primary transition-transform duration-300 ${isOpen ? 'rotate-45' : ''}`}
+                aria-hidden="true"
+              >
+                +
+              </span>
+            </button>
+            <div className={`grid transition-all duration-500 ease-out ${isOpen ? 'mt-3 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+              <p className="overflow-hidden leading-relaxed text-foreground/70">{entry.body}</p>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
 
 export default function AboutPage() {
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [storyVideoUrl, setStoryVideoUrl] = useState('https://www.youtube.com/embed/IloZ7uo2UYY');
-  const [yearlyThemes, setYearlyThemes] = useState<{ year: number; theme: string }[]>([
-    { year: 2010, theme: 'Theme to be updated' },
-    { year: 2011, theme: 'The Year Of Unending Enlargement - 1 Chronicles 4:4-9 ' },
-    { year: 2012, theme: 'My Year Of Open Doors - Revelations 3:8 ' },
-    { year: 2013, theme: 'The Year Of Supernatural Harvest - Jeremiah 5:24' },
-    { year: 2014, theme: 'The Year Of A New Thing - Isaiah 43:19 ' },
-    { year: 2015, theme: 'Unlimited Breakthroughs - Genesis 26:22 ' },
-    { year: 2016, theme: 'Breaking New Grounds - Isaiah 60:22 ' },
-    { year: 2017, theme: 'Divine Establishment - 1 Samuel 3:20 ' },
-    { year: 2018, theme: 'All Round Dominion - Genesis 1:26-28' },
-    { year: 2019, theme: 'The Supernatural - Isaih 60:1-22' },
-    { year: 2020, theme: 'Break Forth - Isaiah 54:3' },
-    { year: 2021, theme: 'Recover All - 1 Samuel 30:18-20' },
-    { year: 2022, theme: 'Abundantly Exceeding Grace - 1 Timothy 1:14 ' },
-    { year: 2023, theme: 'Divine Expansion - Isaiah 54:1' },
-    { year: 2024, theme: 'Perfect Jubilee from Glory to Glory - Leviticus 25:1-55 ' },
-    { year: 2025, theme: 'Multiple Divine Visitation - 1 Samuel 2: 21: ' },
-    { year: 2026, theme: 'The year of the hand of God - Ezekiel 37:1-10' },
-  ]);
-  const familySlides = [
-    ['/moments/1.jpg', '/moments/2.jpg', '/moments/3.jpg'],
-    ['/moments/4.jpg', '/moments/5.jpg', '/moments/6.jpg'],
-    ['/moments/7.jpg', '/moments/8.jpg', '/moments/9.jpg'],
-  ];
-  const extendedSlides = [
-    familySlides[familySlides.length - 1],
-    ...familySlides,
-    familySlides[0],
-  ];
-  const [currentSlide, setCurrentSlide] = useState(1);
-  const [slideTransition, setSlideTransition] = useState(true);
+  const [tenets, setTenets] = useState<ContentItem[]>(() => seedsToItems(CONTENT_COLLECTIONS.aboutTenets, ABOUT_TENET_SEEDS));
+  const [coreValues, setCoreValues] = useState<ContentItem[]>(() => seedsToItems(CONTENT_COLLECTIONS.aboutCoreValues, ABOUT_CORE_VALUE_SEEDS));
+  const [themes, setThemes] = useState<Theme[]>(() => toThemes(seedsToItems(CONTENT_COLLECTIONS.aboutYearlyThemes, yearlyThemeSeeds())));
   const [openTenet, setOpenTenet] = useState<number | null>(0);
   const [openCoreValue, setOpenCoreValue] = useState<number | null>(0);
-  const [openThemeYear, setOpenThemeYear] = useState<number | null>(null);
-  
 
-
-
-  
   useEffect(() => {
     const imageKeys = [
       'about-header-bg',
@@ -60,102 +79,97 @@ export default function AboutPage() {
       'about-yearly-themes',
     ];
 
-    const fetchImages = async () => {
-      const entries = await Promise.all(
-        imageKeys.map(async (key) => {
-          try {
-            const response = await apiFetch(`/api/site-content/${key}`);
-            if (!response.ok) return [key, ''] as const;
-            const data = await response.json();
-
-            if (key === 'about-story-video') {
-              return [key, String(data.body || '')] as const;
+    const load = async () => {
+      const [entries, lists] = await Promise.all([
+        Promise.all(
+          imageKeys.map(async (key) => {
+            try {
+              const response = await apiFetch(`/api/site-content/${key}`);
+              if (!response.ok) return [key, ''] as const;
+              const data = await response.json();
+              if (key === 'about-story-video' || key === 'about-yearly-themes') {
+                return [key, String(data.body || '')] as const;
+              }
+              const imageUrl = data.imageUrl ? (data.imageUrl.startsWith('http') ? data.imageUrl : apiUrl(data.imageUrl)) : '';
+              return [key, imageUrl] as const;
+            } catch {
+              return [key, ''] as const;
             }
-
-            if (key === 'about-yearly-themes') {
-              return [key, String(data.body || '')] as const;
-            }
-
-            const imageUrl = data.imageUrl
-              ? data.imageUrl.startsWith('http')
-                ? data.imageUrl
-                : apiUrl(data.imageUrl)
-              : '';
-
-            return [key, imageUrl] as const;
-          } catch (error) {
-            return [key, ''] as const;
-          }
-        })
-      );
+          }),
+        ),
+        fetchContentCollections([
+          CONTENT_COLLECTIONS.aboutTenets,
+          CONTENT_COLLECTIONS.aboutCoreValues,
+          CONTENT_COLLECTIONS.aboutYearlyThemes,
+        ]),
+      ]);
 
       const map = Object.fromEntries(entries) as Record<string, string>;
       setPageImages(map);
-
       const candidateVideo = (map['about-story-video'] || '').trim();
-      if (candidateVideo) {
-        setStoryVideoUrl(candidateVideo);
-      }
+      if (candidateVideo) setStoryVideoUrl(candidateVideo);
 
-      const themesBody = (map['about-yearly-themes'] || '').trim();
-      if (themesBody) {
+      if (lists[CONTENT_COLLECTIONS.aboutTenets]) setTenets(lists[CONTENT_COLLECTIONS.aboutTenets]!);
+      if (lists[CONTENT_COLLECTIONS.aboutCoreValues]) setCoreValues(lists[CONTENT_COLLECTIONS.aboutCoreValues]!);
+
+      const savedThemes = lists[CONTENT_COLLECTIONS.aboutYearlyThemes];
+      if (savedThemes) {
+        setThemes(toThemes(savedThemes));
+      } else {
+        // Themes saved with the older single-text editor.
         try {
-          const parsed = JSON.parse(themesBody);
-          if (Array.isArray(parsed)) {
-            const themes = parsed
-              .map((value: any) => ({
-                year: Number(value?.year),
-                theme: String(value?.theme ?? '').trim(),
-              }))
+          const parsed = JSON.parse((map['about-yearly-themes'] || '').trim() || 'null');
+          if (Array.isArray(parsed) && parsed.length) {
+            const legacy = parsed
+              .map((value: { year?: unknown; theme?: unknown }) => ({ year: Number(value?.year), theme: String(value?.theme ?? '').trim() }))
               .filter((entry) => Number.isFinite(entry.year) && entry.theme);
-            if (themes.length) {
-              setYearlyThemes(themes);
+            if (legacy.length) {
+              setThemes(legacy.map((entry, index) => ({ id: `legacy-${index}`, year: entry.year, ...splitThemeText(entry.theme), body: '' })).sort((a, b) => b.year - a.year));
             }
           }
         } catch {
-          // ignore invalid themes body
+          // Keep the built-in themes.
         }
       }
     };
 
-    fetchImages();
+    void load();
   }, []);
 
   const resolveImage = (key: string, fallback: string) => pageImages[key] || fallback;
-
-  const visibleThemes = [...yearlyThemes].sort((a, b) => b.year - a.year);
+  const currentYear = new Date().getFullYear();
+  const firstYear = useMemo(() => (themes.length ? Math.min(...themes.map((entry) => entry.year)) : currentYear), [themes, currentYear]);
+  const currentTheme = themes.find((entry) => entry.year === currentYear) || themes[0];
 
   return (
     <>
       <Navigation />
       <main className="min-h-screen">
         {/* Hero Section */}
-        <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
+        <section className="relative overflow-hidden rounded-b-[36px] py-24 text-white sm:py-32 md:rounded-b-[48px] md:py-48">
           <div className="absolute inset-0">
             <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage: `url(${resolveImage('about-header-bg', '/about/header.JPG')})`,
-              }}
+              className="animate-ken-burns absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${resolveImage('about-header-bg', '/about/header.JPG')})` }}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
           </div>
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mt-8 sm:mt-16 md:mt-32">
-              <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3">
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mt-8 max-w-3xl sm:mt-16 md:mt-32">
+              <div className="mb-4 flex items-center gap-3 text-xs uppercase tracking-[0.35em] text-white/70">
                 <Link href="/" className="hover:text-white">Home</Link>
                 <span className="text-white/50">/</span>
                 <Link href="/about" className="hover:text-white">About</Link>
               </div>
-              <h1 className="text-4xl md:text-6xl font-semibold mb-4">About Our Church</h1>
+              <h1 className="mb-4 text-4xl font-semibold md:text-6xl">About Our Church</h1>
             </div>
           </div>
         </section>
 
-        {/* Our Story */}
-        <section className="py-16 sm:py-20 md:py-24 bg-background">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-start">
+        {/* Tenets of faith */}
+        <section className="bg-background py-16 sm:py-20 md:py-24">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-[1.05fr_1fr]">
               <div className="relative h-72 overflow-hidden rounded-3xl shadow-xl sm:h-[28rem] lg:h-[60rem]">
                 <Image
                   src={resolveImage('about-tenets-image', '/about/tenets-1.JPG')}
@@ -166,206 +180,29 @@ export default function AboutPage() {
                 />
               </div>
               <div className="flex h-auto min-h-[24rem] flex-col lg:h-[60rem]">
-                <h2 className="text-3xl md:text-4xl font-semibold text-foreground leading-tight mb-4">
+                <h2 className="mb-4 text-3xl font-semibold leading-tight text-foreground md:text-4xl">
                   THE <span className="text-secondary">PICC</span> TENETS
                   <br />
                   OF <span className="text-secondary">FAITH.</span>
                 </h2>
-                <div className="space-y-4 flex-1 overflow-y-auto pr-2">
-                  {[
-                    {
-                      title: 'The Bible',
-                      description:
-                        'We believe that the entire bible, both Old and New Testaments, are written by the inspiration of the Holy Spirit and that the bible is infallible in its declaration, final in its authority, comprehensive and all sufficient in its provisions (2 Tim 3:16, 17; 2 Peter 1:20, 21).',
-                    },
-                    {
-                      title: 'About God',
-                      description:
-                        'As revealed to us by the Bible, we believe in the existence of only one God, who created the universe and is revealed as Triune God the Father, the Son and the Holy Spirit (Gen 1:1; Mat. 3:16,17; 28:19; 2 Cor. 13:14; Gen 1:26), one in nature, essence and attributes omnipotent (Deut. 6:4; Job 42:2; Rev. 19:6; Isaiah 46:9, 10), omnipresent (Psalm 139:7-12; 147:5), and omniscient (Isaiah 46:9, 10; Job 42:2; Acts 5:4,5).',
-                    },
-                    {
-                      title: 'The Depraved Nature of Man',
-                      description:
-                        'We believe that all men have sinned and come short of the glory of God (Romans 3:23, Gen 3:1-19; 6:23; Mat 13:41, 42), and need Repentance (Acts 2:38; Mat. 4:17; Acts 20:21) and Regeneration (John 3:3, 5; Titus 3:5).',
-                    },
-                    {
-                      title: 'The Saviour',
-                      description:
-                        "We believe man's need of a Saviour has been met in the person of Jesus Christ (Mat. 1:21; John 4:42; Eph. 5:23; Ph. 2:6-11), because of His Deity (Acts 2:36; John 1:1; 20:28; Romans 9:5; Titus 2:13, 14; Isaiah 9:6), Virgin Birth (Isaiah 7:14; Mat. 1:18; Luke 1:25-26), Sinless Life (John 8:46; Heb. 4:15; 2 Cor. 5:21), Atoning death (Romans 3:25; Heb. 9:22; 1 John 2:2), Resurrection (Acts 2:36; 10:39, 40; Mat. 28:5-7; Acts 2:24; 1 Cor. 15:3,4) and Ascension (Acts 1:9-11; 2:33-36), His abiding intercession (Heb. 7:25; Romans 8:34) and His second coming to judge the living and the dead (Rev. 22:12, 20; 1 Thes. 4:16-18; 2 Tim 4:1; Acts 1:11; 10:42).",
-                    },
-                    {
-                      title: 'Repentance, Justification and Sanctification',
-                      description:
-                        "We believe all men have to repent and confess their sins before God (Acts 2:38; 3:19; 17:30; Luke 5:17) and believe in the vicarious death of Jesus Christ before they can be justified before God (Romans 4:25; 5:1). We believe in the sanctification of the believer through the working of the Holy Spirit (1 Cor. 1:30; 6:11) and God's gift of eternal life to the believer (Romans 6:23b; John 17:2, 3; 10:27, 28; 1 John 5:11-13).",
-                    },
-                    {
-                      title: 'Water Baptism',
-                      description:
-                        'We believe in the sacrament of Baptism by immersion as a testimony of a convert who has attained a responsible age of 13 years (Mat. 3:16; Mark 1:9, 10; 16:16; Mat. 28:19; Acts 2:38). Infants and children are not baptized but are dedicated to the Lord (Luke 2:22-24, 34; Mark 10:13-16).',
-                    },
-                    {
-                      title: 'Holy Communion',
-                      description:
-                        "We believe in the covenant practice of taking the Lord's Supper or Holy Communion for all Christians and this should be partaken by all members who are in full fellowship (Luke 22:19, 20; Acts 20:7; 1 Cor. 11:23-33).",
-                    },
-                    {
-                      title: 'Baptism, Gifts and Fruit of The Holy Spirit',
-                      description:
-                        'We believe in the Baptism of the Holy Spirit for all believers with the initial evidence of speaking in tongues (Joel 2:28, 29; Acts 2:3,4,38,39; 10:44-46; 19:1-6); and in the operation of the gifts and fruit of the Holy Spirit (1 Cor. 12:8-11; 28-30; Rom. 12:6-8 and Gal. 5:22,23).',
-                    },
-                    {
-                      title: 'The Second Coming of Christ and the Resurrection of the Dead',
-                      description:
-                        'We believe in the Second Coming of Christ and Resurrection of the dead, both the saved and the unsaved, those that are saved to the resurrection of life and the unsaved to the Resurrection of damnation (Acts 1:11, 10:42; Mark 13:26; John 5:28, 29; Dan. 12:2; Romans 2:7-11; 6:23).',
-                    },
-                    {
-                      title: 'Giving and Kingdom Service',
-                      description:
-                        'We believe in tithing and in the giving of offerings, talents and skills towards the cause of promoting the kingdom of God. We believe that God blesses a cheerful giver (Gen. 14:18-20; Exodus 31:1-6; Mal. 3:6-10; Heb. 7:1-4; Mat. 23:23; Acts 20:35; 2 Cor. 9:1-9; 1 Cor. 16:1, 2).',
-                    },
-                    {
-                      title: 'Divine Healing',
-                      description:
-                        "We believe that divine healing is biblical and is provided for God's people in the atonement (Isaiah 53:4,5; Mat. 8:7-13, 16,17; James 5:14-16; Luke 13:10-16; Acts 10:38; Mark 16:17,18).",
-                    },
-                    {
-                      title: 'Due Respect to Parents and Authorities',
-                      description:
-                        'We believe that all the children of God should obey laws of the country, obey the government and those in authority and that they should honour their parents and elders (Romans 13:1-5; Ephesians 6:1-3; 1 Peter 2:13-14).',
-                    },
-                  ].map((belief, i) => {
-                    const isOpen = openTenet === i;
-                    return (
-                      <div
-                        key={belief.title}
-                        className="rounded-2xl border border-border/60 bg-background/80 px-4 py-4 shadow-sm"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setOpenTenet(isOpen ? null : i)}
-                          className="w-full flex items-center justify-between gap-4 text-left"
-                          aria-expanded={isOpen}
-                        >
-                          <span className="text-lg font-semibold text-foreground">
-                            {belief.title}
-                          </span>
-                          <span
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 text-primary text-xl leading-none"
-                            aria-hidden="true"
-                          >
-                            {isOpen ? '-' : '+'}
-                          </span>
-                        </button>
-                        {isOpen && (
-                          <p className="mt-3 text-foreground/70 leading-relaxed">
-                            {belief.description}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+                  <Accordion items={tenets} openIndex={openTenet} onToggle={setOpenTenet} />
                 </div>
-
               </div>
             </div>
           </div>
         </section>
 
         {/* Core Values */}
-        <section className="py-16 md:py-20 bg-background">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="bg-background py-16 md:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8">
-              <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
-                Our Foundation
-              </p>
-              <h2 className="text-3xl md:text-5xl font-semibold text-foreground leading-tight">
-                PICC Core Values
-              </h2>
+              <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Our Foundation</p>
+              <h2 className="text-3xl font-semibold leading-tight text-foreground md:text-5xl">PICC Core Values</h2>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.05fr] gap-12 items-center">
+            <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1fr_1.05fr]">
               <div className="space-y-4">
-                {[
-                  {
-                    title: 'Absolute Dependence on God',
-                    description:
-                      'We maintain that God is big enough to meet all the needs of the ministry and that every divine vision is naturally eligible for divine provision.',
-                  },
-                  {
-                    title: 'Discipline',
-                    description:
-                      'We value discipline in the conduct of the work of the ministry because it takes discipline to be distinguished. Therefore, both leaders and members shall be expected to place greater value on essentials, order their priorities intelligibly, operate by schedules, function without requiring supervision and make the most of the available time.',
-                  },
-                  {
-                    title: 'Diligence',
-                    description:
-                      'There is no woman who can give birth to a child without first going through labour. In like manner, we cannot deliver our mandate without going through the labour room of diligence. We shall, therefore, exercise diligence in the pursuit of our divine mandate and the implementation of church programs.',
-                  },
-                  {
-                    title: 'Focus',
-                    description:
-                      'Focus is an important key for ensuring fruitfulness in ministry. We shall, therefore, remain focused in the pursuit of our heavenly vision.',
-                  },
-                  {
-                    title: 'Impact',
-                    description:
-                      'In Luke 8:1-3, our Lord Jesus Christ impacted the people spiritually so they ministered to him out of their substance. As such, we shall remain committed to impacting the people spiritually through the consistent preaching of the unadulterated word of hope and life with the demonstration of the Spirit and power. In addition, we shall use the resources at our disposal to provide compassionate service to those in need.',
-                  },
-                  {
-                    title: 'Mentorship',
-                    description:
-                      'We believe that there are people who have obtained what we are trying to obtain, so we shall make every effort to discover their secrets and engage those secrets in our pursuits. There is no race anyone is running in the world today that someone else does not have a baton for it already.',
-                  },
-                  {
-                    title: 'Integrity',
-                    description:
-                      'We value integrity; therefore, we shall seek to be above reproach in all our dealings as the people of God inside and outside the Church.',
-                  },
-                  {
-                    title: 'Involvement',
-                    description:
-                      "We shall encourage and provide opportunity for all members to be involved in the church's ministry based on giftedness, interest and availability and in the community as an expression of our Christian citizenship.",
-                  },
-                  {
-                    title: 'Discipleship and Continuous Learning',
-                    description:
-                      'Discipleship is the training of believers to be Christ-like. The emphasis is on holiness, righteousness, faithfulness, honesty, sincerity, humanity, prayerfulness and leading disciplined and responsible lives. Discipleship shall be done both at corporate and individual level. In addition, we shall create an environment for continuous learning and production of Christian literature because it takes a studious life to secure a glorious ministry. The ministry shall also have a functional library.',
-                  },
-                  {
-                    title: 'Excellence',
-                    description:
-                      'We shall seek to honour God who gave His best (the Saviour) by maintaining a high standard of excellence in all our ministries and activities (Colossians 3:23-24).',
-                  },
-                ].map((value, i) => {
-                  const isOpen = openCoreValue === i;
-                  return (
-                    <div
-                      key={value.title}
-                      className="rounded-2xl border border-border/60 bg-background/80 px-4 py-4 shadow-sm"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOpenCoreValue(isOpen ? null : i)}
-                        className="w-full flex items-center justify-between gap-4 text-left"
-                        aria-expanded={isOpen}
-                      >
-                        <span className="text-lg font-semibold text-foreground">
-                          {value.title}
-                        </span>
-                        <span
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 text-primary text-xl leading-none"
-                          aria-hidden="true"
-                        >
-                            {isOpen ? '-' : '+'}
-                        </span>
-                      </button>
-                      {isOpen && (
-                        <p className="mt-3 text-foreground/70 leading-relaxed">
-                          {value.description}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+                <Accordion items={coreValues} openIndex={openCoreValue} onToggle={setOpenCoreValue} />
               </div>
               <div className="relative h-72 overflow-hidden rounded-3xl shadow-xl sm:h-[28rem] lg:h-[60rem]">
                 <Image
@@ -381,21 +218,17 @@ export default function AboutPage() {
         </section>
 
         {/* Watch Our Story */}
-        <section className="py-16 sm:py-20 md:py-24 bg-primary text-primary-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-xs uppercase tracking-[0.4em] text-primary-foreground/80">
-              Our 28th Anniversary Documentary
+        <section className="bg-primary py-16 text-primary-foreground sm:py-20 md:py-24">
+          <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+            <p className="text-xs uppercase tracking-[0.4em] text-primary-foreground/80">Our 28th Anniversary Documentary</p>
+            <h2 className="mt-4 text-3xl font-semibold md:text-5xl">Watch Our Story</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-primary-foreground/80">
+              The story of Pentecost International Christian Centre is a testament to God&apos;s grace and help through the years.
             </p>
-            <h2 className="text-3xl md:text-5xl font-semibold mt-4">Watch Our Story</h2>
-            <p className="text-primary-foreground/80 max-w-2xl mx-auto mt-4">
-              The story of Pentecost International Christian Centre is a testament to
-              God&apos;s grace and help through the years.
-            </p>
-
             <div className="mt-12">
-              <div className="relative w-full overflow-hidden rounded-[28px] shadow-2xl bg-black/90 aspect-[16/9] md:aspect-[21/9]">
+              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[28px] bg-black/90 shadow-2xl md:aspect-[21/9]">
                 <iframe
-                  className="absolute inset-0 w-full h-full"
+                  className="absolute inset-0 h-full w-full"
                   src={storyVideoUrl}
                   title="PICC 28th Anniversary Documentary"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -404,14 +237,12 @@ export default function AboutPage() {
               </div>
             </div>
             <div className="mt-12 flex justify-end">
-              <p className="text-4xl md:text-6xl font-semibold text-primary-foreground/35 text-right">
-              Know more about the church.
-              </p>
+              <p className="text-right text-4xl font-semibold text-primary-foreground/35 md:text-6xl">Know more about the church.</p>
             </div>
           </div>
         </section>
 
-        {/* Yearly Themes Archive */}
+        {/* Yearly Themes — the full list, newest first */}
         <section className="relative py-16 sm:py-20 md:py-24">
           <div className="absolute inset-0">
             <Image
@@ -422,66 +253,59 @@ export default function AboutPage() {
               className="object-cover object-[center_30%]"
             />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/60 to-black/70" />
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-white">
-            <div className="mb-12">
-              <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-3">
-                Since 2010
-              </p>
-              <h2 className="text-3xl md:text-5xl font-semibold mb-3">
-                PICC Yearly Themes
-              </h2>
-              <p className="text-white/80 max-w-2xl">
-                A living archive of the themes God has given our church over the years.
-              </p>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/75 to-black/85" />
+          <div className="relative mx-auto max-w-6xl px-4 text-white sm:px-6 lg:px-8">
+            <div className="mb-12 grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:items-end">
+              <div>
+                <p className="mb-3 text-xs uppercase tracking-[0.35em] text-white/70">Since {firstYear}</p>
+                <h2 className="mb-3 text-3xl font-semibold md:text-5xl">PICC Yearly Themes</h2>
+                <p className="max-w-xl text-white/75">
+                  A living archive of the themes God has given our church, year after year.
+                </p>
+              </div>
+              {currentTheme ? (
+                <div className="rounded-3xl border border-secondary/40 bg-secondary/10 p-6 backdrop-blur-sm">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-secondary">
+                    {currentTheme.year === currentYear ? 'This year' : 'Latest theme'} · {currentTheme.year}
+                  </p>
+                  <p className="font-display mt-3 text-2xl font-semibold leading-snug md:text-3xl">{currentTheme.theme}</p>
+                  {currentTheme.scripture ? <p className="mt-2 text-sm font-medium text-white/75">{currentTheme.scripture}</p> : null}
+                </div>
+              ) : null}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
-              {visibleThemes.map((entry) => {
-                const isOpen = openThemeYear === entry.year;
+            <ol className="relative border-l border-white/20 pl-6 sm:pl-10" data-reveal-stagger>
+              {themes.map((entry) => {
+                const isCurrent = entry.year === currentYear;
                 return (
-                  <div
-                    key={entry.year}
-                    className="rounded-2xl border border-white/25 bg-white/10 backdrop-blur-sm px-4 py-4 shadow-sm"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setOpenThemeYear(isOpen ? null : entry.year)}
-                      className="w-full flex items-center justify-between gap-4 text-left"
-                      aria-expanded={isOpen}
+                  <li key={entry.id} className="relative pb-6 last:pb-0">
+                    <span
+                      className={`absolute -left-[31px] top-5 h-3 w-3 rounded-full ring-4 ring-black/40 sm:-left-[47px] ${isCurrent ? 'bg-secondary' : 'bg-white/60'}`}
+                      aria-hidden="true"
+                    />
+                    <div
+                      className={`grid gap-2 rounded-2xl border px-5 py-4 transition-colors sm:grid-cols-[110px_1fr] sm:items-center sm:gap-6 ${
+                        isCurrent ? 'border-secondary/50 bg-white/15' : 'border-white/15 bg-white/[0.06] hover:bg-white/10'
+                      }`}
                     >
-                      <span className="text-lg md:text-xl font-semibold text-white">
-                        {entry.year}
-                      </span>
-                      <span
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/50 text-white text-xl leading-none"
-                        aria-hidden="true"
-                      >
-                        {isOpen ? '-' : '+'}
-                      </span>
-                    </button>
-                    {isOpen && (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-xs uppercase tracking-[0.25em] text-white/70">
-                          Yearly Theme
-                        </p>
-                        <p className="text-white/85 leading-relaxed">{entry.theme}</p>
+                      <p className={`font-display text-3xl font-semibold tabular-nums ${isCurrent ? 'text-secondary' : 'text-white/90'}`}>{entry.year}</p>
+                      <div>
+                        <p className="text-lg font-semibold leading-snug text-white">{entry.theme}</p>
+                        {entry.scripture ? <p className="mt-1 text-sm text-white/65">{entry.scripture}</p> : null}
+                        {entry.body ? <p className="mt-2 text-sm leading-6 text-white/70">{entry.body}</p> : null}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  </li>
                 );
               })}
-            </div>
-
+            </ol>
           </div>
         </section>
 
         {/* Worship With Us */}
-        <section className="pt-24 md:pt-32 pb-10 md:pb-12 bg-background">
+        <section className="bg-background pb-10 pt-24 md:pb-12 md:pt-32">
           <div className="w-full px-4 sm:px-6 lg:px-8">
-            <p className="text-3xl md:text-5xl text-primary/15 font-semibold mb-4">
-              we love and celebrate you!
-            </p>
+            <p className="mb-4 text-3xl font-semibold text-primary/15 md:text-5xl">we love and celebrate you!</p>
             <div className="overflow-hidden rounded-[36px] bg-primary text-primary-foreground shadow-xl">
               <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr]">
                 <div className="relative min-h-[18rem] sm:min-h-[22rem] md:min-h-[32rem] lg:min-h-[36rem]">
@@ -493,29 +317,19 @@ export default function AboutPage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="px-6 py-12 sm:px-10 sm:py-16 md:px-14 md:py-20 text-center flex flex-col justify-center h-full">
-                  <h2 className="text-3xl md:text-4xl font-semibold mb-4">Worship With Us</h2>
-                  <p className="text-primary-foreground/85 mb-8 leading-relaxed">
-                    Join us every Sunday in any of our services and every Thursday for an
-                    uplifting time in God&apos;s presence.
+                <div className="flex h-full flex-col justify-center px-6 py-12 text-center sm:px-10 sm:py-16 md:px-14 md:py-20">
+                  <h2 className="mb-4 text-3xl font-semibold md:text-4xl">Worship With Us</h2>
+                  <p className="mb-8 leading-relaxed text-primary-foreground/85">
+                    Join us every Sunday in any of our services and every Thursday for an uplifting time in God&apos;s presence.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link
-                      href="/#see-you-in-church"
-                      className="px-6 py-3 rounded-full border border-primary-foreground/70 text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
-                    >
+                  <div className="flex flex-col justify-center gap-4 sm:flex-row">
+                    <Link href="/#see-you-in-church" className="rounded-full border border-primary-foreground/70 px-6 py-3 text-primary-foreground transition-colors hover:bg-primary-foreground/10">
                       View This Week&apos;s Schedule
                     </Link>
-                    <Link
-                      href="/locations"
-                      className="px-6 py-3 rounded-full border border-primary-foreground/70 text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
-                    >
+                    <Link href="/locations" className="rounded-full border border-primary-foreground/70 px-6 py-3 text-primary-foreground transition-colors hover:bg-primary-foreground/10">
                       Locate a Church
                     </Link>
-                    <Link
-                      href="/livestream"
-                      className="px-6 py-3 rounded-full border border-primary-foreground/70 text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
-                    >
+                    <Link href="/livestream" className="rounded-full border border-primary-foreground/70 px-6 py-3 text-primary-foreground transition-colors hover:bg-primary-foreground/10">
                       Attend Service Online
                     </Link>
                   </div>
@@ -524,13 +338,8 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
-
-        
       </main>
       <Footer />
     </>
   );
 }
-
-
-

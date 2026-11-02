@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import NewsManager from '@/components/admin/NewsManager';
 import {
   MinistryInfoManager,
   MinistryItemsManager,
@@ -11,7 +12,7 @@ import {
   type MinistryItem,
 } from '@/components/admin/MinistryContentManagers';
 
-type Tab = 'info' | 'pillars' | 'highlights' | 'materials' | 'events';
+type Tab = 'info' | 'pillars' | 'highlights' | 'materials' | 'events' | 'news';
 
 const wailingWomanFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'Wailing Woman',
@@ -118,6 +119,7 @@ export default function WailingWomanAdminPage() {
     { id: 'highlights', label: 'Highlights' },
     { id: 'materials', label: 'Arrows & Devotionals' },
     { id: 'events', label: 'Events' },
+    { id: 'news', label: 'News' },
   ];
 
   return (
@@ -212,6 +214,15 @@ export default function WailingWomanAdminPage() {
           description="Manage upcoming and past Wailing Woman events."
           fallbackItems={events}
           labels={{ title: 'Event Title', description: 'Event Description', label: 'Date / Status', image: 'Event Picture', save: 'Save Event' }}
+        />
+      )}
+
+      {activeTab === 'news' && (
+        <NewsManager
+          token={token}
+          scope="wailing-woman"
+          title="Wailing Woman news"
+          description="Stories shown in the Latest News section of the Wailing Woman page. Deactivate a story to hide it; the starred story leads."
         />
       )}
     </div>

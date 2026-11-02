@@ -1,384 +1,253 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { apiFetch, apiUrl } from '@/lib/api';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BarChart3, Eye, Headphones, ImagePlus, Pencil, Plus, Power, PowerOff, Star, Trash2, Video } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
-import { useAdminAuth } from '@/hooks/use-admin-auth';
-import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
+import { adminErrorToast, adminSuccessToast, readApiMessage } from '@/components/admin/admin-toast';
 import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
-
-interface Sermon {
-  id: string;
-  title: string;
-  date: string;
-  image: string;
-  views: string;
-  youtubeUrl: string;
-  audioSrc: string;
-  pastor: string;
-  series: string;
-  topic: string;
-}
+import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import { getYouTubeId, spotifyEmbedUrl } from '@/lib/media-links';
+import { compactNumber, formatSermonDate, parseSermons, sermonThumbnail, sermonViews, type Sermon } from '@/lib/sermons';
+import { cn } from '@/lib/utils';
 
 const DEFAULT_HEADER_IMAGE = '/sermons/header.JPG';
 
-const DEFAULT_SERMON: Omit<Sermon, 'id'> = {
-  title: '',
-  date: '',
-  image: '',
-  views: '0',
-  youtubeUrl: '',
-  audioSrc: '',
-  pastor: '',
-  series: '',
-  topic: '',
+type Draft = {
+  title: string;
+  date: string;
+  speaker: string;
+  youtubeUrl: string;
+  spotifyUrl: string;
+  audioUrl: string;
+  thumbnailUrl: string;
+  series: string;
+  topic: string;
+  scripture: string;
+  description: string;
+  isActive: boolean;
+  isFeatured: boolean;
 };
 
-export default function AdminSermonsPage() {
-  const {
-    token,
-    email,
-    password,
-    loginError,
-    setEmail,
-    setPassword,
-    handleLogin,
-  } = useAdminAuth();
+const EMPTY_DRAFT: Draft = {
+  title: '',
+  date: '',
+  speaker: '',
+  youtubeUrl: '',
+  spotifyUrl: '',
+  audioUrl: '',
+  thumbnailUrl: '',
+  series: '',
+  topic: '',
+  scripture: '',
+  description: '',
+  isActive: true,
+  isFeatured: false,
+};
 
-  const [status, setStatus] = useState('');
+const inputClass = 'mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground';
+
+export default function AdminSermonsPage() {
+  const { token, email, password, loginError, setEmail, setPassword, handleLogin } = useAdminAuth();
   const { runUpload, progress, uploading } = useMediaUpload();
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [headerImage, setHeaderImage] = useState(DEFAULT_HEADER_IMAGE);
-  const [draftSermon, setDraftSermon] = useState(DEFAULT_SERMON);
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
-  const [notifySubscribers, setNotifySubscribers] = useState(false);
-  const [sermonSearch, setSermonSearch] = useState('');
-  const [sermonFilter, setSermonFilter] = useState<'all' | 'week' | 'month' | 'year'>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [notifySubscribers, setNotifySubscribers] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
-  const normalizeRemoteUrl = (value: string) => {
-    if (!value) return '';
-    if (value.startsWith('http')) return value;
-    if (value.startsWith('/')) return value;
-    return apiUrl(`/${value}`);
-  };
+  const headers = useMemo(() => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }), [token]);
 
-  const normalizeSermonDraft = (sermon: Omit<Sermon, 'id'>) => ({
-    ...sermon,
-    audioSrc: sermon.audioSrc.trim(),
-  });
+  const fetchSermons = useCallback(async () => {
+    if (!token) return;
+    const response = await apiFetch('/api/admin/sermons', { headers });
+    if (!response.ok) {
+      adminErrorToast(await readApiMessage(response, { fallback: 'Failed to fetch sermons.' }));
+      return;
+    }
+    setSermons(parseSermons(await response.json()));
+  }, [headers, token]);
 
-  const updateUploadName = (key: string, name: string) => {
-    setUploadNames((prev) => ({ ...prev, [key]: name }));
-  };
+  useEffect(() => {
+    if (!token) return;
+    void fetchSermons();
+    apiFetch('/api/site-content/sermons-header-image')
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data.imageUrl) setHeaderImage(data.imageUrl);
+      })
+      .catch(() => undefined);
+  }, [token, fetchSermons]);
 
-  const normalizeSermon = useCallback((value: unknown): Sermon | null => {
-    if (!value || typeof value !== 'object') return null;
-    const record = value as Record<string, unknown>;
-    const id = typeof record.id === 'string' || typeof record.id === 'number' ? String(record.id) : '';
-    if (!id) return null;
-
-    return {
-      id,
-      title: typeof record.title === 'string' ? record.title : '',
-      date: typeof record.date === 'string' ? record.date.slice(0, 10) : '',
-      image: typeof record.image === 'string' ? record.image : '',
-      views: typeof record.views === 'string' ? record.views : '0',
-      youtubeUrl:
-        typeof record.youtubeUrl === 'string'
-          ? record.youtubeUrl
-          : typeof record.videoUrl === 'string'
-            ? record.videoUrl
-            : '',
-      audioSrc:
-        typeof record.audioSrc === 'string'
-          ? record.audioSrc
-          : typeof record.audioUrl === 'string'
-            ? record.audioUrl
-            : '',
-      pastor: typeof record.pastor === 'string' ? record.pastor : '',
-      series: typeof record.series === 'string' ? record.series : '',
-      topic: typeof record.topic === 'string' ? record.topic : '',
-    };
-  }, []);
-
-  const extractSermons = useCallback((data: unknown): Sermon[] => {
-    const source = Array.isArray(data)
-      ? data
-      : data && typeof data === 'object' && Array.isArray((data as { sermons?: unknown[] }).sermons)
-        ? (data as { sermons: unknown[] }).sermons
-        : data && typeof data === 'object'
-          ? [data]
-          : [];
-
-    return source.map(normalizeSermon).filter(Boolean) as Sermon[];
-  }, [normalizeSermon]);
-
-  const uploadFile = async (file: File) => {
+  const upload = async (file: File) => {
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
-      setStatus('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
+      setFormError('Your image file size is too big. Please compress it first before re uploading. Only pictures less than 1MB are allowed.');
       return null;
     }
-
     try {
-      const url = await runUpload(file, 'sermons');
-      return url.startsWith('http') ? url : apiUrl(url);
+      return await runUpload(file, 'sermons');
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'File upload failed.');
+      const message = error instanceof Error ? error.message : 'File upload failed.';
+      setFormError(message);
+      adminErrorToast(message);
       return null;
-    }
-  };
-
-  const uploadAudioFile = async (file: File) => {
-    if (!file.type.startsWith('audio/')) {
-      setStatus('Please upload an audio file.');
-      return null;
-    }
-
-    try {
-      const url = await runUpload(file, 'sermons');
-      return url.startsWith('http') ? url : apiUrl(url);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Audio upload failed.');
-      return null;
-    }
-  };
-
-  const fetchSermons = async () => {
-    try {
-      const response = await apiFetch('/api/sermons');
-      if (response.ok) {
-        const data = await response.json();
-        setSermons(extractSermons(data));
-      } else {
-        setSermons([]);
-      }
-    } catch {
-      setStatus('Failed to fetch sermons.');
-      setSermons([]);
-    }
-  };
-
-  const fetchHeaderImage = async () => {
-    try {
-      const response = await apiFetch('/api/site-content/sermons-header-image');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.imageUrl) {
-          setHeaderImage(normalizeRemoteUrl(data.imageUrl));
-          return;
-        }
-      }
-      setHeaderImage(DEFAULT_HEADER_IMAGE);
-    } catch {
-      setHeaderImage(DEFAULT_HEADER_IMAGE);
     }
   };
 
   const saveHeaderImage = async () => {
-    if (!token || !headerImage) return;
-
-    try {
-      const response = await apiFetch('/api/site-content/sermons-header-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ imageUrl: headerImage }),
-      });
-
-      if (response.ok) {
-        setStatus('Header image updated successfully.');
-        void fetchHeaderImage();
-      } else {
-        setStatus('Failed to update header image.');
-      }
-    } catch {
-      setStatus('Failed to update header image.');
-    }
+    const response = await apiFetch('/api/site-content/sermons-header-image', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ imageUrl: headerImage }),
+    });
+    if (response.ok) adminSuccessToast('Header image updated.');
+    else adminErrorToast('Failed to update header image.');
   };
 
-  const handleClearSelection = () => {
-    setDraftSermon(DEFAULT_SERMON);
+  const openAdd = () => {
+    setDraft({ ...EMPTY_DRAFT, date: new Date().toISOString().slice(0, 10) });
     setEditingId(null);
     setNotifySubscribers(false);
-  };
-
-  const closeSermonDialog = () => {
-    setDialogOpen(false);
-    handleClearSelection();
-  };
-
-  const openAddDialog = () => {
-    handleClearSelection();
+    setFormError('');
     setDialogOpen(true);
   };
 
-  const openEditDialog = (sermon: Sermon) => {
-    startEditing(sermon);
+  const openEdit = (sermon: Sermon) => {
+    setDraft({
+      title: sermon.title,
+      date: sermon.date.slice(0, 10),
+      speaker: sermon.speaker,
+      youtubeUrl: sermon.youtubeUrl,
+      spotifyUrl: sermon.spotifyUrl,
+      audioUrl: sermon.audioUrl,
+      thumbnailUrl: sermon.thumbnailUrl,
+      series: sermon.series,
+      topic: sermon.topic,
+      scripture: sermon.scripture,
+      description: sermon.description,
+      isActive: sermon.isActive,
+      isFeatured: sermon.isFeatured,
+    });
+    setEditingId(sermon.id);
+    setFormError('');
     setDialogOpen(true);
   };
 
-  const handleSaveSermon = async () => {
-    if (!token) return;
-    if (!draftSermon.title || !draftSermon.date) {
-      setStatus('Please fill in title and date.');
+  const save = async () => {
+    if (!draft.title.trim() || !draft.date) {
+      setFormError('Please fill in the title and date.');
+      return;
+    }
+    if (draft.youtubeUrl.trim() && !getYouTubeId(draft.youtubeUrl)) {
+      setFormError('That YouTube link is not recognised. Paste the link from the YouTube Share button.');
+      return;
+    }
+    if (draft.spotifyUrl.trim() && !spotifyEmbedUrl(draft.spotifyUrl)) {
+      setFormError('That Spotify link is not recognised. Use Share → Copy link on the episode in Spotify.');
+      return;
+    }
+    if (!draft.youtubeUrl.trim() && !draft.spotifyUrl.trim() && !draft.audioUrl.trim()) {
+      setFormError('Add a YouTube link, a Spotify link, or an audio file so people can watch or listen.');
       return;
     }
 
     setIsSaving(true);
-    setStatus('');
-
+    setFormError('');
     try {
       const isEdit = Boolean(editingId);
       const response = await apiFetch(isEdit ? `/api/sermons/${editingId}` : '/api/sermons', {
         method: isEdit ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(normalizeSermonDraft(draftSermon)),
+        headers,
+        body: JSON.stringify({
+          ...draft,
+          pastor: draft.speaker,
+          videoUrl: draft.youtubeUrl.trim(),
+          audioUrl: draft.audioUrl.trim(),
+          spotifyUrl: draft.spotifyUrl.trim(),
+        }),
       });
-
       if (!response.ok) {
-        if (response.status === 401) {
-          setStatus('Your admin session expired. Please log out and log in again.');
-        } else {
-          setStatus(isEdit ? 'Failed to update sermon.' : 'Failed to add sermon.');
-        }
+        setFormError(response.status === 401 ? 'Your admin session expired. Please log in again.' : await readApiMessage(response, { fallback: 'Failed to save sermon.' }));
         return;
       }
-
-      setStatus(isEdit ? 'Sermon updated successfully.' : 'Sermon added successfully.');
+      adminSuccessToast(isEdit ? 'Sermon updated.' : 'Sermon added.');
       setDialogOpen(false);
-      handleClearSelection();
       void fetchSermons();
 
-      if (!isEdit && notifySubscribers && draftSermon.title) {
-        try {
-          const sermonUrl = draftSermon.youtubeUrl || `/sermons/${Date.now()}`;
-          const notifyResponse = await apiFetch('/api/admin/notify-subscribers', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              sermonTitle: draftSermon.title,
-              sermonUrl,
-            }),
-          });
-
-          if (notifyResponse.ok) {
-            setStatus('Sermon added successfully and subscribers notified.');
-          } else {
-            setStatus('Sermon added successfully, but failed to notify subscribers.');
-          }
-        } catch (notifyError) {
-          console.error('Failed to notify subscribers:', notifyError);
-          setStatus('Sermon added successfully, but failed to notify subscribers.');
-        }
+      if (!isEdit && notifySubscribers) {
+        const notifyResponse = await apiFetch('/api/admin/notify-subscribers', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ sermonTitle: draft.title, sermonUrl: draft.youtubeUrl || `${window.location.origin}/sermons` }),
+        }).catch(() => null);
+        if (notifyResponse?.ok) adminSuccessToast('Subscribers notified.');
+        else adminErrorToast('Sermon added, but subscribers could not be notified.');
       }
-    } catch {
-      setStatus(editingId ? 'Failed to update sermon.' : 'Failed to add sermon.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteSermon = async (id: string) => {
-    if (!token) return;
-
+  const setStatus = async (sermon: Sermon, body: { isActive?: boolean; isFeatured?: boolean }, message: string) => {
+    setBusyId(sermon.id);
     try {
-      const response = await apiFetch(`/api/sermons/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setStatus('Sermon deleted successfully.');
-        if (editingId === id) {
-          setDialogOpen(false);
-          handleClearSelection();
-        }
-        void fetchSermons();
-      } else {
-        setStatus('Failed to delete sermon.');
+      const response = await apiFetch(`/api/sermons/${sermon.id}/status`, { method: 'PATCH', headers, body: JSON.stringify(body) });
+      if (!response.ok) {
+        adminErrorToast(await readApiMessage(response, { fallback: 'Unable to update sermon.' }));
+        return;
       }
-    } catch {
-      setStatus('Failed to delete sermon.');
+      adminSuccessToast(message);
+      void fetchSermons();
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const requestDeleteSermon = (sermonId: string) => {
-    const sermonTitle = sermons.find((sermon) => sermon.id === sermonId)?.title;
+  const remove = (sermon: Sermon) => {
     confirmDeleteToast({
       title: 'Delete this sermon?',
-      description: sermonTitle || 'This sermon will be permanently removed.',
-      onConfirm: () => handleDeleteSermon(sermonId),
-    });
-  };
-
-  const startEditing = (sermon: Sermon) => {
-    setDraftSermon({
-      title: sermon.title || '',
-      date: sermon.date || '',
-      image: sermon.image || '',
-      views: sermon.views || '0',
-      youtubeUrl: sermon.youtubeUrl || '',
-      audioSrc: sermon.audioSrc || '',
-      pastor: sermon.pastor || '',
-      series: sermon.series || '',
-      topic: sermon.topic || '',
-    });
-    setEditingId(sermon.id);
-  };
-
-  useEffect(() => {
-    if (!token) return;
-
-    void (async () => {
-      try {
-        const [sermonsResponse, headerResponse] = await Promise.all([
-          apiFetch('/api/sermons'),
-          apiFetch('/api/site-content/sermons-header-image'),
-        ]);
-
-        if (sermonsResponse.ok) {
-          const data = await sermonsResponse.json();
-          setSermons(extractSermons(data));
+      description: sermon.title,
+      onConfirm: async () => {
+        const response = await apiFetch(`/api/sermons/${sermon.id}`, { method: 'DELETE', headers });
+        if (response.ok) {
+          adminSuccessToast('Sermon deleted.');
+          void fetchSermons();
         } else {
-          setSermons([]);
+          adminErrorToast('Failed to delete sermon.');
         }
+      },
+    });
+  };
 
-        if (headerResponse.ok) {
-          const data = await headerResponse.json();
-          if (data.imageUrl) {
-            setHeaderImage(normalizeRemoteUrl(data.imageUrl));
-            return;
-          }
-        }
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return sermons.filter((sermon) => {
+      if (statusFilter === 'active' && !sermon.isActive) return false;
+      if (statusFilter === 'inactive' && sermon.isActive) return false;
+      return !term || `${sermon.title} ${sermon.speaker} ${sermon.series} ${sermon.date}`.toLowerCase().includes(term);
+    });
+  }, [sermons, search, statusFilter]);
 
-        setHeaderImage(DEFAULT_HEADER_IMAGE);
-      } catch {
-        setStatus('Failed to fetch sermons.');
-        setSermons([]);
-        setHeaderImage(DEFAULT_HEADER_IMAGE);
-      }
-    })();
-  }, [token, extractSermons]);
+  const totals = useMemo(() => ({
+    views: sermons.reduce((sum, sermon) => sum + sermonViews(sermon), 0),
+    listens: sermons.reduce((sum, sermon) => sum + sermon.siteListens, 0),
+    active: sermons.filter((sermon) => sermon.isActive).length,
+  }), [sermons]);
 
   if (!token) {
     return (
@@ -393,362 +262,306 @@ export default function AdminSermonsPage() {
     );
   }
 
+  const youtubeId = getYouTubeId(draft.youtubeUrl);
+  const spotifyEmbed = spotifyEmbedUrl(draft.spotifyUrl);
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((prev) => ({ ...prev, [key]: value }));
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">
-            Admin
-          </p>
-          <h1 className="text-3xl md:text-5xl font-semibold text-foreground">
-            Sermon Management
-          </h1>
-          <p className="text-foreground/70 mt-3 max-w-2xl">
-            Upload and manage sermons with real audio files, update the header image, and notify subscribers.
+          <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Admin</p>
+          <h1 className="text-3xl font-semibold text-foreground md:text-5xl">Sermon Management</h1>
+          <p className="mt-3 max-w-2xl text-foreground/70">
+            Post the YouTube link for the video and the Spotify link for the audio. The website plays both and counts every watch and listen.
           </p>
         </div>
-        <Button type="button" onClick={openAddDialog} className="gap-2 shrink-0">
-          <Plus className="h-4 w-4" />
-          Add sermon
-        </Button>
-      </div>
-
-      {status && (
-        <p className="text-sm text-foreground/70">{status}</p>
-      )}
-      <MediaUploadProgress uploading={uploading} progress={progress} />
-
-      {/* Header Image Section */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">Header Image</h2>
-            <p className="text-sm text-foreground/60">
-              Update the background image shown on the sermons page header.
-            </p>
-          </div>
-          <Button variant="outline" onClick={saveHeaderImage} disabled={!headerImage}>
-            Save Image
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="gap-2">
+            <Link href="/admin/sermons/dashboard"><BarChart3 className="h-4 w-4" /> Analytics</Link>
+          </Button>
+          <Button type="button" onClick={openAdd} className="gap-2">
+            <Plus className="h-4 w-4" /> Add sermon
           </Button>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 gap-4">
-          <div className="rounded-2xl border border-border/60 bg-background p-4">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <p className="text-sm font-semibold text-foreground">Header Background</p>
-            </div>
-            {headerImage && (
-              <div
-                className="h-40 rounded-xl border border-border/60 bg-cover bg-center mb-4"
-                style={{ backgroundImage: `url(${headerImage})` }}
-              />
-            )}
-            <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          { label: 'Sermons', value: sermons.length },
+          { label: 'Live on website', value: totals.active },
+          { label: 'Total views', value: totals.views },
+          { label: 'Website listens', value: totals.listens },
+        ].map((card) => (
+          <div key={card.label} className="rounded-xl border border-border/60 bg-card px-4 py-3">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/50">{card.label}</p>
+            <p className="mt-1 text-2xl font-semibold">{card.value.toLocaleString()}</p>
+          </div>
+        ))}
+      </div>
+
+      <section className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-5 shadow-sm sm:flex-row sm:items-center">
+        <div className="h-24 w-full shrink-0 rounded-xl border border-border/60 bg-cover bg-center sm:w-48" style={{ backgroundImage: `url(${sermonThumbnail({ thumbnailUrl: headerImage, youtubeUrl: '' })})` }} />
+        <div className="flex-1">
+          <h2 className="font-semibold">Page header picture</h2>
+          <p className="text-sm text-foreground/60">Shown behind the player when a sermon has no thumbnail.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20">
+              <ImagePlus className="h-4 w-4" /> Choose picture
               <input
                 type="file"
                 accept="image/*,.heic,.heif,.avif"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    updateUploadName('header', file.name);
-                    const url = await uploadFile(file);
-                    if (url) {
-                      setHeaderImage(url);
-                      updateUploadName('header', '');
-                    }
-                  }
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = '';
+                  if (!file) return;
+                  const url = await upload(file);
+                  if (url) setHeaderImage(url);
                 }}
-                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
               />
-              {uploadNames.header && (
-                <p className="text-xs text-foreground/60">Uploading: {uploadNames.header}</p>
-              )}
-            </div>
+            </label>
+            <Button variant="outline" size="sm" onClick={() => void saveHeaderImage()}>Save picture</Button>
           </div>
         </div>
       </section>
+      <MediaUploadProgress uploading={uploading} progress={progress} />
+
+      <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by title, speaker, series or date..."
+            className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <div className="flex gap-1 rounded-xl border border-border p-1">
+            {(['all', 'active', 'inactive'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setStatusFilter(value)}
+                className={cn('rounded-lg px-3 py-1.5 text-xs font-semibold capitalize', statusFilter === value ? 'bg-primary text-primary-foreground' : 'text-foreground/60')}
+              >
+                {value === 'inactive' ? 'Deactivated' : value}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <p className="py-8 text-center text-sm text-foreground/60">{sermons.length ? 'No sermons match your filters.' : 'No sermons yet.'}</p>
+        ) : (
+          <div className="max-h-[680px] overflow-auto rounded-xl border border-border/70">
+            <table className="min-w-full text-left text-sm">
+              <thead className="sticky top-0 bg-muted text-xs uppercase tracking-wide text-foreground/60">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Sermon</th>
+                  <th className="px-3 py-2 font-medium">Media</th>
+                  <th className="px-3 py-2 font-medium">Views</th>
+                  <th className="px-3 py-2 font-medium">Listens</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((sermon) => (
+                  <tr key={sermon.id} className={cn('border-t border-border/60', !sermon.isActive && 'bg-muted/40 text-foreground/55')}>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-3">
+                        <img src={sermonThumbnail(sermon)} alt="" className="h-10 w-16 shrink-0 rounded object-cover" />
+                        <div>
+                          <p className="font-medium">{sermon.title}</p>
+                          <p className="text-xs text-foreground/55">{formatSermonDate(sermon.date, 'short')}{sermon.speaker ? ` · ${sermon.speaker}` : ''}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-1.5 text-foreground/60">
+                        {sermon.youtubeUrl ? <Video className="h-4 w-4" aria-label="YouTube video" /> : null}
+                        {sermon.spotifyUrl || sermon.audioUrl ? <Headphones className="h-4 w-4" aria-label="Audio" /> : null}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2" title={`YouTube ${sermon.youtubeViews ?? 0} + website ${sermon.siteViews}`}>
+                      <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{compactNumber(sermonViews(sermon))}</span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2">{compactNumber(sermon.siteListens)}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {sermon.isActive ? <Badge className="bg-emerald-600 hover:bg-emerald-600">Live</Badge> : <Badge variant="outline">Deactivated</Badge>}
+                        {sermon.isFeatured ? <Badge className="bg-amber-500 hover:bg-amber-500">Featured</Badge> : null}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          disabled={busyId === sermon.id}
+                          title={sermon.isFeatured ? 'Stop featuring' : 'Feature at the top of the sermons page'}
+                          aria-label="Toggle featured"
+                          onClick={() => void setStatus(sermon, { isFeatured: !sermon.isFeatured }, sermon.isFeatured ? 'No longer featured.' : 'Featured on the sermons page.')}
+                        >
+                          <Star className={cn('h-4 w-4', sermon.isFeatured && 'fill-amber-500 text-amber-500')} />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          disabled={busyId === sermon.id}
+                          title={sermon.isActive ? 'Deactivate' : 'Activate'}
+                          aria-label={sermon.isActive ? 'Deactivate' : 'Activate'}
+                          onClick={() => void setStatus(sermon, { isActive: !sermon.isActive }, sermon.isActive ? 'Sermon hidden from the website.' : 'Sermon is live.')}
+                        >
+                          {sermon.isActive ? <Power className="h-4 w-4 text-emerald-600" /> : <PowerOff className="h-4 w-4" />}
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" aria-label="Edit sermon" onClick={() => openEdit(sermon)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" className="text-destructive hover:text-destructive" aria-label="Delete sermon" onClick={() => remove(sermon)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <SchoolAdminDialogShell
         open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) handleClearSelection();
-        }}
+        onOpenChange={setDialogOpen}
         title={editingId ? 'Edit sermon' : 'Add sermon'}
-        description={
-          editingId
-            ? 'Update the details for this sermon.'
-            : 'Create a new sermon entry and publish it to the site.'
-        }
-        saving={isSaving}
+        description="Paste the YouTube and Spotify links. Both play on the sermons page."
+        saving={isSaving || uploading}
         saveLabel={editingId ? 'Save changes' : 'Add sermon'}
-        onSave={() => void handleSaveSermon()}
-        onCancel={closeSermonDialog}
-        maxWidthClass="sm:max-w-2xl"
+        onSave={() => void save()}
+        onCancel={() => setDialogOpen(false)}
+        maxWidthClass="sm:max-w-3xl"
       >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={draftSermon.title}
-                onChange={(e) => setDraftSermon(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Sermon title"
-                className="rounded-xl border-border bg-background px-4 py-3"
-              />
-            </div>
-            <div>
-              <Label htmlFor="pastor">Speaker / Pastor</Label>
-              <Input
-                id="pastor"
-                value={draftSermon.pastor}
-                onChange={(e) => setDraftSermon(prev => ({ ...prev, pastor: e.target.value }))}
-                placeholder="Speaker name"
-                className="rounded-xl border-border bg-background px-4 py-3"
-              />
-            </div>
-            <div>
-              <Label htmlFor="date">Date</Label>
-              <input
-                id="date"
-                type="date"
-                value={draftSermon.date}
-                onChange={(e) => setDraftSermon(prev => ({ ...prev, date: e.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-            </div>
-            <div>
-              <Label htmlFor="series">Series</Label>
-              <Input
-                id="series"
-                value={draftSermon.series}
-                onChange={(e) => setDraftSermon(prev => ({ ...prev, series: e.target.value }))}
-                placeholder="Sermon series (optional)"
-                className="rounded-xl border-border bg-background px-4 py-3"
-              />
-            </div>
-            <div>
-              <Label htmlFor="topic">Topic / Category</Label>
-              <Input
-                id="topic"
-                value={draftSermon.topic}
-                onChange={(e) => setDraftSermon(prev => ({ ...prev, topic: e.target.value }))}
-                placeholder="e.g. Faith, Healing, Prayer"
-                className="rounded-xl border-border bg-background px-4 py-3"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="youtube-url">YouTube URL</Label>
-              <Input
-                id="youtube-url"
-                value={draftSermon.youtubeUrl}
-                onChange={(e) => setDraftSermon(prev => ({ ...prev, youtubeUrl: e.target.value }))}
-                placeholder="Optional YouTube video URL"
-                className="rounded-xl border-border bg-background px-4 py-3"
-              />
-            </div>
+        <div className="space-y-4">
+          {formError ? <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{formError}</p> : null}
+          <label className="block">
+            <span className="text-sm font-medium">Title *</span>
+            <input value={draft.title} onChange={(event) => set('title', event.target.value)} className={inputClass} placeholder="Sermon title" />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium">Speaker / Pastor</span>
+              <input value={draft.speaker} onChange={(event) => set('speaker', event.target.value)} className={inputClass} />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium">Date *</span>
+              <input type="date" value={draft.date} onChange={(event) => set('date', event.target.value)} className={inputClass} />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium">Series</span>
+              <input value={draft.series} onChange={(event) => set('series', event.target.value)} className={inputClass} placeholder="Optional" list="sermon-series" />
+              <datalist id="sermon-series">
+                {Array.from(new Set(sermons.map((sermon) => sermon.series).filter(Boolean))).map((entry) => <option key={entry} value={entry} />)}
+              </datalist>
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium">Scripture</span>
+              <input value={draft.scripture} onChange={(event) => set('scripture', event.target.value)} className={inputClass} placeholder="e.g. Hebrews 11:1-6" />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-medium">Topic</span>
+              <input value={draft.topic} onChange={(event) => set('topic', event.target.value)} className={inputClass} placeholder="e.g. Faith, Healing, Prayer" />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-sm font-medium">Summary</span>
+            <textarea value={draft.description} onChange={(event) => set('description', event.target.value)} rows={3} className={inputClass} />
+          </label>
 
-            <div className="md:col-span-2">
-              <Label htmlFor="image-upload">Sermon Image <span className="text-[11px] font-normal text-muted-foreground">(Max 1MB allowed)</span></Label>
-              <input
-                id="image-upload"
-                type="file"
-                accept="image/*,.heic,.heif,.avif"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    updateUploadName('image', file.name);
-                    const url = await uploadFile(file);
-                    if (url) {
-                      setDraftSermon(prev => ({ ...prev, image: url }));
-                      updateUploadName('image', '');
-                    }
-                  }
-                }}
-                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-              />
-              {uploadNames.image && (
-                <p className="text-xs text-foreground/60 mt-1">Uploading: {uploadNames.image}</p>
-              )}
-            </div>
-
-            <div className="md:col-span-2">
-              <Label htmlFor="audio-upload">Sermon Audio File <span className="text-[11px] font-normal text-muted-foreground">(MP3, M4A, WAV, OGG, FLAC)</span></Label>
-              <input
-                id="audio-upload"
-                type="file"
-                accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.webm,.opus,.oga,.wma"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-
-                  updateUploadName('audio', file.name);
-                  const url = await uploadAudioFile(file);
-                  if (url) {
-                    setDraftSermon((prev) => ({ ...prev, audioSrc: url }));
-                    updateUploadName('audio', '');
-                  }
-                }}
-                className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-              />
-              {uploadNames.audio && (
-                <p className="text-xs text-foreground/60 mt-1">Uploading: {uploadNames.audio}</p>
-              )}
-              {draftSermon.audioSrc && (
-                <div className="mt-3 rounded-xl border border-border/60 bg-background p-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-foreground/50">Current audio</p>
-                  <audio
-                    className="mt-3 w-full"
-                    controls
-                    src={normalizeRemoteUrl(draftSermon.audioSrc)}
-                  >
-                    Your browser does not support the audio element.
-                  </audio>
-                  <p className="mt-2 break-all text-xs text-foreground/50">
-                    {draftSermon.audioSrc}
-                  </p>
-                </div>
-              )}
-              <div className="mt-3 rounded-xl border border-dashed border-border/60 bg-background/60 p-4">
-                <Label htmlFor="audio-url" className="text-sm font-medium">Audio URL override <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
-                <Input
-                  id="audio-url"
-                  type="text"
-                  value={draftSermon.audioSrc}
-                  onChange={(e) => setDraftSermon((prev) => ({ ...prev, audioSrc: e.target.value.trim() }))}
-                  placeholder="Paste an existing MP3 or hosted audio link if you are not uploading a file"
-                  className="mt-2 rounded-xl border-border bg-background px-4 py-3"
-                />
-              </div>
-            </div>
-
-            {!editingId ? (
-              <div className="flex items-center space-x-3 p-4 rounded-xl border border-primary/20 bg-primary/5 md:col-span-2">
-                <Checkbox
-                  id="notify-subscribers"
-                  checked={notifySubscribers}
-                  onCheckedChange={(checked) => setNotifySubscribers(checked as boolean)}
-                  className="h-5 w-5 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                />
-                <Label htmlFor="notify-subscribers" className="text-sm font-semibold text-foreground cursor-pointer">
-                  Notify subscribers about this new sermon
-                </Label>
-              </div>
+          <div className="rounded-2xl border border-border/70 p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold"><Video className="h-4 w-4 text-red-600" /> YouTube video</p>
+            <input value={draft.youtubeUrl} onChange={(event) => set('youtubeUrl', event.target.value.trim())} className={inputClass} placeholder="https://www.youtube.com/watch?v=…" />
+            {youtubeId ? (
+              <img src={`https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`} alt="YouTube preview" className="mt-3 aspect-video w-full max-w-xs rounded-lg object-cover" />
+            ) : draft.youtubeUrl ? (
+              <p className="mt-2 text-xs text-destructive">This does not look like a YouTube video link.</p>
             ) : null}
           </div>
-      </SchoolAdminDialogShell>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Existing Sermons
-          </h2>
-
-          <div className="mb-4">
-            <input
-              type="search"
-              value={sermonSearch}
-              onChange={(e) => setSermonSearch(e.target.value)}
-              placeholder="Search by title or date..."
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-foreground/40 outline-none focus:ring-2 focus:ring-primary/20 transition"
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-4">
-            {(['all', 'week', 'month', 'year'] as const).map((f) => (
-              <Button
-                key={f}
-                variant={sermonFilter === f ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSermonFilter(f)}
-                className="capitalize h-8 text-xs"
-              >
-                {f === 'all' ? 'All' : `This ${f}`}
-              </Button>
-            ))}
-          </div>
-
-          {(sermons || []).length === 0 ? (
-            <p className="text-sm text-foreground/60">No sermons found.</p>
-          ) : (() => {
-            const query = sermonSearch.trim().toLowerCase();
-            const now = new Date();
-            const startOfWeek = new Date(now);
-            startOfWeek.setDate(now.getDate() - now.getDay());
-            startOfWeek.setHours(0, 0, 0, 0);
-
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            const startOfYear = new Date(now.getFullYear(), 0, 1);
-
-            const filtered = (sermons || []).filter((s) => {
-              // Search filter
-              const matchesSearch = !query || 
-                (s.title || '').toLowerCase().includes(query) ||
-                (s.date || '').toLowerCase().includes(query);
-              
-              if (!matchesSearch) return false;
-
-              // Time filter
-              if (sermonFilter === 'all') return true;
-              if (!s.date) return false;
-
-              const sermonDate = new Date(s.date);
-              if (isNaN(sermonDate.getTime())) return false;
-
-              if (sermonFilter === 'week') return sermonDate >= startOfWeek;
-              if (sermonFilter === 'month') return sermonDate >= startOfMonth;
-              if (sermonFilter === 'year') return sermonDate >= startOfYear;
-
-              return true;
-            });
-
-            return filtered.length === 0 ? (
-              <p className="text-sm text-foreground/60">No sermons match your filters.</p>
-            ) : (
-              <div className="max-h-[600px] overflow-auto rounded-xl border border-border/70">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Date</th>
-                      <th className="px-3 py-2 font-medium">Title</th>
-                      <th className="px-3 py-2 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((sermon) => (
-                      <tr key={sermon.id} className="border-t border-border/60">
-                        <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{sermon.date || 'No date'}</td>
-                        <td className="px-3 py-2 font-medium text-foreground">{sermon.title || 'Untitled'}</td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`Edit ${sermon.title || 'sermon'}`}
-                              onClick={() => openEditDialog(sermon)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              aria-label={`Delete ${sermon.title || 'sermon'}`}
-                              onClick={() => requestDeleteSermon(sermon.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <div className="rounded-2xl border border-border/70 p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold"><Headphones className="h-4 w-4 text-emerald-600" /> Spotify audio</p>
+            <input value={draft.spotifyUrl} onChange={(event) => set('spotifyUrl', event.target.value.trim())} className={inputClass} placeholder="https://open.spotify.com/episode/…" />
+            {spotifyEmbed ? (
+              <iframe src={spotifyEmbed} title="Spotify preview" className="mt-3 h-[152px] w-full rounded-xl border-0" loading="lazy" allow="encrypted-media" />
+            ) : draft.spotifyUrl ? (
+              <p className="mt-2 text-xs text-destructive">This does not look like a Spotify link.</p>
+            ) : null}
+            <details className="mt-3 text-sm">
+              <summary className="cursor-pointer text-xs font-semibold text-foreground/60">No Spotify link? Use an audio file instead</summary>
+              <div className="mt-2 space-y-2">
+                <input value={draft.audioUrl} onChange={(event) => set('audioUrl', event.target.value.trim())} className={inputClass} placeholder="Link to an MP3, or upload below" />
+                <input
+                  type="file"
+                  accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac"
+                  onChange={async (event) => {
+                    const file = event.currentTarget.files?.[0];
+                    event.currentTarget.value = '';
+                    if (!file) return;
+                    const url = await upload(file);
+                    if (url) set('audioUrl', url);
+                  }}
+                  className="block w-full text-xs text-foreground/70 file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary"
+                />
               </div>
-            );
-          })()}
+            </details>
+          </div>
+
+          <div className="rounded-2xl border border-border/70 p-4">
+            <p className="text-sm font-semibold">Thumbnail <span className="font-normal text-foreground/50">(optional, the YouTube picture is used otherwise)</span></p>
+            <div className="mt-2 flex items-center gap-3">
+              {draft.thumbnailUrl || youtubeId ? (
+                <img src={sermonThumbnail({ thumbnailUrl: draft.thumbnailUrl, youtubeUrl: draft.youtubeUrl })} alt="" className="h-16 w-28 rounded-lg object-cover" />
+              ) : null}
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20">
+                <ImagePlus className="h-4 w-4" /> Upload thumbnail
+                <input
+                  type="file"
+                  accept="image/*,.heic,.heif,.avif"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.currentTarget.files?.[0];
+                    event.currentTarget.value = '';
+                    if (!file) return;
+                    const url = await upload(file);
+                    if (url) set('thumbnailUrl', url);
+                  }}
+                />
+              </label>
+              {draft.thumbnailUrl ? (
+                <button type="button" onClick={() => set('thumbnailUrl', '')} className="text-xs font-semibold text-destructive">Remove</button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-6 rounded-xl bg-muted/30 px-4 py-3 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={draft.isActive} onChange={(event) => set('isActive', event.target.checked)} /> Active on the website
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={draft.isFeatured} onChange={(event) => set('isFeatured', event.target.checked)} /> Feature at the top
+            </label>
+          </div>
+
+          {!editingId ? (
+            <div className="flex items-center space-x-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <Checkbox id="notify-subscribers" checked={notifySubscribers} onCheckedChange={(checked) => setNotifySubscribers(checked === true)} />
+              <Label htmlFor="notify-subscribers" className="cursor-pointer text-sm font-semibold">Notify subscribers about this new sermon</Label>
+            </div>
+          ) : null}
         </div>
+      </SchoolAdminDialogShell>
     </div>
   );
 }

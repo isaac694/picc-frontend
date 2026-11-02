@@ -1,554 +1,430 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { BookOpen, Calendar, Eye, Headphones, Loader2, Mic2, Play, Search, Share2, Video, X } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { apiFetch, apiUrl } from '@/lib/api';
+import { apiFetch, resolveMediaImageUrl } from '@/lib/api';
+import { spotifyEmbedUrl, youTubeEmbedUrl } from '@/lib/media-links';
+import {
+  compactNumber,
+  formatSermonDate,
+  hasAudio,
+  hasVideo,
+  parseSermons,
+  sermonThumbnail,
+  sermonViews,
+  trackSermonPlay,
+  type Sermon,
+} from '@/lib/sermons';
+import { cn } from '@/lib/utils';
 
-// Extract YouTube video ID from a URL (handles ?v=, /embed/, youtu.be, and &t= timestamps)
-function getYouTubeId(url: string): string {
-  if (!url) return '';
-  const match = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
-  );
-  return match ? match[1] : '';
-}
+const sample = (id: string, title: string, date: string, youtubeUrl: string): Sermon => ({
+  id: `sample-${id}`,
+  title,
+  date,
+  speaker: '',
+  description: '',
+  youtubeUrl,
+  spotifyUrl: '',
+  audioUrl: '',
+  thumbnailUrl: '',
+  series: '',
+  topic: '',
+  scripture: '',
+  isActive: true,
+  isFeatured: false,
+  siteViews: 0,
+  siteListens: 0,
+  youtubeViews: null,
+  youtubeLikes: null,
+});
 
-// Extract start time (seconds) from a YouTube URL's &t= parameter
-function getYouTubeStart(url: string): number {
-  if (!url) return 0;
-  const match = url.match(/[?&]t=(\d+)s?/);
-  return match ? parseInt(match[1], 10) : 0;
-}
-
-interface Sermon {
-  id: string;
-  title: string;
-  date: string;
-  image: string;
-  views: string;
-  youtubeUrl: string;
-  audioSrc: string;
-}
-
-const SERMON_AUDIO = '';
-const FALLBACK_SERMON_IMAGE = '/sermons/header.JPG';
-
-const SERMONS = [
-  {
-    id: '1',
-    title: 'Faith for All-Round Possibilities',
-    date: '10 April, 2025',
-    image: '/hero/hero-6.jpg',
-    views: '1,232',
-    youtubeUrl: 'https://www.youtube.com/watch?v=joxnOHDoQvk',
-    audioSrc: SERMON_AUDIO,
-  },
-  {
-    id: '2',
-    title: 'Faith for Supernatural Supplies',
-    date: '10 April, 2025',
-    image: '/hero/hero-4.jpg',
-    views: '1,127',
-    youtubeUrl: 'https://www.youtube.com/watch?v=IloZ7uo2UYY',
-    audioSrc: SERMON_AUDIO,
-  },
-  {
-    id: '3',
-    title: 'Impartation of the Spirit of Faith',
-    date: '10 April, 2025',
-    image: '/hero/hero-3.jpg',
-    views: '981',
-    youtubeUrl: 'https://www.youtube.com/watch?v=joxnOHDoQvk&t=250s',
-    audioSrc: SERMON_AUDIO,
-  },
-  {
-    id: '4',
-    title: 'Operating in the Spirit of Faith',
-    date: '16 February, 2023',
-    image: '/hero/hero-2.jpg',
-    views: '742',
-    youtubeUrl: 'https://www.youtube.com/watch?v=ubcp3QMiMAE&t=280s',
-    audioSrc: SERMON_AUDIO,
-  },
-  {
-    id: '5',
-    title: 'The Faith That Works',
-    date: '16 February, 2023',
-    image: '/hero/hero-1.jpg',
-    views: '839',
-    youtubeUrl: 'https://www.youtube.com/watch?v=hMJUnkBimKg',
-    audioSrc: SERMON_AUDIO,
-  },
-  {
-    id: '6',
-    title: 'Faith-Provoking Praise (Part 4)',
-    date: '16 February, 2023',
-    image: '/hero/hero-5.png',
-    views: '690',
-    youtubeUrl: 'https://www.youtube.com/watch?v=UxOOG7_fhD0',
-    audioSrc: SERMON_AUDIO,
-  },
+// Shown only if the sermon list cannot be loaded.
+const SAMPLE_SERMONS: Sermon[] = [
+  sample('1', 'Faith for All-Round Possibilities', '2025-04-10', 'https://www.youtube.com/watch?v=joxnOHDoQvk'),
+  sample('2', 'Faith for Supernatural Supplies', '2025-04-10', 'https://www.youtube.com/watch?v=IloZ7uo2UYY'),
+  sample('3', 'Operating in the Spirit of Faith', '2023-02-16', 'https://www.youtube.com/watch?v=ubcp3QMiMAE&t=280s'),
+  sample('4', 'The Faith That Works', '2023-02-16', 'https://www.youtube.com/watch?v=hMJUnkBimKg'),
 ];
 
+function StatPill({ icon: Icon, value, label }: { icon: typeof Eye; value: number; label: string }) {
+  if (!value) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/85 backdrop-blur" title={label}>
+      <Icon className="h-3.5 w-3.5" /> {compactNumber(value)} <span className="hidden sm:inline">{label}</span>
+    </span>
+  );
+}
+
+function AudioPlayer({ sermon }: { sermon: Sermon }) {
+  const spotify = spotifyEmbedUrl(sermon.spotifyUrl);
+  if (spotify) {
+    return (
+      <iframe
+        key={spotify}
+        src={spotify}
+        title={`${sermon.title} on Spotify`}
+        className="h-[152px] w-full rounded-2xl border-0"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy"
+      />
+    );
+  }
+  const audio = sermon.audioUrl;
+  if (/podbean\.com/i.test(audio) && /player|embed/i.test(audio)) {
+    return <iframe key={audio} src={audio} title={`${sermon.title} audio`} className="h-[150px] w-full rounded-2xl border-0 bg-white" allow="autoplay" />;
+  }
+  return (
+    <audio
+      key={audio}
+      controls
+      src={resolveMediaImageUrl(audio) || audio}
+      className="w-full"
+      onPlay={() => trackSermonPlay(sermon.id, 'listen')}
+    >
+      Your browser does not support audio playback.
+    </audio>
+  );
+}
+
 export default function SermonsPage() {
-  const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const selectedSermonRef = useRef<HTMLElement | null>(null);
   const [sermons, setSermons] = useState<Sermon[]>([]);
+  const [loading, setLoading] = useState(true);
   const [headerImage, setHeaderImage] = useState('/sermons/header.JPG');
-
-  const normalizeAssetUrl = (url?: string | null): string | undefined => {
-    const trimmed = typeof url === 'string' ? url.trim() : '';
-    if (!trimmed) return undefined;
-    if (trimmed.startsWith('http')) return trimmed;
-    // Treat absolute paths as local `public/` assets.
-    if (trimmed.startsWith('/')) return trimmed;
-    // Otherwise treat as backend-hosted path.
-    return apiUrl(`/${trimmed}`);
-  };
-
-  const extractIframeSrc = (value: string): string => {
-    const match = value.match(/src=["']([^"']+)["']/i);
-    return match ? match[1] : value;
-  };
-
-  const normalizeExternalUrl = (url?: string | null): string | undefined => {
-    const trimmed = typeof url === 'string' ? extractIframeSrc(url).trim() : '';
-    if (!trimmed) return undefined;
-    return trimmed;
-  };
-
-  const isPodbeanUrl = (url?: string): boolean => {
-    if (!url) return false;
-    try {
-      return new URL(url).hostname.toLowerCase().includes('podbean.com');
-    } catch {
-      return false;
-    }
-  };
-
-  const isPodbeanEmbedUrl = (url?: string): boolean => {
-    if (!url || !isPodbeanUrl(url)) return false;
-    return /player|embed/i.test(url);
-  };
-
-  const isPodbeanDirectAudioUrl = (url?: string): boolean => {
-    if (!url || !isPodbeanUrl(url)) return false;
-    try {
-      return /\.(mp3|m4a|aac|wav|ogg)(?:$|[?#])/i.test(new URL(url).pathname);
-    } catch {
-      return false;
-    }
-  };
-
-  const normalizeSermon = (value: unknown): Sermon | null => {
-    if (!value || typeof value !== 'object') return null;
-    const record = value as Record<string, unknown>;
-
-    const id = typeof record.id === 'string' || typeof record.id === 'number' ? String(record.id) : '';
-    if (!id) return null;
-
-    const title = typeof record.title === 'string' && record.title.trim() ? record.title.trim() : 'Untitled sermon';
-    const date = typeof record.date === 'string' && record.date.trim() ? record.date.trim() : '';
-    const views = typeof record.views === 'string' && record.views.trim() ? record.views.trim() : '0';
-
-    const youtubeUrl =
-      typeof record.youtubeUrl === 'string' && record.youtubeUrl.trim()
-        ? record.youtubeUrl.trim()
-        : typeof record.videoUrl === 'string' && record.videoUrl.trim()
-          ? record.videoUrl.trim()
-          : '';
-
-    const image =
-      typeof record.image === 'string' && record.image.trim() ? record.image.trim() : '';
-
-    const audioSrc =
-      typeof record.audioSrc === 'string' && record.audioSrc.trim()
-        ? record.audioSrc.trim()
-        : typeof record.audioUrl === 'string' && record.audioUrl.trim()
-          ? record.audioUrl.trim()
-          : SERMON_AUDIO;
-
-    return { id, title, date, image, views, youtubeUrl, audioSrc };
-  };
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [mode, setMode] = useState<'watch' | 'listen'>('watch');
+  const [query, setQuery] = useState('');
+  const [series, setSeries] = useState('All');
+  const [speaker, setSpeaker] = useState('All');
+  const [visibleCount, setVisibleCount] = useState(9);
+  const [shared, setShared] = useState(false);
+  const playerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const fetchSermonsData = async () => {
+    let alive = true;
+    void (async () => {
       try {
-        // Fetch sermons list
-        const sermonsResponse = await apiFetch('/api/sermons');
-        if (sermonsResponse.ok) {
-          const sermonsData = await sermonsResponse.json();
-          // The API returns { sermons: [...], total, skip, take } or just [...]
-          if (Array.isArray(sermonsData)) {
-            const normalized = sermonsData.map(normalizeSermon).filter(Boolean) as Sermon[];
-            setSermons(normalized.length ? normalized : SERMONS);
-          } else if (sermonsData && Array.isArray(sermonsData.sermons)) {
-            const normalized = sermonsData.sermons.map(normalizeSermon).filter(Boolean) as Sermon[];
-            setSermons(normalized.length ? normalized : SERMONS);
-          } else {
-            setSermons(SERMONS);
-          }
-        } else {
-          // Fallback to static data if API fails
-          setSermons(SERMONS);
-        }
-
-        // Fetch header image
-        const headerResponse = await apiFetch('/api/site-content/sermons-header-image');
+        const [sermonsResponse, headerResponse] = await Promise.all([
+          apiFetch('/api/sermons?take=200'),
+          apiFetch('/api/site-content/sermons-header-image'),
+        ]);
+        if (!alive) return;
+        const list = sermonsResponse.ok ? parseSermons(await sermonsResponse.json()) : [];
+        setSermons(list.length ? list : SAMPLE_SERMONS);
         if (headerResponse.ok) {
-          const headerData = await headerResponse.json();
-          const resolvedHeader = normalizeAssetUrl(headerData.imageUrl);
-          if (resolvedHeader) setHeaderImage(resolvedHeader);
+          const data = await headerResponse.json();
+          const resolved = resolveMediaImageUrl(data.imageUrl);
+          if (resolved) setHeaderImage(resolved);
         }
       } catch {
-        // Fallback to static data if API fails
-        setSermons(SERMONS);
+        if (alive) setSermons(SAMPLE_SERMONS);
+      } finally {
+        if (alive) setLoading(false);
       }
+    })();
+    return () => {
+      alive = false;
     };
-
-    fetchSermonsData();
   }, []);
 
-  useEffect(() => {
-    if (!selectedSermon) return;
-    selectedSermonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [selectedSermon]);
+  const featured = useMemo(() => sermons.find((sermon) => sermon.isFeatured) || sermons[0] || null, [sermons]);
+  const active = useMemo(() => sermons.find((sermon) => sermon.id === activeId) || featured, [sermons, activeId, featured]);
 
-  const selectSermon = (sermon: Sermon) => {
-    setIsPlaying(false);
-    setIsAudioPlaying(false);
-    setSelectedSermon(sermon);
+  const seriesOptions = useMemo(() => ['All', ...Array.from(new Set(sermons.map((sermon) => sermon.series).filter(Boolean)))], [sermons]);
+  const speakerOptions = useMemo(() => ['All', ...Array.from(new Set(sermons.map((sermon) => sermon.speaker).filter(Boolean)))], [sermons]);
+
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return sermons.filter((sermon) => {
+      if (series !== 'All' && sermon.series !== series) return false;
+      if (speaker !== 'All' && sermon.speaker !== speaker) return false;
+      if (!term) return true;
+      return [sermon.title, sermon.speaker, sermon.series, sermon.topic, sermon.scripture, formatSermonDate(sermon.date)]
+        .join(' ')
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [sermons, query, series, speaker]);
+
+  const choose = (sermon: Sermon, nextMode?: 'watch' | 'listen') => {
+    setActiveId(sermon.id);
+    setPlaying(false);
+    setMode(nextMode || (hasVideo(sermon) ? 'watch' : 'listen'));
+    if (nextMode === 'listen') trackSermonPlay(sermon.id, 'listen');
+    requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
-  // Build the YouTube embed URL with optional start time
-  function buildEmbedUrl(youtubeUrl: string, autoplay = false): string {
-    const videoId = getYouTubeId(youtubeUrl);
-    const start = getYouTubeStart(youtubeUrl);
-    const params = new URLSearchParams({
-      rel: '0',
-      modestbranding: '1',
-      ...(autoplay && { autoplay: '1' }),
-      ...(start > 0 && { start: String(start) }),
-    });
-    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
-  }
+  const startWatching = () => {
+    if (!active) return;
+    setPlaying(true);
+    trackSermonPlay(active.id, 'watch');
+  };
 
-  const renderAudioPlayer = (sermon: Sermon) => {
-    const audioUrl = normalizeExternalUrl(sermon.audioSrc);
-    if (!audioUrl) return null;
+  const startListening = () => {
+    if (!active) return;
+    setMode('listen');
+    setPlaying(false);
+    trackSermonPlay(active.id, 'listen');
+  };
 
-    if (isPodbeanEmbedUrl(audioUrl)) {
-      return (
-        <div className="space-y-4">
-          {isAudioPlaying && (
-            <iframe
-              key={audioUrl}
-              title={`${sermon.title} audio`}
-              src={audioUrl}
-              loading="lazy"
-              className="h-[300px] w-full rounded-2xl border-0 bg-white"
-              allow="autoplay; fullscreen"
-              allowFullScreen
-            />
-          )}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsAudioPlaying((current) => !current)}
-              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-white/90"
-            >
-              {isAudioPlaying ? 'Hide Player' : 'Play Now'}
-            </button>
-            <a
-              href={audioUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              Open audio source
-            </a>
-          </div>
-        </div>
-      );
+  const share = async () => {
+    if (!active) return;
+    const url = active.youtubeUrl || window.location.href;
+    try {
+      if (navigator.share) await navigator.share({ title: active.title, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        setShared(true);
+        window.setTimeout(() => setShared(false), 2000);
+      }
+    } catch {
+      // Share sheet closed.
     }
-
-    if (isPodbeanDirectAudioUrl(audioUrl)) {
-      return (
-        <div className="space-y-4">
-          {isAudioPlaying && (
-            <audio
-              key={audioUrl}
-              controls
-              autoPlay
-              className="w-full rounded-full"
-              src={audioUrl}
-            >
-              Your browser does not support the audio element.
-            </audio>
-          )}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsAudioPlaying((current) => !current)}
-              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-white/90"
-            >
-              {isAudioPlaying ? 'Hide Player' : 'Play Now'}
-            </button>
-            <a
-              href={audioUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              Open audio source
-            </a>
-          </div>
-        </div>
-      );
-    }
-
-    if (isPodbeanUrl(audioUrl)) {
-      return (
-        <div className="space-y-4">
-          {isAudioPlaying && (
-            <div className="mx-auto max-w-2xl rounded-2xl bg-white/95 px-6 py-8 text-center text-primary shadow-sm">
-              <p className="text-sm font-semibold">
-                This audio source cannot play inside the website.
-              </p>
-              <p className="mt-2 text-sm text-primary/70">
-                Use a compatible embed player link for in-page playback, or open the audio source in a new tab.
-              </p>
-            </div>
-          )}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsAudioPlaying((current) => !current)}
-              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-white/90"
-            >
-              {isAudioPlaying ? 'Hide Player' : 'Play Now'}
-            </button>
-            <a
-              href={audioUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              Open audio source
-            </a>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <audio
-        key={sermon.id}
-        controls
-        className="w-full rounded-full"
-        src={normalizeAssetUrl(audioUrl)}
-      >
-        Your browser does not support the audio element.
-      </audio>
-    );
   };
 
   return (
     <>
       <Navigation />
-      <main className="min-h-screen bg-background">
-        {/* ── Hero / Selected Sermon ── */}
-        {selectedSermon ? (
-          <section
-            ref={selectedSermonRef}
-            className="relative overflow-hidden py-20 sm:py-24 md:py-32 text-white rounded-b-[36px] md:rounded-b-[48px]"
-          >
-            <div className="absolute inset-0">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)]" />
-              <div className="absolute inset-0 bg-black/20" />
+      <main className="min-h-screen bg-[#f6f4ef]">
+        {/* Player */}
+        <section ref={playerRef} className="relative overflow-hidden bg-[#0b1424] pb-16 pt-28 text-white md:pb-24 md:pt-32">
+          <div className="absolute inset-0 opacity-30">
+            <div className="animate-ken-burns absolute inset-0 bg-cover bg-center blur-sm" style={{ backgroundImage: `url(${active ? sermonThumbnail(active, headerImage) : headerImage})` }} />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0b1424]/70 via-[#0b1424]/90 to-[#0b1424]" />
+
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8 flex items-center gap-3 text-xs uppercase tracking-[0.35em] text-white/60">
+              <Link href="/" className="hover:text-white">Home</Link>
+              <span className="text-white/40">/</span>
+              <span>Sermons</span>
             </div>
 
-            <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col items-center text-center">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4">
-                  Now watching
-                </p>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold mb-4">
-                  {selectedSermon.title}
-                </h1>
-                <p className="text-white/80 mb-6">{selectedSermon.date}</p>
-
-                {/* Video player area */}
-                <div className="relative w-full max-w-4xl aspect-[16/9] rounded-[24px] overflow-hidden shadow-2xl bg-black">
-                  {isPlaying && selectedSermon.youtubeUrl ? (
-                    /* Embedded YouTube iframe — plays in-page, no redirect */
-                    <iframe
-                      key={selectedSermon.id}
-                      src={buildEmbedUrl(selectedSermon.youtubeUrl, true)}
-                      title={selectedSermon.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      className="absolute inset-0 w-full h-full border-0"
-                    />
-                  ) : (
-                    /* Thumbnail with play button overlay */
-                    <>
-                      <Image
-                        src={normalizeAssetUrl(selectedSermon.image) ?? headerImage ?? FALLBACK_SERMON_IMAGE}
-                        alt={selectedSermon.title}
-                        fill
-                        className="object-cover"
+            {loading || !active ? (
+              <div className="flex min-h-[420px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-white/70" /></div>
+            ) : (
+              <div className="grid gap-10 lg:grid-cols-[1.45fr_1fr] lg:items-center">
+                <div>
+                  <div className="relative aspect-video overflow-hidden rounded-3xl bg-black shadow-2xl ring-1 ring-white/10">
+                    {mode === 'watch' && playing && hasVideo(active) ? (
+                      <iframe
+                        key={active.id}
+                        src={youTubeEmbedUrl(active.youtubeUrl, { autoplay: true })}
+                        title={active.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="absolute inset-0 h-full w-full border-0"
                       />
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        {selectedSermon.youtubeUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setIsPlaying(true)}
-                            aria-label="Play sermon video"
-                            className="group flex items-center justify-center w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/60 hover:bg-white/30 transition-all duration-200 hover:scale-105"
-                          >
-                            {/* Triangle play icon */}
-                            <svg
-                              className="w-8 h-8 text-white ml-1"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                            >
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={hasVideo(active) ? startWatching : startListening}
+                        className="group absolute inset-0"
+                        aria-label={hasVideo(active) ? 'Play sermon video' : 'Listen to this sermon'}
+                      >
+                        <img src={sermonThumbnail(active, headerImage)} alt={active.title} className="h-full w-full object-cover transition-transform duration-[1.5s] group-hover:scale-105" />
+                        <span className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <span className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-secondary text-secondary-foreground shadow-[0_0_0_12px_rgba(212,175,55,0.25)] transition-transform duration-500 group-hover:scale-110">
+                          {hasVideo(active) ? <Play className="ml-1 h-8 w-8 fill-current" /> : <Headphones className="h-8 w-8" />}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+
+                  {hasAudio(active) && (mode === 'listen' || !hasVideo(active)) ? (
+                    <div className="mt-5 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                      <AudioPlayer sermon={active} />
+                    </div>
+                  ) : null}
                 </div>
 
-                {/* Audio player */}
-                {selectedSermon.audioSrc && (
-                  <div className="w-full max-w-4xl mt-6">
-                    <p className="text-xs uppercase tracking-[0.25em] text-white/60 mb-2 text-center">
-                      Listen to Audio
-                    </p>
-                    {renderAudioPlayer(selectedSermon)}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.4em] text-secondary">
+                    {active.id === featured?.id && !activeId ? 'Latest message' : 'Now selected'}
+                  </p>
+                  <h1 className="font-display mt-4 text-4xl font-semibold leading-[1.1] md:text-5xl">{active.title}</h1>
+                  <div className="mt-5 space-y-2 text-sm text-white/75">
+                    {active.speaker ? <p className="flex items-center gap-2"><Mic2 className="h-4 w-4 text-secondary" /> {active.speaker}</p> : null}
+                    {active.date ? <p className="flex items-center gap-2"><Calendar className="h-4 w-4 text-secondary" /> {formatSermonDate(active.date)}</p> : null}
+                    {active.scripture ? <p className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-secondary" /> {active.scripture}</p> : null}
                   </div>
-                )}
+                  {active.series || active.topic ? (
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {active.series ? <span className="rounded-full border border-secondary/50 px-3 py-1 text-xs font-semibold text-secondary">Series: {active.series}</span> : null}
+                      {active.topic ? <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/75">{active.topic}</span> : null}
+                    </div>
+                  ) : null}
+                  {active.description ? <p className="mt-5 line-clamp-4 leading-7 text-white/70">{active.description}</p> : null}
 
-                <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                  {!isPlaying && selectedSermon.youtubeUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setIsPlaying(true)}
-                      className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-                    >
-                      Play Sermon
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    <StatPill icon={Eye} value={sermonViews(active)} label="views" />
+                    <StatPill icon={Headphones} value={active.siteListens} label="listens" />
+                  </div>
+
+                  <div className="mt-8 flex flex-wrap gap-3">
+                    {hasVideo(active) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('watch');
+                          startWatching();
+                        }}
+                        className="inline-flex items-center gap-2 rounded-full bg-secondary px-6 py-3 text-sm font-semibold text-secondary-foreground transition-transform hover:-translate-y-0.5"
+                      >
+                        <Video className="h-4 w-4" /> Watch on the website
+                      </button>
+                    ) : null}
+                    {hasAudio(active) ? (
+                      <button
+                        type="button"
+                        onClick={startListening}
+                        className={cn(
+                          'inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-colors',
+                          mode === 'listen' ? 'bg-white text-[#0b1424]' : 'border border-white/30 hover:bg-white/10',
+                        )}
+                      >
+                        <Headphones className="h-4 w-4" /> {active.spotifyUrl ? 'Listen on Spotify' : 'Listen to audio'}
+                      </button>
+                    ) : null}
+                    <button type="button" onClick={() => void share()} className="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white/85 hover:bg-white/10">
+                      <Share2 className="h-4 w-4" /> {shared ? 'Link copied' : 'Share'}
                     </button>
-                  )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Library */}
+        <section className="py-16 md:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Sermon library</p>
+                <h2 className="font-display mt-2 text-4xl font-semibold text-foreground md:text-5xl">Latest messages</h2>
+              </div>
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                <label className="flex items-center gap-2 rounded-full border border-border bg-white px-4 py-2.5">
+                  <Search className="h-4 w-4 text-foreground/40" />
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setVisibleCount(9);
+                    }}
+                    placeholder="Search title, scripture, speaker"
+                    className="w-full bg-transparent text-sm outline-none sm:w-60"
+                  />
+                  {query ? <button type="button" onClick={() => setQuery('')} aria-label="Clear search"><X className="h-4 w-4 text-foreground/40" /></button> : null}
+                </label>
+                {speakerOptions.length > 2 ? (
+                  <select
+                    value={speaker}
+                    onChange={(event) => setSpeaker(event.target.value)}
+                    className="rounded-full border border-border bg-white px-4 py-2.5 text-sm"
+                    aria-label="Filter by speaker"
+                  >
+                    {speakerOptions.map((option) => <option key={option} value={option}>{option === 'All' ? 'All speakers' : option}</option>)}
+                  </select>
+                ) : null}
+              </div>
+            </div>
+
+            {seriesOptions.length > 1 ? (
+              <div className="mt-6 flex flex-wrap gap-2">
+                {seriesOptions.map((option) => (
                   <button
+                    key={option}
                     type="button"
                     onClick={() => {
-                      setSelectedSermon(null);
-                      setIsPlaying(false);
-                      setIsAudioPlaying(false);
+                      setSeries(option);
+                      setVisibleCount(9);
                     }}
-                    className="inline-flex items-center justify-center rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white/90 hover:bg-white/10 transition-colors"
+                    className={cn(
+                      'rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors',
+                      series === option ? 'bg-primary text-primary-foreground' : 'bg-white text-foreground/65 hover:bg-primary/5',
+                    )}
                   >
-                    Back to all sermons
+                    {option === 'All' ? 'All series' : option}
                   </button>
-                </div>
+                ))}
               </div>
-            </div>
-          </section>
-        ) : (
-          /* ── Default hero banner ── */
-          <section className="relative overflow-hidden py-24 sm:py-32 md:py-48 text-white rounded-b-[36px] md:rounded-b-[48px]">
-            <div className="absolute inset-0">
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ backgroundImage: `url(${headerImage})` }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/35" />
-            </div>
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="max-w-3xl mt-8 sm:mt-16 md:mt-32">
-                <div className="text-xs uppercase tracking-[0.35em] text-white/70 mb-4 flex items-center gap-3">
-                  <Link href="/" className="hover:text-white">Home</Link>
-                  <span className="text-white/50">/</span>
-                  <Link href="/sermons" className="hover:text-white">Sermons</Link>
-                </div>
-                <h1 className="text-4xl md:text-6xl font-semibold mb-4">Latest Sermons</h1>
-              </div>
-            </div>
-          </section>
-        )}
+            ) : null}
 
-        {/* ── Sermons Grid ── */}
-        <section className="py-16 md:py-20">
-          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {(sermons || []).map((sermon) => (
-                <article key={sermon.id} className="group">
-                  <div className="relative overflow-hidden rounded-[18px] bg-black/5 shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => selectSermon(sermon)}
-                      className="relative aspect-[16/10] w-full text-left"
-                      aria-label={`Open sermon: ${sermon.title}`}
-                    >
-                      {(() => {
-                        const src = normalizeAssetUrl(sermon.image) ?? headerImage ?? FALLBACK_SERMON_IMAGE;
-                        return src ? (
-                          <Image
-                            src={src}
-                            alt={sermon.title}
-                            fill
-                            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 bg-muted" aria-hidden="true" />
-                        );
-                      })()}
-                      {/* Thumbnail overlay with play icon */}
-                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <span className="flex items-center justify-center w-14 h-14 rounded-full bg-white/25 backdrop-blur-sm border border-white/50">
-                          <svg className="w-6 h-6 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
+            {loading ? (
+              <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+            ) : filtered.length === 0 ? (
+              <p className="py-20 text-center text-sm text-foreground/60">No sermons match your search.</p>
+            ) : (
+              <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3" data-reveal-stagger>
+                {filtered.slice(0, visibleCount).map((sermon) => {
+                  const isActive = active?.id === sermon.id;
+                  return (
+                    <article key={sermon.id} className={cn('group hover-lift overflow-hidden rounded-3xl bg-white', isActive && 'ring-2 ring-secondary')}>
+                      <button type="button" onClick={() => choose(sermon)} className="relative block aspect-video w-full overflow-hidden" aria-label={`Open ${sermon.title}`}>
+                        <img src={sermonThumbnail(sermon, headerImage)} alt="" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                        <span className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                        <span className="absolute left-3 top-3 flex gap-1.5">
+                          {hasVideo(sermon) ? <span className="rounded-full bg-black/60 p-1.5 text-white backdrop-blur" title="Video"><Video className="h-3.5 w-3.5" /></span> : null}
+                          {hasAudio(sermon) ? <span className="rounded-full bg-black/60 p-1.5 text-white backdrop-blur" title="Audio"><Headphones className="h-3.5 w-3.5" /></span> : null}
                         </span>
+                        <span className="absolute bottom-3 left-3 flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground opacity-0 transition-all duration-300 group-hover:opacity-100">
+                          <Play className="ml-0.5 h-5 w-5 fill-current" />
+                        </span>
+                        {sermonViews(sermon) ? (
+                          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+                            <Eye className="h-3 w-3" /> {compactNumber(sermonViews(sermon))}
+                          </span>
+                        ) : null}
+                      </button>
+                      <div className="p-5">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground/50">
+                          {formatSermonDate(sermon.date, 'short')}{sermon.series ? ` · ${sermon.series}` : ''}
+                        </p>
+                        <h3 className="font-display mt-2 text-xl font-semibold leading-snug text-foreground">
+                          <button type="button" onClick={() => choose(sermon)} className="text-left hover:text-primary">{sermon.title}</button>
+                        </h3>
+                        {sermon.speaker ? <p className="mt-1 text-sm text-foreground/60">{sermon.speaker}</p> : null}
+                        {sermon.scripture ? <p className="mt-1 text-xs text-primary/80">{sermon.scripture}</p> : null}
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {hasVideo(sermon) ? (
+                            <button type="button" onClick={() => choose(sermon, 'watch')} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+                              <Video className="h-3.5 w-3.5" /> Watch
+                            </button>
+                          ) : null}
+                          {hasAudio(sermon) ? (
+                            <button type="button" onClick={() => choose(sermon, 'listen')} className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 px-4 py-2 text-xs font-semibold text-primary">
+                              <Headphones className="h-3.5 w-3.5" /> Listen
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
-                    </button>
-                    <div className="absolute right-4 -bottom-3 flex gap-2">
-                      <span className="h-3 w-3 rounded-full bg-primary" />
-                      <span className="h-3 w-3 rounded-full bg-primary/70" />
-                    </div>
-                  </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
 
-                  <div className="pt-6">
-                    <p className="text-xs uppercase tracking-[0.2em] text-foreground/60 mb-2">
-                      {sermon.date}
-                    </p>
-                    <h3 className="text-lg font-semibold leading-snug text-foreground mb-3">
-                      {sermon.title}
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-foreground/60">
-                      <span className="inline-flex items-center justify-center rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-semibold">
-                        PLAY
-                      </span>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            <div className="mt-12 flex justify-center">
+            <div className="mt-12 flex flex-wrap justify-center gap-3">
+              {visibleCount < filtered.length ? (
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((value) => value + 9)}
+                  className="rounded-full bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground"
+                >
+                  Load more sermons
+                </button>
+              ) : null}
               <Link
                 href="/sermons/archive"
-                className="inline-flex items-center justify-center rounded-full bg-background border-2 border-primary/20 text-foreground px-8 py-3 text-sm font-semibold hover:bg-primary/5 hover:border-primary/40 transition-all w-full sm:w-auto shadow-sm"
+                className="rounded-full border-2 border-primary/20 bg-white px-8 py-3 text-sm font-semibold text-foreground transition-all hover:border-primary/40"
               >
-                Browse Full Archive
+                Browse full archive
               </Link>
             </div>
           </div>

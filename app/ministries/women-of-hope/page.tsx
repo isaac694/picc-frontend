@@ -15,6 +15,9 @@ import {
   BookOpenText, MessageSquareText, StickyNote, Heart, Search, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import EventsListSection from '@/components/EventsListSection';
+import InitiativesListSection from '@/components/ministries/InitiativesListSection';
+import NewsFeed from '@/components/news/NewsFeed';
 
 // --- LIVESTREAM COMPONENTS ---
 import LiveChat from '@/components/LiveChat';
@@ -1089,115 +1092,16 @@ export default function WomenOfHopePage() {
           </section>
         )}
 
-        {/* 5. MINISTRY PROJECTS (Replaces Arrows & Devotionals Picture Feed) */}
+        {/* 5. MINISTRY PROJECTS — same layout as the main events list */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-white text-black">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between mb-12">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Ministry Projects & Milestones</h2>
-                  <p className="text-black/60 max-w-xl">The ministry has taken a project-focused form of implementation of activities with timelines, embracing learning, measuring, and reporting impact over time.</p>
-                </div>
-                <div className="flex flex-col items-start gap-2 md:items-end">
-                  <form onSubmit={handleProjectSearch} className="flex w-full items-center gap-2 sm:w-auto">
-                    <input
-                      type="search"
-                      value={projectSearchInput}
-                      onChange={(event) => setProjectSearchInput(event.target.value)}
-                      placeholder="Borehole Planting"
-                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#029EFB] focus:ring-2 focus:ring-[#029EFB]/15 sm:w-48"
-                      aria-label="Search Women of Hope projects"
-                    />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#029EFB] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#0178C0] focus:outline-none focus:ring-2 focus:ring-[#029EFB]/30"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      Search
-                    </button>
-                  </form>
-                  {projectSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={clearProjectSearch}
-                      className="text-xs font-semibold text-[#029EFB] hover:text-[#0178C0]"
-                    >
-                      Clear search
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {featuredProject ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProject(featuredProject)}
-                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#029EFB]"
-                  >
-                    <Image
-                      src={featuredProject.image || '/hero/hero-store.jpg'}
-                      alt={featuredProject.title || 'Women of Hope Project'}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-700"
-                      onError={swapImage('/hero/hero-store.jpg')}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
-                      <span className="bg-[#029EFB] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
-                        {featuredProject.type || 'Project'}
-                      </span>
-                      <h3 className="text-white text-2xl md:text-3xl font-bold mb-1 group-hover:underline decoration-2 underline-offset-4">
-                        {featuredProject.title || 'Women of Hope Project'}
-                      </h3>
-                      <p className="text-white/80 text-sm font-medium">Status: {featuredProject.status || 'Ongoing'}</p>
-                    </div>
-                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Click for Details
-                    </div>
-                  </button>
-
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#029EFB]/30">
-                    {remainingProjects.map((material) => (
-                      <button
-                        key={material.id}
-                        type="button"
-                        onClick={() => setSelectedProject(material)}
-                        className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#029EFB] sm:w-72 lg:h-[113px] lg:w-full"
-                      >
-                        <Image
-                          src={material.image}
-                          alt={material.title}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-500"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                          <span className="text-sky-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                            {material.type}
-                          </span>
-                          <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{material.title}</h4>
-                          <p className="text-white/60 text-[10px]">Status: {material.status}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[#029EFB]/25 bg-gray-50 p-8 text-center text-sm text-black/55">
-                  No Women of Hope projects found for this search.
-                </div>
-              )}
-
-              <div className="mt-12 text-center">
-                <Link
-                  href="/ministries/women-of-hope/archive"
-                  className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#029EFB] transition hover:bg-slate-50 hover:border-black/20"
-                >
-                  View Archive <Search className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-          </section>
+          <InitiativesListSection
+            ministryName="Women of Hope"
+            kicker="Projects & milestones"
+            title="Ministry Projects & Milestones"
+            items={projectCards.map((item) => ({ id: String(item.id), title: item.title, type: item.type, status: item.status, image: item.image }))}
+            archiveHref="/ministries/women-of-hope/archive"
+            sectionClassName="bg-white"
+          />
         )}
 
         {/* MOBILE FULLSCREEN PLAYER OVERRIDE */}
@@ -1238,126 +1142,16 @@ export default function WomenOfHopePage() {
           </section>
         )}
 
-        {/* 6. EVENTS SECTION */}
+        {/* 6. EVENTS — the main events list, filtered to this ministry */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-gray-50 text-black overflow-hidden border-y border-black/5">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming & Past Events</h2>
-                  <p className="text-black/60 max-w-xl">Highlights from our recent gatherings, conferences, and community outreach programs.</p>
-                </div>
-                <div className="flex flex-col items-start gap-2 md:items-end">
-                  <form onSubmit={handleEventSearch} className="flex w-full items-center gap-2 sm:w-auto">
-                    <input
-                      type="search"
-                      value={eventSearchInput}
-                      onChange={(event) => setEventSearchInput(event.target.value)}
-                      placeholder="March 28, 2026"
-                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#029EFB] focus:ring-2 focus:ring-[#029EFB]/15 sm:w-48"
-                      aria-label="Search women of hope events by date"
-                    />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#029EFB] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#1E3A5F] focus:outline-none focus:ring-2 focus:ring-[#029EFB]/30"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      Search
-                    </button>
-                  </form>
-                  {eventSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={clearEventSearch}
-                      className="text-xs font-semibold text-[#029EFB] hover:text-[#1E3A5F]"
-                    >
-                      Clear search
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {displayedEventItems.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                  <button
-                    type="button"
-                    onClick={() => openPublicEvent(featuredGridEvent.id)}
-                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#029EFB]"
-                  >
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={featuredGridEvent.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.5 }}
-                        className="absolute inset-0"
-                      >
-                        <Image
-                          src={featuredGridEvent.image}
-                          alt={featuredGridEvent.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-700"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
-                          <span className="bg-[#029EFB] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
-                            Women of Hope Event
-                          </span>
-                          <h3 className="text-white text-3xl md:text-4xl font-bold mb-2 group-hover:underline decoration-2 underline-offset-4">
-                            {featuredGridEvent.title}
-                          </h3>
-                          <p className="text-white/90 text-sm md:text-base font-medium flex items-center gap-2 mb-1">
-                            <CalendarClock className="w-4 h-4" /> {featuredGridEvent.date}
-                          </p>
-                          <p className="text-white/70 text-sm">
-                            {featuredGridEvent.description}
-                          </p>
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
-                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Click for Details
-                    </div>
-                  </button>
-
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#029EFB]/30">
-                    {remainingEvents.map((event) => (
-                      <button
-                        key={event.id}
-                        type="button"
-                        onClick={() => openPublicEvent(event.id)}
-                        className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#029EFB] sm:w-72 lg:h-[113px] lg:w-full"
-                      >
-                        <Image
-                          src={event.image}
-                          alt={event.title}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-500"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                          <span className="text-sky-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                            Women of Hope Event
-                          </span>
-                          <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">
-                            {event.title}
-                          </h4>
-                          <p className="text-white/60 text-[10px] truncate">
-                            {event.date}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[#029EFB]/25 bg-white p-8 text-center text-sm text-black/55">
-                  No Women of Hope events found for this date search.
-                </div>
-              )}
-            </div>
-          </section>
+          <EventsListSection
+            apiPath="/api/events?ministry=women-of-hope"
+            layout="classic"
+            initialFilter="year"
+            kicker="Women of Hope"
+            title="Upcoming & Past Events"
+            sectionClassName="bg-gray-50"
+          />
         )}
 
         {/* 7. GLOBAL VISION SECTION */}
@@ -1400,25 +1194,15 @@ export default function WomenOfHopePage() {
 
         {/* 8. NEWS SECTION */}
         {!mobilePlayerActive && (
-          <NewsSection
+          <NewsFeed
+            scope="women-of-hope"
             kicker="Women of Hope updates"
             title="Latest News"
-            description="Recent developments, project milestones, outreach moments, and ministry updates from Women of Hope."
-            items={WOMEN_OF_HOPE_NEWS_ITEMS}
-            backgroundClassName="bg-gray-50 text-black border-y border-black/5"
-            maxItems={6}
+            description="Project milestones, outreach moments, and ministry updates from Women of Hope."
+            fallbackItems={WOMEN_OF_HOPE_NEWS_ITEMS}
+            allHref="/news?scope=women-of-hope"
+            allLabel="All Women of Hope news"
           />
-        )}
-
-        {!mobilePlayerActive && (
-          <div className="bg-gray-50 pb-16 text-center">
-            <Link
-              href="/ministries/women-of-hope/archive"
-              className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#029EFB] transition hover:bg-slate-50 hover:border-black/20"
-            >
-              View News Archive <Search className="w-4 h-4" />
-            </Link>
-          </div>
         )}
 
         {/* 9. CONTACTS SECTION */}

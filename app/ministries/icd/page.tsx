@@ -17,6 +17,9 @@ import {
   Shield, HandHeart, Ear, Search, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import EventsListSection from '@/components/EventsListSection';
+import InitiativesListSection from '@/components/ministries/InitiativesListSection';
+import NewsFeed from '@/components/news/NewsFeed';
 
 // --- LIVESTREAM COMPONENTS ---
 import LiveChat from '@/components/LiveChat';
@@ -1048,109 +1051,15 @@ export default function IcdMinistryPage() {
           </section>
         )}
 
-        {/* 5. MINISTRY PROJECTS & INITIATIVES */}
+        {/* 5. MINISTRY PROJECTS & INITIATIVES — same layout as the main events list */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-white text-black">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-6">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Ministry Initiatives</h2>
-                  <p className="text-black/60 max-w-xl">Our structured modules ensure members are consistently growing in sound doctrine and effective leadership.</p>
-                </div>
-                <div className="flex flex-col items-start gap-2 md:items-end w-full md:w-auto">
-                  <form onSubmit={handleInitiativeSearch} className="flex w-full items-center gap-2 sm:w-auto">
-                    <input
-                      type="search"
-                      value={initiativeSearchInput}
-                      onChange={(event) => setInitiativeSearchInput(event.target.value)}
-                      placeholder="Search ICD initiatives"
-                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#045BB4] focus:ring-2 focus:ring-[#045BB4]/15 sm:w-64"
-                      aria-label="Search ICD initiatives"
-                    />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#045BB4] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#033D7A] focus:outline-none focus:ring-2 focus:ring-[#045BB4]/30"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      Search
-                    </button>
-                  </form>
-                  {initiativeSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={clearInitiativeSearch}
-                      className="text-xs font-semibold text-[#045BB4] hover:text-[#033D7A]"
-                    >
-                      Clear search
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {featuredProject ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                  {/* Large Featured Image (Current/Latest Project) */}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedInitiative(featuredProject)}
-                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
-                  >
-                    <Image 
-                      src={featuredProject.image || '/images/icd/ICD-MAY-26.png'} 
-                      alt={featuredProject.title || 'ICD initiative'}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-700"
-                      onError={swapImage('/hero/hero-store.jpg')}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
-                      <span className="bg-[#045BB4] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3">
-                        {featuredProject.type || 'Initiative'}
-                      </span>
-                      <h3 className="text-white text-2xl md:text-3xl font-bold mb-1">{featuredProject.title || 'ICD Ministry'}</h3>
-                      <p className="text-white/80 text-sm font-medium">Status: {featuredProject.status || 'Active'}</p>
-                    </div>
-                  </button>
-
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
-                    {remainingProjects.map((material) => (
-                      <button
-                        key={material.id}
-                        type="button"
-                        onClick={() => setSelectedInitiative(material)}
-                        className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#045BB4] sm:w-72 lg:h-[113px] lg:w-full"
-                      >
-                        <Image 
-                          src={material.image} 
-                          alt={material.title}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-500"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                          <span className="text-blue-200 text-[10px] font-bold uppercase tracking-wider mb-1">{material.type}</span>
-                          <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{material.title}</h4>
-                          <p className="text-white/60 text-[10px] truncate">Status: {material.status}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[#045BB4]/25 bg-white p-8 text-center text-sm text-black/55">
-                  No ICD initiatives found for this search.
-                </div>
-              )}
-
-              <div className="mt-12 text-center">
-                <Link
-                  href="/ministries/icd/archive"
-                  className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#045BB4] transition hover:bg-slate-50 hover:border-black/20"
-                >
-                  View Archive <Search className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-          </section>
+          <InitiativesListSection
+            ministryName="ICD"
+            kicker="Projects & initiatives"
+            items={projectItems.map((item) => ({ id: String(item.id), title: item.title, type: item.type, status: item.status, description: item.description, image: item.image }))}
+            archiveHref="/ministries/icd/archive"
+            sectionClassName="bg-white"
+          />
         )}
 
         {/* MOBILE FULLSCREEN PLAYER OVERRIDE */}
@@ -1189,139 +1098,28 @@ export default function IcdMinistryPage() {
           </section>
         )}
 
-        {/* 6. EVENTS SECTION */}
+        {/* 6. EVENTS — the main events list, filtered to this ministry */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-gray-50 text-black overflow-hidden border-y border-black/5">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-6">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Events</h2>
-                  <p className="text-black/60 max-w-xl">A record of our commitment to continuous spiritual and leadership development.</p>
-                </div>
-                <div className="flex flex-col items-start gap-2 md:items-end w-full md:w-auto">
-                  <form onSubmit={handleEventSearch} className="flex w-full items-center gap-2 sm:w-auto">
-                    <input
-                      type="search"
-                      value={eventSearchInput}
-                      onChange={(event) => setEventSearchInput(event.target.value)}
-                      placeholder="Search by title, date, or keyword"
-                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#045BB4] focus:ring-2 focus:ring-[#045BB4]/15 sm:w-64"
-                      aria-label="Search ICD events"
-                    />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#045BB4] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#033D7A] focus:outline-none focus:ring-2 focus:ring-[#045BB4]/30"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      Search
-                    </button>
-                  </form>
-                  {eventSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={clearEventSearch}
-                      className="text-xs font-semibold text-[#045BB4] hover:text-[#033D7A]"
-                    >
-                      Clear search
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {displayedEventItems.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                  <button
-                    type="button"
-                    onClick={() => openPublicEvent(featuredEvent.sourceId)}
-                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-[#045BB4]"
-                  >
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={featuredEvent.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.5 }}
-                        className="absolute inset-0"
-                      >
-                        <Image
-                          src={featuredEvent.image}
-                          alt={featuredEvent.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-700"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
-                          <span className="bg-[#045BB4] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
-                            <CalendarClock className="w-4 h-4" />
-                            Event
-                          </span>
-                          <h3 className="text-white text-3xl md:text-4xl font-bold mb-2 group-hover:underline decoration-2 underline-offset-4">{featuredEvent.title}</h3>
-                          <p className="text-white/90 text-sm md:text-base font-medium flex items-center gap-2 mb-1">
-                            <CalendarClock className="w-4 h-4" /> {featuredEvent.date}
-                          </p>
-                          <p className="text-white/70 text-sm leading-relaxed">{featuredEvent.description}</p>
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
-                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Open event
-                    </div>
-                  </button>
-
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#045BB4]/30">
-                    {remainingEvents.map((event, index) => (
-                      <button
-                        key={event.id}
-                        type="button"
-                        onClick={() => openPublicEvent(event.sourceId)}
-                        className="relative h-48 w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-[#045BB4] sm:w-72 lg:h-[113px] lg:w-full"
-                      >
-                        <Image
-                          src={event.image}
-                          alt={event.title}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-500"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                          <span className="text-blue-200 text-[10px] font-bold uppercase tracking-wider mb-1">Event</span>
-                          <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{event.title}</h4>
-                          <p className="text-white/60 text-[10px] truncate">{event.date}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[#045BB4]/25 bg-white p-8 text-center text-sm text-black/55">
-                  No ICD events found for this search.
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {!mobilePlayerActive && (
-          <NewsSection
-            kicker="ICD updates"
-            title="Latest News"
-            description="Recent highlights from ICD ministry life, outreach, and gatherings."
-            items={icdNewsItems}
-            backgroundClassName="bg-white text-black border-y border-black/5"
-            maxItems={6}
+          <EventsListSection
+            apiPath="/api/events?ministry=icd"
+            layout="classic"
+            initialFilter="year"
+            kicker="ICD"
+            title="Upcoming & Past Events"
+            sectionClassName="bg-gray-50"
           />
         )}
 
         {!mobilePlayerActive && (
-          <div className="bg-white pb-16 text-center">
-            <Link
-              href="/ministries/icd/archive"
-              className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#045BB4] transition hover:bg-slate-50 hover:border-black/20"
-            >
-              View News Archive <Search className="w-4 h-4" />
-            </Link>
-          </div>
+          <NewsFeed
+            scope="icd"
+            kicker="ICD updates"
+            title="Latest News"
+            description="Recent highlights from ICD ministry life, outreach, and gatherings."
+            fallbackItems={icdNewsItems}
+            allHref="/news?scope=icd"
+            allLabel="All ICD news"
+          />
         )}
 
         {/* 7. PARTNER WITH US SECTION (Updated with Banking Details) */}

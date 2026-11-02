@@ -7,6 +7,9 @@ import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
+import ContentCollectionManager, { type CollectionField } from '@/components/admin/ContentCollectionManager';
+import { CONTENT_COLLECTIONS, type ContentItem } from '@/lib/content-items';
+import { ABOUT_CORE_VALUE_SEEDS, ABOUT_TENET_SEEDS, yearlyThemeSeeds } from '@/lib/about-defaults';
 
 type SiteContentRecord = {
   key: string;
@@ -27,6 +30,20 @@ const IMAGE_ITEMS = [
 
 const STORY_VIDEO_KEY = 'about-story-video';
 const YEARLY_THEMES_KEY = 'about-yearly-themes';
+
+const THEME_FIELDS: CollectionField[] = [
+  { name: 'data.year', label: 'Year', type: 'number', required: true, placeholder: '2027' },
+  { name: 'title', label: 'Theme', placeholder: 'The year of the hand of God' },
+  { name: 'subtitle', label: 'Scripture', placeholder: 'Ezekiel 37:1-10' },
+  { name: 'body', label: 'Short description (optional)', type: 'textarea' },
+];
+
+const ENTRY_FIELDS: CollectionField[] = [
+  { name: 'title', label: 'Heading' },
+  { name: 'body', label: 'Text', type: 'textarea', required: true },
+];
+
+const byYearDesc = (a: ContentItem, b: ContentItem) => Number(b.data.year || 0) - Number(a.data.year || 0);
 
 const normalizeImageUrl = (value?: string | null) => {
   if (!value) return '';
@@ -125,6 +142,11 @@ export default function AboutPageAdmin() {
   const { runUpload, progress, uploading } = useMediaUpload();
   const [storyVideoUrl, setStoryVideoUrl] = useState('');
   const [themesText, setThemesText] = useState('');
+  // Themes saved with the older text editor become the starting list for the new editor.
+  const themeSeeds = useMemo(() => {
+    const legacy = parseThemesText(themesText);
+    return yearlyThemeSeeds(legacy.length ? legacy : undefined);
+  }, [themesText]);
 
   const clearStatus = () => {
     setStatus('');
@@ -139,7 +161,6 @@ export default function AboutPageAdmin() {
     setStatusIsError(false);
   };
 
-  const themesPreview = useMemo(() => parseThemesText(themesText), [themesText]);
 
   const fetchSiteContent = async (key: string): Promise<SiteContentRecord | null> => {
     try {
@@ -217,9 +238,6 @@ export default function AboutPageAdmin() {
     setSaving(true);
 
     try {
-      const themeEntries = parseThemesText(themesText);
-      const themeBody = JSON.stringify(themeEntries);
-
       const saves = await Promise.all([
         ...IMAGE_ITEMS.map((item) =>
           saveKey(item.key, {
@@ -227,7 +245,6 @@ export default function AboutPageAdmin() {
           }),
         ),
         saveKey(STORY_VIDEO_KEY, { body: storyVideoUrl ? toYoutubeEmbedUrl(storyVideoUrl) : null }),
-        saveKey(YEARLY_THEMES_KEY, { body: themeBody }),
       ]);
 
       if (saves.every(Boolean)) {
@@ -262,7 +279,7 @@ export default function AboutPageAdmin() {
           <p className="text-xs uppercase tracking-[0.35em] text-primary/70 mb-2">Admin</p>
           <h1 className="text-3xl md:text-5xl font-semibold text-foreground">About Page</h1>
           <p className="text-foreground/70 mt-3 max-w-2xl">
-            Update images, story video, and yearly themes shown on the About page.
+            &quot;Save Changes&quot; saves the images and story video. Yearly themes, tenets and core values below save as soon as you edit them.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -347,7 +364,7 @@ export default function AboutPageAdmin() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <div className="rounded-2xl border border-border/60 bg-background p-5">
             <h2 className="text-xl font-semibold text-foreground mb-2">Our Story Video</h2>
             <p className="text-sm text-foreground/60 mb-4">
@@ -366,25 +383,39 @@ export default function AboutPageAdmin() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-border/60 bg-background p-5">
-            <h2 className="text-xl font-semibold text-foreground mb-2">Yearly Themes</h2>
-            <p className="text-sm text-foreground/60 mb-4">
-              One per line. Format: <span className="font-mono">YYYY - Theme</span>
-            </p>
-            <textarea
-              value={themesText}
-              onChange={(event) => setThemesText(event.target.value)}
-              rows={10}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-foreground"
-              placeholder="2026 - The year of the hand of God - Ezekiel 37:1-10"
-              disabled={saving}
-            />
-            <p className="mt-2 text-xs text-foreground/60">
-              Parsed themes: {themesPreview.length}
-            </p>
-          </div>
         </div>
       </div>
+
+      <ContentCollectionManager
+        token={token}
+        collection={CONTENT_COLLECTIONS.aboutYearlyThemes}
+        title="Yearly themes"
+        description="Every year's theme is listed on the About page, newest first. Add the new year's theme, or deactivate one to hide it."
+        fields={THEME_FIELDS}
+        seeds={themeSeeds}
+        itemLabel="theme"
+        displaySort={byYearDesc}
+      />
+
+      <ContentCollectionManager
+        token={token}
+        collection={CONTENT_COLLECTIONS.aboutTenets}
+        title="Tenets of faith"
+        description="The statements shown under 'The PICC Tenets of Faith'."
+        fields={ENTRY_FIELDS}
+        seeds={ABOUT_TENET_SEEDS}
+        itemLabel="tenet"
+      />
+
+      <ContentCollectionManager
+        token={token}
+        collection={CONTENT_COLLECTIONS.aboutCoreValues}
+        title="Core values"
+        description="The values shown under 'PICC Core Values'."
+        fields={ENTRY_FIELDS}
+        seeds={ABOUT_CORE_VALUE_SEEDS}
+        itemLabel="core value"
+      />
     </div>
   );
 }

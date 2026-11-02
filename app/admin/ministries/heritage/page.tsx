@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import NewsManager from '@/components/admin/NewsManager';
 import {
   MinistryInfoManager,
   MinistryItemsManager,
@@ -11,7 +12,7 @@ import {
   type MinistryItem,
 } from '@/components/admin/MinistryContentManagers';
 
-type Tab = 'info' | 'focus' | 'highlights' | 'events';
+type Tab = 'info' | 'focus' | 'highlights' | 'events' | 'news';
 
 const heritageFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'Heritage Ministry',
@@ -114,6 +115,7 @@ export default function HeritageAdminPage() {
     { id: 'focus', label: 'Focus Areas' },
     { id: 'highlights', label: 'Highlights' },
     { id: 'events', label: 'Events' },
+    { id: 'news', label: 'News' },
   ];
 
   return (
@@ -191,6 +193,15 @@ export default function HeritageAdminPage() {
           description="Manage upcoming and past activities for kids."
           fallbackItems={events}
           labels={{ title: 'Event Title', description: 'Event Description', label: 'Date/Type', image: 'Event Image' }}
+        />
+      )}
+
+      {activeTab === 'news' && (
+        <NewsManager
+          token={token}
+          scope="heritage"
+          title="Heritage news"
+          description="Stories shown in the Latest News section of the Heritage page. Deactivate a story to hide it; the starred story leads."
         />
       )}
     </div>

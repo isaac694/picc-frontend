@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import NewsManager from '@/components/admin/NewsManager';
 import {
   MinistryInfoManager,
   MinistryItemsManager,
@@ -11,7 +12,7 @@ import {
   type MinistryItem,
 } from '@/components/admin/MinistryContentManagers';
 
-type Tab = 'info' | 'pillars' | 'highlights' | 'projects' | 'events';
+type Tab = 'info' | 'pillars' | 'highlights' | 'projects' | 'events' | 'news';
 
 const womenOfHopeFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'Women of Hope',
@@ -120,6 +121,7 @@ export default function WomenOfHopeAdminPage() {
     { id: 'highlights', label: 'Highlights' },
     { id: 'projects', label: 'Projects' },
     { id: 'events', label: 'Events' },
+    { id: 'news', label: 'News' },
   ];
 
   return (
@@ -220,6 +222,15 @@ export default function WomenOfHopeAdminPage() {
           description="Manage upcoming and past Women of Hope events."
           fallbackItems={events}
           labels={{ title: 'Event Title', description: 'Event Description', label: 'Date / Time', image: 'Event Picture', save: 'Save Event' }}
+        />
+      )}
+
+      {activeTab === 'news' && (
+        <NewsManager
+          token={token}
+          scope="women-of-hope"
+          title="Women of Hope news"
+          description="Stories shown in the Latest News section of the Women of Hope page. Deactivate a story to hide it; the starred story leads."
         />
       )}
     </div>

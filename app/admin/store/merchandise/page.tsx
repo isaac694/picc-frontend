@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ImageIcon, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { BarChart3, Boxes, ImageIcon, Pencil, Plus, RefreshCw, Star, Trash2, X } from 'lucide-react';
+import BrandedStockDialog from '@/components/admin/BrandedStockDialog';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
@@ -19,6 +21,10 @@ type StoreItem = {
   imageUrl?: string | null;
   category: string;
   stock: number;
+  lowStockThreshold?: number;
+  sizes?: string[];
+  gallery?: string[];
+  isFeatured?: boolean;
   isActive: boolean;
   sortOrder: number;
 };
@@ -30,6 +36,10 @@ type Draft = {
   imageUrl: string;
   category: string;
   stock: string;
+  lowStockThreshold: string;
+  sizes: string;
+  gallery: string[];
+  isFeatured: boolean;
   isActive: boolean;
   sortOrder: string;
 };
@@ -41,6 +51,10 @@ const EMPTY_DRAFT: Draft = {
   imageUrl: '',
   category: 'Shirt',
   stock: '0',
+  lowStockThreshold: '5',
+  sizes: '',
+  gallery: [],
+  isFeatured: false,
   isActive: true,
   sortOrder: '0',
 };
@@ -59,6 +73,7 @@ export default function StoreMerchandiseAdminPage() {
   const [saving, setSaving] = useState(false);
   const [uploadName, setUploadName] = useState('');
   const { runUpload, progress, uploading } = useMediaUpload();
+  const [stockItem, setStockItem] = useState<StoreItem | null>(null);
 
   const fetchItems = useCallback(async () => {
     if (!token) return;
@@ -139,6 +154,10 @@ export default function StoreMerchandiseAdminPage() {
           imageUrl: draft.imageUrl.trim(),
           category: draft.category,
           stock: Number(draft.stock),
+          lowStockThreshold: Number(draft.lowStockThreshold || 0),
+          sizes: draft.sizes.split(',').map((size) => size.trim()).filter(Boolean),
+          gallery: draft.gallery,
+          isFeatured: draft.isFeatured,
           isActive: draft.isActive,
           sortOrder: Number(draft.sortOrder || 0),
         }),
@@ -167,6 +186,10 @@ export default function StoreMerchandiseAdminPage() {
       imageUrl: item.imageUrl || '',
       category: item.category || 'PICC branded items',
       stock: String(item.stock ?? 0),
+      lowStockThreshold: String(item.lowStockThreshold ?? 5),
+      sizes: (item.sizes || []).join(', '),
+      gallery: item.gallery || [],
+      isFeatured: item.isFeatured === true,
       isActive: item.isActive !== false,
       sortOrder: String(item.sortOrder ?? 0),
     });
@@ -202,6 +225,9 @@ export default function StoreMerchandiseAdminPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-foreground/60">Shirts, stickers, and other Hope Store goods.</p>
         <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/store/merchandise/stats"><BarChart3 className="mr-2 h-4 w-4" />Statistics</Link>
+          </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => void fetchItems()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
@@ -247,7 +273,13 @@ export default function StoreMerchandiseAdminPage() {
                           <ImageIcon className="m-3 h-6 w-6 text-foreground/30" />
                         )}
                       </div>
-                      <p className="font-medium">{item.name}</p>
+                      <div>
+                        <p className="flex items-center gap-1 font-medium">
+                          {item.name}
+                          {item.isFeatured ? <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" aria-label="Featured" /> : null}
+                        </p>
+                        {item.sizes?.length ? <p className="text-xs text-foreground/55">Sizes: {item.sizes.join(', ')}</p> : null}
+                      </div>
                     </div>
                   </td>
                   <td className="max-w-xs px-4 py-3 text-foreground/70">
@@ -255,10 +287,18 @@ export default function StoreMerchandiseAdminPage() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">{item.category}</td>
                   <td className="whitespace-nowrap px-4 py-3">MWK {item.price.toLocaleString()}</td>
-                  <td className="px-4 py-3">{item.stock}</td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <span className={item.stock <= 0 ? 'font-semibold text-destructive' : item.stock <= (item.lowStockThreshold ?? 5) ? 'font-semibold text-amber-600' : ''}>
+                      {item.stock}
+                    </span>
+                    {item.stock <= 0 ? <span className="ml-2 text-xs text-destructive">Out</span> : item.stock <= (item.lowStockThreshold ?? 5) ? <span className="ml-2 text-xs text-amber-600">Low</span> : null}
+                  </td>
                   <td className="px-4 py-3">{item.isActive ? 'Visible' : 'Hidden'}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
+                      <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={() => setStockItem(item)}>
+                        <Boxes className="h-3.5 w-3.5" /> Stock
+                      </Button>
                       <Button type="button" size="icon" variant="ghost" onClick={() => editItem(item)} aria-label={`Edit ${item.name}`}>
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -343,8 +383,49 @@ export default function StoreMerchandiseAdminPage() {
             <label className="grid gap-1 text-sm">
               <span>Number in stock</span>
               <input className="rounded-xl border border-border bg-background px-3 py-2" type="number" min="0" step="1" value={draft.stock} onChange={(event) => setDraft((prev) => ({ ...prev, stock: event.target.value }))} />
+              {editingId ? <span className="text-xs text-foreground/50">For deliveries use the Stock button, so the change is recorded.</span> : null}
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span>Sizes or options</span>
+              <input className="rounded-xl border border-border bg-background px-3 py-2" value={draft.sizes} onChange={(event) => setDraft((prev) => ({ ...prev, sizes: event.target.value }))} placeholder="S, M, L, XL" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span>Warn when stock is at or below</span>
+              <input className="rounded-xl border border-border bg-background px-3 py-2" type="number" min="0" step="1" value={draft.lowStockThreshold} onChange={(event) => setDraft((prev) => ({ ...prev, lowStockThreshold: event.target.value }))} />
             </label>
           </div>
+          <div className="grid gap-2 text-sm">
+            <span>More photos (shown on the item page)</span>
+            <div className="flex flex-wrap gap-2">
+              {draft.gallery.map((url) => (
+                <div key={url} className="relative">
+                  <img src={url} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                  <button type="button" aria-label="Remove photo" onClick={() => setDraft((prev) => ({ ...prev, gallery: prev.gallery.filter((entry) => entry !== url) }))} className="absolute -right-2 -top-2 rounded-full bg-destructive p-1 text-white">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg border border-dashed border-border text-foreground/50 hover:bg-muted/40">
+                <Plus className="h-4 w-4" />
+                <input
+                  type="file"
+                  accept="image/*,.heic,.heif,.avif"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.currentTarget.files?.[0];
+                    event.currentTarget.value = '';
+                    if (!file) return;
+                    const url = await uploadImage(file);
+                    if (url) setDraft((prev) => ({ ...prev, gallery: [...prev.gallery, url] }));
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={draft.isFeatured} onChange={(event) => setDraft((prev) => ({ ...prev, isFeatured: event.target.checked }))} />
+            Feature at the top of the branded items page
+          </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={draft.isActive} onChange={(event) => setDraft((prev) => ({ ...prev, isActive: event.target.checked }))} />
             Visible in the store
@@ -352,6 +433,8 @@ export default function StoreMerchandiseAdminPage() {
           {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
         </div>
       </SchoolAdminDialogShell>
+
+      <BrandedStockDialog token={token} item={stockItem} onClose={() => setStockItem(null)} onChanged={() => void fetchItems()} />
     </div>
   );
 }

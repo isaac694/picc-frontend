@@ -17,6 +17,9 @@ import {
   Briefcase, Users, Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import EventsListSection from '@/components/EventsListSection';
+import InitiativesListSection from '@/components/ministries/InitiativesListSection';
+import NewsFeed from '@/components/news/NewsFeed';
 
 // --- LIVESTREAM COMPONENTS ---
 import LiveChat from '@/components/LiveChat';
@@ -1121,114 +1124,16 @@ export default function MenOfValourPage() {
           </section>
         )}
 
-        {/* 5. MINISTRY PROJECTS (Replaces Arrows & Devotionals Picture Feed) */}
+        {/* 5. MINISTRY INITIATIVES — same layout as the main events list */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-white text-black">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Ministry Initiatives</h2>
-                  <p className="text-black/60 max-w-xl">Our structured approach ensures men are consistently growing and making an impact.</p>
-                </div>
-                <div className="flex flex-col items-start gap-2 md:items-end">
-                  <form onSubmit={handleInitiativeSearch} className="flex w-full items-center gap-2 sm:w-auto">
-                    <input
-                      type="search"
-                      value={initiativeSearchInput}
-                      onChange={(event) => setInitiativeSearchInput(event.target.value)}
-                      placeholder="November 2026"
-                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#2D5A8C] focus:ring-2 focus:ring-[#2D5A8C]/15 sm:w-48"
-                      aria-label="Search Men of Valour initiatives"
-                    />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#2D5A8C] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#1E3A5F] focus:outline-none focus:ring-2 focus:ring-[#2D5A8C]/30"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      Search
-                    </button>
-                  </form>
-                  {initiativeSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={clearInitiativeSearch}
-                      className="text-xs font-semibold text-[#2D5A8C] hover:text-[#1E3A5F]"
-                    >
-                      Clear search
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {featuredProject ? (
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedInitiative(featuredProject)}
-                    className="group relative h-56 w-full overflow-hidden rounded-2xl border border-black/5 text-left shadow-xl focus:outline-none focus:ring-4 focus:ring-[#2D5A8C] md:h-64"
-                  >
-                    <Image
-                      src={featuredProject.image || '/hero/hero-store.jpg'}
-                      alt={featuredProject.title || 'Men of Valour initiative'}
-                      fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
-                      onError={swapImage('/hero/hero-store.jpg')}
-                    />
-                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/20 to-transparent p-8">
-                      <span className="mb-3 w-fit rounded-full bg-[#2D5A8C] px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
-                        {featuredProject.type || 'Initiative'}
-                      </span>
-                      <h3 className="mb-1 text-2xl font-bold text-white group-hover:underline group-hover:decoration-2 group-hover:underline-offset-4 md:text-3xl">{featuredProject.title || 'Men of Valour Ministry'}</h3>
-                      <p className="text-sm font-medium text-white/80">Status: {featuredProject.status || 'Active'}</p>
-                    </div>
-                    <div className="absolute right-4 top-4 rounded-full border border-white/30 bg-white/20 px-3 py-1 text-xs font-medium text-white opacity-0 backdrop-blur-md transition-opacity group-hover:opacity-100">
-                      Click for Details
-                    </div>
-                  </button>
-
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
-                    {remainingProjects.map((material) => (
-                      <button
-                        key={material.id}
-                        type="button"
-                        onClick={() => setSelectedInitiative(material)}
-                        className="group relative h-48 w-64 flex-shrink-0 overflow-hidden rounded-xl border border-black/5 text-left shadow-md focus:outline-none focus:ring-2 focus:ring-[#2D5A8C] sm:w-72 lg:h-[113px] lg:w-full"
-                      >
-                        <Image
-                          src={material.image}
-                          alt={material.title}
-                          fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 flex flex-col justify-end bg-black/60 p-4 transition-colors duration-300 group-hover:bg-black/40">
-                          <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-blue-300">
-                            {material.type}
-                          </span>
-                          <h4 className="mb-1 text-sm font-semibold leading-tight text-white group-hover:underline group-hover:underline-offset-2">{material.title}</h4>
-                          <p className="text-[10px] text-white/60">Status: {material.status}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-red-200 bg-white p-8 text-center text-sm text-slate-500">
-                  No Men of Valour initiatives found for this search.
-                </div>
-                )}
-
-                <div className="mt-12 text-center">
-                <Link 
-                  href="/ministries/men-of-valour/archive"
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-red-700 transition hover:bg-slate-50 hover:border-red-200 shadow-sm"
-                >
-                  View Archive <Search className="w-4 h-4" />
-                </Link>
-                </div>
-                </div>
-                </section>
-                )}
+          <InitiativesListSection
+            ministryName="Men of Valour"
+            description="Our structured approach ensures men are consistently growing and making an impact."
+            items={projectItems.map((item) => ({ id: String(item.id), title: item.title, type: item.type, status: item.status, image: item.image }))}
+            archiveHref="/ministries/men-of-valour/archive"
+            sectionClassName="bg-white"
+          />
+        )}
 
         {/* MOBILE FULLSCREEN PLAYER OVERRIDE */}
         {mobilePlayerActive && (
@@ -1266,121 +1171,17 @@ export default function MenOfValourPage() {
           </section>
         )}
 
-        {/* 6. EVENTS SECTION */}
+        {/* 6. EVENTS — the main events list, filtered to this ministry */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-gray-50 text-black overflow-hidden border-y border-black/5">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming & Past Events</h2>
-                  <p className="text-black/60 max-w-xl">Highlights from our recent gatherings, conferences, and community outreach programs.</p>
-                </div>
-                <div className="flex flex-col items-start gap-2 md:items-end">
-                  <form onSubmit={handleEventSearch} className="flex w-full items-center gap-2 sm:w-auto">
-                    <input
-                      type="search"
-                      value={eventSearchInput}
-                      onChange={(event) => setEventSearchInput(event.target.value)}
-                      placeholder="November 2026"
-                      className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-black outline-none transition placeholder:text-black/35 focus:border-[#2D5A8C] focus:ring-2 focus:ring-[#2D5A8C]/15 sm:w-48"
-                      aria-label="Search Men of Valour events by date"
-                    />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#2D5A8C] px-4 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#1E3A5F] focus:outline-none focus:ring-2 focus:ring-[#2D5A8C]/30"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      Search
-                    </button>
-                  </form>
-                  {eventSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={clearEventSearch}
-                      className="text-xs font-semibold text-[#2D5A8C] hover:text-[#1E3A5F]"
-                    >
-                      Clear search
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {displayedEventItems.length > 0 ? (
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-                  <button
-                    type="button"
-                    onClick={() => openPublicEvent(featuredGridEvent.sourceId)}
-                    className="group relative h-56 w-full overflow-hidden rounded-2xl border border-black/5 text-left shadow-xl focus:outline-none focus:ring-4 focus:ring-[#2D5A8C] md:h-64"
-                  >
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={featuredGridEvent.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.5 }}
-                        className="absolute inset-0"
-                      >
-                        <Image
-                          src={featuredGridEvent.image}
-                          alt={featuredGridEvent.title}
-                          fill
-                          className="object-cover transition-transform duration-700 group-hover:scale-105"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 flex flex-col justify-end bg-linear-to-t from-black/90 via-black/40 to-transparent p-8">
-                          <span className="mb-3 flex w-fit items-center gap-2 rounded-full bg-[#2D5A8C] px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
-                            <CalendarClock className="h-4 w-4" />
-                            {featuredGridEvent.type}
-                          </span>
-                          <h3 className="mb-2 text-3xl font-bold text-white group-hover:underline group-hover:decoration-2 group-hover:underline-offset-4 md:text-4xl">{featuredGridEvent.title}</h3>
-                          <p className="mb-1 flex items-center gap-2 text-sm font-medium text-white/90 md:text-base">
-                            <CalendarClock className="h-4 w-4" /> {featuredGridEvent.date}
-                          </p>
-                          <p className="flex items-center gap-2 text-sm text-white/70">
-                            <MapPin className="h-4 w-4" /> {featuredGridEvent.location}
-                          </p>
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
-                    <div className="absolute right-4 top-4 rounded-full border border-white/30 bg-white/20 px-3 py-1 text-xs font-medium text-white opacity-0 backdrop-blur-md transition-opacity group-hover:opacity-100">
-                      Click for Details
-                    </div>
-                  </button>
-
-                  <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:gap-6 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-[#2D5A8C]/30">
-                    {remainingEvents.map((event) => (
-                      <button
-                        key={event.id}
-                        type="button"
-                        onClick={() => openPublicEvent(event.sourceId)}
-                        className="group relative h-48 w-64 flex-shrink-0 overflow-hidden rounded-xl border border-black/5 text-left shadow-md focus:outline-none focus:ring-2 focus:ring-[#2D5A8C] sm:w-72 lg:h-[113px] lg:w-full"
-                      >
-                        <Image
-                          src={event.image}
-                          alt={event.title}
-                          fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 flex flex-col justify-end bg-black/60 p-4 transition-colors duration-300 group-hover:bg-black/40">
-                          <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-blue-300">
-                            {event.type}
-                          </span>
-                          <h4 className="mb-1 text-sm font-semibold leading-tight text-white group-hover:underline group-hover:underline-offset-2">{event.title}</h4>
-                          <p className="truncate text-[10px] text-white/60">{event.date}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[#2D5A8C]/25 bg-white p-8 text-center text-sm text-black/55">
-                  No Men of Valour events found for this date search.
-                </div>
-              )}
-            </div>
-          </section>
+          <EventsListSection
+            apiPath="/api/events?ministry=men-of-valour"
+            layout="classic"
+            initialFilter="year"
+            kicker="Men of Valour"
+            title="Upcoming & Past Events"
+            description="Gatherings, conferences, and community outreach programs."
+            sectionClassName="bg-gray-50"
+          />
         )}
 
         {/* 7. SUPPORT SECTION (Replaces Global Vision) */}
@@ -1422,24 +1223,16 @@ export default function MenOfValourPage() {
 
         {/* 8. NEWS SECTION */}
         {!mobilePlayerActive && (
-          <NewsSection
+          <NewsFeed
+            scope="men-of-valour"
             kicker="Men of Valour updates"
             title="Latest News"
             description="Newsletters, empowerment summit highlights, ministry updates, and stories from Men of Valour."
-            items={newsItems}
-            backgroundClassName="bg-slate-50 text-black border-y border-black/5"
-            maxItems={6}
-            />
+            fallbackItems={newsItems}
+            allHref="/news?scope=men-of-valour"
+            allLabel="All Men of Valour news"
+          />
             )}
-
-            <div className="bg-slate-50 pb-16 text-center">
-            <Link 
-            href="/ministries/men-of-valour/archive"
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold uppercase tracking-wider text-red-700 transition hover:bg-slate-50 hover:border-red-200 shadow-sm"
-            >
-            View News Archive <Search className="w-4 h-4" />
-            </Link>
-            </div>
 
             {/* 10. SUPPORT THE MINISTRY SECTOR */}
         {!mobilePlayerActive && (

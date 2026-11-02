@@ -148,7 +148,7 @@ export default function GivingPaymentsPage() {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      adminErrorToast(data.error || 'Unable to build the giving report.');
+      adminErrorToast(data.error || 'Unable to build the gift report.');
       return null;
     }
     return data as GivingReport;
@@ -162,7 +162,7 @@ export default function GivingPaymentsPage() {
       if (format === 'print') printGivingReport(report);
       else await downloadGivingReportPdf(report);
     } catch {
-      adminErrorToast('Unable to build the giving report.');
+      adminErrorToast('Unable to build the gift report.');
     } finally {
       setReportBusy('');
     }
@@ -207,8 +207,8 @@ export default function GivingPaymentsPage() {
       <section className="rounded-lg border border-border/60 bg-card p-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold">Giving report</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Choose the offering type, then print or download the period you need.</p>
+            <h2 className="text-sm font-semibold">Gift report</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">Choose the gift type, then print or download the gift report for the period you need.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => { const range = weekRange(); setReportStart(range.start); setReportEnd(range.end); }}>
@@ -229,7 +229,7 @@ export default function GivingPaymentsPage() {
             <input type="date" value={reportEnd} onChange={(event) => setReportEnd(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs normal-case tracking-normal text-foreground" />
           </label>
           <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Giving type
+            Gift type
             <select value={reportGivingType} onChange={(event) => setReportGivingType(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs normal-case tracking-normal text-foreground">
               <option value="">All types</option>
               {givingTypes.map((type) => (

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import NewsManager from '@/components/admin/NewsManager';
 import {
   MinistryInfoManager,
   MinistryItemsManager,
@@ -11,7 +12,7 @@ import {
   type MinistryItem,
 } from '@/components/admin/MinistryContentManagers';
 
-type Tab = 'info' | 'outreaches';
+type Tab = 'info' | 'outreaches' | 'news';
 
 const prisonFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'Prison Ministry',
@@ -80,6 +81,7 @@ export default function PrisonMinistryAdminPage() {
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: 'info', label: 'Page Info' },
     { id: 'outreaches', label: 'Past Outreaches' },
+    { id: 'news', label: 'News' },
   ];
 
   return (
@@ -133,6 +135,15 @@ export default function PrisonMinistryAdminPage() {
           description="Manage outreach stories shown in the carousel."
           fallbackItems={pastOutreaches}
           labels={{ title: 'Outreach Title', description: 'Description', label: 'Date', image: 'Outreach Picture', save: 'Save Outreach' }}
+        />
+      )}
+
+      {activeTab === 'news' && (
+        <NewsManager
+          token={token}
+          scope="prison-ministry"
+          title="Prison Ministry news"
+          description="Stories shown in the Latest News section of the Prison Ministry page. Deactivate a story to hide it; the starred story leads."
         />
       )}
     </div>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
-import SiteNewsManager from '@/components/admin/SiteNewsManager';
+import NewsManager from '@/components/admin/NewsManager';
 import { MEN_OF_VALOUR_NEWS_ITEMS, MEN_OF_VALOUR_NEWS_KEY } from '@/components/menOfValourNews';
 import {
   MinistryInfoManager,
@@ -102,7 +102,7 @@ export default function MenOfValourAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -138,7 +138,7 @@ export default function MenOfValourAdminPage() {
             Manage logo, motto, hero picture, about text, cards, brotherhood pictures,
             initiatives, events, news, membership payment details, phone number, and email.
           </p>
-        </div>
+        </div>
       </div>
 
       <div className="border-b border-border/60">
@@ -230,15 +230,11 @@ export default function MenOfValourAdminPage() {
       )}
 
       {activeTab === 'news' && (
-        <SiteNewsManager
+        <NewsManager
           token={token}
-          contentKey={MEN_OF_VALOUR_NEWS_KEY}
-          title="Men of Valour News"
-          description="Manage the Latest News section shown on the public Men of Valour page."
-          fallbackItems={MEN_OF_VALOUR_NEWS_ITEMS}
-          imageHelpText="Use the Men of Valour news photos or upload a replacement image."
-          imagePlaceholder="/ministries/mov/news-1.JPG"
-          maxItems={MEN_OF_VALOUR_NEWS_ITEMS.length}
+          scope="men-of-valour"
+          title="Men of Valour news"
+          description="Stories shown in the Latest News section of the Men of Valour page. Deactivate a story to hide it; the starred story leads."
         />
       )}
     </div>

@@ -7,6 +7,9 @@ import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
+import ContentCollectionManager from '@/components/admin/ContentCollectionManager';
+import { CONTENT_COLLECTIONS } from '@/lib/content-items';
+import { CONTACT_CARD_FIELDS, CONTACT_CARD_SEEDS, CONTACT_OFFICE_FIELDS } from '@/lib/contact-defaults';
 
 type SiteContentRecord = {
   key: string;
@@ -222,6 +225,25 @@ export default function ContactPageAdmin() {
           })}
         </div>
       </div>
+
+      <ContentCollectionManager
+        token={token}
+        collection={CONTENT_COLLECTIONS.contactCards}
+        title="Contact cards"
+        description="The phone, email and address cards at the top of the Contact page."
+        fields={CONTACT_CARD_FIELDS}
+        seeds={CONTACT_CARD_SEEDS}
+        itemLabel="contact card"
+      />
+
+      <ContentCollectionManager
+        token={token}
+        collection={CONTENT_COLLECTIONS.contactOffices}
+        title="Offices and departments"
+        description="Optional directory shown on the Contact page. It stays hidden until you add an office."
+        fields={CONTACT_OFFICE_FIELDS}
+        itemLabel="office"
+      />
     </div>
   );
 }

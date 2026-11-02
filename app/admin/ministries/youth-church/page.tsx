@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
-import SiteNewsManager from '@/components/admin/SiteNewsManager';
+import NewsManager from '@/components/admin/NewsManager';
 import { YOUTH_CHURCH_NEWS_ITEMS, YOUTH_CHURCH_NEWS_KEY } from '@/components/youthChurchNews';
 import {
   MinistryInfoManager,
@@ -120,7 +120,7 @@ export default function YouthChurchAdminPage() {
     loginError,
     setEmail,
     setPassword,
-    handleLogin,
+    handleLogin,
   } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
 
@@ -156,7 +156,7 @@ export default function YouthChurchAdminPage() {
             Manage logo, motto, hero picture, about text, ministry arms, youth life gallery,
             initiatives, events, partnership details, phone number, and email.
           </p>
-        </div>
+        </div>
       </div>
 
       <div className="border-b border-border/60">
@@ -242,13 +242,11 @@ export default function YouthChurchAdminPage() {
       )}
 
       {activeTab === 'news' && (
-        <SiteNewsManager
+        <NewsManager
           token={token}
-          contentKey={YOUTH_CHURCH_NEWS_KEY}
-          title="Youth Church News"
-          description="Manage the Latest News section shown on the public Youth Church page."
-          fallbackItems={YOUTH_CHURCH_NEWS_ITEMS}
-          maxItems={YOUTH_CHURCH_NEWS_ITEMS.length}
+          scope="youth-church"
+          title="Youth Church news"
+          description="Stories shown in the Latest News section of the Youth Church page. Deactivate a story to hide it; the starred story leads."
         />
       )}
     </div>

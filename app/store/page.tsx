@@ -118,7 +118,12 @@ export default function StorePage() {
   const [checkoutBankTransfer, setCheckoutBankTransfer] = useState<BankTransferDetails | null>(null);
   const [storeProducts, setStoreProducts] = useState<Product[]>(products);
 
-  const heroBook = storeProducts.find((product) => product.id === 'b2') || storeProducts.find((product) => product.category === 'Books') || storeProducts[0];
+  // The store admin marks the book being marketed as the latest book; fall back to the newest listed book.
+  const heroBook =
+    storeProducts.find((product) => product.category === 'Books' && product.isFeatured) ||
+    storeProducts.find((product) => product.id === 'b2') ||
+    storeProducts.find((product) => product.category === 'Books') ||
+    storeProducts[0];
   const bookProducts = useMemo(
     () => storeProducts.filter((product) => product.category === 'Books'),
     [storeProducts]
@@ -263,7 +268,11 @@ export default function StorePage() {
     bookContent?: string | null;
     sortOrder?: number;
     isActive?: boolean;
+    isFeatured?: boolean;
+    featuredTagline?: string | null;
   }): Product => ({
+    isFeatured: book.isFeatured === true,
+    featuredTagline: book.featuredTagline || null,
     id: String(book.productId || book.id || ''),
     name: String(book.name || book.title || ''),
     price: Number(book.hardCopyPrice ?? book.price ?? 0),
@@ -1172,19 +1181,42 @@ export default function StorePage() {
             </button>
 
             <div className="text-center lg:text-left">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#9fd4ea]">Featured</p>
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#9fd4ea]">
+                <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#f59e0b] opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-[#f59e0b]" /></span>
+                {heroBook.isFeatured ? 'Latest book · Now available' : 'Featured'}
+              </p>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">
                 {heroBook.name}
               </h1>
               {heroBook.author ? <p className="mt-3 text-base text-white/70">{heroBook.author}</p> : null}
-              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-white/75 sm:text-base lg:mx-0">
-                A prophetic resource to strengthen your faith, sharpen your focus, and help you contend for the breakthroughs God has prepared for you.
+              {heroBook.featuredTagline ? (
+                <p className="mx-auto mt-5 max-w-xl text-xl font-medium italic text-[#f8d58a] lg:mx-0">&ldquo;{heroBook.featuredTagline}&rdquo;</p>
+              ) : null}
+              <p className="mx-auto mt-4 line-clamp-4 max-w-xl text-sm leading-6 text-white/75 sm:text-base lg:mx-0">
+                {heroBook.description || 'A prophetic resource to strengthen your faith, sharpen your focus, and help you contend for the breakthroughs God has prepared for you.'}
               </p>
-              <p className="mt-5 text-lg font-semibold">{formatMWK(heroBook.price)}</p>
-              <div className="mt-6">
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 lg:justify-start">
+                {heroBook.hardCopyEnabled !== false ? (
+                  <p className="text-lg font-semibold">{formatMWK(heroBook.hardCopyPrice ?? heroBook.price)} <span className="text-xs font-normal text-white/60">hard copy</span></p>
+                ) : null}
+                {heroBook.softCopyEnabled !== false && heroBook.softCopyPrice != null ? (
+                  <p className="text-lg font-semibold">{formatMWK(heroBook.softCopyPrice)} <span className="text-xs font-normal text-white/60">e-book</span></p>
+                ) : null}
+              </div>
+              {heroBook.hardCopyEnabled !== false && typeof heroBook.hardCopyStock === 'number' && heroBook.hardCopyStock > 0 && heroBook.hardCopyStock <= 10 ? (
+                <p className="mt-2 text-xs font-semibold text-[#f59e0b]">Only {heroBook.hardCopyStock} hard copies left</p>
+              ) : null}
+              <div className="mt-6 flex flex-wrap justify-center gap-3 lg:justify-start">
                 <Button
                   onClick={() => handleProductClick(heroBook)}
-                  className="rounded-full bg-white px-7 py-6 text-sm font-semibold text-slate-950 hover:bg-slate-100"
+                  className="rounded-full bg-[#f59e0b] px-7 py-6 text-sm font-semibold text-slate-950 hover:bg-[#e58f00]"
+                >
+                  Get your copy
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleProductClick(heroBook)}
+                  className="rounded-full border-white/40 bg-transparent px-7 py-6 text-sm font-semibold text-white hover:bg-white/10 hover:text-white"
                 >
                   View book
                 </Button>

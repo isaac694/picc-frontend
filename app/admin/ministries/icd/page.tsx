@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import NewsManager from '@/components/admin/NewsManager';
 import {
   MinistryInfoManager,
   MinistryItemsManager,
@@ -11,7 +12,7 @@ import {
   type MinistryItem,
 } from '@/components/admin/MinistryContentManagers';
 
-type Tab = 'info' | 'cards' | 'learning' | 'initiatives' | 'events';
+type Tab = 'info' | 'cards' | 'learning' | 'initiatives' | 'events' | 'news';
 
 const icdFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'ICD',
@@ -135,6 +136,7 @@ export default function IcdAdminPage() {
     { id: 'learning', label: 'Learning Pictures' },
     { id: 'initiatives', label: 'Initiatives' },
     { id: 'events', label: 'Events' },
+    { id: 'news', label: 'News' },
   ];
 
   return (
@@ -220,6 +222,15 @@ export default function IcdAdminPage() {
           description="Manage upcoming and past ICD events."
           fallbackItems={events}
           labels={{ title: 'Event Title', description: 'Event Description', label: 'Date / Time', image: 'Event Image' }}
+        />
+      )}
+
+      {activeTab === 'news' && (
+        <NewsManager
+          token={token}
+          scope="icd"
+          title="ICD news"
+          description="Stories shown in the Latest News section of the ICD page. Deactivate a story to hide it; the starred story leads."
         />
       )}
     </div>

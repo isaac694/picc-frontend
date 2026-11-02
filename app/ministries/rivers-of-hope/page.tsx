@@ -17,6 +17,9 @@ import {
   XIcon, Facebook, Twitter, Instagram, HeartHandshake, Info, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import EventsListSection from '@/components/EventsListSection';
+import InitiativesListSection from '@/components/ministries/InitiativesListSection';
+import NewsFeed from '@/components/news/NewsFeed';
 
 // --- LIVESTREAM COMPONENTS ---
 import LiveChat from '@/components/LiveChat';
@@ -995,42 +998,16 @@ export default function RiversOfHopePage() {
           </section>
         )}
 
-        {/* 3. PROGRAMS & OUTREACH INITIATIVES */}
+        {/* 3. PROGRAMS & OUTREACH INITIATIVES — same layout as the main events list */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-gray-50 border-y border-black/5 text-black">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Programs & Outreach Initiatives</h2>
-                <p className="text-black/60 max-w-2xl mx-auto">Equipping leaders, reaching the youth, and spreading the Gospel to every corner.</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {programItems.map((program, index) => {
-                  const configs = [
-                    { Icon: Flame, border: 'border-t-red-700', bg: 'bg-red-50', icon: 'text-red-700', title: 'text-red-900', bar: 'bg-red-700/10', span: 'md:col-span-2 lg:col-span-1' },
-                    { Icon: Globe, border: 'border-t-blue-700', bg: 'bg-blue-50', icon: 'text-blue-700', title: 'text-blue-900', bar: 'bg-blue-700/10', span: '' },
-                    { Icon: Users, border: 'border-t-emerald-600', bg: 'bg-emerald-50', icon: 'text-emerald-600', title: 'text-emerald-900', bar: 'bg-emerald-600/10', span: '' },
-                    { Icon: GraduationCap, border: 'border-t-amber-500', bg: 'bg-amber-50', icon: 'text-amber-600', title: 'text-amber-800', bar: 'bg-amber-500/10', span: 'md:col-span-1 lg:col-span-1 lg:col-start-1' },
-                    { Icon: BookOpen, border: 'border-t-purple-600', bg: 'bg-purple-50', icon: 'text-purple-600', title: 'text-purple-900', bar: 'bg-purple-600/10', span: 'md:col-span-1 lg:col-span-2' },
-                  ];
-                  const config = configs[index % configs.length];
-                  const Icon = config.Icon;
-                  return (
-                    <Card key={program.id} className={`relative overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300 border-t-4 ${config.border} bg-white ${config.span}`}>
-                      <div className="p-8">
-                        <div className={`w-14 h-14 ${config.bg} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                          <Icon className={`w-7 h-7 ${config.icon}`} />
-                        </div>
-                        <h3 className={`text-xl font-bold ${config.title} mb-3`}>{program.title}</h3>
-                        <p className="text-black/70 text-sm leading-relaxed">{program.description}</p>
-                      </div>
-                      <div className={`h-2 w-full ${config.bar} absolute bottom-0 left-0`} />
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
+          <InitiativesListSection
+            ministryName="Rivers of Hope"
+            kicker="Programs & initiatives"
+            title="Programs & Outreach Initiatives"
+            items={projectItems.map((item) => ({ id: String(item.id), title: item.title, type: item.type, status: item.status, image: item.image }))}
+            archiveHref="/ministries/rivers-of-hope/archive"
+            sectionClassName="bg-gray-50"
+          />
         )}
 
         {/* 4. CRUSADE HIGHLIGHTS (6-Grid Gallery) */}
@@ -1168,216 +1145,28 @@ export default function RiversOfHopePage() {
           </section>
         )}
 
-        {/* 6. ALL EVENTS SECTION (Cycling Grid) */}
+        {/* 6. EVENTS — the main events list, filtered to this ministry */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-gray-50 text-black overflow-hidden border-y border-black/5">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-6 mb-10 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Upcoming Crusades & Conferences</h2>
-                  <p className="text-black/60 max-w-xl">See where Pastor Esau Banda and the team will be taking the Gospel next.</p>
-                </div>
-                <form onSubmit={handleEventSearch} className="flex w-full max-w-2xl items-center gap-3">
-                  <label htmlFor="rivers-of-hope-event-search" className="sr-only">Search events</label>
-                  <input
-                    id="rivers-of-hope-event-search"
-                    value={eventSearchInput}
-                    onChange={(event) => setEventSearchInput(event.target.value)}
-                    placeholder="Search crusades, dates, locations"
-                    className="min-w-0 flex-1 rounded-full border border-black/10 bg-white px-4 py-3 text-sm text-black shadow-sm focus:border-red-800 focus:outline-none focus:ring-2 focus:ring-red-100"
-                  />
-                  <button type="submit" className="rounded-full bg-red-800 px-5 py-3 text-sm font-semibold text-white hover:bg-red-900 transition">
-                    Search
-                  </button>
-                  <button type="button" onClick={clearEventSearch} className="rounded-full border border-black/10 bg-white px-4 py-3 text-sm text-black hover:bg-black/5 transition">
-                    Clear
-                  </button>
-                </form>
-              </div>
-
-              {filteredEventItems.length === 0 ? (
-                <div className="rounded-3xl border border-black/10 bg-white p-12 text-center">
-                  <p className="text-xl font-semibold text-black">No crusades or conferences matched your search.</p>
-                  <p className="mt-3 text-sm text-black/70">Try another keyword or clear the search to view all upcoming events.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                  <button 
-                    onClick={() => openPublicEvent(featuredGridEvent.id)}
-                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-red-800"
-                  >
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={featuredGridEvent.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.5 }}
-                        className="absolute inset-0"
-                      >
-                        <Image 
-                          src={featuredGridEvent.image} 
-                          alt={featuredGridEvent.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-700"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
-                          <span className="bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
-                            <CalendarClock className="w-4 h-4" />
-                            {featuredGridEvent.type}
-                          </span>
-                          <h3 className="text-white text-3xl md:text-4xl font-bold mb-2 group-hover:underline decoration-2 underline-offset-4">{featuredGridEvent.title}</h3>
-                          <p className="text-white/90 text-sm md:text-base font-medium flex items-center gap-2 mb-1">
-                            <CalendarClock className="w-4 h-4" /> {featuredGridEvent.date}
-                          </p>
-                          <p className="text-white/70 text-sm flex items-center gap-2">
-                            <MapPin className="w-4 h-4" /> {featuredGridEvent.location}
-                          </p>
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
-                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Click for Details
-                    </div>
-                  </button>
-
-                  <div className="lg:col-span-1">
-                    <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-red-200">
-                      {remainingEvents.map((event) => (
-                        <button 
-                          key={event.id} 
-                          onClick={() => openPublicEvent(event.id)}
-                          className="min-w-[280px] lg:min-w-full relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-red-800"
-                        >
-                          <Image 
-                            src={event.image} 
-                            alt={event.title}
-                            fill
-                            className="object-cover group-hover:scale-110 transition-transform duration-500"
-                            onError={swapImage('/hero/hero-store.jpg')}
-                          />
-                          <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                            <span className="text-red-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                              {event.type}
-                            </span>
-                            <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{event.title}</h4>
-                            <p className="text-white/60 text-[10px] truncate">{event.date}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
+          <EventsListSection
+            apiPath="/api/events?ministry=rivers-of-hope"
+            layout="classic"
+            initialFilter="year"
+            kicker="Rivers of Hope"
+            title="Crusades & Events"
+            sectionClassName="bg-gray-50"
+          />
         )}
 
-        {/* 7. MINISTRY OUTREACHES */}
+        {/* 7. MINISTRY OUTREACHES — same layout as the main events list */}
         {!mobilePlayerActive && (
-          <section className="py-20 bg-white text-black overflow-hidden border-b border-black/5">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-6 mb-10 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">Ministry Outreaches</h2>
-                  <p className="text-black/60 max-w-xl">Highlights from our community-based outreaches and mission work.</p>
-                </div>
-                <form onSubmit={handleOutreachSearch} className="flex w-full max-w-2xl items-center gap-3">
-                  <label htmlFor="rivers-of-hope-outreach-search" className="sr-only">Search outreaches</label>
-                  <input
-                    id="rivers-of-hope-outreach-search"
-                    value={outreachSearchInput}
-                    onChange={(event) => setOutreachSearchInput(event.target.value)}
-                    placeholder="Search outreaches, titles, descriptions"
-                    className="min-w-0 flex-1 rounded-full border border-black/10 bg-white px-4 py-3 text-sm text-black shadow-sm focus:border-red-800 focus:outline-none focus:ring-2 focus:ring-red-100"
-                  />
-                  <button type="submit" className="rounded-full bg-red-800 px-5 py-3 text-sm font-semibold text-white hover:bg-red-900 transition">
-                    Search
-                  </button>
-                  <button type="button" onClick={clearOutreachSearch} className="rounded-full border border-black/10 bg-white px-4 py-3 text-sm text-black hover:bg-black/5 transition">
-                    Clear
-                  </button>
-                </form>
-              </div>
-
-              {filteredOutreachItems.length === 0 ? (
-                <div className="rounded-3xl border border-black/10 bg-gray-50 p-12 text-center">
-                  <p className="text-xl font-semibold text-black">No outreaches matched your search.</p>
-                  <p className="mt-3 text-sm text-black/70">Try another keyword or clear the search to view all outreaches.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                  <button 
-                    onClick={() => setSelectedOutreach(featuredGridOutreach)}
-                    className="relative h-56 md:h-64 rounded-2xl overflow-hidden shadow-xl border border-black/5 group text-left w-full focus:outline-none focus:ring-4 focus:ring-red-800"
-                  >
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={featuredGridOutreach.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.5 }}
-                        className="absolute inset-0"
-                      >
-                        <Image 
-                          src={featuredGridOutreach.image} 
-                          alt={featuredGridOutreach.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-700"
-                          onError={swapImage('/hero/hero-store.jpg')}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
-                          <span className="bg-[#b91c1c] text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full w-fit mb-3 flex items-center gap-2">
-                            <Flame className="w-4 h-4" />
-                            {featuredGridOutreach.type}
-                          </span>
-                          <h3 className="text-white text-3xl md:text-4xl font-bold mb-2 group-hover:underline decoration-2 underline-offset-4">{featuredGridOutreach.title}</h3>
-                          <p className="text-white/90 text-sm md:text-base font-medium flex items-center gap-2 mb-1">
-                            <CalendarClock className="w-4 h-4" /> {featuredGridOutreach.date}
-                          </p>
-                          <p className="text-white/70 text-sm flex items-center gap-2">
-                            <MapPin className="w-4 h-4" /> {featuredGridOutreach.location}
-                          </p>
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
-                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium border border-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Click for Details
-                    </div>
-                  </button>
-
-                  <div className="lg:col-span-1">
-                    <div className="flex gap-4 overflow-x-auto pb-4 lg:max-h-64 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0 lg:pr-1 scrollbar-thin scrollbar-thumb-red-200">
-                      {remainingOutreaches.map((outreach) => (
-                        <button 
-                          key={outreach.id} 
-                          onClick={() => setSelectedOutreach(outreach)}
-                          className="min-w-[280px] lg:min-w-full relative h-48 lg:h-[113px] rounded-xl overflow-hidden shadow-md border border-black/5 group text-left focus:outline-none focus:ring-2 focus:ring-red-800"
-                        >
-                          <Image 
-                            src={outreach.image} 
-                            alt={outreach.title}
-                            fill
-                            className="object-cover group-hover:scale-110 transition-transform duration-500"
-                            onError={swapImage('/hero/hero-store.jpg')}
-                          />
-                          <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-300 flex flex-col justify-end p-4">
-                            <span className="text-red-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                              {outreach.type}
-                            </span>
-                            <h4 className="text-white text-sm font-semibold leading-tight mb-1 group-hover:underline underline-offset-2">{outreach.title}</h4>
-                            <p className="text-white/60 text-[10px] truncate">{outreach.date}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
+          <InitiativesListSection
+            ministryName="Rivers of Hope"
+            kicker="Outreaches"
+            title="Ministry Outreaches"
+            description="Highlights from our community-based outreaches and mission work."
+            items={outreachItems.map((item) => ({ id: String(item.id), title: item.title, type: item.type, status: item.date, description: item.description, image: item.image }))}
+            sectionClassName="bg-white"
+          />
         )}
 
         {/* 8. PARTNERSHIP FORM */}
@@ -1686,11 +1475,14 @@ export default function RiversOfHopePage() {
 
         {/* 10. NEWS SECTION */}
         {!mobilePlayerActive && (
-          <NewsSection 
+          <NewsFeed
+            scope="rivers-of-hope"
+            kicker="Rivers of Hope updates"
             title="Latest Crusade News"
-            description="Stay updated with the latest happenings, testimonies, and reports from the Rivers of Hope team."
-            items={RIVERS_OF_HOPE_NEWS_ITEMS}
-            backgroundClassName="bg-white"
+            description="The latest happenings, testimonies, and reports from the Rivers of Hope team."
+            fallbackItems={RIVERS_OF_HOPE_NEWS_ITEMS}
+            allHref="/news?scope=rivers-of-hope"
+            allLabel="All Rivers of Hope news"
           />
         )}
 

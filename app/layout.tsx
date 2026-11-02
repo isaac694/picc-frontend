@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/sonner';
 import AdminThemeSync from '@/components/admin/AdminThemeSync';
 import WebsiteAdsPopup from '@/components/WebsiteAdsPopup';
 import PublicPICCAssistant from '@/components/PICCAssistant/PublicPICCAssistant';
+import SiteAnimations from '@/components/SiteAnimations';
 /**
  * Metadata (SEO, title, description, icons, etc.)
  */
@@ -54,6 +55,7 @@ export default function RootLayout({
         <ScrollActions />
         <WebsiteAdsPopup />
         <PublicPICCAssistant/>
+        <SiteAnimations />
       </body>
     </html>
   );

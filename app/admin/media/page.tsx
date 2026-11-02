@@ -7,6 +7,9 @@ import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
+import NewsManager from '@/components/admin/NewsManager';
+import ContentCollectionManager, { type CollectionField } from '@/components/admin/ContentCollectionManager';
+import { CONTENT_COLLECTIONS } from '@/lib/content-items';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { SchoolAdminDialogShell } from '@/components/admin/school-admin-dialog-shell';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
@@ -24,6 +27,21 @@ import {
   type MediaMagazineItem,
   type MediaNewsItem,
 } from '@/lib/mediaDefaults';
+
+const MUSIC_VIDEO_FIELDS: CollectionField[] = [
+  { name: 'title', label: 'Song title' },
+  { name: 'subtitle', label: 'Artist or choir', placeholder: 'PICC Worship Team' },
+  { name: 'linkUrl', label: 'YouTube link', required: true, placeholder: 'https://www.youtube.com/watch?v=…' },
+  { name: 'imageUrl', label: 'Thumbnail (optional, YouTube picture is used otherwise)', type: 'image' },
+];
+
+const MUSIC_AUDIO_FIELDS: CollectionField[] = [
+  { name: 'title', label: 'Song title' },
+  { name: 'subtitle', label: 'Artist or choir' },
+  { name: 'linkUrl', label: 'Spotify or audio link', required: true, placeholder: 'https://open.spotify.com/track/…' },
+  { name: 'imageUrl', label: 'Cover art', type: 'image' },
+  { name: 'body', label: 'About this song (optional)', type: 'textarea' },
+];
 
 const SECTION_KEYS = {
   news: 'media-news',
@@ -527,7 +545,7 @@ export default function AdminMediaPage() {
             Media Page Editor
           </h1>
           <p className="mt-3 max-w-2xl text-foreground/70">
-            Manage church news, gallery items, Fire on the Altar books, and magazines. Built-in content appears alongside saved dashboard items, just like the ministry pages.
+            Manage church news, music, gallery items, Fire on the Altar books, and magazines. Built-in content appears alongside saved dashboard items, just like the ministry pages.
           </p>
         </div>
       </div>
@@ -537,94 +555,37 @@ export default function AdminMediaPage() {
 
       <div className="space-y-12">
         <section className="space-y-5 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="mb-2 text-xs uppercase tracking-[0.35em] text-primary/70">Church News</p>
-              <p className="text-sm text-foreground/60">
-                Keep news stories separate from the rest of the media page and edit them from one focused workspace.
-              </p>
-              <p className={`mt-2 text-xs font-semibold ${persistedNewsCount >= MEDIA_NEWS_MAX_ITEMS ? 'text-destructive' : 'text-primary'}`}>
-                {persistedNewsCount} / {MEDIA_NEWS_MAX_ITEMS} saved news items. Built-in news also appears on the public page.
-              </p>
-            </div>
-            <Button
-              type="button"
-              className="shrink-0 gap-2"
-              disabled={persistedNewsCount >= MEDIA_NEWS_MAX_ITEMS}
-              onClick={() => openAddSectionDialog('news')}
-            >
-              <Plus className="h-4 w-4" />
-              Add news
-            </Button>
-          </div>
-
-          <div className={sectionCardClassName}>
-            <div className="mb-4">
-              <input
-                type="search"
-                value={newsSearch}
-                onChange={(event) => setNewsSearch(event.target.value)}
-                placeholder="Search existing news..."
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-              />
-            </div>
-            {filteredNewsItems.length === 0 ? (
-              <p className="text-sm text-foreground/60">No news items yet.</p>
-            ) : (
-              <div className="max-h-[620px] overflow-auto rounded-xl border border-border/70">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="bg-muted/50 text-xs uppercase tracking-wide text-foreground/60">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Date</th>
-                      <th className="px-3 py-2 font-medium">Title</th>
-                      <th className="px-3 py-2 font-medium">Source</th>
-                      <th className="px-3 py-2 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredNewsItems.map((item) => (
-                      <tr key={item.id} className="border-t border-border/60 align-top">
-                        <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
-                          {[item.badge, item.date].filter(Boolean).join(' - ') || 'News item'}
-                        </td>
-                        <td className="px-3 py-2">
-                          <p className="font-medium text-foreground">{item.title || 'Untitled news item'}</p>
-                          {item.description ? (
-                            <p className="mt-1 line-clamp-2 text-foreground/70">{item.description}</p>
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-2"><ItemSourceBadge isFallback={item.isFallback} /></td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`Edit ${item.title || 'news item'}`}
-                              onClick={() => openEditSectionDialog('news', item)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              aria-label={`Delete ${item.title || 'news item'}`}
-                              onClick={() => requestDeleteItem('news', item, newsItems, setNewsItems)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <NewsManager
+            token={token}
+            scope="church"
+            title="Church news"
+            description="Stories on the Media page and at /news. Deactivate a story to hide it without deleting it; the starred story leads the page."
+          />
         </section>
+
+        <section className="space-y-5 border-t border-border/60 pt-8">
+          <ContentCollectionManager
+            token={token}
+            collection={CONTENT_COLLECTIONS.musicVideos}
+            title="Music videos"
+            description="Paste a YouTube link for each song. Until you add one, the page shows the latest uploads from the PICC music channel."
+            fields={MUSIC_VIDEO_FIELDS}
+            itemLabel="music video"
+            uploadPurpose="media"
+            showViews
+          />
+          <ContentCollectionManager
+            token={token}
+            collection={CONTENT_COLLECTIONS.musicAudios}
+            title="Music audio"
+            description="Paste a Spotify link (track, album or playlist) or a link to an MP3 file."
+            fields={MUSIC_AUDIO_FIELDS}
+            itemLabel="song"
+            uploadPurpose="media"
+            showViews
+          />
+        </section>
+
 
         <section className="space-y-5 border-t border-border/60 pt-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

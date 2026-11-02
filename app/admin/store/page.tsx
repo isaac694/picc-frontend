@@ -47,6 +47,8 @@ type StoreBookDraft = {
   bookContent: string;
   sortOrder: string;
   isActive: boolean;
+  isFeatured: boolean;
+  featuredTagline: string;
 };
 
 const EMPTY_DRAFT: StoreBookDraft = {
@@ -65,6 +67,8 @@ const EMPTY_DRAFT: StoreBookDraft = {
   bookContent: '',
   sortOrder: '0',
   isActive: true,
+  isFeatured: false,
+  featuredTagline: '',
 };
 
 const cardClassName = 'rounded-2xl border border-border/60 bg-card p-6 shadow-sm';
@@ -85,6 +89,8 @@ const toDraft = (book: StoreBook): StoreBookDraft => ({
   bookContent: book.bookContent || '',
   sortOrder: String(book.sortOrder ?? 0),
   isActive: book.isActive !== false,
+  isFeatured: book.isFeatured === true,
+  featuredTagline: book.featuredTagline || '',
 });
 
 const normalizeBook = (book: Partial<StoreBook>): StoreBook => ({
@@ -108,6 +114,8 @@ const normalizeBook = (book: Partial<StoreBook>): StoreBook => ({
   bookContent: book.bookContent || '',
   sortOrder: Number(book.sortOrder || 0),
   isActive: book.isActive !== false,
+  isFeatured: book.isFeatured === true,
+  featuredTagline: book.featuredTagline || null,
   isBuiltIn: book.isBuiltIn === true,
 });
 
@@ -324,6 +332,8 @@ export default function AdminStorePage() {
     bookContent: draft.bookContent.trim(),
     sortOrder: Number(draft.sortOrder || 0),
     isActive: draft.isActive,
+    isFeatured: draft.isFeatured,
+    featuredTagline: draft.featuredTagline.trim(),
   });
 
   const saveBook = async () => {
@@ -750,6 +760,21 @@ export default function AdminStorePage() {
             </div>
           </div>
 
+          <div className="space-y-3 rounded-2xl border border-amber-300/60 bg-amber-50/60 p-4 dark:bg-amber-500/10">
+            <label className="flex items-center gap-3 text-sm font-semibold text-foreground">
+              <input type="checkbox" checked={draft.isFeatured} onChange={(event) => setDraft((prev) => ({ ...prev, isFeatured: event.target.checked }))} />
+              Market this as the latest book
+            </label>
+            <p className="text-xs text-foreground/60">It is shown in the large spotlight at the top of the store. If several books are ticked, the first one in the list is used.</p>
+            <input
+              value={draft.featuredTagline}
+              onChange={(event) => setDraft((prev) => ({ ...prev, featuredTagline: event.target.value }))}
+              placeholder="Marketing line, e.g. A fresh word for a new season"
+              maxLength={255}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground"
+            />
+          </div>
+
           <div className="space-y-2">
             <label htmlFor="store-book-sort-order" className="text-sm font-medium text-foreground">Sort order</label>
             <input
@@ -804,7 +829,10 @@ export default function AdminStorePage() {
                 <tbody>
                   {filteredBooks.map((book) => (
                     <tr key={book.id} className="border-t border-border/60">
-                      <td className="px-3 py-2 font-medium text-foreground">{book.title}</td>
+                      <td className="px-3 py-2 font-medium text-foreground">
+                        {book.title}
+                        {book.isFeatured ? <span className="ml-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">Latest book</span> : null}
+                      </td>
                       <td className="px-3 py-2 text-foreground/70">{book.author || 'No author'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-foreground/70">MWK {book.hardCopyPrice.toLocaleString()}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-foreground/70">{book.hardCopyEnabled ? book.hardCopyStock ?? 0 : '—'}</td>

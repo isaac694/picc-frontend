@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import NewsManager from '@/components/admin/NewsManager';
 import {
   MinistryInfoManager,
   MinistryItemsManager,
@@ -11,7 +12,7 @@ import {
   type MinistryItem,
 } from '@/components/admin/MinistryContentManagers';
 
-type Tab = 'info' | 'programs' | 'highlights' | 'initiatives' | 'events';
+type Tab = 'info' | 'programs' | 'highlights' | 'initiatives' | 'events' | 'news';
 
 const rohFallbackInfo: Omit<MinistryInfo, 'id' | 'ministryKey'> = {
   name: 'Rivers of Hope',
@@ -136,6 +137,7 @@ export default function RiversOfHopeAdminPage() {
     { id: 'highlights', label: 'Highlights' },
     { id: 'initiatives', label: 'Strategic Projects' },
     { id: 'events', label: 'Events' },
+    { id: 'news', label: 'News' },
   ];
 
   return (
@@ -226,6 +228,15 @@ export default function RiversOfHopeAdminPage() {
           description="Manage upcoming and past crusades and conferences."
           fallbackItems={events}
           labels={{ title: 'Event Title', description: 'Event Description', label: 'Date', image: 'Event Image' }}
+        />
+      )}
+
+      {activeTab === 'news' && (
+        <NewsManager
+          token={token}
+          scope="rivers-of-hope"
+          title="Rivers of Hope news"
+          description="Stories shown in the Latest News section of the Rivers of Hope page. Deactivate a story to hide it; the starred story leads."
         />
       )}
     </div>
