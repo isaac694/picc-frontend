@@ -390,7 +390,9 @@ export default function ContactPage() {
           </section>
         ) : null}
 
-        {/* Map + location photo */}
+        
+
+        {/* Map + location phouuuuuuto */}
         <section className="pb-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="grid overflow-hidden rounded-[2rem] border border-border/60 bg-white shadow-xl lg:grid-cols-[1.4fr_1fr]">
