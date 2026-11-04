@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Printer, RefreshCw, ScanLine, Search, XCircle } from 'lucide-react';
+import { Camera, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Mail, Printer, RefreshCw, ScanLine, Search, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import PeriodFilter from '@/components/admin/PeriodFilter';
@@ -16,11 +16,14 @@ import { downloadReceiptPdf, money, printReceipt, receiptDate, REFERENCE_HINTS, 
 import { cn } from '@/lib/utils';
 
 type LookedUpBook = { title: string; author: string | null; price: number; hardCopyStock: number; available: boolean; barcode: string };
+type BasketLine = LookedUpBook & { quantity: number };
 type Summary = { orders: number; copies: number; paidTotal: number; pendingTotal: number; byMethod: Array<{ method: string; total: number }> };
 
 // Payments taken at the counter. Online PayChangu payments confirm themselves, so they are not offered here.
 const PAYMENT_METHODS = ['Cash', 'POS', 'Bank Transfer', 'Airtel Money agent', 'TNM Mpamba'];
 const needsReference = (method: string) => method !== 'Cash';
+const AUTO_PRINT_KEY = 'hardcopy_sales_auto_print';
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STATUS_STYLES: Record<string, string> = {
   paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
   pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
@@ -99,12 +102,13 @@ export default function HardcopySalesPage() {
 
   // New sale
   const [code, setCode] = useState('');
-  const [book, setBook] = useState<LookedUpBook | null>(null);
+  const [basket, setBasket] = useState<BasketLine[]>([]);
   const [lookupError, setLookupError] = useState('');
   const [scanning, setScanning] = useState(false);
-  const [quantity, setQuantity] = useState(1);
   const [buyerName, setBuyerName] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const [autoPrint, setAutoPrint] = useState(true);
   const [method, setMethod] = useState('Cash');
   const [paymentReference, setPaymentReference] = useState('');
   const [paidNow, setPaidNow] = useState(true);
@@ -125,13 +129,37 @@ export default function HardcopySalesPage() {
   const [confirming, setConfirming] = useState<StoreOrder | null>(null);
   const [confirmMethod, setConfirmMethod] = useState('Cash');
   const [confirmReference, setConfirmReference] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
+
+  // Emailing a paid receipt
+  const [emailing, setEmailing] = useState<StoreOrder | null>(null);
+  const [emailTo, setEmailTo] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  // The till remembers whether to print every receipt straight away.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(AUTO_PRINT_KEY) === 'off') setAutoPrint(false);
+    } catch {
+      // Private windows may block storage; keep printing on.
+    }
+  }, []);
+
+  const changeAutoPrint = (value: boolean) => {
+    setAutoPrint(value);
+    try {
+      localStorage.setItem(AUTO_PRINT_KEY, value ? 'on' : 'off');
+    } catch {
+      // Not remembered, but still applies to this visit.
+    }
+  };
 
   const headers = useCallback(() => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }), [token]);
 
+  // Each scan adds the book to the basket; scanning the same book again adds another copy.
   const lookUp = useCallback(async (value: string) => {
     const cleaned = codeFromScan(value);
     setCode(cleaned);
-    setBook(null);
     setLookupError('');
     if (!cleaned) return;
     const response = await apiFetch(`/api/store/scan/${encodeURIComponent(cleaned)}`);
@@ -140,9 +168,23 @@ export default function HardcopySalesPage() {
       setLookupError(data?.error || 'No book matches that code.');
       return;
     }
-    setBook(data.book);
-    setQuantity(1);
+    const found: LookedUpBook = data.book;
+    setBasket((current) => {
+      const existing = current.find((line) => line.barcode === found.barcode);
+      if (existing) {
+        return current.map((line) => (line.barcode === found.barcode ? { ...line, ...found, quantity: line.quantity + 1 } : line));
+      }
+      return [...current, { ...found, quantity: 1 }];
+    });
+    setCode('');
   }, []);
+
+  const setLineQuantity = (barcode: string, quantity: number) =>
+    setBasket((current) => current.map((line) => (line.barcode === barcode ? { ...line, quantity: Math.min(50, Math.max(1, quantity)) } : line)));
+  const removeLine = (barcode: string) => setBasket((current) => current.filter((line) => line.barcode !== barcode));
+  const basketCopies = basket.reduce((sum, line) => sum + line.quantity, 0);
+  const basketTotal = basket.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  const overStock = basket.filter((line) => line.quantity > line.hardCopyStock);
 
   const loadOrders = useCallback(async () => {
     if (!token) return;
@@ -167,12 +209,20 @@ export default function HardcopySalesPage() {
 
   const recordSale = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!book) {
-      setLookupError('Scan or type the book code first.');
+    if (basket.length === 0) {
+      setLookupError('Scan or type a book code to add it to the sale.');
+      return;
+    }
+    if (overStock.length) {
+      adminErrorToast(`Only ${overStock[0].hardCopyStock} in stock for ${overStock[0].title}.`);
       return;
     }
     if (!buyerName.trim()) {
       adminErrorToast('Enter the buyer name.');
+      return;
+    }
+    if (buyerEmail.trim() && !EMAIL_PATTERN.test(buyerEmail.trim())) {
+      adminErrorToast('Enter a valid email address, or leave it empty.');
       return;
     }
     if (paidNow && needsReference(method) && !paymentReference.trim()) {
@@ -185,10 +235,10 @@ export default function HardcopySalesPage() {
         method: 'POST',
         headers: headers(),
         body: JSON.stringify({
-          barcode: book.barcode,
-          quantity,
+          items: basket.map((line) => ({ barcode: line.barcode, quantity: line.quantity })),
           buyerName: buyerName.trim(),
           buyerPhone: buyerPhone.trim(),
+          email: buyerEmail.trim(),
           paymentMethod: method,
           paymentReference: needsReference(method) ? paymentReference.trim() : '',
           paid: paidNow,
@@ -200,19 +250,21 @@ export default function HardcopySalesPage() {
         return;
       }
       setLastOrder(data.order);
-      adminSuccessToast(`Sale recorded: ${data.order.receiptNumber}`);
+      adminSuccessToast(`Sale recorded: ${data.order.receiptNumber}${data.receiptEmailTo ? `. Receipt emailed to ${data.receiptEmailTo}` : ''}`);
+      if (autoPrint) printReceipt(data.order);
       setBuyerName('');
       setBuyerPhone('');
+      setBuyerEmail('');
       setPaymentReference('');
       setCode('');
-      setBook(null);
+      setBasket([]);
       await loadOrders();
     } finally {
       setSaving(false);
     }
   };
 
-  const act = async (order: StoreOrder, action: 'confirm' | 'cancel', payment?: { paymentMethod: string; paymentReference: string }) => {
+  const act = async (order: StoreOrder, action: 'confirm' | 'cancel', payment?: { paymentMethod: string; paymentReference: string; email: string }) => {
     const response = await apiFetch(`/api/admin/store/hardcopy-orders/${encodeURIComponent(order.reference)}`, {
       method: 'PATCH',
       headers: headers(),
@@ -223,15 +275,57 @@ export default function HardcopySalesPage() {
       adminErrorToast(data?.error || 'Unable to update this order.');
       return false;
     }
-    adminSuccessToast(action === 'confirm' ? 'Payment confirmed.' : 'Order cancelled and copies returned to stock.');
+    if (action === 'confirm') {
+      adminSuccessToast(`Payment confirmed.${data?.receiptEmailTo ? ` Receipt emailed to ${data.receiptEmailTo}.` : ''}`);
+      if (data?.order) {
+        setLastOrder(data.order);
+        if (autoPrint) printReceipt(data.order);
+      }
+    } else {
+      adminSuccessToast('Order cancelled and copies returned to stock.');
+    }
     await loadOrders();
     return true;
+  };
+
+  const openEmail = (order: StoreOrder) => {
+    setEmailing(order);
+    setEmailTo(order.customerEmail || '');
+  };
+
+  const submitEmail = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!emailing) return;
+    if (!EMAIL_PATTERN.test(emailTo.trim())) {
+      adminErrorToast('Enter a valid email address.');
+      return;
+    }
+    setSendingEmail(true);
+    try {
+      const response = await apiFetch(`/api/admin/store/hardcopy-orders/${encodeURIComponent(emailing.reference)}/email-receipt`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ email: emailTo.trim() }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        adminErrorToast(data?.error || 'Unable to email this receipt.');
+        return;
+      }
+      adminSuccessToast(data?.message || 'Receipt emailed.');
+      if (lastOrder?.reference === emailing.reference) setLastOrder({ ...lastOrder, customerEmail: emailTo.trim().toLowerCase() });
+      setEmailing(null);
+      await loadOrders();
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   const openConfirm = (order: StoreOrder) => {
     setConfirming(order);
     setConfirmMethod(order.paymentMethod && PAYMENT_METHODS.includes(order.paymentMethod) ? order.paymentMethod : 'Cash');
     setConfirmReference(order.paymentReference || '');
+    setConfirmEmail(order.customerEmail || '');
   };
 
   const submitConfirm = async (event: React.FormEvent) => {
@@ -241,9 +335,14 @@ export default function HardcopySalesPage() {
       adminErrorToast(`Enter the ${REFERENCE_HINTS[confirmMethod] || 'payment reference'}.`);
       return;
     }
+    if (confirmEmail.trim() && !EMAIL_PATTERN.test(confirmEmail.trim())) {
+      adminErrorToast('Enter a valid email address, or leave it empty.');
+      return;
+    }
     const done = await act(confirming, 'confirm', {
       paymentMethod: confirmMethod,
       paymentReference: needsReference(confirmMethod) ? confirmReference.trim() : '',
+      email: confirmEmail.trim(),
     });
     if (done) setConfirming(null);
   };
@@ -319,8 +418,8 @@ export default function HardcopySalesPage() {
                   void lookUp(code);
                 }
               }}
-              onBlur={() => code && !book && void lookUp(code)}
-              placeholder="Scan or type the barcode, e.g. HB12345678"
+              placeholder="Scan or type a barcode to add a book, e.g. HB12345678"
+              autoFocus
               className="h-10 flex-1 rounded-md border border-border bg-background px-3 font-mono text-sm"
               aria-label="Book barcode"
             />
@@ -337,21 +436,49 @@ export default function HardcopySalesPage() {
             />
           ) : null}
           {lookupError ? <p className="text-sm text-destructive">{lookupError}</p> : null}
-          {book ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{book.title}</p>
-                <p className="text-xs text-muted-foreground">{money(book.price)} · {book.hardCopyStock} in stock</p>
+          {basket.length ? (
+            <div className="overflow-hidden rounded-lg border border-border/60">
+              <ul className="divide-y divide-border/60">
+                {basket.map((line) => (
+                  <li key={line.barcode} className="flex items-center justify-between gap-3 bg-muted/30 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{line.title}</p>
+                      <p className={cn('text-xs', line.quantity > line.hardCopyStock ? 'text-destructive' : 'text-muted-foreground')}>
+                        {money(line.price)} · {line.hardCopyStock} in stock
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={line.quantity}
+                        onChange={(event) => setLineQuantity(line.barcode, Number(event.target.value) || 1)}
+                        className="h-8 w-16 rounded-md border border-border bg-background px-2 text-sm"
+                        aria-label={`Copies of ${line.title}`}
+                      />
+                      <span className="w-24 text-right text-sm font-semibold">{money(line.price * line.quantity)}</span>
+                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive" aria-label={`Remove ${line.title}`} onClick={() => removeLine(line.barcode)}>
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex items-center justify-between bg-muted/60 px-3 py-2 text-sm">
+                <span className="text-muted-foreground">{basket.length} {basket.length === 1 ? 'title' : 'titles'} · {basketCopies} {basketCopies === 1 ? 'copy' : 'copies'}</span>
+                <span className="font-semibold">{money(basketTotal)}</span>
               </div>
-              <label className="flex items-center gap-2 text-xs">
-                Qty
-                <input type="number" min={1} max={Math.max(1, book.hardCopyStock)} value={quantity} onChange={(event) => setQuantity(Math.max(1, Number(event.target.value) || 1))} className="h-8 w-16 rounded-md border border-border bg-background px-2 text-sm" />
-              </label>
             </div>
-          ) : null}
+          ) : (
+            <p className="rounded-lg border border-dashed border-border/60 px-3 py-4 text-center text-xs text-muted-foreground">
+              Scan each book to add it to this sale. Scan the same book again to add another copy.
+            </p>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <input value={buyerName} onChange={(event) => setBuyerName(event.target.value)} placeholder="Buyer name" className="h-10 rounded-md border border-border bg-background px-3 text-sm" aria-label="Buyer name" />
             <input value={buyerPhone} onChange={(event) => setBuyerPhone(event.target.value)} placeholder="Phone (optional)" type="tel" className="h-10 rounded-md border border-border bg-background px-3 text-sm" aria-label="Buyer phone" />
+            <input value={buyerEmail} onChange={(event) => setBuyerEmail(event.target.value)} placeholder="Email for the receipt (optional)" type="email" className="h-10 rounded-md border border-border bg-background px-3 text-sm sm:col-span-2" aria-label="Buyer email" />
           </div>
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Payment method">
             {PAYMENT_METHODS.map((entry) => (
@@ -375,13 +502,21 @@ export default function HardcopySalesPage() {
             </label>
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-3">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={paidNow} onChange={(event) => setPaidNow(event.target.checked)} /> Payment received now
-            </label>
-            <Button type="submit" disabled={saving || !book}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Record sale{book ? ` · ${money(book.price * quantity)}` : ''}
-            </Button>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={paidNow} onChange={(event) => setPaidNow(event.target.checked)} /> Payment received now
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={autoPrint} onChange={(event) => changeAutoPrint(event.target.checked)} /> Print receipt straight away
+              </label>
+            </div>
+            <div className="flex gap-2">
+              {basket.length ? <Button type="button" variant="outline" onClick={() => setBasket([])} disabled={saving}>Clear</Button> : null}
+              <Button type="submit" disabled={saving || basket.length === 0}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Record sale{basket.length ? ` · ${money(basketTotal)}` : ''}
+              </Button>
+            </div>
           </div>
         </form>
 
@@ -392,9 +527,13 @@ export default function HardcopySalesPage() {
               <p className="font-mono text-lg font-bold">{lastOrder.receiptNumber}</p>
               <p className="text-sm text-muted-foreground">{lastOrder.buyerName} · {money(lastOrder.total)} · {lastOrder.paymentMethod}</p>
               {lastOrder.paymentReference ? <p className="font-mono text-xs text-muted-foreground">Ref: {lastOrder.paymentReference}</p> : null}
-              <div className="flex gap-2">
+              {lastOrder.customerEmail ? <p className="text-xs text-muted-foreground">Email: {lastOrder.customerEmail}</p> : null}
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => printReceipt(lastOrder)}><Printer className="h-4 w-4" /> Print</Button>
                 <Button size="sm" variant="outline" onClick={() => void downloadReceiptPdf(lastOrder)}><Download className="h-4 w-4" /> PDF</Button>
+                {lastOrder.status === 'paid' ? (
+                  <Button size="sm" variant="outline" onClick={() => openEmail(lastOrder)}><Mail className="h-4 w-4" /> Email</Button>
+                ) : null}
               </div>
             </>
           ) : (
@@ -478,6 +617,9 @@ export default function HardcopySalesPage() {
                     ) : null}
                     <Button size="icon" variant="ghost" aria-label="Print receipt" onClick={() => printReceipt(order)}><Printer className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" aria-label="Download receipt" onClick={() => void downloadReceiptPdf(order)}><Download className="h-4 w-4" /></Button>
+                    {order.status === 'paid' ? (
+                      <Button size="icon" variant="ghost" aria-label="Email receipt" title={order.customerEmail ? `Email receipt to ${order.customerEmail}` : 'Email receipt'} onClick={() => openEmail(order)}><Mail className="h-4 w-4" /></Button>
+                    ) : null}
                     {order.status !== 'cancelled' ? (
                       <Button
                         size="icon"
@@ -531,9 +673,50 @@ export default function HardcopySalesPage() {
                 />
               </label>
             ) : null}
+            <label className="block text-xs text-muted-foreground">
+              Email the receipt to (optional)
+              <input
+                value={confirmEmail}
+                onChange={(event) => setConfirmEmail(event.target.value)}
+                type="email"
+                className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                aria-label="Receipt email"
+              />
+            </label>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setConfirming(null)}>Close</Button>
               <Button type="submit"><CheckCircle2 className="h-4 w-4" /> Confirm paid</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(emailing)} onOpenChange={(open) => !open && setEmailing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={submitEmail} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Email receipt</DialogTitle>
+              <DialogDescription>
+                {emailing ? `${emailing.receiptNumber} · ${emailing.buyerName || 'Customer'} · ${money(emailing.total, emailing.currency)}` : ''}
+              </DialogDescription>
+            </DialogHeader>
+            <label className="block text-xs text-muted-foreground">
+              Customer email
+              <input
+                value={emailTo}
+                onChange={(event) => setEmailTo(event.target.value)}
+                type="email"
+                required
+                autoFocus
+                className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                aria-label="Customer email"
+              />
+            </label>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEmailing(null)}>Close</Button>
+              <Button type="submit" disabled={sendingEmail}>
+                {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Send receipt
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

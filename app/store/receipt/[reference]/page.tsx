@@ -92,7 +92,7 @@ export default function StoreReceiptPage() {
             </p>
           ) : null}
           <dl className="mx-5 mt-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-            <dt className="text-slate-500">Receipt</dt><dd className="text-right font-mono font-semibold">{order.receiptNumber}</dd>
+            <dt className="text-slate-500">Receipt</dt><dd className="text-right font-mono font-semibold">{order.receiptNumber || order.reference.slice(-10).toUpperCase()}</dd>
             <dt className="text-slate-500">Date</dt><dd className="text-right">{receiptDate(order.paidAt || order.createdAt)}</dd>
             {order.buyerName ? <><dt className="text-slate-500">Customer</dt><dd className="text-right">{order.buyerName}</dd></> : null}
             <dt className="text-slate-500">Payment</dt><dd className="text-right">{order.paymentMethod}</dd>
