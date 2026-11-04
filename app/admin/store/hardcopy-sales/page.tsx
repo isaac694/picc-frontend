@@ -11,13 +11,16 @@ import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { apiFetch } from '@/lib/api';
 import { downloadReport, periodLabel, periodParams, periodSlug, withParams, type Period } from '@/lib/admin-reports';
-import { downloadReceiptPdf, money, printReceipt, receiptDate, type StoreOrder } from '@/lib/store-receipt';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { downloadReceiptPdf, money, printReceipt, receiptDate, REFERENCE_HINTS, type StoreOrder } from '@/lib/store-receipt';
 import { cn } from '@/lib/utils';
 
 type LookedUpBook = { title: string; author: string | null; price: number; hardCopyStock: number; available: boolean; barcode: string };
 type Summary = { orders: number; copies: number; paidTotal: number; pendingTotal: number; byMethod: Array<{ method: string; total: number }> };
 
-const PAYMENT_METHODS = ['Cash', 'POS', 'Bank Transfer', 'Airtel Money agent', 'PayChangu'];
+// Payments taken at the counter. Online PayChangu payments confirm themselves, so they are not offered here.
+const PAYMENT_METHODS = ['Cash', 'POS', 'Bank Transfer', 'Airtel Money agent', 'TNM Mpamba'];
+const needsReference = (method: string) => method !== 'Cash';
 const STATUS_STYLES: Record<string, string> = {
   paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
   pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
@@ -103,6 +106,7 @@ export default function HardcopySalesPage() {
   const [buyerName, setBuyerName] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
   const [method, setMethod] = useState('Cash');
+  const [paymentReference, setPaymentReference] = useState('');
   const [paidNow, setPaidNow] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lastOrder, setLastOrder] = useState<StoreOrder | null>(null);
@@ -116,6 +120,11 @@ export default function HardcopySalesPage() {
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Confirming an order that is waiting for payment
+  const [confirming, setConfirming] = useState<StoreOrder | null>(null);
+  const [confirmMethod, setConfirmMethod] = useState('Cash');
+  const [confirmReference, setConfirmReference] = useState('');
 
   const headers = useCallback(() => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }), [token]);
 
@@ -166,12 +175,24 @@ export default function HardcopySalesPage() {
       adminErrorToast('Enter the buyer name.');
       return;
     }
+    if (paidNow && needsReference(method) && !paymentReference.trim()) {
+      adminErrorToast(`Enter the ${REFERENCE_HINTS[method] || 'payment reference'}.`);
+      return;
+    }
     setSaving(true);
     try {
       const response = await apiFetch('/api/admin/store/counter-sales', {
         method: 'POST',
         headers: headers(),
-        body: JSON.stringify({ barcode: book.barcode, quantity, buyerName: buyerName.trim(), buyerPhone: buyerPhone.trim(), paymentMethod: method, paid: paidNow }),
+        body: JSON.stringify({
+          barcode: book.barcode,
+          quantity,
+          buyerName: buyerName.trim(),
+          buyerPhone: buyerPhone.trim(),
+          paymentMethod: method,
+          paymentReference: needsReference(method) ? paymentReference.trim() : '',
+          paid: paidNow,
+        }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
@@ -182,6 +203,7 @@ export default function HardcopySalesPage() {
       adminSuccessToast(`Sale recorded: ${data.order.receiptNumber}`);
       setBuyerName('');
       setBuyerPhone('');
+      setPaymentReference('');
       setCode('');
       setBook(null);
       await loadOrders();
@@ -190,19 +212,40 @@ export default function HardcopySalesPage() {
     }
   };
 
-  const act = async (order: StoreOrder, action: 'confirm' | 'cancel', paymentMethod?: string) => {
+  const act = async (order: StoreOrder, action: 'confirm' | 'cancel', payment?: { paymentMethod: string; paymentReference: string }) => {
     const response = await apiFetch(`/api/admin/store/hardcopy-orders/${encodeURIComponent(order.reference)}`, {
       method: 'PATCH',
       headers: headers(),
-      body: JSON.stringify({ action, paymentMethod }),
+      body: JSON.stringify({ action, ...payment }),
     });
     const data = await response.json().catch(() => null);
     if (!response.ok) {
       adminErrorToast(data?.error || 'Unable to update this order.');
-      return;
+      return false;
     }
     adminSuccessToast(action === 'confirm' ? 'Payment confirmed.' : 'Order cancelled and copies returned to stock.');
     await loadOrders();
+    return true;
+  };
+
+  const openConfirm = (order: StoreOrder) => {
+    setConfirming(order);
+    setConfirmMethod(order.paymentMethod && PAYMENT_METHODS.includes(order.paymentMethod) ? order.paymentMethod : 'Cash');
+    setConfirmReference(order.paymentReference || '');
+  };
+
+  const submitConfirm = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!confirming) return;
+    if (needsReference(confirmMethod) && !confirmReference.trim()) {
+      adminErrorToast(`Enter the ${REFERENCE_HINTS[confirmMethod] || 'payment reference'}.`);
+      return;
+    }
+    const done = await act(confirming, 'confirm', {
+      paymentMethod: confirmMethod,
+      paymentReference: needsReference(confirmMethod) ? confirmReference.trim() : '',
+    });
+    if (done) setConfirming(null);
   };
 
   const exportReport = async (format: 'pdf' | 'excel') => {
@@ -222,6 +265,7 @@ export default function HardcopySalesPage() {
         { key: 'qty', label: 'Qty' },
         { key: 'total', label: 'Total' },
         { key: 'method', label: 'Payment' },
+        { key: 'reference', label: 'Reference' },
         { key: 'status', label: 'Status' },
       ],
       rows: orders.map((order) => ({
@@ -232,6 +276,7 @@ export default function HardcopySalesPage() {
         qty: String(order.quantity),
         total: money(order.total, order.currency),
         method: order.paymentMethod || '',
+        reference: order.paymentReference || '',
         status: order.status,
       })),
       summary: [
@@ -315,6 +360,20 @@ export default function HardcopySalesPage() {
               </button>
             ))}
           </div>
+          {needsReference(method) ? (
+            <label className="block text-xs text-muted-foreground">
+              {REFERENCE_HINTS[method]}{paidNow ? ' (required)' : ' (add it now or when you confirm payment)'}
+              <input
+                value={paymentReference}
+                onChange={(event) => setPaymentReference(event.target.value)}
+                placeholder={method === 'POS' ? 'e.g. 004512' : 'e.g. CI250611.1530.H12345'}
+                maxLength={120}
+                required={paidNow}
+                className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm text-foreground"
+                aria-label={REFERENCE_HINTS[method]}
+              />
+            </label>
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-3">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={paidNow} onChange={(event) => setPaidNow(event.target.checked)} /> Payment received now
@@ -332,6 +391,7 @@ export default function HardcopySalesPage() {
             <>
               <p className="font-mono text-lg font-bold">{lastOrder.receiptNumber}</p>
               <p className="text-sm text-muted-foreground">{lastOrder.buyerName} · {money(lastOrder.total)} · {lastOrder.paymentMethod}</p>
+              {lastOrder.paymentReference ? <p className="font-mono text-xs text-muted-foreground">Ref: {lastOrder.paymentReference}</p> : null}
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => printReceipt(lastOrder)}><Printer className="h-4 w-4" /> Print</Button>
                 <Button size="sm" variant="outline" onClick={() => void downloadReceiptPdf(lastOrder)}><Download className="h-4 w-4" /> PDF</Button>
@@ -362,7 +422,7 @@ export default function HardcopySalesPage() {
         <div className="flex flex-col gap-2 sm:flex-row">
           <form className="relative flex-1" onSubmit={(event) => { event.preventDefault(); setQuery(search.trim()); }}>
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Receipt number, buyer or book, then Enter" className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Receipt, buyer, book or reference, then Enter" className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm" />
           </form>
           <select value={channel} onChange={(event) => setChannel(event.target.value)} className="h-9 rounded-md border border-border bg-background px-2 text-sm" aria-label="Channel">
             <option value="">Scans and counter</option>
@@ -404,20 +464,17 @@ export default function HardcopySalesPage() {
                 <td className="px-3 py-2">{order.buyerName}<p className="text-[11px] text-muted-foreground">{order.buyerPhone}</p></td>
                 <td className="px-3 py-2">{order.items.map((item) => `${item.title} ×${item.quantity}`).join(', ')}</td>
                 <td className="whitespace-nowrap px-3 py-2 font-semibold">{money(order.total, order.currency)}</td>
-                <td className="px-3 py-2">{order.paymentMethod}</td>
+                <td className="px-3 py-2">
+                  {order.paymentMethod}
+                  {order.paymentReference ? <p className="break-all font-mono text-[11px] text-muted-foreground">{order.paymentReference}</p> : null}
+                </td>
                 <td className="px-3 py-2"><span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize', STATUS_STYLES[order.status])}>{order.status === 'pending' ? 'awaiting' : order.status}</span></td>
                 <td className="px-3 py-2">
                   <div className="flex justify-end gap-1">
                     {order.status === 'pending' ? (
-                      <select
-                        aria-label="Confirm payment"
-                        value=""
-                        onChange={(event) => event.target.value && void act(order, 'confirm', event.target.value)}
-                        className="h-8 rounded-md border border-emerald-300 bg-emerald-50 px-1 text-xs text-emerald-900"
-                      >
-                        <option value="">Confirm paid by…</option>
-                        {PAYMENT_METHODS.map((entry) => <option key={entry} value={entry}>{entry}</option>)}
-                      </select>
+                      <Button size="sm" variant="outline" className="h-8 border-emerald-300 bg-emerald-50 text-xs text-emerald-900 hover:bg-emerald-100" onClick={() => openConfirm(order)}>
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Confirm paid
+                      </Button>
                     ) : null}
                     <Button size="icon" variant="ghost" aria-label="Print receipt" onClick={() => printReceipt(order)}><Printer className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" aria-label="Download receipt" onClick={() => void downloadReceiptPdf(order)}><Download className="h-4 w-4" /></Button>
@@ -430,7 +487,7 @@ export default function HardcopySalesPage() {
                         onClick={() => confirmDeleteToast({
                           title: `Cancel ${order.receiptNumber}?`,
                           description: 'The copies go back into stock and the receipt shows cancelled.',
-                          onConfirm: () => act(order, 'cancel'),
+                          onConfirm: async () => { await act(order, 'cancel'); },
                         })}
                       >
                         <XCircle className="h-4 w-4" />
@@ -443,6 +500,44 @@ export default function HardcopySalesPage() {
           </tbody>
         </table>
       </div>
+
+      <Dialog open={Boolean(confirming)} onOpenChange={(open) => !open && setConfirming(null)}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={submitConfirm} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Confirm payment</DialogTitle>
+              <DialogDescription>
+                {confirming ? `${confirming.receiptNumber} · ${confirming.buyerName || 'Customer'} · ${money(confirming.total, confirming.currency)}` : ''}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Paid by">
+              {PAYMENT_METHODS.map((entry) => (
+                <button key={entry} type="button" role="radio" aria-checked={confirmMethod === entry} onClick={() => setConfirmMethod(entry)} className={cn('rounded-full border px-3 py-1 text-xs font-medium', confirmMethod === entry ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground/70 hover:bg-muted')}>
+                  {entry}
+                </button>
+              ))}
+            </div>
+            {needsReference(confirmMethod) ? (
+              <label className="block text-xs text-muted-foreground">
+                {REFERENCE_HINTS[confirmMethod]} (required)
+                <input
+                  value={confirmReference}
+                  onChange={(event) => setConfirmReference(event.target.value)}
+                  maxLength={120}
+                  required
+                  autoFocus
+                  className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm text-foreground"
+                  aria-label={REFERENCE_HINTS[confirmMethod]}
+                />
+              </label>
+            ) : null}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setConfirming(null)}>Close</Button>
+              <Button type="submit"><CheckCircle2 className="h-4 w-4" /> Confirm paid</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

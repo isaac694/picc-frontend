@@ -22,7 +22,7 @@ type ScannedBook = {
   barcode: string;
 };
 
-const COUNTER_ICONS: Record<string, typeof Banknote> = { POS: CreditCard, Cash: Banknote, 'Bank Transfer': Landmark, 'Airtel Money agent': Wallet };
+const COUNTER_ICONS: Record<string, typeof Banknote> = { POS: CreditCard, Cash: Banknote, 'Bank Transfer': Landmark, 'Airtel Money agent': Wallet, 'TNM Mpamba': Wallet };
 
 /** Opened by scanning the label on a hard copy: pay by mobile money on the spot, or pay at the counter. */
 export default function ScanToPayPage() {

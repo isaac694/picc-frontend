@@ -12,6 +12,7 @@ export type StoreOrder = {
   buyerPhone: string | null;
   customerEmail: string | null;
   paymentMethod: string | null;
+  paymentReference?: string | null;
   recordedBy: string | null;
   currency: string;
   items: Array<{ productId: string; title: string; author?: string | null; kind?: 'branded' | 'hard' | 'soft'; imageUrl?: string | null; unitPrice: number; quantity: number; total: number }>;
@@ -21,7 +22,15 @@ export type StoreOrder = {
   createdAt: string;
 };
 
-export const COUNTER_METHODS = ['POS', 'Cash', 'Bank Transfer', 'Airtel Money agent'] as const;
+export const COUNTER_METHODS = ['POS', 'Cash', 'Bank Transfer', 'Airtel Money agent', 'TNM Mpamba'] as const;
+
+/** What the attendant types as proof of payment for each counter method; cash needs none. */
+export const REFERENCE_HINTS: Record<string, string> = {
+  POS: 'POS approval code or slip number',
+  'Bank Transfer': 'Bank transfer reference',
+  'Airtel Money agent': 'Airtel Money transaction ID',
+  'TNM Mpamba': 'TNM Mpamba transaction ID',
+};
 
 /** How an item is described to customers: branded items are not books. */
 export const itemKindLabel = (kind?: string) => (kind === 'branded' ? 'Branded material' : kind === 'soft' ? 'Soft copy' : 'Hard copy');
@@ -57,7 +66,8 @@ export function printReceipt(order: StoreOrder) {
   <strong>Date:</strong> ${escapeHtml(receiptDate(order.paidAt || order.createdAt))}<br>
   ${order.buyerName ? `<strong>Customer:</strong> ${escapeHtml(order.buyerName)}<br>` : ''}
   ${order.buyerPhone ? `<strong>Phone:</strong> ${escapeHtml(order.buyerPhone)}<br>` : ''}
-  <strong>Payment:</strong> ${escapeHtml(order.paymentMethod || '')}</p>
+  <strong>Payment:</strong> ${escapeHtml(order.paymentMethod || '')}
+  ${order.paymentReference ? `<br><strong>Reference:</strong> ${escapeHtml(order.paymentReference)}` : ''}</p>
   <table>${rows}<tr class="total"><td>TOTAL</td><td class="right">${escapeHtml(money(order.total, order.currency))}</td></tr></table>
   <div class="status">${STATUS_LABEL[order.status]}</div>
   ${order.recordedBy ? `<p class="muted">Served by ${escapeHtml(order.recordedBy)}</p>` : ''}
@@ -88,6 +98,7 @@ export async function downloadReceiptPdf(order: StoreOrder) {
     ['Customer', order.buyerName],
     ['Phone', order.buyerPhone],
     ['Payment', order.paymentMethod],
+    ['Reference', order.paymentReference || null],
   ];
   details.filter(([, value]) => value).forEach(([label, value]) => {
     line(`${label}:`, { bold: true });

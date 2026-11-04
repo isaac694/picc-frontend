@@ -96,6 +96,7 @@ export default function StoreReceiptPage() {
             <dt className="text-slate-500">Date</dt><dd className="text-right">{receiptDate(order.paidAt || order.createdAt)}</dd>
             {order.buyerName ? <><dt className="text-slate-500">Customer</dt><dd className="text-right">{order.buyerName}</dd></> : null}
             <dt className="text-slate-500">Payment</dt><dd className="text-right">{order.paymentMethod}</dd>
+            {order.paymentReference ? <><dt className="text-slate-500">Reference</dt><dd className="break-all text-right font-mono">{order.paymentReference}</dd></> : null}
           </dl>
           <div className="mx-5 mt-4 border-t border-dashed border-slate-300 pt-3">
             {order.items.map((item) => (
