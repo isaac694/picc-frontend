@@ -21,7 +21,7 @@ export function useNotepad() {
   return { notepadContent, setNotepadContent };
 }
 
-export function useTestimonyForm(churchEmail: string = 'testimony@piccworldwide.org') {
+export function useTestimonyForm(churchEmail: string = 'testimony@piccworldwide.org', source = 'livestream') {
   const [testimonyForm, setTestimonyForm] = useState({
     fullName: '',
     phone: '',
@@ -52,6 +52,7 @@ export function useTestimonyForm(churchEmail: string = 'testimony@piccworldwide.
         area: testimonyForm.area || undefined,
         situation: testimonyForm.situation,
         testimony: testimonyForm.testimony,
+        source,
       });
 
       toast.success('Thank you! Your testimony has been sent.');

@@ -42,6 +42,9 @@ export const NEWS_SCOPES: Array<{ key: string; label: string; href: string }> = 
   { key: 'wailing-woman', label: 'Wailing Woman', href: '/ministries/wailing-woman' },
   { key: 'rivers-of-hope', label: 'Rivers of Hope', href: '/ministries/rivers-of-hope' },
   { key: 'heritage', label: 'Heritage', href: '/ministries/heritage' },
+  { key: 'hope-school', label: 'Hope School', href: '/schools/hope-school' },
+  { key: 'discipleship', label: 'Discipleship', href: '/schools/discipleship' },
+  { key: 'picc-secondary', label: 'PICC Secondary', href: '/schools/picc-secondary' },
 ];
 
 export function newsScopeLabel(scope: string) {

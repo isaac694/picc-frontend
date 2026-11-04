@@ -11,11 +11,12 @@ import { Button } from '@/components/ui/button';
 import { 
   ShoppingCart, Search, Plus, Minus, Trash2, X, CheckCircle2, 
   MessageCircle, ImageIcon, BookOpen, Building2,
-  User, LogIn, Library, Download, ShieldCheck, Eye, EyeOff
+  User, LogIn, Library, Download, ShieldCheck, Eye, EyeOff, Package
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { bookGenres, products, type Product } from '@/components/data/products';
+import { products, type Product } from '@/components/data/products';
+import { useBookCategories } from '@/hooks/use-book-categories';
 import { apiFetch } from '@/lib/api';
 import {
   openStorePaychanguPopup,
@@ -83,7 +84,9 @@ export default function StorePage() {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState('');
   const [trendingTab, setTrendingTab] = useState<'Featured' | 'New arrivals' | 'Best sellers'>('Featured');
-  const [selectedBookGenre, setSelectedBookGenre] = useState<'All' | (typeof bookGenres)[number]>('All');
+  const [selectedBookGenre, setSelectedBookGenre] = useState<string>('All');
+  const { categories: bookCategories } = useBookCategories();
+  const bookGenres = bookCategories.map((category) => category.name);
   
   // Selection Modal State
   const [selectedBook, setSelectedBook] = useState<Product | null>(null);
@@ -197,7 +200,7 @@ export default function StorePage() {
     document.getElementById('store-products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const selectBookGenre = (genre: 'All' | (typeof bookGenres)[number]) => {
+  const selectBookGenre = (genre: string) => {
     setSelectedBookGenre(genre);
     setTrendingTab('Featured');
     window.requestAnimationFrame(() => {
@@ -554,7 +557,7 @@ export default function StorePage() {
         email: checkoutEmail.trim(),
         customerName: storeUser?.name || checkoutEmail,
         phone: checkoutPhone,
-        reason: isSoftCopy ? 'Hope Stores — soft copy' : 'Hope Stores — hard copy',
+        reason: isSoftCopy ? 'Hope Stores — soft copy' : `Hope Stores — ${hardCartLabel.toLowerCase()}`,
         returnPath: '/store',
         format: isSoftCopy ? 'soft' : 'hard',
       });
@@ -579,8 +582,16 @@ export default function StorePage() {
   const digitalCartCount = digitalCart.reduce((count, item) => count + item.quantity, 0);
   const activeCart = cartMode === 'soft' ? digitalCart : cart;
   const activeCartTotal = cartMode === 'soft' ? digitalCartTotal : cartTotal;
-  const activeCartLabel = cartMode === 'soft' ? 'Soft Copy' : 'Hard Copy';
+  // Branded items share the physical cart with hard copy books but are not books, so label them apart.
+  const hardCartHasBooks = cart.some((item) => !isBrandedProduct(item.product));
+  const hardCartHasBranded = cart.some((item) => isBrandedProduct(item.product));
+  const hardCartLabel = hardCartHasBranded ? (hardCartHasBooks ? 'Hard Copy & Branded' : 'Branded Material') : 'Hard Copy';
+  const activeCartLabel = cartMode === 'soft' ? 'Soft Copy' : hardCartLabel;
+  const itemFormatLabel = (product: Product) => (cartMode === 'soft' ? 'Soft Copy' : isBrandedProduct(product) ? 'Branded material' : 'Hard Copy');
   const formatMWK = (amount: number) => `MWK ${amount.toLocaleString()}`;
+  function isBrandedProduct(product: Product) {
+    return (product.category || 'Books') !== 'Books';
+  }
   function getSoftCopyPrice(book: Product) {
     if (typeof book.softCopyPrice === 'number') return book.softCopyPrice;
     return Math.max(1000, Math.round(book.price * 0.7));
@@ -1062,6 +1073,21 @@ export default function StorePage() {
               <Library className="h-4 w-4" />
               My Books ({digitalLibrary.length})
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (storeUser) {
+                  router.push('/store/orders');
+                  return;
+                }
+                setAuthMode('signin');
+                setIsAuthOpen(true);
+              }}
+              className="inline-flex items-center gap-2 hover:text-slate-950"
+            >
+              <Package className="h-4 w-4" />
+              My Orders
+            </button>
             {storeUser && (
               <button type="button" onClick={clearStoreSession} className="hover:text-slate-950">
                 Sign out
@@ -1361,6 +1387,9 @@ export default function StorePage() {
                   <Button type="button" onClick={openMyBooks} className="w-full rounded-full bg-[#1688b4] py-6 text-white hover:bg-[#0f759c]">
                     My Books
                   </Button>
+                  <Button type="button" variant="outline" onClick={() => router.push('/store/orders')} className="w-full rounded-full py-6">
+                    My Orders
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
@@ -1530,14 +1559,14 @@ export default function StorePage() {
                         {activeCart.length} item{activeCart.length === 1 ? '' : 's'}
                       </div>
                     </div>
-                    {(cartCount > 0 || digitalCartCount > 0) && (
+                    {(digitalCartCount > 0 || hardCartHasBooks) && (
                       <div className="mt-4 grid grid-cols-2 gap-2 rounded-lg bg-black/5 p-1">
                         <button
                           type="button"
                           onClick={() => setCartMode('hard')}
                           className={`rounded-md px-3 py-2 text-sm font-semibold transition ${cartMode === 'hard' ? 'bg-white shadow-sm' : 'text-black/60 hover:text-black'}`}
                         >
-                          Hard Copy ({cartCount})
+                          {hardCartLabel} ({cartCount})
                         </button>
                         <button
                           type="button"
@@ -1553,7 +1582,7 @@ export default function StorePage() {
                   {activeCart.length === 0 && (
                     <div className="bg-white p-8 text-center shadow-sm">
                       <ShoppingCart className="mx-auto h-8 w-8 text-black/30" />
-                      <p className="mt-3 text-sm font-semibold">No {activeCartLabel.toLowerCase()} books yet.</p>
+                      <p className="mt-3 text-sm font-semibold">{cartMode === 'soft' ? 'No soft copy books yet.' : 'Your bag is empty.'}</p>
                       <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-slate-500">
                         Click below to choose a book, then select hard copy or soft copy from the book details.
                       </p>
@@ -1575,7 +1604,7 @@ export default function StorePage() {
                         </div>
                         <div className="min-w-0 text-center sm:text-left">
                           <h4 className="text-base font-bold leading-tight text-slate-950">{item.product.name}</h4>
-                          <p className="mt-1 text-xs text-black/50">{formatMWK(cartMode === 'soft' ? getSoftCopyPrice(item.product) : item.product.price)} - {activeCartLabel}</p>
+                          <p className="mt-1 text-xs text-black/50">{formatMWK(cartMode === 'soft' ? getSoftCopyPrice(item.product) : item.product.price)} - {itemFormatLabel(item.product)}</p>
                           <div className="mt-3 flex items-center justify-center gap-3 sm:justify-start">
                             <div className="flex items-center border rounded-md">
                               <button onClick={() => cartMode === 'soft' ? updateDigitalQuantity(item.product.id, -1) : updateQuantity(item.product.id, -1)} className="p-1 hover:bg-black/5"><Minus className="w-3 h-3" /></button>
@@ -1667,7 +1696,7 @@ export default function StorePage() {
                           className="h-12 w-full rounded-lg border border-black/10 px-3 text-sm outline-none"
                         />
                         <p className="mt-1 text-xs text-black/50">
-                          We&apos;ll send your confirmation email with the book list here.
+                          We&apos;ll email your order details here, then again when payment is confirmed.
                         </p>
                       </div>
 
@@ -1713,6 +1742,10 @@ export default function StorePage() {
                           {cartMode === 'soft'
                             ? ' Your soft copy will unlock after confirmation.'
                             : ' We will organize collection after confirmation.'}
+                        </p>
+                        <p className="mt-3 text-sm text-black/60">
+                          We have emailed your order details. Follow the order and its payment under{' '}
+                          <Link href="/store/orders" className="font-semibold text-[#1688b4] underline">My orders</Link>.
                         </p>
                       </div>
 

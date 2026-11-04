@@ -3,6 +3,8 @@ import Footer from '@/components/Footer';
 import Image from 'next/image';
 import PICCSecondaryApplicationForm from '@/components/schools/PICCSecondaryApplicationForm';
 import SchoolKeyDatesList from '@/components/schools/SchoolKeyDatesList';
+import EventsCarousel from '@/components/EventsCarousel';
+import NewsFeed from '@/components/news/NewsFeed';
 import { apiUrl } from '@/lib/api';
 
 export const metadata = {
@@ -396,6 +398,27 @@ export default async function PICCSecondaryPage() {
           </div>
         </div>
       </section>
+
+      <EventsCarousel
+        apiPath="/api/events?scope=picc-secondary"
+        eventsHref="/events"
+        eventsLabel="View all events"
+        title="PICC Secondary Events"
+        subtitle="Open days, entrance exams and school activities"
+        connectLabel="PICC SECONDARY"
+        connectTitle="Christ centred education in partnership with parents"
+        connectSubtitle="Join us for school activities across the academic year."
+        showLivestream={false}
+      />
+      <NewsFeed
+        scope="picc-secondary"
+        kicker="Updates"
+        title="PICC Secondary News"
+        description="News and notices for students, parents and guardians."
+        fallbackItems={[{ badge: 'Admissions', date: 'Latest', title: 'Applications for the next intake', description: 'Apply online for Form 1 to Form 4. We will contact you with entrance exam dates and next steps.', image: '/hero/hero-4.JPG' }]}
+        allHref="/news?scope=picc-secondary"
+        allLabel="All PICC Secondary news"
+      />
 
       <Footer />
     </div>

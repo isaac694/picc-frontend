@@ -25,6 +25,8 @@ export interface TestimonyNotificationPayload {
   area?: string;
   situation: string;
   testimony: string;
+  /** Where the form was sent from, shown on the forms dashboard. */
+  source?: string;
 }
 
 export interface MembershipNotificationPayload {
@@ -35,6 +37,8 @@ export interface MembershipNotificationPayload {
   phone: string;
   city: string;
   country: string;
+  dateOfBirth?: string;
+  source?: string;
 }
 
 export interface PrayerNotificationPayload {

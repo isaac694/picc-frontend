@@ -5,7 +5,15 @@ import { apiFetch, apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
-import { allowedEventForKeys } from '@/lib/admin-pages';
+import { ADMIN_PAGE, allowedEventForKeys, canAccessAdminPage } from '@/lib/admin-pages';
+
+// School events use the event scope rather than a ministry; the "Event for" value is "school:<key>".
+const SCHOOL_EVENT_CHOICES = [
+  { key: 'school:hope-school', name: 'Hope School', scope: 'HOPE_SCHOOL' },
+  { key: 'school:discipleship', name: 'Discipleship Class', scope: 'DISCIPLESHIP' },
+  { key: 'school:picc-secondary', name: 'PICC Secondary School', scope: 'PICC_SECONDARY' },
+];
+const schoolChoiceForScope = (scope: unknown) => SCHOOL_EVENT_CHOICES.find((choice) => choice.scope === scope);
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
@@ -165,16 +173,18 @@ export default function EventsAdminPage() {
 
   const eventForChoices = useMemo(() => {
     const keys = allowedEventForKeys(user);
+    const schools = keys == null || canAccessAdminPage(user, ADMIN_PAGE.SCHOOLS_ENROLLMENT) ? SCHOOL_EVENT_CHOICES : [];
     const options = [{ key: 'general', name: 'General' }, ...EVENT_MINISTRIES];
-    if (keys == null) return options;
-    return options.filter((option) => keys.includes(option.key));
+    if (keys == null) return [...options, ...schools];
+    return [...options.filter((option) => keys.includes(option.key)), ...schools];
   }, [user]);
 
   const filteredEvents = useMemo(() => {
     const keys = allowedEventForKeys(user);
     const audienceEvents = keys == null
       ? sortedEvents
-      : sortedEvents.filter((event) => keys.includes(event.ministryKey || 'general'));
+      : sortedEvents.filter((event) => keys.includes(event.ministryKey || 'general')
+        || (event.ministryKey.startsWith('school:') && canAccessAdminPage(user, ADMIN_PAGE.SCHOOLS_ENROLLMENT)));
     const query = searchQuery.trim().toLowerCase();
     if (!query) return audienceEvents;
 
@@ -259,9 +269,12 @@ export default function EventsAdminPage() {
                   : '',
             paymentCurrency: typeof event.paymentCurrency === 'string' ? event.paymentCurrency : 'MWK',
             tickets: parseEventTickets(event.tickets),
-            ministryKey: typeof event.ministryKey === 'string' && event.ministryKey ? event.ministryKey : 'general',
-            ministryName:
-              typeof event.ministryName === 'string' && event.ministryName
+            ministryKey: typeof event.ministryKey === 'string' && event.ministryKey
+              ? event.ministryKey
+              : schoolChoiceForScope(event.scope)?.key || 'general',
+            ministryName: schoolChoiceForScope(event.scope) && !event.ministryKey
+              ? schoolChoiceForScope(event.scope)!.name
+              : typeof event.ministryName === 'string' && event.ministryName
                 ? event.ministryName
                 : ministryNameForKey(typeof event.ministryKey === 'string' ? event.ministryKey : ''),
             registrationForm: parseEventForm(event.registrationForm),
@@ -320,7 +333,10 @@ export default function EventsAdminPage() {
 
   const openAddDialog = () => {
     setSelectedEventId(null);
-    setEventDraft({ ...DEFAULT_EVENT_DRAFT, ministryKey: eventForChoices[0]?.key || 'general' });
+    // /admin/events?for=school:hope-school (linked from the school pages) preselects the school.
+    const requested = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('for');
+    const preset = eventForChoices.find((choice) => choice.key === requested)?.key;
+    setEventDraft({ ...DEFAULT_EVENT_DRAFT, ministryKey: preset || eventForChoices[0]?.key || 'general' });
     updateUploadName('event-draft', '');
     setDialogOpen(true);
   };
@@ -348,7 +364,8 @@ export default function EventsAdminPage() {
       setStatus('End date cannot be earlier than start date.');
       return;
     }
-    const isGeneralEvent = !eventDraft.ministryKey || eventDraft.ministryKey === 'general';
+    const schoolChoice = SCHOOL_EVENT_CHOICES.find((choice) => choice.key === eventDraft.ministryKey);
+    const isGeneralEvent = !eventDraft.ministryKey || eventDraft.ministryKey === 'general' || Boolean(schoolChoice);
     const registrationForm = eventDraft.requiresRegistration ? draftToPayload(eventDraft.registrationForm) : { form: null };
     if ('error' in registrationForm) {
       setStatus(registrationForm.error);
@@ -364,6 +381,7 @@ export default function EventsAdminPage() {
       ...(eventDraft.description.trim() ? { description: eventDraft.description.trim() } : {}),
       ...(eventDraft.image ? { imageUrl: eventDraft.image } : {}),
       ministryKey: isGeneralEvent ? null : eventDraft.ministryKey,
+      scope: schoolChoice ? schoolChoice.key.replace('school:', '') : 'general',
       requiresRegistration: eventDraft.requiresRegistration,
       registrationForm: eventFormForApi(registrationForm.form),
       isPublished: selectedEventId

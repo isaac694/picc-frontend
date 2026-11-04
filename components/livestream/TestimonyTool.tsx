@@ -3,15 +3,16 @@ import { useTestimonyForm } from '@/hooks/useLivestreamTools';
 
 type TestimonyToolProps = {
   churchEmail?: string;
+  source?: string;
 };
 
-export default function TestimonyTool({ churchEmail }: TestimonyToolProps) {
+export default function TestimonyTool({ churchEmail, source }: TestimonyToolProps) {
   const {
     testimonyForm,
     handleTestimonyChange,
     handleTestimonySubmit,
     isSubmitting,
-  } = useTestimonyForm(churchEmail);
+  } = useTestimonyForm(churchEmail, source);
 
   return (
     <div className="text-white">

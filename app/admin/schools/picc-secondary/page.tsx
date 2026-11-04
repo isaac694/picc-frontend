@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import SchoolIntakesManager from '@/components/admin/SchoolIntakesManager';
+import SchoolRegistrationsManager from '@/components/admin/SchoolRegistrationsManager';
+import SchoolMainEventsPanel from '@/components/admin/SchoolMainEventsPanel';
+import NewsManager from '@/components/admin/NewsManager';
 import SchoolInfoManager from '@/components/admin/SchoolInfoManager';
 import SchoolKeyDatesManager from '@/components/admin/SchoolKeyDatesManager';
 
-type Tab = 'enrollment' | 'key-dates' | 'info';
+type Tab = 'registrations' | 'enrollment' | 'key-dates' | 'info' | 'news' | 'events';
 
 const piccSecondaryFallbackInfo = {
   header: 'PICC Secondary School',
@@ -51,7 +54,7 @@ export default function PICCSecondaryEnrollmentAdminPage() {
     handleLogin,
   } = useAdminAuth();
 
-  const [activeTab, setActiveTab] = useState<Tab>('enrollment');
+  const [activeTab, setActiveTab] = useState<Tab>('registrations');
 
   if (!token) {
     return (
@@ -67,9 +70,12 @@ export default function PICCSecondaryEnrollmentAdminPage() {
   }
 
   const tabs: Array<{ id: Tab; label: string }> = [
-    { id: 'enrollment', label: 'Enrollment' },
+    { id: 'registrations', label: 'Registrations' },
+    { id: 'enrollment', label: 'Intakes' },
     { id: 'key-dates', label: 'Key Dates' },
     { id: 'info', label: 'School Info' },
+    { id: 'news', label: 'News' },
+    { id: 'events', label: 'Events' },
   ];
 
   return (
@@ -103,6 +109,7 @@ export default function PICCSecondaryEnrollmentAdminPage() {
       </div>
 
       <div>
+        {activeTab === 'registrations' && <SchoolRegistrationsManager token={token} schoolKey="picc-secondary" schoolName="PICC Secondary School" />}
         {activeTab === 'enrollment' && <SchoolIntakesManager token={token} schoolKey="picc-secondary" />}
         {activeTab === 'key-dates' && <SchoolKeyDatesManager token={token} schoolKey="picc-secondary" />}
         {activeTab === 'info' && (
@@ -130,6 +137,15 @@ export default function PICCSecondaryEnrollmentAdminPage() {
             }}
           />
         )}
+        {activeTab === 'news' && (
+          <NewsManager
+            token={token}
+            scope="picc-secondary"
+            title="PICC Secondary School news"
+            description="Stories shown in the news section of the PICC Secondary School page and at /news. Use Import older news once to bring across stories saved before."
+          />
+        )}
+        {activeTab === 'events' && <SchoolMainEventsPanel schoolKey="picc-secondary" schoolName="PICC Secondary School" publicHref="/schools/picc-secondary" />}
       </div>
     </div>
   );

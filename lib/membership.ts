@@ -95,3 +95,5 @@ export function parseCsv(text: string): Array<Record<string, string>> {
   if (!header) return [];
   return body.map((values) => Object.fromEntries(header.map((name, index) => [name.trim(), (values[index] || '').trim()])));
 }
+
+export const MEMBER_GROUPS = ['Children', 'Youth', 'Men', 'Women'] as const;

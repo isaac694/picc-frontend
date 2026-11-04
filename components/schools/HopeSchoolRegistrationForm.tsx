@@ -94,7 +94,7 @@ export default function HopeSchoolRegistrationForm({
     setRegistrationId(null);
 
     try {
-      const response = await apiFetch('/api/hope-school/registrations', {
+      const response = await apiFetch(`/api/schools/${schoolKey}/registrations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

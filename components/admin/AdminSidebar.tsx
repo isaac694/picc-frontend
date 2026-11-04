@@ -86,6 +86,7 @@ const PAYMENTS_ITEMS: NavItem[] = [
   { label: 'Ticket KPIs', href: '/admin/event-payments/tickets', pageKey: ADMIN_PAGE.EVENT_TICKET_KPIS, icon: Ticket },
   { label: 'Store dashboard', href: '/admin/store/dashboard', pageKey: ADMIN_PAGE.STORE_PAGE, icon: LayoutDashboard },
   { label: 'Book store payments', href: '/admin/store/payments', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
+  { label: 'Hard copy sales', href: '/admin/store/hardcopy-sales', pageKey: ADMIN_PAGE.STORE_PAGE, icon: Receipt },
 ];
 
 const SITE_PAGE_ITEMS: NavItem[] = [
@@ -97,8 +98,8 @@ const SITE_PAGE_ITEMS: NavItem[] = [
   { label: 'Branded items', href: '/admin/store/merchandise', pageKey: ADMIN_PAGE.STORE_PAGE, icon: ShoppingBag },
   { label: 'Branded item stats', href: '/admin/store/merchandise/stats', pageKey: ADMIN_PAGE.STORE_PAGE, icon: BarChart3 },
   { label: 'Branded item sales', href: '/admin/store/branded-sales', pageKey: ADMIN_PAGE.STORE_PAGE, icon: Shirt },
-  { label: 'Book launch sales', href: '/admin/store/book-launch', pageKey: ADMIN_PAGE.STORE_PAGE, icon: Receipt },
-  { label: 'Forms Page', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE, icon: FileText },
+  { label: 'Book launch folders', href: '/admin/store/book-launch', pageKey: ADMIN_PAGE.STORE_PAGE, icon: Receipt },
+  { label: 'Forms register', href: '/admin/forms', pageKey: ADMIN_PAGE.FORMS_PAGE, icon: FileText },
   { label: 'Sermons Page', href: '/admin/sermons', pageKey: ADMIN_PAGE.SERMONS_PAGE, icon: BookOpen },
   { label: 'Sermon analytics', href: '/admin/sermons/dashboard', pageKey: ADMIN_PAGE.SERMONS_PAGE, icon: BarChart3 },
   { label: 'Give Page', href: '/admin/giving/types', pageKey: ADMIN_PAGE.GIVE_PAGE, icon: FileText },

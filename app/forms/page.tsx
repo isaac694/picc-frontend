@@ -2,629 +2,164 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { HandHeart, Sparkles, UserPlus } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import MembershipTool from '@/components/livestream/MembershipTool';
+import TestimonyTool from '@/components/livestream/TestimonyTool';
+import PrayerRequestTool from '@/components/livestream/PrayerRequestTool';
 import { apiFetch, apiUrl } from '@/lib/api';
-import { sendMembershipNotification, sendPrayerNotification, sendTestimonyNotification } from '@/lib/email';
-import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+type FormKey = 'membership' | 'testimony' | 'prayer';
+
+// Same tab-and-panel layout as the livestream tools, using the same form components.
+const FORMS: Array<{
+  key: FormKey;
+  label: string;
+  blurb: string;
+  icon: typeof UserPlus;
+  pill: string;
+  imageKey: string;
+  fallback: string;
+}> = [
+  {
+    key: 'membership',
+    label: 'Become a member',
+    blurb: 'Join the PICC family and let us walk with you.',
+    icon: UserPlus,
+    pill: 'bg-[#EAF2FF] text-[#1E4FA3] hover:bg-[#DCEAFF]',
+    imageKey: 'membership-form-image',
+    fallback: '/images/our-church.JPG',
+  },
+  {
+    key: 'testimony',
+    label: 'Send Testimony',
+    blurb: 'Share what God has done and encourage others.',
+    icon: Sparkles,
+    pill: 'bg-[#CFF6DF] text-[#137A3D] hover:bg-[#BDEFD3]',
+    imageKey: 'testimony-form-image',
+    fallback: '/images/send-message-2.JPG',
+  },
+  {
+    key: 'prayer',
+    label: 'Prayer Request',
+    blurb: 'Tell us what to pray with you about.',
+    icon: HandHeart,
+    pill: 'bg-[#FFF2DA] text-[#8A5A00] hover:bg-[#FFE9C2]',
+    imageKey: 'prayer-form-image',
+    fallback: '/images/our-church.JPG',
+  },
+];
 
 export default function FormsPage() {
-  const [memberForm, setMemberForm] = useState({
-    fullName: '',
-    gender: '',
-    email: '',
-    phone: '',
-    city: '',
-    country: '',
-  });
-  const [memberSubmitting, setMemberSubmitting] = useState(false);
-  const [testimonyForm, setTestimonyForm] = useState({
-    fullName: '',
-    phone: '',
-    area: '',
-    situation: '',
-    testimony: '',
-  });
-  const [testimonySubmitting, setTestimonySubmitting] = useState(false);
-  const [prayerForm, setPrayerForm] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    country: '',
-    bornAgain: '',
-    areaOfNeed: '',
-    request: '',
-  });
-  const [prayerSubmitting, setPrayerSubmitting] = useState(false);
-  const [formImages, setFormImages] = useState<Record<string, string>>({
-    membershipForm: '/images/our-church.JPG',
-    testimonyForm: '/images/send-message-2.JPG',
-    prayerForm: '/images/our-church.JPG',
-  });
-
-  const normalizeImageUrl = (url?: string | null) => {
-    if (!url) return '';
-    if (url.startsWith('http')) return url;
-    return apiUrl(url);
-  };
+  const [active, setActive] = useState<FormKey>('membership');
+  const [images, setImages] = useState<Record<string, string>>(() => Object.fromEntries(FORMS.map((form) => [form.imageKey, form.fallback])));
 
   useEffect(() => {
-    const fetchImages = async () => {
-      const imageKeys = [
-        { stateKey: 'membershipForm', key: 'membership-form-image', fallback: '/images/our-church.JPG' },
-        { stateKey: 'testimonyForm', key: 'testimony-form-image', fallback: '/images/send-message-2.JPG' },
-        { stateKey: 'prayerForm', key: 'prayer-form-image', fallback: '/images/our-church.JPG' },
-      ];
+    const requested = new URLSearchParams(window.location.search).get('form');
+    if (requested && FORMS.some((form) => form.key === requested)) setActive(requested as FormKey);
 
-      const entries = await Promise.all(
-        imageKeys.map(async (item) => {
-          try {
-            const response = await apiFetch(`/api/site-content/${item.key}`);
-            if (!response.ok) {
-              return [item.stateKey, item.fallback] as const;
-            }
-            const data = await response.json();
-            return [item.stateKey, data.imageUrl ? normalizeImageUrl(data.imageUrl) : item.fallback] as const;
-          } catch {
-            return [item.stateKey, item.fallback] as const;
-          }
-        })
-      );
-      setFormImages(Object.fromEntries(entries));
-    };
-
-    fetchImages();
+    void Promise.all(
+      FORMS.map(async (form) => {
+        try {
+          const response = await apiFetch(`/api/site-content/${form.imageKey}`);
+          const data = response.ok ? await response.json() : null;
+          const url = data?.imageUrl ? String(data.imageUrl) : '';
+          return [form.imageKey, url ? (url.startsWith('http') ? url : apiUrl(url)) : form.fallback] as const;
+        } catch {
+          return [form.imageKey, form.fallback] as const;
+        }
+      }),
+    ).then((entries) => setImages(Object.fromEntries(entries)));
   }, []);
 
-  const handleMemberChange = (field: keyof typeof memberForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    setMemberForm((prev) => ({ ...prev, [field]: event.target.value }));
-  };
+  const current = FORMS.find((form) => form.key === active) || FORMS[0];
 
-  const handleMemberSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!memberForm.fullName || !memberForm.gender || !memberForm.email || !memberForm.phone || !memberForm.city || !memberForm.country) {
-      toast.error('Please complete the required fields before submitting.');
-      return;
-    }
-
-    setMemberSubmitting(true);
-    try {
-      await sendMembershipNotification({
-        churchEmail: 'info@piccworldwide.org',
-        fullName: memberForm.fullName,
-        gender: memberForm.gender,
-        email: memberForm.email,
-        phone: memberForm.phone,
-        city: memberForm.city,
-        country: memberForm.country,
-      });
-      toast.success('Thank you! Your membership form was submitted.');
-      setMemberForm({
-        fullName: '',
-        gender: '',
-        email: '',
-        phone: '',
-        city: '',
-        country: '',
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to submit membership form.');
-    } finally {
-      setMemberSubmitting(false);
-    }
-  };
-
-  const handleTestimonyChange =
-    (field: keyof typeof testimonyForm) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setTestimonyForm((prev) => ({ ...prev, [field]: event.target.value }));
-  };
-
-  const handleTestimonySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!testimonyForm.fullName || !testimonyForm.situation || !testimonyForm.testimony) {
-      toast.error('Please complete the required fields before submitting.');
-      return;
-    }
-
-    setTestimonySubmitting(true);
-    try {
-      await sendTestimonyNotification({
-        churchEmail: 'testimony@piccworldwide.org',
-        fullName: testimonyForm.fullName,
-        phone: testimonyForm.phone || undefined,
-        area: testimonyForm.area || undefined,
-        situation: testimonyForm.situation,
-        testimony: testimonyForm.testimony,
-      });
-      toast.success('Thank you! Your testimony has been sent.');
-      setTestimonyForm({
-        fullName: '',
-        phone: '',
-        area: '',
-        situation: '',
-        testimony: '',
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to submit testimony.');
-    } finally {
-      setTestimonySubmitting(false);
-    }
-  };
-
-  const handlePrayerChange = (field: keyof typeof prayerForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setPrayerForm((prev) => ({ ...prev, [field]: event.target.value }));
-  };
-
-  const handlePrayerSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!prayerForm.fullName || !prayerForm.request) {
-      toast.error('Please complete the required fields before submitting.');
-      return;
-    }
-
-    setPrayerSubmitting(true);
-    try {
-      await sendPrayerNotification({
-        churchEmail: 'info@piccworldwide.org',
-        fullName: prayerForm.fullName,
-        email: prayerForm.email || undefined,
-        phone: prayerForm.phone || undefined,
-        address: prayerForm.address || undefined,
-        city: prayerForm.city || undefined,
-        state: prayerForm.state || undefined,
-        country: prayerForm.country || undefined,
-        bornAgain: prayerForm.bornAgain || undefined,
-        areaOfNeed: prayerForm.areaOfNeed || undefined,
-        request: prayerForm.request,
-      });
-      toast.success('Thank you! Your prayer request was submitted.');
-      setPrayerForm({
-        fullName: '',
-        email: '',
-        phone: '',
-        address: '',
-        city: '',
-        state: '',
-        country: '',
-        bornAgain: '',
-        areaOfNeed: '',
-        request: '',
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to submit prayer request.');
-    } finally {
-      setPrayerSubmitting(false);
-    }
+  const choose = (key: FormKey) => {
+    setActive(key);
+    const url = new URL(window.location.href);
+    url.searchParams.set('form', key);
+    window.history.replaceState(null, '', url);
   };
 
   return (
     <>
       <Navigation />
-      <main className="min-h-screen bg-background">
-        <section className="text-white bg-[radial-gradient(circle_at_top,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] rounded-b-[36px] md:rounded-b-[48px]">
-          <div className="py-16 md:py-20">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-              <h1 className="text-4xl md:text-6xl font-semibold mb-3">Forms</h1>
-              <p className="text-white/80">
-                Share your details and let us serve you better.
-              </p>
-            </div>
-          </div>
-
-          <div className="pb-24">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-10 items-stretch">
-                <div className="relative min-h-[20rem] sm:min-h-[26rem] md:min-h-[34rem] lg:min-h-[38rem] rounded-3xl overflow-hidden shadow-2xl bg-white/10">
-                  <Image
-                    src={formImages.membershipForm}
-                    alt="PICC church family"
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-cover"
-                  />
-                </div>
-
-                <Card className="bg-white/15 backdrop-blur-sm text-white border-white/20 shadow-2xl rounded-3xl h-full">
-                  <div className="px-6 py-8 md:px-8 md:py-10 h-full flex flex-col justify-center">
-                    <h2 className="text-3xl font-semibold text-white mb-2">Become a member</h2>
-                  <p className="text-white/80 mb-6">
-                    If you made a decision today, we would love to connect with you.
-                  </p>
-
-                    <form className="space-y-4" onSubmit={handleMemberSubmit}>
-                      <div>
-                        <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                          Full Name
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Full Name"
-                          required
-                          value={memberForm.fullName}
-                          onChange={handleMemberChange('fullName')}
-                          className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                          Gender
-                        </label>
-                        <div className="mt-2 grid grid-cols-2 gap-3">
-                          {['Male', 'Female'].map((option) => (
-                            <label
-                              key={option}
-                              className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/85 px-3 py-2 text-sm text-foreground shadow-sm"
-                            >
-                              <input
-                                type="radio"
-                                name="gender"
-                                value={option}
-                                required
-                                checked={memberForm.gender === option}
-                                onChange={handleMemberChange('gender')}
-                              />
-                              <span>{option}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                            Email
-                          </label>
-                          <input
-                            type="email"
-                            placeholder="Email Address"
-                            required
-                            value={memberForm.email}
-                            onChange={handleMemberChange('email')}
-                            className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                            Phone/Mobile
-                          </label>
-                          <input
-                            type="tel"
-                            placeholder="Mobile Number"
-                            required
-                            value={memberForm.phone}
-                            onChange={handleMemberChange('phone')}
-                            className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                            City/District
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="City/District"
-                            required
-                            value={memberForm.city}
-                            onChange={handleMemberChange('city')}
-                            className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                            Country
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Country"
-                            required
-                            value={memberForm.country}
-                            onChange={handleMemberChange('country')}
-                            className="mt-2 w-full rounded-xl border border-white/20 bg-white/85 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                          />
-                        </div>
-                      </div>
-
-                      <Button className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90" disabled={memberSubmitting}>
-                        {memberSubmitting ? 'Sending...' : 'Submit'}
-                      </Button>
-                    </form>
-                  </div>
-                </Card>
-              </div>
-            </div>
-          </div>
-        </section>
-
+      <main className="min-h-screen bg-black text-white">
         <section className="py-16 sm:py-20 md:py-24">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.05fr] gap-10 items-stretch">
-              <Card className="bg-white/10 backdrop-blur-sm text-foreground border border-border/20 shadow-2xl rounded-3xl h-full">
-                <div className="px-6 py-8 md:px-8 md:py-10 h-full flex flex-col justify-center">
-                  <h2 className="text-3xl font-semibold text-primary mb-2">Submit a testimony</h2>
-                  <p className="text-foreground/70 mb-6">
-                    Share what God has done in your life and encourage others.
-                  </p>
+          <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+            <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl">
+              Church <span className="text-[#39D98A]">Forms</span>
+            </h1>
+            <p className="text-base text-white/80 md:text-lg">Share your details and let us serve you better.</p>
+          </div>
+        </section>
 
-                  <form className="space-y-4" onSubmit={handleTestimonySubmit}>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Full Name"
-                        required
-                        value={testimonyForm.fullName}
-                        onChange={handleTestimonyChange('fullName')}
-                        className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="Phone Number"
-                        value={testimonyForm.phone}
-                        onChange={handleTestimonyChange('phone')}
-                        className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                        Area of Testimony
-                      </label>
-                      <select
-                        value={testimonyForm.area}
-                        onChange={handleTestimonyChange('area')}
-                        className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                        required
-                      >
-                        <option value="">Select area of testimony</option>
-                        <option value="Healing & Health">Healing & Health</option>
-                        <option value="Financial Breakthrough">Financial Breakthrough</option>
-                        <option value="Family & Marriage">Family & Marriage</option>
-                        <option value="Career & Business">Career & Business</option>
-                        <option value="Spiritual Growth">Spiritual Growth</option>
-                        <option value="Protection & Safety">Protection & Safety</option>
-                        <option value="Academic Success">Academic Success</option>
-                        <option value="Fruit of the Womb">Fruit of the Womb</option>
-                        <option value="Salvation">Salvation</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                        How the situation was like
-                      </label>
-                      <textarea
-                        rows={5}
-                        placeholder="Describe the situation"
-                        required
-                        value={testimonyForm.situation}
-                        onChange={handleTestimonyChange('situation')}
-                        className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                        What God has done
-                      </label>
-                      <textarea
-                        rows={5}
-                        placeholder="Share what God has done"
-                        required
-                        value={testimonyForm.testimony}
-                        onChange={handleTestimonyChange('testimony')}
-                        className="mt-2 w-full rounded-xl border border-foreground/10 bg-white px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
-                    <Button className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90" disabled={testimonySubmitting}>
-                      {testimonySubmitting ? 'Sending...' : 'Submit Testimony'}
-                    </Button>
-                  </form>
-                </div>
-              </Card>
-
-              <div className="relative min-h-[20rem] sm:min-h-[26rem] md:min-h-[34rem] lg:min-h-[38rem] rounded-3xl overflow-hidden shadow-2xl bg-white/5">
-                <Image
-                  src={formImages.testimonyForm}
-                  alt="Share your testimony"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
-                />
-              </div>
+        <section aria-label="Choose a form">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/50">Choose a form</p>
+            <div role="tablist" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {FORMS.map((form) => {
+                const selected = form.key === active;
+                return (
+                  <button
+                    key={form.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => choose(form.key)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
+                      selected ? 'border-white bg-white text-black' : 'border-white/15 bg-white/5 text-white hover:bg-white/10',
+                    )}
+                  >
+                    <form.icon className="h-5 w-5 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{form.label}</span>
+                      <span className={cn('block truncate text-xs', selected ? 'text-black/60' : 'text-white/50')}>{form.blurb}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </section>
 
-        <section className="pb-24">
-          <div className="w-full px-4 sm:px-6 lg:px-8">
-            <div className="rounded-[36px] bg-[radial-gradient(circle_at_top_left,#4B7BA7_0%,#2D5A8C_45%,#1E3A5F_100%)] p-8 md:p-12 text-white shadow-2xl">
-              <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-10 items-stretch">
-                <div className="flex flex-col justify-center">
-                  <h2 className="text-3xl md:text-4xl font-semibold mb-4">Prayer Request</h2>
-                  <form className="space-y-4" onSubmit={handlePrayerSubmit}>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Full Name"
-                        required
-                        value={prayerForm.fullName}
-                        onChange={handlePrayerChange('fullName')}
-                        className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          placeholder="Email Address"
-                          value={prayerForm.email}
-                          onChange={handlePrayerChange('email')}
-                          className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                          Phone/Mobile
-                        </label>
-                        <input
-                          type="tel"
-                          placeholder="Mobile Number"
-                          value={prayerForm.phone}
-                          onChange={handlePrayerChange('phone')}
-                          className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                          Address
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Address"
-                          value={prayerForm.address}
-                          onChange={handlePrayerChange('address')}
-                          className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                          City
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="City"
-                          value={prayerForm.city}
-                          onChange={handlePrayerChange('city')}
-                          className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                          State
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="State"
-                          value={prayerForm.state}
-                          onChange={handlePrayerChange('state')}
-                          className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                          Country
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Country"
-                          value={prayerForm.country}
-                          onChange={handlePrayerChange('country')}
-                          className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                        Are you born again?
-                      </label>
-                      <div className="mt-2 grid grid-cols-2 gap-3">
-                        {['Yes', 'No'].map((option) => (
-                          <label
-                            key={option}
-                            className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/90 px-3 py-2 text-sm text-foreground shadow-sm"
-                          >
-                            <input
-                              type="radio"
-                              name="bornAgain"
-                              value={option}
-                              required
-                              checked={prayerForm.bornAgain === option}
-                              onChange={handlePrayerChange('bornAgain')}
-                            />
-                            <span>{option}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                        Area of Need
-                      </label>
-                      <select
-                        value={prayerForm.areaOfNeed}
-                        onChange={handlePrayerChange('areaOfNeed')}
-                        className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                        required
-                      >
-                        <option value="">Select area of need</option>
-                        <option value="Spiritual Growth">Spiritual Growth</option>
-                        <option value="Healing">Healing</option>
-                        <option value="Financial">Financial</option>
-                        <option value="Family">Family</option>
-                        <option value="Marriage">Marriage</option>
-                        <option value="Children">Children</option>
-                        <option value="Career/Job">Career/Job</option>
-                        <option value="Education">Education</option>
-                        <option value="Relationships">Relationships</option>
-                        <option value="Deliverance">Deliverance</option>
-                        <option value="Guidance">Guidance</option>
-                        <option value="Salvation">Salvation</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.2em] text-white/70">
-                        Prayer Request
-                      </label>
-                      <textarea
-                        rows={4}
-                        placeholder="What would you like us to pray with you about?"
-                        required
-                        value={prayerForm.request}
-                        onChange={handlePrayerChange('request')}
-                        className="mt-2 w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60"
-                      />
-                    </div>
-                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={prayerSubmitting}>
-                      {prayerSubmitting ? 'Sending...' : 'Send My Prayer'}
-                    </Button>
-                  </form>
+        <section className="py-8 pb-20 md:py-10 md:pb-24">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5">
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                {FORMS.map((form) => (
+                  <button
+                    key={form.key}
+                    type="button"
+                    onClick={() => choose(form.key)}
+                    className={cn('rounded-full px-3 py-1 transition-colors', active === form.key ? 'bg-white text-black' : 'bg-white/10 text-white hover:bg-white/20')}
+                  >
+                    {form.label}
+                  </button>
+                ))}
+              </div>
+              <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
+                <div className="px-5 py-6 md:px-8 md:py-8">
+                  {active === 'membership' && <MembershipTool source="forms" />}
+                  {active === 'testimony' && <TestimonyTool source="forms" />}
+                  {active === 'prayer' && <PrayerRequestTool ministryKey="forms" />}
                 </div>
-
-                <div className="relative min-h-[20rem] sm:min-h-[24rem] md:min-h-[30rem] lg:min-h-[34rem] rounded-3xl overflow-hidden bg-white/10 shadow-2xl">
-                  <Image
-                    src={formImages.prayerForm}
-                    alt="Prayer request"
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-cover"
-                  />
+                <div className="relative hidden min-h-[28rem] lg:block">
+                  <Image src={images[current.imageKey] || current.fallback} alt="" fill sizes="40vw" className="object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 p-6">
+                    <span className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium', current.pill)}>
+                      <current.icon className="h-3 w-3" /> {current.label}
+                    </span>
+                    <p className="mt-3 text-sm text-white/80">{current.blurb}</p>
+                  </div>
                 </div>
+              </div>
+              <div className="border-t border-white/10 px-4 py-3 text-xs text-white/60">
+                Your details go straight to the church office and are kept private.
               </div>
             </div>
           </div>

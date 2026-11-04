@@ -12,11 +12,16 @@ import { CLOUDINARY_FOLDERS, uploadImageToCloudinary } from '@/lib/cloudinary-up
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { apiFetch } from '@/lib/api';
 import { PROJECT_BOOKS_UPLOAD_PREFIX } from '@/lib/project-page-images-upload';
-import { products, bookGenres, type Product } from '@/components/data/products';
-import { ImageIcon, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { products, type Product } from '@/components/data/products';
+import { Barcode, ImageIcon, Pencil, Plus, RefreshCw, Tags, Trash2 } from 'lucide-react';
+import BookCategoriesDialog from '@/components/admin/BookCategoriesDialog';
+import BookBarcodeDialog from '@/components/admin/BookBarcodeDialog';
+import BulkBarcodeExportDialog from '@/components/admin/BulkBarcodeExportDialog';
+import { useBookCategories } from '@/hooks/use-book-categories';
 
 type StoreBook = Product & {
   productId: string;
+  barcode?: string | null;
   title: string;
   coverImageUrl?: string | null;
   hardCopyPrice: number;
@@ -96,6 +101,7 @@ const toDraft = (book: StoreBook): StoreBookDraft => ({
 const normalizeBook = (book: Partial<StoreBook>): StoreBook => ({
   id: String(book.id || book.productId || ''),
   productId: String(book.productId || book.id || ''),
+  barcode: book.barcode || null,
   name: String(book.name || book.title || ''),
   title: String(book.title || book.name || ''),
   price: Number(book.price ?? book.hardCopyPrice ?? 0),
@@ -146,6 +152,10 @@ export default function AdminStorePage() {
     setPassword,
     handleLogin,
   } = useAdminAuth();
+  const { categories: bookCategories, setCategories: setBookCategories } = useBookCategories();
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [labelBook, setLabelBook] = useState<StoreBook | null>(null);
+  const [bulkLabelsOpen, setBulkLabelsOpen] = useState(false);
 
   const [books, setBooks] = useState<StoreBook[]>([]);
   const [draft, setDraft] = useState<StoreBookDraft>(EMPTY_DRAFT);
@@ -528,6 +538,14 @@ export default function AdminStorePage() {
             <Plus className="h-4 w-4" />
             Add book
           </Button>
+          <Button variant="outline" onClick={() => setBulkLabelsOpen(true)} className="gap-2">
+            <Barcode className="h-4 w-4" />
+            Export all barcodes
+          </Button>
+          <Button variant="outline" onClick={() => setCategoriesOpen(true)} className="gap-2">
+            <Tags className="h-4 w-4" />
+            Categories
+          </Button>
           <Button variant="outline" onClick={importExistingBooks} disabled={isImporting}>
             <RefreshCw className="h-4 w-4" />
             {isImporting ? 'Importing...' : 'Import Existing Books'}
@@ -584,15 +602,16 @@ export default function AdminStorePage() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="store-book-genre" className="text-sm font-medium text-foreground">Genre</label>
+              <label htmlFor="store-book-genre" className="text-sm font-medium text-foreground">Category</label>
               <select
                 id="store-book-genre"
                 value={draft.genre}
                 onChange={(event) => setDraft((prev) => ({ ...prev, genre: event.target.value }))}
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
               >
-                <option value="">Select genre</option>
-                {bookGenres.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
+                <option value="">Select category</option>
+                {bookCategories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
+                {draft.genre && !bookCategories.some((category) => category.name === draft.genre) ? <option value={draft.genre}>{draft.genre}</option> : null}
               </select>
             </div>
             <div className="space-y-2">
@@ -851,6 +870,18 @@ export default function AdminStorePage() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
+                          {book.barcode ? (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Barcode label for ${book.title}`}
+                              title={`Barcode ${book.barcode}`}
+                              onClick={() => setLabelBook(book)}
+                            >
+                              <Barcode className="h-4 w-4" />
+                            </Button>
+                          ) : null}
                           {!book.isBuiltIn ? (
                             <Button
                               type="button"
@@ -872,6 +903,21 @@ export default function AdminStorePage() {
             )}
           </div>
         </section>
+      {token ? (
+        <BookCategoriesDialog open={categoriesOpen} onOpenChange={setCategoriesOpen} token={token} categories={bookCategories} onChange={setBookCategories} />
+      ) : null}
+      <BulkBarcodeExportDialog
+        open={bulkLabelsOpen}
+        onOpenChange={setBulkLabelsOpen}
+        books={books
+          .filter((book) => book.barcode)
+          .map((book) => ({ id: book.id, title: book.title, author: book.author, price: book.hardCopyPrice, barcode: book.barcode as string, stock: book.hardCopyStock }))}
+      />
+      <BookBarcodeDialog
+        book={labelBook?.barcode ? { title: labelBook.title, author: labelBook.author, price: labelBook.hardCopyPrice, barcode: labelBook.barcode } : null}
+        stock={labelBook?.hardCopyStock}
+        onOpenChange={(open) => !open && setLabelBook(null)}
+      />
     </div>
   );
 }

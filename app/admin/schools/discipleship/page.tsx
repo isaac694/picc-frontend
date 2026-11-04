@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import SchoolIntakesManager from '@/components/admin/SchoolIntakesManager';
+import SchoolRegistrationsManager from '@/components/admin/SchoolRegistrationsManager';
+import SchoolMainEventsPanel from '@/components/admin/SchoolMainEventsPanel';
+import NewsManager from '@/components/admin/NewsManager';
 import SchoolInfoManager from '@/components/admin/SchoolInfoManager';
-import SchoolNewsManager from '@/components/admin/SchoolNewsManager';
-import SchoolEventsManager from '@/components/admin/SchoolEventsManager';
 import SchoolKeyDatesManager from '@/components/admin/SchoolKeyDatesManager';
-import { DISCIPLESHIP_NEWS } from '@/components/schools/schoolNewsFallbacks';
 
-type Tab = 'enrollment' | 'key-dates' | 'info' | 'news' | 'events';
+type Tab = 'registrations' | 'enrollment' | 'key-dates' | 'info' | 'news' | 'events';
 
 const discipleshipFallbackInfo = {
   header: 'School of Discipleship',
@@ -118,7 +118,7 @@ export default function DiscipleshipEnrollmentAdminPage() {
     handleLogin,
   } = useAdminAuth();
 
-  const [activeTab, setActiveTab] = useState<Tab>('enrollment');
+  const [activeTab, setActiveTab] = useState<Tab>('registrations');
 
   if (!token) {
     return (
@@ -134,7 +134,8 @@ export default function DiscipleshipEnrollmentAdminPage() {
   }
 
   const tabs: Array<{ id: Tab; label: string }> = [
-    { id: 'enrollment', label: 'Enrollment' },
+    { id: 'registrations', label: 'Registrations' },
+    { id: 'enrollment', label: 'Intakes' },
     { id: 'key-dates', label: 'Key Dates' },
     { id: 'info', label: 'School Info' },
     { id: 'news', label: 'News' },
@@ -172,6 +173,7 @@ export default function DiscipleshipEnrollmentAdminPage() {
       </div>
 
       <div>
+        {activeTab === 'registrations' && <SchoolRegistrationsManager token={token} schoolKey="discipleship" schoolName="Discipleship Class" />}
         {activeTab === 'enrollment' && <SchoolIntakesManager token={token} schoolKey="discipleship" />}
         {activeTab === 'key-dates' && <SchoolKeyDatesManager token={token} schoolKey="discipleship" />}
         {activeTab === 'info' && (
@@ -208,20 +210,14 @@ export default function DiscipleshipEnrollmentAdminPage() {
           />
         )}
         {activeTab === 'news' && (
-          <SchoolNewsManager
+          <NewsManager
             token={token}
-            schoolKey="discipleship"
-            schoolName="Discipleship"
-            fallbackNews={DISCIPLESHIP_NEWS.map((item) => ({
-              badge: item.badge,
-              date: item.date,
-              title: item.title,
-              content: item.description,
-              imageUrl: item.image,
-            }))}
+            scope="discipleship"
+            title="Discipleship Class news"
+            description="Stories shown in the news section of the Discipleship Class page and at /news. Use Import older news once to bring across stories saved before."
           />
         )}
-        {activeTab === 'events' && <SchoolEventsManager token={token} schoolKey="discipleship" schoolName="Discipleship" />}
+        {activeTab === 'events' && <SchoolMainEventsPanel schoolKey="discipleship" schoolName="Discipleship Class" publicHref="/schools/discipleship" />}
       </div>
     </div>
   );

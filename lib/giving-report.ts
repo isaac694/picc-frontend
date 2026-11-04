@@ -81,7 +81,7 @@ export function printGivingReport(report: GivingReport) {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Gift report ${escapeHtml(period)}</title>
+  <title>Giving report ${escapeHtml(period)}</title>
   <style>
     body { font-family: Georgia, "Times New Roman", serif; color: #111; margin: 24px; }
     h1 { font-size: 22px; margin: 0; }
@@ -98,25 +98,25 @@ export function printGivingReport(report: GivingReport) {
 </head>
 <body>
   <p>Pentecost International Christian Centre</p>
-  <h1>Gift report</h1>
+  <h1>Giving report</h1>
   <p>${escapeHtml(period)}</p>
   <p>${report.givingType && report.givingType !== 'all' ? `${escapeHtml(report.givingType)} · ` : ''}${report.count} record${report.count === 1 ? '' : 's'}${report.status && report.status !== 'all' ? ` · ${escapeHtml(report.status)}` : ''}</p>
-  <h2>By gift type</h2>
+  <h2>By giving type</h2>
   <table>
-    <thead><tr><th>Gift type</th><th>Gifts</th><th>Total</th></tr></thead>
-    <tbody>${categoryRows || '<tr><td colspan="3">No gifts in this period.</td></tr>'}</tbody>
+    <thead><tr><th>Giving type</th><th>Givings</th><th>Total</th></tr></thead>
+    <tbody>${categoryRows || '<tr><td colspan="3">No givings in this period.</td></tr>'}</tbody>
     <tbody class="totals">${totalRows}</tbody>
   </table>
-  <h2>Gifts</h2>
+  <h2>Givings</h2>
   <table>
-    <thead><tr><th>Date</th><th>Giver</th><th>Gift type</th><th>Booklet</th><th>Amount</th></tr></thead>
-    <tbody>${entryRows || '<tr><td colspan="5">No gifts in this period.</td></tr>'}</tbody>
+    <thead><tr><th>Date</th><th>Giver</th><th>Giving type</th><th>Booklet</th><th>Amount</th></tr></thead>
+    <tbody>${entryRows || '<tr><td colspan="5">No givings in this period.</td></tr>'}</tbody>
   </table>
 </body>
 </html>`;
 
   const frame = document.createElement('iframe');
-  frame.setAttribute('title', 'Gift report');
+  frame.setAttribute('title', 'Giving report');
   frame.style.position = 'fixed';
   frame.style.right = '0';
   frame.style.bottom = '0';
@@ -155,7 +155,7 @@ export async function downloadGivingReportPdf(report: GivingReport) {
 
   doc.setFont('times', 'bold');
   doc.setFontSize(16);
-  doc.text('PICC Gift report', margin, y + 5);
+  doc.text('PICC Giving report', margin, y + 5);
   y += 10;
   doc.setFont('times', 'normal');
   doc.setFontSize(11);
@@ -166,7 +166,7 @@ export async function downloadGivingReportPdf(report: GivingReport) {
 
   doc.setFont('times', 'bold');
   doc.setFontSize(12);
-  doc.text('By gift type', margin, y);
+  doc.text('By giving type', margin, y);
   y += 6;
   doc.setFontSize(10);
   const typeWidth = pageWidth - margin * 2;
@@ -180,7 +180,7 @@ export async function downloadGivingReportPdf(report: GivingReport) {
   });
   if (report.categories.length === 0) {
     doc.setFont('times', 'italic');
-    doc.text('No gifts in this period.', margin, y);
+    doc.text('No giving in this period.', margin, y);
     y += 5;
   }
   report.totals.forEach((row) => {
@@ -195,7 +195,7 @@ export async function downloadGivingReportPdf(report: GivingReport) {
   ensureSpace(12);
   doc.setFont('times', 'bold');
   doc.setFontSize(12);
-  doc.text('Gifts', margin, y);
+  doc.text('Givings', margin, y);
   y += 6;
   doc.setFontSize(9);
   report.entries.forEach((row) => {
@@ -211,5 +211,5 @@ export async function downloadGivingReportPdf(report: GivingReport) {
   const typeSlug = report.givingType && report.givingType !== 'all'
     ? `-${report.givingType.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
     : '';
-  doc.save(`gift-report-${report.startDate}-to-${report.endDate}${typeSlug}.pdf`);
+  doc.save(`giving-report-${report.startDate}-to-${report.endDate}${typeSlug}.pdf`);
 }

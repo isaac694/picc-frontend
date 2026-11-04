@@ -12,6 +12,7 @@ import { adminErrorToast, adminSuccessToast, readApiMessage } from '@/components
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { apiFetch } from '@/lib/api';
 import {
+  MEMBER_GROUPS,
   MEMBER_STATUS_LABELS,
   formatMemberValue,
   memberName,
@@ -41,6 +42,7 @@ export default function MembershipRegisterPage() {
   const [queryInput, setQueryInput] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [groupFilter, setGroupFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
@@ -73,6 +75,7 @@ export default function MembershipRegisterPage() {
     try {
       const search = new URLSearchParams({ page: String(page), limit: '25', status: statusFilter });
       if (query) search.set('q', query);
+      if (groupFilter) search.set('group', groupFilter);
       const response = await apiFetch(`/api/admin/membership/members?${search.toString()}`, { headers });
       if (!response.ok) {
         adminErrorToast(await readApiMessage(response, { fallback: 'Unable to load members.' }));
@@ -85,7 +88,7 @@ export default function MembershipRegisterPage() {
     } finally {
       setLoading(false);
     }
-  }, [headers, page, query, statusFilter, token]);
+  }, [headers, page, query, statusFilter, groupFilter, token]);
 
   useEffect(() => {
     void loadFields();
@@ -171,7 +174,7 @@ export default function MembershipRegisterPage() {
   const exportCsv = async () => {
     setExporting(true);
     try {
-      const response = await apiFetch(`/api/admin/membership/export?status=${statusFilter}`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await apiFetch(`/api/admin/membership/export?status=${statusFilter}${groupFilter ? `&group=${groupFilter}` : ''}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) {
         adminErrorToast('Unable to download the membership register.');
         return;
@@ -311,6 +314,18 @@ export default function MembershipRegisterPage() {
         >
           <option value="all">All statuses</option>
           {statuses.map((status) => <option key={status} value={status}>{MEMBER_STATUS_LABELS[status] || status}</option>)}
+        </select>
+        <select
+          value={groupFilter}
+          onChange={(event) => {
+            setGroupFilter(event.target.value);
+            setPage(1);
+          }}
+          className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+          aria-label="Filter by group"
+        >
+          <option value="">All groups</option>
+          {MEMBER_GROUPS.map((group) => <option key={group} value={group}>{group}</option>)}
         </select>
       </div>
 

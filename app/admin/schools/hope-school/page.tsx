@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import SchoolIntakesManager from '@/components/admin/SchoolIntakesManager';
+import SchoolRegistrationsManager from '@/components/admin/SchoolRegistrationsManager';
+import SchoolMainEventsPanel from '@/components/admin/SchoolMainEventsPanel';
+import NewsManager from '@/components/admin/NewsManager';
 import SchoolInfoManager from '@/components/admin/SchoolInfoManager';
-import SchoolNewsManager from '@/components/admin/SchoolNewsManager';
-import SchoolEventsManager from '@/components/admin/SchoolEventsManager';
 import SchoolKeyDatesManager from '@/components/admin/SchoolKeyDatesManager';
-import { HOPE_SCHOOL_NEWS } from '@/components/schools/schoolNewsFallbacks';
 
-type Tab = 'enrollment' | 'key-dates' | 'info' | 'news' | 'events';
+type Tab = 'registrations' | 'enrollment' | 'key-dates' | 'info' | 'news' | 'events';
 
 const hopeSchoolFallbackInfo = {
   header: 'Hope School of Ministry',
@@ -46,7 +46,7 @@ export default function HopeSchoolEnrollmentAdminPage() {
     handleLogin,
   } = useAdminAuth();
 
-  const [activeTab, setActiveTab] = useState<Tab>('enrollment');
+  const [activeTab, setActiveTab] = useState<Tab>('registrations');
 
   if (!token) {
     return (
@@ -62,7 +62,8 @@ export default function HopeSchoolEnrollmentAdminPage() {
   }
 
   const tabs: Array<{ id: Tab; label: string }> = [
-    { id: 'enrollment', label: 'Enrollment' },
+    { id: 'registrations', label: 'Registrations' },
+    { id: 'enrollment', label: 'Intakes' },
     { id: 'key-dates', label: 'Key Dates' },
     { id: 'info', label: 'School Info' },
     { id: 'news', label: 'News' },
@@ -100,6 +101,7 @@ export default function HopeSchoolEnrollmentAdminPage() {
       </div>
 
       <div>
+        {activeTab === 'registrations' && <SchoolRegistrationsManager token={token} schoolKey="hope-school" schoolName="Hope School" />}
         {activeTab === 'enrollment' && <SchoolIntakesManager token={token} schoolKey="hope-school" />}
         {activeTab === 'key-dates' && <SchoolKeyDatesManager token={token} schoolKey="hope-school" />}
         {activeTab === 'info' && (
@@ -121,20 +123,14 @@ export default function HopeSchoolEnrollmentAdminPage() {
           />
         )}
         {activeTab === 'news' && (
-          <SchoolNewsManager
+          <NewsManager
             token={token}
-            schoolKey="hope-school"
-            schoolName="Hope School"
-            fallbackNews={HOPE_SCHOOL_NEWS.map((item) => ({
-              badge: item.badge,
-              date: item.date,
-              title: item.title,
-              content: item.description,
-              imageUrl: item.image,
-            }))}
+            scope="hope-school"
+            title="Hope School news"
+            description="Stories shown in the news section of the Hope School page and at /news. Use Import older news once to bring across stories saved before."
           />
         )}
-        {activeTab === 'events' && <SchoolEventsManager token={token} schoolKey="hope-school" schoolName="Hope School" />}
+        {activeTab === 'events' && <SchoolMainEventsPanel schoolKey="hope-school" schoolName="Hope School" publicHref="/schools/hope-school" />}
       </div>
     </div>
   );

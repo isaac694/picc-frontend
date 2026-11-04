@@ -4,7 +4,7 @@ import EventsCarousel from '@/components/EventsCarousel';
 import DiscipleshipNewsSection from '@/components/schools/DiscipleshipNewsSection';
 import { BookOpen, ShieldCheck, Sun, Anchor, Zap, Flame, Gift, Crown } from 'lucide-react';
 import Image from 'next/image';
-import SchoolIntakeGate from '@/components/schools/SchoolIntakeGate';
+import DiscipleshipRegistrationForm from '@/components/schools/DiscipleshipRegistrationForm';
 import SchoolKeyDatesList from '@/components/schools/SchoolKeyDatesList';
 import { apiUrl } from '@/lib/api';
 
@@ -490,62 +490,7 @@ export default async function SchoolOfDiscipleshipPage() {
               <p className="text-white/55 text-sm mt-1">Required fields are marked with an asterisk (*)</p>
             </div>
 
-            <div className="bg-white px-8 py-8">
-              {/* Personal Info */}
-              <p className="text-[#c9a84c] text-[0.65rem] font-semibold tracking-[0.2em] uppercase border-b border-[#f5e9c8] pb-3 mb-5">
-                Personal Information
-              </p>
-              <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">First Name *</label>
-                  <input type="text" placeholder="David" className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Last Name *</label>
-                  <input type="text" placeholder="Kipchoge" className={inputClass} />
-                </div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Email *</label>
-                  <input type="email" placeholder="david@email.com" className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Phone *</label>
-                  <input type="tel" placeholder="+254 700 000 000" className={inputClass} />
-                </div>
-              </div>
-
-              {/* Course Selection */}
-              <p className="text-[#c9a84c] text-[0.65rem] font-semibold tracking-[0.2em] uppercase border-b border-[#f5e9c8] pb-3 mb-5">
-                Course Preference
-              </p>
-              <div className="mb-4">
-                <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Learning Level *</label>
-                <select className={`${inputClass} appearance-none cursor-pointer`}>
-                  <option>Select your learning level</option>
-                  <option>Foundation Level</option>
-                  <option>Growth Level</option>
-                  <option>Leadership Level</option>
-                </select>
-              </div>
-              <div className="mb-6">
-                <label className="block text-[#0d1f3c] text-xs font-medium tracking-wide mb-1.5">Preferred Start Date *</label>
-                <select className={`${inputClass} appearance-none cursor-pointer`} disabled>
-                  <option>Select an intake below</option>
-                </select>
-              </div>
-
-              <SchoolIntakeGate
-                schoolKey="discipleship"
-                inputClass={inputClass}
-                selectLabel="Choose intake"
-                submitLabel="Register for Course"
-              />
-              <p className="text-center text-slate-400 text-xs mt-4 leading-relaxed">
-                After registration, we will send you course details, meeting times, and materials list.
-              </p>
-            </div>
+            <DiscipleshipRegistrationForm inputClass={inputClass} />
           </div>
         </div>
       </section>

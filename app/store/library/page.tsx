@@ -12,6 +12,7 @@ import {
   BookOpenText,
   Library,
   LockKeyhole,
+  Package,
   RefreshCw,
   RotateCcw,
   Sparkles,
@@ -283,10 +284,15 @@ export default function StoreLibraryPage() {
               </p>
             </div>
             {token && (
-              <Button variant="outline" onClick={() => fetchLibrary(token)} disabled={isLoading} className="gap-2 rounded-md">
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" asChild className="gap-2 rounded-md">
+                  <Link href="/store/orders"><Package className="h-4 w-4" />My Orders</Link>
+                </Button>
+                <Button variant="outline" onClick={() => fetchLibrary(token)} disabled={isLoading} className="gap-2 rounded-md">
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
             )}
           </div>
 
