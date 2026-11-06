@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Mail, Printer, RefreshCw, ScanLine, Search, XCircle } from 'lucide-react';
+import { Camera, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Mail, Printer, RefreshCw, ScanLine, Search, Share2, XCircle } from 'lucide-react';
+import ReceiptShareDialog from '@/components/admin/ReceiptShareDialog';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import PeriodFilter from '@/components/admin/PeriodFilter';
@@ -135,6 +136,7 @@ export default function HardcopySalesPage() {
   const [emailing, setEmailing] = useState<StoreOrder | null>(null);
   const [emailTo, setEmailTo] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [sharing, setSharing] = useState<StoreOrder | null>(null);
 
   // The till remembers whether to print every receipt straight away.
   useEffect(() => {
@@ -531,6 +533,7 @@ export default function HardcopySalesPage() {
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => printReceipt(lastOrder)}><Printer className="h-4 w-4" /> Print</Button>
                 <Button size="sm" variant="outline" onClick={() => void downloadReceiptPdf(lastOrder)}><Download className="h-4 w-4" /> PDF</Button>
+                <Button size="sm" variant="outline" onClick={() => setSharing(lastOrder)}><Share2 className="h-4 w-4" /> Share</Button>
                 {lastOrder.status === 'paid' ? (
                   <Button size="sm" variant="outline" onClick={() => openEmail(lastOrder)}><Mail className="h-4 w-4" /> Email</Button>
                 ) : null}
@@ -617,6 +620,9 @@ export default function HardcopySalesPage() {
                     ) : null}
                     <Button size="icon" variant="ghost" aria-label="Print receipt" onClick={() => printReceipt(order)}><Printer className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" aria-label="Download receipt" onClick={() => void downloadReceiptPdf(order)}><Download className="h-4 w-4" /></Button>
+                    {order.status !== 'cancelled' ? (
+                      <Button size="icon" variant="ghost" aria-label="Share receipt" title="Share receipt" onClick={() => setSharing(order)}><Share2 className="h-4 w-4" /></Button>
+                    ) : null}
                     {order.status === 'paid' ? (
                       <Button size="icon" variant="ghost" aria-label="Email receipt" title={order.customerEmail ? `Email receipt to ${order.customerEmail}` : 'Email receipt'} onClick={() => openEmail(order)}><Mail className="h-4 w-4" /></Button>
                     ) : null}
@@ -690,6 +696,8 @@ export default function HardcopySalesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ReceiptShareDialog order={sharing} onClose={() => setSharing(null)} />
 
       <Dialog open={Boolean(emailing)} onOpenChange={(open) => !open && setEmailing(null)}>
         <DialogContent className="sm:max-w-md">

@@ -371,14 +371,16 @@ export default function StorePage() {
   useEffect(() => {
     let cancelled = false;
 
-    apiFetch('/api/store/books')
+    // Inactive books are fetched too, so a deactivated book is not added back from the built-in list.
+    apiFetch('/api/store/books?includeInactive=true')
       .then(async (response) => {
         if (!response.ok || cancelled) return;
         const data = await response.json();
-        const managedBooks: Product[] = Array.isArray(data?.books) ? data.books.map(mapManagedBook) : [];
-        if (managedBooks.length === 0) return;
+        const allBooks: Array<Parameters<typeof mapManagedBook>[0] & { isActive?: boolean }> = Array.isArray(data?.books) ? data.books : [];
+        if (allBooks.length === 0) return;
 
-        const managedIds = new Set(managedBooks.map((book) => book.id));
+        const managedBooks: Product[] = allBooks.filter((book) => book.isActive !== false).map(mapManagedBook);
+        const managedIds = new Set(allBooks.map((book) => mapManagedBook(book).id));
         const remainingBuiltIns = products.filter((product) => product.category === 'Books' && !managedIds.has(product.id));
         const nonBooks = products.filter((product) => product.category !== 'Books');
         setStoreProducts([...managedBooks, ...remainingBuiltIns, ...nonBooks]);

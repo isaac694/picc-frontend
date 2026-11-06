@@ -54,8 +54,18 @@ export type LabelBook = { title: string; author?: string | null; price: number; 
 const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const clip = (value: string, max: number) => (value.length > max ? `${value.slice(0, max - 1)}…` : value);
 
+/**
+ * The site address for links that leave this computer (QR labels, shared receipts). A label printed
+ * from localhost would otherwise send every customer's phone to an address that only exists here.
+ */
+export function publicSiteOrigin() {
+  const { hostname, origin } = window.location;
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1') return origin;
+  return (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.piccworldwide.org').replace(/\/+$/, '');
+}
+
 export function scanUrlFor(barcode: string) {
-  return `${window.location.origin}/store/scan/${encodeURIComponent(barcode)}`;
+  return `${publicSiteOrigin()}/store/scan/${encodeURIComponent(barcode)}`;
 }
 
 export type LabelStyle = 'both' | 'barcode' | 'qr';

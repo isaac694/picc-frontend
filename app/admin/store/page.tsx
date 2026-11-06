@@ -13,7 +13,7 @@ import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { apiFetch } from '@/lib/api';
 import { PROJECT_BOOKS_UPLOAD_PREFIX } from '@/lib/project-page-images-upload';
 import { products, type Product } from '@/components/data/products';
-import { Barcode, ImageIcon, Pencil, Plus, RefreshCw, Tags, Trash2 } from 'lucide-react';
+import { Barcode, ImageIcon, Pencil, Plus, Power, RefreshCw, Tags, Trash2 } from 'lucide-react';
 import BookCategoriesDialog from '@/components/admin/BookCategoriesDialog';
 import BookBarcodeDialog from '@/components/admin/BookBarcodeDialog';
 import BulkBarcodeExportDialog from '@/components/admin/BulkBarcodeExportDialog';
@@ -156,6 +156,7 @@ export default function AdminStorePage() {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [labelBook, setLabelBook] = useState<StoreBook | null>(null);
   const [bulkLabelsOpen, setBulkLabelsOpen] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const [books, setBooks] = useState<StoreBook[]>([]);
   const [draft, setDraft] = useState<StoreBookDraft>(EMPTY_DRAFT);
@@ -424,6 +425,37 @@ export default function AdminStorePage() {
       setStatus('Book deleted.');
     } catch {
       setStatus('Unable to delete book.');
+    }
+  };
+
+  const toggleActive = async (book: StoreBook) => {
+    if (!token) return;
+    const isActive = !book.isActive;
+    setTogglingId(book.id);
+    try {
+      // A built-in book has no saved record yet, so saving it is what creates the switch.
+      const response = book.isBuiltIn
+        ? await apiFetch('/api/admin/store/books', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ ...book, isActive }),
+          })
+        : await apiFetch(`/api/admin/store/books/${book.id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ isActive }),
+          });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setStatus(data?.error || 'Unable to change this book.');
+        return;
+      }
+      await fetchBooks();
+      setStatus(isActive ? `${book.title} is active and on sale.` : `${book.title} is deactivated. It is hidden from the store and cannot be sold.`);
+    } catch {
+      setStatus('Unable to change this book.');
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -858,9 +890,25 @@ export default function AdminStorePage() {
                       <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
                         {book.softCopyPrice == null ? 'Not set' : `MWK ${book.softCopyPrice.toLocaleString()}`}
                       </td>
-                      <td className="px-3 py-2 text-foreground/70">{book.isActive ? 'Visible' : 'Hidden'}</td>
+                      <td className="px-3 py-2">
+                        <span className={book.isActive ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' : 'rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200'}>
+                          {book.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-[104px] gap-1.5 px-2 text-xs"
+                            disabled={togglingId === book.id}
+                            aria-label={`${book.isActive ? 'Deactivate' : 'Activate'} ${book.title}`}
+                            onClick={() => void toggleActive(book)}
+                          >
+                            <Power className="h-3.5 w-3.5" />
+                            {book.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
                           <Button
                             type="button"
                             size="icon"

@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Banknote, BookOpen, CreditCard, Landmark, Loader2, Minus, Plus, Smartphone, Store, Wallet } from 'lucide-react';
 import { apiFetch, resolveMediaImageUrl } from '@/lib/api';
+import { listenForPaychanguReturn } from '@/lib/paychangu-popup-bridge';
 import { openStorePaychanguPopup } from '@/lib/store-paychangu-checkout';
 import { COUNTER_METHODS, money } from '@/lib/store-receipt';
 import { cn } from '@/lib/utils';
@@ -90,6 +91,13 @@ export default function ScanToPayPage() {
         router.push(`/store/receipt/${encodeURIComponent(reference)}`);
         return;
       }
+      // When checkout finishes inside its frame, move on to the receipt. Closing the frame stays on this page.
+      const receiptPath = `/store/receipt/${encodeURIComponent(reference)}`;
+      const stopListening = listenForPaychanguReturn((nextPath) => {
+        if (nextPath !== receiptPath) return;
+        stopListening();
+        router.push(receiptPath);
+      });
       // PayChangu sends a prompt to the phone; the customer approves with their mobile money PIN.
       await openStorePaychanguPopup({
         orderReference: reference,
@@ -98,7 +106,7 @@ export default function ScanToPayPage() {
         customerName: name.trim(),
         phone: digits,
         reason: `Hope Bookshop: ${book.title}`,
-        returnPath: `/store/receipt/${encodeURIComponent(reference)}`,
+        returnPath: receiptPath,
         format: 'hard',
       });
     } catch (err) {
@@ -166,7 +174,7 @@ export default function ScanToPayPage() {
 
             <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="How will you pay?">
               {([
-                ['mobile', 'Pay now', 'Mobile money prompt', Smartphone],
+                ['mobile', 'Pay with PayChangu', 'Airtel Money, TNM Mpamba, card', Smartphone],
                 ['counter', 'Pay at counter', 'POS, cash, bank, agent', Store],
               ] as const).map(([value, title, hint, Icon]) => (
                 <button
@@ -221,11 +229,11 @@ export default function ScanToPayPage() {
 
             <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#39D98A] py-3.5 text-sm font-bold text-black disabled:opacity-60">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {mode === 'mobile' ? `Pay ${money(total, book.currency)}` : `Reserve and pay ${money(total, book.currency)} at the counter`}
+              {mode === 'mobile' ? `Pay ${money(total, book.currency)} with PayChangu` : `Reserve and pay ${money(total, book.currency)} at the counter`}
             </button>
             <p className="text-center text-[11px] leading-relaxed text-white/50">
               {mode === 'mobile'
-                ? 'A payment prompt is sent to your phone. Enter your mobile money PIN to approve it; your receipt opens when the payment goes through.'
+                ? 'PayChangu opens here. Choose how to pay and, for mobile money, enter your PIN on your phone when prompted. Your receipt opens when the payment goes through.'
                 : 'Show the receipt on your phone to the attendant. It is marked paid once they confirm your payment.'}
             </p>
           </form>

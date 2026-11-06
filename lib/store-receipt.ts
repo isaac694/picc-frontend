@@ -1,6 +1,6 @@
 'use client';
 
-import { printHtml } from '@/lib/book-labels';
+import { printHtml, publicSiteOrigin } from '@/lib/book-labels';
 
 /** A hard copy order as the backend returns it (all purchase rows sharing one charge id). */
 export type StoreOrder = {
@@ -53,6 +53,7 @@ export function printReceipt(order: StoreOrder) {
 <style>
   @page { size: 80mm auto; margin: 4mm; }
   body { font-family: Arial, sans-serif; font-size: 12px; color: #111; width: 72mm; margin: 0 auto; }
+  .logo { display: block; width: 22mm; height: auto; margin: 0 auto 4px; }
   h1 { font-size: 15px; margin: 0; text-align: center; }
   .center { text-align: center; } .muted { color: #555; font-size: 11px; } .right { text-align: right; }
   table { width: 100%; border-collapse: collapse; margin: 8px 0; }
@@ -60,6 +61,7 @@ export function printReceipt(order: StoreOrder) {
   .total td { font-weight: 700; font-size: 14px; border-bottom: 0; }
   .status { margin: 8px 0; padding: 4px; border: 2px solid #111; text-align: center; font-weight: 700; letter-spacing: 1px; }
 </style></head><body>
+  <img class="logo" src="${window.location.origin}/logo.png" alt="PICC">
   <h1>HOPE BOOKSHOP</h1>
   <p class="center muted">Pentecost International Christian Centre<br>Area 49, Lilongwe · info@piccworldwide.org</p>
   <p><strong>Receipt:</strong> ${escapeHtml(order.receiptNumber || order.reference.slice(-10))}<br>
@@ -76,11 +78,41 @@ export function printReceipt(order: StoreOrder) {
   printHtml(html, 'Receipt');
 }
 
-export async function downloadReceiptPdf(order: StoreOrder) {
+/** The PICC logo on white, ready for jsPDF; a receipt still works without it if it cannot load. */
+function loadLogoForPdf(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const image = new window.Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 240;
+      canvas.height = 243;
+      const context = canvas.getContext('2d');
+      if (!context) {
+        resolve(null);
+        return;
+      }
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    image.onerror = () => resolve(null);
+    image.src = '/logo.png';
+  });
+}
+
+const receiptFileName = (order: StoreOrder) => `receipt-${order.receiptNumber || order.reference.slice(-10)}.pdf`;
+
+async function buildReceiptPdf(order: StoreOrder) {
   const { default: jsPDF } = await import('jspdf');
-  const doc = new jsPDF({ unit: 'mm', format: [80, 140 + order.items.length * 10] });
+  const logo = await loadLogoForPdf();
+  const doc = new jsPDF({ unit: 'mm', format: [80, 165 + order.items.length * 14] });
   let y = 10;
-  const line = (text: string, options: { bold?: boolean; size?: number; align?: 'left' | 'center' | 'right'; x?: number } = {}) => {
+  if (logo) {
+    doc.addImage(logo, 'PNG', 29, 5, 22, 22.3);
+    y = 32;
+  }
+  const line =(text: string, options: { bold?: boolean; size?: number; align?: 'left' | 'center' | 'right'; x?: number } = {}) => {
     doc.setFont('helvetica', options.bold ? 'bold' : 'normal');
     doc.setFontSize(options.size || 9);
     const x = options.x ?? (options.align === 'center' ? 40 : options.align === 'right' ? 74 : 6);
@@ -134,5 +166,59 @@ export async function downloadReceiptPdf(order: StoreOrder) {
     y += 5;
   }
   line('Thank you for shopping with Hope Bookshop.', { size: 8, align: 'center' });
-  doc.save(`receipt-${order.receiptNumber || order.reference.slice(-10)}.pdf`);
+  return doc;
+}
+
+export async function downloadReceiptPdf(order: StoreOrder) {
+  const doc = await buildReceiptPdf(order);
+  doc.save(receiptFileName(order));
+}
+
+/** The public receipt page; its long random reference is the key, so no sign-in is needed. */
+export const receiptShareUrl = (order: StoreOrder) => `${publicSiteOrigin()}/store/receipt/${encodeURIComponent(order.reference)}`;
+
+export function receiptShareText(order: StoreOrder) {
+  const number = order.receiptNumber || order.reference.slice(-10).toUpperCase();
+  return [
+    `Hope Bookshop receipt ${number}`,
+    `${money(order.total, order.currency)} · ${STATUS_LABEL[order.status]}${order.paymentMethod ? ` · ${order.paymentMethod}` : ''}`,
+    `View, print or download: ${receiptShareUrl(order)}`,
+  ].join('\n');
+}
+
+/** Malawi number in the international form WhatsApp links need, or '' when there is none. */
+export function receiptPhoneDigits(order: StoreOrder) {
+  const digits = String(order.buyerPhone || '').replace(/\D/g, '');
+  if (digits.length === 9) return `265${digits}`;
+  if (digits.length === 10 && digits.startsWith('0')) return `265${digits.slice(1)}`;
+  return digits.startsWith('265') ? digits : '';
+}
+
+/**
+ * Opens the device's share sheet (WhatsApp, Facebook, Messenger and any other installed app), attaching
+ * the PDF where the device allows it. Returns false when this browser has no share sheet.
+ */
+export async function shareReceiptNatively(order: StoreOrder): Promise<boolean> {
+  if (typeof navigator.share !== 'function') return false;
+  const title = `Hope Bookshop receipt ${order.receiptNumber || ''}`.trim();
+  const text = receiptShareText(order);
+  try {
+    const doc = await buildReceiptPdf(order);
+    const file = new File([doc.output('blob')], receiptFileName(order), { type: 'application/pdf' });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ title, text, files: [file] });
+      return true;
+    }
+    await navigator.share({ title, text });
+    return true;
+  } catch (error) {
+    // Closing the share sheet is not a failure. Anything else falls back to sharing the link only.
+    if (error instanceof DOMException && error.name === 'AbortError') return true;
+    try {
+      await navigator.share({ title, text });
+      return true;
+    } catch (retryError) {
+      return retryError instanceof DOMException && retryError.name === 'AbortError';
+    }
+  }
 }

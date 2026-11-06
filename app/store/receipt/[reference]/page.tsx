@@ -1,10 +1,12 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Clock, Download, Loader2, Printer, Store, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Download, Loader2, Printer, XCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { confirmPaychanguCheckout } from '@/lib/paychangu-client';
 import { downloadReceiptPdf, itemKindLabel, money, printReceipt, receiptDate, STATUS_LABEL, type StoreOrder } from '@/lib/store-receipt';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +39,10 @@ export default function StoreReceiptPage() {
         }
         setOrder(data.order);
         attempts += 1;
+        // Ask the server to re-check PayChangu now and then, in case the payment notice was missed.
+        if (data.order.status === 'pending' && data.order.paymentMethod === 'PayChangu' && attempts % 3 === 0) {
+          void confirmPaychanguCheckout(reference, 'main', 'pending').catch(() => undefined);
+        }
         // Mobile money confirmations arrive within a minute or two; counter payments when staff confirm.
         if (data.order.status === 'pending' && attempts < 120) timer = window.setTimeout(load, attempts < 24 ? 5000 : 15000);
       } catch {
@@ -77,7 +83,7 @@ export default function StoreReceiptPage() {
       <div className="mx-auto max-w-sm">
         <article className="overflow-hidden rounded-2xl bg-white shadow-lg">
           <header className="bg-[#1e3a5f] px-5 py-5 text-center text-white">
-            <Store className="mx-auto h-6 w-6 text-[#c9a227]" />
+            <Image src="/logo.png" alt="PICC" width={64} height={65} className="mx-auto rounded-full bg-white p-0.5" />
             <h1 className="mt-2 text-lg font-bold tracking-wide">HOPE BOOKSHOP</h1>
             <p className="text-[11px] text-white/70">Pentecost International Christian Centre · Area 49, Lilongwe</p>
           </header>
