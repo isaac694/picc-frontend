@@ -68,6 +68,13 @@ export function scanUrlFor(barcode: string) {
   return `${publicSiteOrigin()}/store/scan/${encodeURIComponent(barcode)}`;
 }
 
+/** A QR label scans as the pay page link; the code is its last part. */
+export function codeFromScan(value: string) {
+  const text = value.trim();
+  const match = /\/store\/scan\/([^/?#]+)/.exec(text);
+  return match ? decodeURIComponent(match[1]) : text;
+}
+
 export type LabelStyle = 'both' | 'barcode' | 'qr';
 
 export const LABEL_STYLES: Array<{ value: LabelStyle; label: string; hint: string }> = [

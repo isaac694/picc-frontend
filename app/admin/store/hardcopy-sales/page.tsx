@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Camera, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Mail, Printer, RefreshCw, ScanLine, Search, Share2, XCircle } from 'lucide-react';
 import ReceiptShareDialog from '@/components/admin/ReceiptShareDialog';
+import BookCameraScanner from '@/components/store/BookCameraScanner';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import PeriodFilter from '@/components/admin/PeriodFilter';
@@ -11,6 +12,7 @@ import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toa
 import { confirmDeleteToast } from '@/components/admin/confirm-delete-toast';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { apiFetch } from '@/lib/api';
+import { codeFromScan } from '@/lib/book-labels';
 import { downloadReport, periodLabel, periodParams, periodSlug, withParams, type Period } from '@/lib/admin-reports';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { downloadReceiptPdf, money, printReceipt, receiptDate, REFERENCE_HINTS, type StoreOrder } from '@/lib/store-receipt';
@@ -31,72 +33,6 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200',
 };
 const CHANNEL_LABELS: Record<string, string> = { scan: 'Customer scan', counter: 'Counter' };
-
-/** A QR label scans as the pay page link; the code is its last part. */
-function codeFromScan(value: string) {
-  const text = value.trim();
-  const match = /\/store\/scan\/([^/?#]+)/.exec(text);
-  return match ? decodeURIComponent(match[1]) : text;
-}
-
-type DetectedCode = { rawValue: string };
-type BarcodeDetectorLike = { detect: (source: HTMLVideoElement) => Promise<DetectedCode[]> };
-
-function CameraScanner({ onCode, onClose }: { onCode: (code: string) => void; onClose: () => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [message, setMessage] = useState('Starting camera…');
-
-  useEffect(() => {
-    const Detector = (window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => BarcodeDetectorLike }).BarcodeDetector;
-    if (!Detector) {
-      setMessage('This browser cannot scan barcodes. Use Chrome on Android, or type the code.');
-      return;
-    }
-    let stream: MediaStream | null = null;
-    let frame = 0;
-    let stopped = false;
-    const detector = new Detector({ formats: ['qr_code', 'code_128'] });
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment' } })
-      .then(async (media) => {
-        stream = media;
-        if (!videoRef.current) return;
-        videoRef.current.srcObject = media;
-        await videoRef.current.play();
-        setMessage('Point the camera at the label.');
-        const tick = async () => {
-          if (stopped || !videoRef.current) return;
-          try {
-            const codes = await detector.detect(videoRef.current);
-            if (codes[0]?.rawValue) {
-              onCode(codeFromScan(codes[0].rawValue));
-              return;
-            }
-          } catch {
-            // Keep trying on the next frame.
-          }
-          frame = requestAnimationFrame(() => void tick());
-        };
-        void tick();
-      })
-      .catch(() => setMessage('Camera permission was refused. Type the code instead.'));
-    return () => {
-      stopped = true;
-      cancelAnimationFrame(frame);
-      stream?.getTracks().forEach((track) => track.stop());
-    };
-  }, [onCode]);
-
-  return (
-    <div className="space-y-2 rounded-lg border border-border/60 bg-black p-2">
-      <video ref={videoRef} className="aspect-video w-full rounded bg-black object-cover" muted playsInline />
-      <div className="flex items-center justify-between gap-2 text-xs text-white/80">
-        <span>{message}</span>
-        <Button size="sm" variant="secondary" onClick={onClose}>Close camera</Button>
-      </div>
-    </div>
-  );
-}
 
 export default function HardcopySalesPage() {
   const { token, email, password, loginError, setEmail, setPassword, handleLogin } = useAdminAuth();
@@ -429,7 +365,7 @@ export default function HardcopySalesPage() {
             <Button type="button" variant="outline" onClick={() => setScanning((value) => !value)} aria-label="Scan with camera"><Camera className="h-4 w-4" /></Button>
           </div>
           {scanning ? (
-            <CameraScanner
+            <BookCameraScanner
               onClose={() => setScanning(false)}
               onCode={(value) => {
                 setScanning(false);

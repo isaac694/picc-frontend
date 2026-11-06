@@ -11,7 +11,7 @@ function xmlEscape(value: string) {
     .replace(/"/g, '&quot;');
 }
 
-function downloadBlob(blob: Blob, fileName: string) {
+export function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

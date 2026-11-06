@@ -79,7 +79,7 @@ export function printReceipt(order: StoreOrder) {
 }
 
 /** The PICC logo on white, ready for jsPDF; a receipt still works without it if it cannot load. */
-function loadLogoForPdf(): Promise<string | null> {
+export function loadLogoForPdf(): Promise<string | null> {
   return new Promise((resolve) => {
     const image = new window.Image();
     image.onload = () => {

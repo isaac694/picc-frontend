@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, Clock, Download, Loader2, Printer, XCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { confirmPaychanguCheckout } from '@/lib/paychangu-client';
+import { clearScanBasketAfterPayment } from '@/lib/scan-basket';
 import { downloadReceiptPdf, itemKindLabel, money, printReceipt, receiptDate, STATUS_LABEL, type StoreOrder } from '@/lib/store-receipt';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +39,7 @@ export default function StoreReceiptPage() {
           return;
         }
         setOrder(data.order);
+        if (data.order.status === 'paid') clearScanBasketAfterPayment(reference);
         attempts += 1;
         // Ask the server to re-check PayChangu now and then, in case the payment notice was missed.
         if (data.order.status === 'pending' && data.order.paymentMethod === 'PayChangu' && attempts % 3 === 0) {
