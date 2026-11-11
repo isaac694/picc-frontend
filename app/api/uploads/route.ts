@@ -2,13 +2,11 @@ import { mkdir, writeFile } from 'fs/promises';
 import { NextResponse } from 'next/server';
 import { ADMIN_PAGE } from '@/lib/admin-pages';
 import {
-  PROJECT_BOOKS_DIR,
-  PROJECT_BOOKS_UPLOAD_PREFIX,
   PROJECT_PAGE_IMAGES_DIR,
   PROJECT_PAGE_IMAGES_UPLOAD_PREFIX,
-  sanitizePdfFilename,
   sanitizeUploadFilename,
 } from '@/lib/project-uploads';
+import { isStorageConfigured, uploadBookPdf } from '@/lib/s3-storage';
 import { verifyAdminUploadToken } from '@/lib/verify-admin-upload';
 
 export const runtime = 'nodejs';
@@ -71,14 +69,21 @@ export async function POST(request: Request) {
     if (file.size > MAX_BOOK_PDF_BYTES) {
       return NextResponse.json({ error: 'The PDF must be 40MB or smaller.' }, { status: 400 });
     }
+    // Soft copies go privately to the Supabase Storage bucket; the URL returned is saved on the book.
+    if (!isStorageConfigured()) {
+      return NextResponse.json({ error: 'File storage is not set up on the server (S3 settings missing).' }, { status: 500 });
+    }
     try {
-      await mkdir(PROJECT_BOOKS_DIR, { recursive: true });
-      const filename = sanitizePdfFilename();
-      const bytes = await file.arrayBuffer();
-      await writeFile(`${PROJECT_BOOKS_DIR}/${filename}`, Buffer.from(bytes));
-      return NextResponse.json({ url: `${PROJECT_BOOKS_UPLOAD_PREFIX}${filename}` });
-    } catch {
-      return NextResponse.json({ error: 'Upload failed.' }, { status: 500 });
+      const bytes = Buffer.from(await file.arrayBuffer());
+      // A real PDF starts with "%PDF"; this stops a renamed file being stored as a book.
+      if (bytes.subarray(0, 5).toString('latin1').indexOf('%PDF') === -1) {
+        return NextResponse.json({ error: 'That file is not a valid PDF.' }, { status: 400 });
+      }
+      const url = await uploadBookPdf(bytes);
+      return NextResponse.json({ url, storage: 's3' });
+    } catch (error) {
+      console.error('Book PDF upload to storage failed', error);
+      return NextResponse.json({ error: 'Could not save the PDF to storage. Try again.' }, { status: 502 });
     }
   }
 

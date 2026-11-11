@@ -3,6 +3,7 @@ import path from 'path';
 import { NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/lib/api';
 import { PROJECT_BOOKS_DIR, PROJECT_BOOKS_UPLOAD_PREFIX } from '@/lib/project-uploads';
+import { readStorageObject, storageKeyFromUrl } from '@/lib/s3-storage';
 
 export const runtime = 'nodejs';
 
@@ -24,6 +25,9 @@ function localBookPath(downloadUrl: string) {
 }
 
 async function readBookBytes(downloadUrl: string, origin: string) {
+  // Stored privately in the Supabase bucket: read it with the server's storage keys.
+  if (storageKeyFromUrl(downloadUrl)) return readStorageObject(downloadUrl, MAX_BYTES);
+
   const localPath = localBookPath(downloadUrl);
   if (localPath) {
     const bytes = await readFile(localPath).catch(() => null);

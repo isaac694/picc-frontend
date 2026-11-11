@@ -11,13 +11,15 @@ import { useMediaUpload } from '@/hooks/use-media-upload';
 import { CLOUDINARY_FOLDERS, uploadImageToCloudinary } from '@/lib/cloudinary-upload';
 import MediaUploadProgress from '@/components/admin/MediaUploadProgress';
 import { apiFetch } from '@/lib/api';
-import { PROJECT_BOOKS_UPLOAD_PREFIX } from '@/lib/project-page-images-upload';
 import { products, type Product } from '@/components/data/products';
 import { Barcode, ImageIcon, Pencil, Plus, Power, RefreshCw, Tags, Trash2 } from 'lucide-react';
 import BookCategoriesDialog from '@/components/admin/BookCategoriesDialog';
 import BookBarcodeDialog from '@/components/admin/BookBarcodeDialog';
 import BulkBarcodeExportDialog from '@/components/admin/BulkBarcodeExportDialog';
 import { useBookCategories } from '@/hooks/use-book-categories';
+
+/** A soft copy saved in the Supabase Storage bucket (private; served to buyers by /api/store/book-file). */
+const isStorageLink = (url: string) => url.includes('/storage/v1/s3/');
 
 type StoreBook = Product & {
   productId: string;
@@ -168,6 +170,9 @@ export default function AdminStorePage() {
   const [pdfName, setPdfName] = useState('');
   const [uploadTarget, setUploadTarget] = useState<'cover' | 'pdf' | ''>('');
   const [pdfUploading, setPdfUploading] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState(0);
+  const [pdfPhase, setPdfPhase] = useState('Uploading PDF');
+  // The PDF just uploaded (or the book's saved one), which every save sends as downloadUrl.
   const pdfUrlRef = useRef('');
   const editingIdRef = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -243,28 +248,51 @@ export default function AdminStorePage() {
     formData.append('purpose', 'store-book');
     setUploadTarget('pdf');
     setPdfUploading(true);
+    setPdfProgress(0);
+    setPdfPhase('Uploading PDF');
     try {
-      const response = await fetch('/api/uploads', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+      // XHR rather than fetch so the bar follows the bytes as they go up. Sending is 0–90%; the last
+      // stretch is the server putting the file into the storage bucket.
+      const { status: httpStatus, data } = await new Promise<{ status: number; data: { url?: string; error?: string } | null }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/uploads');
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) setPdfProgress(Math.min(90, Math.round((event.loaded / event.total) * 90)));
+        };
+        xhr.upload.onload = () => {
+          setPdfProgress(92);
+          setPdfPhase('Saving to storage');
+        };
+        xhr.onload = () => {
+          let parsed: { url?: string; error?: string } | null = null;
+          try {
+            parsed = JSON.parse(xhr.responseText);
+          } catch {
+            parsed = null;
+          }
+          resolve({ status: xhr.status, data: parsed });
+        };
+        xhr.onerror = () => reject(new Error('network'));
+        xhr.send(formData);
       });
-      const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
-      if (!response.ok) {
+      if (httpStatus < 200 || httpStatus >= 300) {
         setStatus(data?.error || 'PDF upload failed.');
         return null;
       }
-      const path = typeof data?.url === 'string' ? data.url.trim() : '';
-      if (!path.startsWith(PROJECT_BOOKS_UPLOAD_PREFIX)) {
-        setStatus('Upload did not return a local book file.');
+      const url = typeof data?.url === 'string' ? data.url.trim() : '';
+      if (!/^https:\/\//.test(url)) {
+        setStatus('The upload did not return a storage link.');
         return null;
       }
-      return path;
+      setPdfProgress(100);
+      return url;
     } catch {
-      setStatus('PDF upload failed.');
+      setStatus('PDF upload failed. Check your connection and try again.');
       return null;
     } finally {
       setPdfUploading(false);
+      window.setTimeout(() => setPdfProgress(0), 600);
     }
   };
 
@@ -339,7 +367,7 @@ export default function AdminStorePage() {
     hardCopyStock: draft.hardCopyEnabled ? Number(draft.hardCopyStock) : Number(draft.hardCopyStock || 0),
     hardCopyEnabled: draft.hardCopyEnabled,
     softCopyEnabled: draft.softCopyEnabled,
-    downloadUrl: (pdfUrlRef.current.startsWith(PROJECT_BOOKS_UPLOAD_PREFIX) ? pdfUrlRef.current : draft.downloadUrl).trim(),
+    downloadUrl: (pdfUrlRef.current || draft.downloadUrl).trim(),
     bookContent: draft.bookContent.trim(),
     sortOrder: Number(draft.sortOrder || 0),
     isActive: draft.isActive,
@@ -396,7 +424,7 @@ export default function AdminStorePage() {
     editingIdRef.current = id;
     setEditingId(id);
     const savedPdf = book.downloadUrl || '';
-    pdfUrlRef.current = savedPdf.startsWith(PROJECT_BOOKS_UPLOAD_PREFIX) ? savedPdf : '';
+    pdfUrlRef.current = savedPdf;
     setDraft(toDraft(book));
     setUploadName('');
     setStatus(book.isBuiltIn ? 'Save this built-in book to customize it for the store.' : '');
@@ -769,7 +797,7 @@ export default function AdminStorePage() {
             {draft.softCopyEnabled ? (
               <div className="space-y-2 rounded-xl border border-border bg-background px-4 py-3 sm:col-span-3">
                 <label htmlFor="store-book-pdf" className="text-sm font-medium text-foreground">Soft copy PDF</label>
-                <p className="text-xs text-foreground/60">The PDF is saved in the site uploads folder. After payment, the reader opens it in My Books.</p>
+                <p className="text-xs text-foreground/60">The PDF is saved privately in the bookshop storage bucket (up to 40MB). After payment, the reader opens it in My Books.</p>
                 <input
                   id="store-book-pdf"
                   type="file"
@@ -781,24 +809,36 @@ export default function AdminStorePage() {
                     setPdfName(file.name);
                     const url = await uploadPdf(file);
                     if (!url) return;
+                    // The storage URL goes into the payload; an existing book is saved with it straight away.
                     pdfUrlRef.current = url;
                     setDraft((prev) => ({ ...prev, downloadUrl: url }));
-                    const saved = await saveDownloadUrl(url);
-                    setStatus(saved ? `Soft copy PDF saved as ${url}` : `Soft copy PDF uploaded as ${url}`);
+                    if (editingIdRef.current) {
+                      const saved = await saveDownloadUrl(url);
+                      setStatus(saved ? 'Soft copy PDF uploaded to storage and saved to this book.' : 'The PDF uploaded, but the book was not updated. Save the book to keep it.');
+                    } else {
+                      setStatus('Soft copy PDF uploaded to storage. Save the book to keep it.');
+                    }
                   }}
-                  className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+                  disabled={pdfUploading}
+                  className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20 disabled:opacity-60"
                 />
-                {pdfUploading ? <p className="text-xs text-foreground/60">Uploading PDF…</p> : null}
+                <MediaUploadProgress uploading={pdfUploading} progress={pdfProgress} label={pdfName ? `${pdfPhase}: ${pdfName}` : pdfPhase} />
                 {draft.downloadUrl ? (
-                  <div className="space-y-1">
-                    <a href={draft.downloadUrl} target="_blank" rel="noreferrer" className="inline-block text-sm font-medium text-primary underline">
-                      {pdfName ? `Current PDF: ${pdfName}` : 'Open the current soft copy PDF'}
-                    </a>
-                    <p className="break-all text-xs text-foreground/60">{draft.downloadUrl}</p>
-                    {draft.downloadUrl.includes('cloudinary') ? (
-                      <p className="text-xs text-foreground/70">This is the previously saved Cloudinary link. Upload the PDF again to replace it with a file in the uploads folder.</p>
-                    ) : null}
-                  </div>
+                  isStorageLink(draft.downloadUrl) ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground">{pdfName ? `Current PDF: ${pdfName}` : 'Soft copy PDF is in storage'}</p>
+                      <p className="text-xs text-foreground/60">Stored privately in the bookshop storage bucket. Buyers open it in My Books after paying; the link itself does not download it.</p>
+                      <p className="break-all font-mono text-[11px] text-foreground/50">{draft.downloadUrl}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <a href={draft.downloadUrl} target="_blank" rel="noreferrer" className="inline-block text-sm font-medium text-primary underline">
+                        {pdfName ? `Current PDF: ${pdfName}` : 'Open the current soft copy PDF'}
+                      </a>
+                      <p className="break-all text-xs text-foreground/60">{draft.downloadUrl}</p>
+                      <p className="text-xs text-foreground/70">This is an older link. Upload the PDF again to move it into the storage bucket.</p>
+                    </div>
+                  )
                 ) : (
                   <p className="text-xs text-foreground/60">No PDF uploaded yet.</p>
                 )}

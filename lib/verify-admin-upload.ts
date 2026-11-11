@@ -110,7 +110,9 @@ export async function verifyAdminUploadToken(request: Request, extraPages: strin
   const user = await fetchAdminUser(token);
   if (hasAdminUploadAccess(user, extraPages)) return true;
 
-  const jwtRole = roleFromVerifiedToken(token) ?? roleFromUnverifiedToken(token);
+  // An unsigned role is only trusted on a developer's machine: in production anyone could forge one,
+  // and uploads write to the storage bucket.
+  const jwtRole = roleFromVerifiedToken(token) ?? (process.env.NODE_ENV === 'production' ? null : roleFromUnverifiedToken(token));
   if (roleAllowsAdminUpload(jwtRole)) return true;
 
   return false;

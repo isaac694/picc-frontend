@@ -3,12 +3,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Clock, Library, LockKeyhole, Package, Receipt, RefreshCw, Shirt, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, FileText, Library, LockKeyhole, Package, Receipt, RefreshCw, Shirt, XCircle } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { apiFetch, resolveMediaImageUrl } from '@/lib/api';
 import { itemKindLabel, money, receiptDate, type StoreOrder } from '@/lib/store-receipt';
+import { INVOICE_STATUS_LABEL, invoiceDate, type StoreInvoice } from '@/lib/store-invoice';
 import { cn } from '@/lib/utils';
 
 const STORE_TOKEN_KEY = 'store_token';
@@ -28,6 +29,7 @@ export default function MyOrdersPage() {
   const [token, setToken] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [orders, setOrders] = useState<PortalOrder[]>([]);
+  const [invoices, setInvoices] = useState<StoreInvoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -48,6 +50,10 @@ export default function MyOrdersPage() {
         return;
       }
       setOrders(Array.isArray(data?.orders) ? data.orders : []);
+      // Invoices are a separate list; failing to load them leaves the orders on screen.
+      const invoiceResponse = await apiFetch('/api/store/my-invoices', { headers: { Authorization: `Bearer ${authToken}` }, cache: 'no-store' });
+      const invoiceData = await invoiceResponse.json().catch(() => null);
+      setInvoices(invoiceResponse.ok && Array.isArray(invoiceData?.invoices) ? invoiceData.invoices : []);
     } catch {
       setError('Unable to load your orders right now.');
     } finally {
@@ -126,6 +132,35 @@ export default function MyOrdersPage() {
               </div>
 
               {error ? <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
+
+              <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-[#087989]" /> My invoices</h2>
+                  <Button asChild size="sm" variant="outline" className="rounded-md"><Link href="/store/request-invoice">Request an invoice</Link></Button>
+                </header>
+                {invoices.length ? (
+                  <ul className="divide-y divide-slate-100">
+                    {invoices.map((invoice) => (
+                      <li key={invoice.invoiceNumber}>
+                        <Link href={`/store/invoice/${encodeURIComponent(invoice.accessToken || '')}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
+                          <span>
+                            <span className="block font-mono text-sm font-semibold">{invoice.invoiceNumber}</span>
+                            <span className="text-xs text-slate-500">
+                              {invoice.items.length} {invoice.items.length === 1 ? 'title' : 'titles'} · {invoiceDate(invoice.issueDate || invoice.createdAt)}
+                            </span>
+                          </span>
+                          <span className="text-right text-sm">
+                            <span className="block font-semibold">{money(invoice.total || 0, invoice.currency)}</span>
+                            <span className="text-xs text-slate-500">{INVOICE_STATUS_LABEL[invoice.status]}</span>
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-4 py-4 text-sm text-slate-500">Buying for a school, church or group? Request an invoice and it will appear here.</p>
+                )}
+              </section>
 
               {!loading && orders.length === 0 && !error ? (
                 <section className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">

@@ -1,11 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Camera, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Mail, Printer, RefreshCw, ScanLine, Search, Share2, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Camera, CheckCircle2, Download, FilePlus2, FileSpreadsheet, FileText, Loader2, Mail, Printer, RefreshCw, ScanLine, Search, Share2, XCircle } from 'lucide-react';
 import ReceiptShareDialog from '@/components/admin/ReceiptShareDialog';
 import BookCameraScanner from '@/components/store/BookCameraScanner';
 import { Button } from '@/components/ui/button';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
+import BestSellersPanel from '@/components/admin/BestSellersPanel';
 import PeriodFilter from '@/components/admin/PeriodFilter';
 import { KpiCard } from '@/components/admin/DashboardBits';
 import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toast';
@@ -337,6 +339,7 @@ export default function HardcopySalesPage() {
           <p className="text-sm text-muted-foreground">Scan a book label to sell at the counter, confirm customers who chose to pay at the counter, and print receipts.</p>
         </div>
         <div className="flex gap-2">
+          <Button size="sm" variant="outline" asChild><Link href="/admin/store/invoices"><FilePlus2 className="h-4 w-4" /> Invoices</Link></Button>
           <Button size="sm" variant="outline" onClick={() => void exportReport('pdf')}><FileText className="h-4 w-4" /> PDF</Button>
           <Button size="sm" variant="outline" onClick={() => void exportReport('excel')}><FileSpreadsheet className="h-4 w-4" /> Excel</Button>
         </div>
@@ -481,6 +484,11 @@ export default function HardcopySalesPage() {
         </div>
       </div>
 
+      <div className="rounded-xl border border-border/60 bg-card p-3">
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Period for the figures, best sellers and orders below</p>
+        <PeriodFilter value={period} onChange={setPeriod} />
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard icon={CheckCircle2} label="Paid" value={money(summary?.paidTotal || 0)} detail={periodLabel(period)} />
         <KpiCard icon={Loader2} label="Awaiting payment" value={money(summary?.pendingTotal || 0)} />
@@ -495,8 +503,9 @@ export default function HardcopySalesPage() {
         </div>
       ) : null}
 
+      {token ? <BestSellersPanel token={token} period={period} refreshKey={summary} /> : null}
+
       <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
-        <PeriodFilter value={period} onChange={setPeriod} />
         <div className="flex flex-col gap-2 sm:flex-row">
           <form className="relative flex-1" onSubmit={(event) => { event.preventDefault(); setQuery(search.trim()); }}>
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
