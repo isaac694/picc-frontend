@@ -8,15 +8,15 @@ const PAGE_WIDTH = 794;
 const PAGE_HEIGHT = 1123;
 
 /**
- * Shows the invoice exactly as it prints, shrunk to fit the space it is given, so a phone sees the
- * whole page rather than a sideways-scrolling strip.
+ * Shows a document exactly as it prints, shrunk to fit the space it is given, so a phone sees the
+ * whole page rather than a sideways-scrolling strip. `render` builds the page's HTML for an origin.
  */
-export default function InvoicePreview({ invoice, className }: { invoice: StoreInvoice; className?: string }) {
+export function DocumentPreview({ render, title, className }: { render: (origin: string) => string; title: string; className?: string }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [scale, setScale] = useState(1);
   const [height, setHeight] = useState(PAGE_HEIGHT);
-  // Only ever rendered after an invoice has loaded in the browser, so window is there.
+  // Only ever rendered after the document has loaded in the browser, so window is there.
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
 
   useEffect(() => {
@@ -29,9 +29,9 @@ export default function InvoicePreview({ invoice, className }: { invoice: StoreI
     return () => observer.disconnect();
   }, []);
 
-  const html = useMemo(() => (origin ? invoiceHtml(invoice, origin) : ''), [invoice, origin]);
+  const html = useMemo(() => (origin ? render(origin) : ''), [render, origin]);
 
-  // Long invoices run past one page; size the frame to its content.
+  // Long documents run past one page; size the frame to its content.
   const measure = () => {
     const page = frameRef.current?.contentDocument?.querySelector('.page') as HTMLElement | null;
     if (page) setHeight(Math.max(PAGE_HEIGHT, page.scrollHeight));
@@ -43,7 +43,7 @@ export default function InvoicePreview({ invoice, className }: { invoice: StoreI
         {html ? (
           <iframe
             ref={frameRef}
-            title={`Invoice ${invoice.invoiceNumber}`}
+            title={title}
             srcDoc={html}
             onLoad={measure}
             style={{ width: PAGE_WIDTH, height, border: 0, transform: `scale(${scale})`, transformOrigin: 'top left' }}
@@ -52,4 +52,9 @@ export default function InvoicePreview({ invoice, className }: { invoice: StoreI
       </div>
     </div>
   );
+}
+
+export default function InvoicePreview({ invoice, className }: { invoice: StoreInvoice; className?: string }) {
+  const render = useMemo(() => (origin: string) => invoiceHtml(invoice, origin), [invoice]);
+  return <DocumentPreview render={render} title={`Invoice ${invoice.invoiceNumber}`} className={className} />;
 }

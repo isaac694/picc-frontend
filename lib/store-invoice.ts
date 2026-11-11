@@ -3,9 +3,10 @@
 import { printHtml, publicSiteOrigin } from '@/lib/book-labels';
 
 /**
- * A Hope Publishing House book invoice, laid out to match PICC_Book_Invoice.docx:
- * PICC seal, HPH address and the Hope Publishing House logo across the top, then
- * Bill To / Document Details, the book table, totals, payment instructions and Issued By.
+ * Hope Publishing House sales documents share one A4 frame, matching the PICC_Book_*.docx designs:
+ * PICC seal, HPH address and the Hope Publishing House logo across the top, a large title, then the
+ * two-column details block and the book table. This file has that frame and the invoice; the
+ * quotation and delivery note are in store-documents.ts.
  */
 export type InvoiceStatus = 'requested' | 'issued' | 'partially_paid' | 'paid' | 'cancelled';
 
@@ -29,7 +30,7 @@ export type StoreInvoice = {
   billToContact?: string | null;
   billToEmail?: string | null;
   customerReference?: string | null;
-  /** Quotation or order reference, e.g. a store order receipt number. */
+  /** Quotation or order reference: the quotation number when the invoice came from one. */
   orderReference?: string | null;
   currency: string;
   items: InvoiceLine[];
@@ -43,20 +44,52 @@ export type StoreInvoice = {
   subtotal?: number;
   total?: number;
   balanceDue?: number;
+  paidAt?: string | null;
   createdAt?: string;
 };
 
-export type InvoicePayment = { amount: number; method: string; reference: string | null; at: string; by: string | null };
+export type InvoicePayment = {
+  index: number;
+  amount: number;
+  method: string;
+  reference: string | null;
+  at: string;
+  by: string | null;
+  note?: string | null;
+  /** Set when the money was collected on a delivery note. */
+  deliveryNoteId?: string | null;
+  voided?: boolean;
+  voidedAt?: string;
+  voidedBy?: string | null;
+  voidReason?: string;
+};
+
+export type InvoiceFulfilment = {
+  ordered: number;
+  delivered: number;
+  remaining: number;
+  notes: number;
+  awaitingSignature: number;
+  status: 'none' | 'partial' | 'complete';
+  lines: Array<{ line: number; ordered: number; delivered: number; remaining: number }>;
+};
 
 /** What the admin API returns: the invoice plus staff-only details. */
 export type AdminInvoice = StoreInvoice & {
   id: string;
   accessToken: string;
-  source: 'request' | 'counter' | string;
+  source: 'request' | 'counter' | 'quotation' | string;
   customerNote: string | null;
   payments: InvoicePayment[];
   saleReference: string | null;
   saleReceiptNumber: string | null;
+  /** Why the books could not be taken out of stock when it was paid. */
+  stockError: string | null;
+  /** Copies of each line already out of stock. */
+  stockOut: number[];
+  cancelledAt: string | null;
+  quotationId: string | null;
+  fulfilment: InvoiceFulfilment | null;
   subtotal: number;
   total: number;
   balanceDue: number;
@@ -68,11 +101,14 @@ export const invoiceShareUrl = (invoice: Pick<StoreInvoice, 'accessToken'>) =>
 
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
   requested: 'Requested',
-  issued: 'Issued',
-  partially_paid: 'Partly paid',
+  issued: 'Pending',
+  partially_paid: 'Part paid',
   paid: 'Paid',
   cancelled: 'Cancelled',
 };
+
+export const isOverdue = (invoice: Pick<StoreInvoice, 'status' | 'dueDate'>, now = new Date()) =>
+  ['issued', 'partially_paid'].includes(invoice.status) && Boolean(invoice.dueDate) && new Date(invoice.dueDate as string) < now;
 
 export const HPH_DETAILS = {
   name: 'PICC HOPE PUBLISHING HOUSE',
@@ -82,7 +118,7 @@ export const HPH_DETAILS = {
 const SEAL_SRC = '/store/invoice/picc-seal.png';
 const HPH_LOGO_SRC = '/store/invoice/hope-publishing-house.png';
 
-const lineAmount = (line: InvoiceLine) => Math.max(0, Number(line.quantity) || 0) * Math.max(0, Number(line.unitPrice) || 0);
+export const lineAmount = (line: InvoiceLine) => Math.max(0, Number(line.quantity) || 0) * Math.max(0, Number(line.unitPrice) || 0);
 
 export function invoiceTotals(invoice: Pick<StoreInvoice, 'items' | 'discount' | 'delivery' | 'amountPaid'>) {
   const subtotal = invoice.items.reduce((sum, line) => sum + lineAmount(line), 0);
@@ -93,43 +129,40 @@ export function invoiceTotals(invoice: Pick<StoreInvoice, 'items' | 'discount' |
   return { subtotal, discount, delivery, total, amountPaid, balanceDue: Math.max(0, total - amountPaid) };
 }
 
-const amount = (value: number) => Number(value || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const documentAmount = (value: number) => Number(value || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const invoiceDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
-const escapeHtml = (value: unknown) =>
+export const escapeHtml = (value: unknown) =>
   String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-const multiline = (value?: string | null) => escapeHtml(value || '').replace(/\n/g, '<br>');
+export const multiline = (value?: string | null) => escapeHtml(value || '').replace(/\n/g, '<br>');
 
 /** Shown in place of a value that has not been filled in, as on the printed form. */
 const BLANK = '<span class="blank">&nbsp;</span>';
-const filled = (value?: string | null) => (value && value.trim() ? escapeHtml(value.trim()) : BLANK);
+export const filled = (value?: string | null) => (value && value.trim() ? escapeHtml(value.trim()) : BLANK);
 
-/** The design shows at least eight item rows so a short invoice still looks like the form. */
-const MIN_ROWS = 8;
+/** The designs show at least eight item rows so a short document still looks like the form. */
+export const MIN_ROWS = 8;
 
-export function invoiceHtml(invoice: StoreInvoice, origin = window.location.origin) {
-  const totals = invoiceTotals(invoice);
-  const currency = escapeHtml(invoice.currency || 'MWK');
-  const rows = [...invoice.items];
-  while (rows.length < MIN_ROWS) rows.push({ title: '', quantity: 0, unitPrice: 0 });
-  const itemRows = rows.map((line, index) => {
-    const empty = !line.title;
-    return `<tr class="${index % 2 === 0 ? 'shade' : ''}">
-      <td class="num">${index + 1}</td>
-      <td>${escapeHtml(line.title)}</td>
-      <td>${escapeHtml(line.isbnEdition || '')}</td>
-      <td class="right">${empty ? '' : escapeHtml(line.quantity)}</td>
-      <td class="right">${empty ? '' : amount(line.unitPrice)}</td>
-      <td class="right">${empty ? '' : amount(lineAmount(line))}</td>
-    </tr>`;
-  }).join('');
-  const stamp = invoice.status === 'paid' ? 'PAID' : invoice.status === 'cancelled' ? 'CANCELLED' : invoice.status === 'requested' ? 'REQUESTED' : '';
-  const paymentLines = (invoice.paymentInstructions || '').trim();
+/** A "label  value" pair in the two-column details block. */
+export const field = (label: string, value?: string | null) =>
+  `<div class="field"><span>${escapeHtml(label)}</span><span class="value">${filled(value)}</span></div>`;
 
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${escapeHtml(invoice.invoiceNumber)}</title>
+/**
+ * The shared A4 page. `content` is everything under the title; `stamp` is an optional rubber stamp
+ * (PAID, CANCELLED…) with a colour class.
+ */
+export function documentHtml({ title, heading, content, stamp, css = '', origin = window.location.origin }: {
+  title: string;
+  heading: string;
+  content: string;
+  stamp?: { text: string; tone: 'green' | 'red' | 'amber' | 'grey' } | null;
+  css?: string;
+  origin?: string;
+}) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
@@ -154,59 +187,95 @@ export function invoiceHtml(invoice: StoreInvoice, origin = window.location.orig
   .right { text-align: right !important; }
   .num { color: #425B65; }
   .lower { display: grid; grid-template-columns: 1fr 76mm; gap: 10mm; margin-top: 6mm; align-items: start; }
-  .pay .label { font-size: 10pt; text-transform: none; letter-spacing: 0; display: block; margin-bottom: 2mm; }
-  .pay .lines { color: #425B65; line-height: 1.7; }
+  .side .label { font-size: 10pt; text-transform: none; letter-spacing: 0; display: block; margin-bottom: 2mm; }
+  .side .lines { color: #425B65; line-height: 1.7; }
   table.totals { width: 100%; border-collapse: collapse; }
   table.totals td { padding: 1.9mm 2.5mm; background: #F3F7F8; border-bottom: 1.2pt solid #fff; }
   table.totals td:last-child { text-align: right; width: 32mm; font-variant-numeric: tabular-nums; }
   table.totals tr.strong td { font-weight: 700; background: #E4F1F3; }
   table.totals tr.balance td { font-weight: 700; background: #123747; color: #fff; }
-  .issued { margin-top: 14mm; font-size: 10pt; display: flex; gap: 3mm; align-items: end; }
-  .issued .value { min-width: 70mm; font-weight: 600; }
+  .by { margin-top: 14mm; font-size: 10pt; display: flex; gap: 3mm; align-items: end; }
+  .by .value { min-width: 70mm; font-weight: 600; }
   .stamp { position: absolute; top: 52mm; right: 24mm; transform: rotate(-12deg); border: 2.4pt solid currentColor; padding: 1.5mm 5mm; font-size: 20pt; font-weight: 800; letter-spacing: 2pt; border-radius: 2mm; opacity: 0.8; }
-  .stamp.paid { color: #0a7a4f; } .stamp.cancelled { color: #b4232c; } .stamp.requested { color: #8a6d1f; font-size: 15pt; }
+  .stamp.green { color: #0a7a4f; } .stamp.red { color: #b4232c; } .stamp.amber { color: #a1620b; font-size: 16pt; } .stamp.grey { color: #6b7780; font-size: 16pt; }
   .foot { margin-top: 10mm; font-size: 8pt; color: #425B65; text-align: center; }
+  ${css}
 </style></head><body><div class="page">
   <div class="head">
     <img class="seal" src="${origin}${SEAL_SRC}" alt="Pentecost International Christian Centre">
     <div class="org"><strong>${HPH_DETAILS.name}</strong>${HPH_DETAILS.lines.map(escapeHtml).join('<br>')}</div>
     <img class="hph" src="${origin}${HPH_LOGO_SRC}" alt="Hope Publishing House">
   </div>
-  ${stamp ? `<div class="stamp ${stamp.toLowerCase()}">${stamp}</div>` : ''}
-  <h1>Book Invoice</h1>
+  ${stamp ? `<div class="stamp ${stamp.tone}">${escapeHtml(stamp.text)}</div>` : ''}
+  <h1>${escapeHtml(heading)}</h1>
+  ${content}
+  <p class="foot">Thank you for supporting Hope Publishing House · Let There Be Light</p>
+</div></body></html>`;
+}
+
+/** The six-column book table shared by the invoice and the quotation. */
+export function priceTableHtml(items: InvoiceLine[], currency: string) {
+  const rows = [...items];
+  while (rows.length < MIN_ROWS) rows.push({ title: '', quantity: 0, unitPrice: 0 });
+  const body = rows.map((line, index) => {
+    const empty = !line.title;
+    return `<tr class="${index % 2 === 0 ? 'shade' : ''}">
+      <td class="num">${index + 1}</td>
+      <td>${escapeHtml(line.title)}</td>
+      <td>${escapeHtml(line.isbnEdition || '')}</td>
+      <td class="right">${empty ? '' : escapeHtml(line.quantity)}</td>
+      <td class="right">${empty ? '' : documentAmount(line.unitPrice)}</td>
+      <td class="right">${empty ? '' : documentAmount(lineAmount(line))}</td>
+    </tr>`;
+  }).join('');
+  const code = escapeHtml(currency || 'MWK');
+  return `<table class="items">
+    <colgroup><col style="width:4.9%"><col style="width:35.7%"><col style="width:17.9%"><col style="width:6.9%"><col style="width:16.9%"><col style="width:17.7%"></colgroup>
+    <thead><tr><th>#</th><th>Book Title</th><th>ISBN / Edition</th><th class="right">Qty</th><th class="right">Unit Price (${code})</th><th class="right">Amount (${code})</th></tr></thead>
+    <tbody>${body}</tbody>
+  </table>`;
+}
+
+const INVOICE_STAMPS: Partial<Record<InvoiceStatus, { text: string; tone: 'green' | 'red' | 'amber' | 'grey' }>> = {
+  paid: { text: 'PAID', tone: 'green' },
+  partially_paid: { text: 'PART PAID', tone: 'amber' },
+  cancelled: { text: 'CANCELLED', tone: 'red' },
+  requested: { text: 'REQUESTED', tone: 'amber' },
+};
+
+export function invoiceHtml(invoice: StoreInvoice, origin = window.location.origin) {
+  const totals = invoiceTotals(invoice);
+  const currency = escapeHtml(invoice.currency || 'MWK');
+  const paymentLines = (invoice.paymentInstructions || '').trim();
+  const content = `
   <div class="details">
     <div class="label">Bill To</div><div class="label">Document Details</div>
-    <div class="field"><span>Name / Organisation</span><span class="value">${filled(invoice.billToName)}</span></div>
-    <div class="field"><span>Invoice No.</span><span class="value">${filled(invoice.invoiceNumber)}</span></div>
-    <div class="field"><span>Address</span><span class="value">${filled(invoice.billToAddress)}</span></div>
-    <div class="field"><span>Issue Date</span><span class="value">${filled(invoiceDate(invoice.issueDate))}</span></div>
-    <div class="field"><span>Contact</span><span class="value">${filled([invoice.billToContact, invoice.billToEmail].filter(Boolean).join(' · '))}</span></div>
-    <div class="field"><span>Due Date</span><span class="value">${filled(invoiceDate(invoice.dueDate))}</span></div>
-    <div class="field"><span>Customer Reference</span><span class="value">${filled(invoice.customerReference)}</span></div>
-    <div class="field"><span>Quotation / Order Ref.</span><span class="value">${filled(invoice.orderReference)}</span></div>
+    ${field('Name / Organisation', invoice.billToName)}
+    ${field('Invoice No.', invoice.invoiceNumber)}
+    ${field('Address', invoice.billToAddress)}
+    ${field('Issue Date', invoiceDate(invoice.issueDate))}
+    ${field('Contact', [invoice.billToContact, invoice.billToEmail].filter(Boolean).join(' · '))}
+    ${field('Due Date', invoiceDate(invoice.dueDate))}
+    ${field('Customer Reference', invoice.customerReference)}
+    ${field('Quotation / Order Ref.', invoice.orderReference)}
   </div>
-  <table class="items">
-    <colgroup><col style="width:4.9%"><col style="width:35.7%"><col style="width:17.9%"><col style="width:6.9%"><col style="width:16.9%"><col style="width:17.7%"></colgroup>
-    <thead><tr><th>#</th><th>Book Title</th><th>ISBN / Edition</th><th class="right">Qty</th><th class="right">Unit Price (${currency})</th><th class="right">Amount (${currency})</th></tr></thead>
-    <tbody>${itemRows}</tbody>
-  </table>
+  ${priceTableHtml(invoice.items, invoice.currency)}
   <div class="lower">
-    <div class="pay">
+    <div class="side">
       <span class="label">Payment Instructions</span>
       ${paymentLines ? `<div class="lines">${multiline(paymentLines)}</div>` : ''}
     </div>
     <table class="totals">
-      <tr><td>Subtotal</td><td>${amount(totals.subtotal)}</td></tr>
-      <tr><td>Discount (if applicable)</td><td>${totals.discount ? `− ${amount(totals.discount)}` : '—'}</td></tr>
-      <tr><td>Delivery (if applicable)</td><td>${totals.delivery ? amount(totals.delivery) : '—'}</td></tr>
-      <tr class="strong"><td>Invoice Total</td><td>${currency} ${amount(totals.total)}</td></tr>
-      <tr><td>Amount Paid</td><td>${amount(totals.amountPaid)}</td></tr>
-      <tr class="balance"><td>Balance Due</td><td>${currency} ${amount(totals.balanceDue)}</td></tr>
+      <tr><td>Subtotal</td><td>${documentAmount(totals.subtotal)}</td></tr>
+      <tr><td>Discount (if applicable)</td><td>${totals.discount ? `− ${documentAmount(totals.discount)}` : '—'}</td></tr>
+      <tr><td>Delivery (if applicable)</td><td>${totals.delivery ? documentAmount(totals.delivery) : '—'}</td></tr>
+      <tr class="strong"><td>Invoice Total</td><td>${currency} ${documentAmount(totals.total)}</td></tr>
+      <tr><td>Amount Paid</td><td>${documentAmount(totals.amountPaid)}</td></tr>
+      <tr class="balance"><td>Balance Due</td><td>${currency} ${documentAmount(invoice.status === 'cancelled' ? 0 : totals.balanceDue)}</td></tr>
     </table>
   </div>
-  <div class="issued"><span>Issued By</span><span class="value">${filled(invoice.issuedBy)}</span></div>
-  <p class="foot">Thank you for supporting Hope Publishing House · Let There Be Light</p>
-</div></body></html>`;
+  <div class="by"><span>Issued By</span><span class="value">${filled(invoice.issuedBy)}</span></div>`;
+  return documentHtml({ title: `Invoice ${invoice.invoiceNumber}`, heading: 'Book Invoice', content, stamp: INVOICE_STAMPS[invoice.status] || null, origin });
 }
 
 export const invoiceFileName = (invoice: StoreInvoice) => `invoice-${invoice.invoiceNumber || 'draft'}.pdf`;
@@ -216,17 +285,17 @@ export function printInvoice(invoice: StoreInvoice) {
   printHtml(invoiceHtml(invoice), `Invoice ${invoice.invoiceNumber}`);
 }
 
-/** Renders the same HTML off screen and turns it into an A4 PDF, adding pages if the item list runs long. */
-export async function buildInvoicePdf(invoice: StoreInvoice) {
+/** Renders a document's HTML off screen and turns it into an A4 PDF, adding pages if it runs long. */
+export async function pdfFromHtml(html: string) {
   const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([import('jspdf'), import('html2canvas')]);
   const frame = document.createElement('iframe');
   Object.assign(frame.style, { position: 'fixed', left: '-10000px', top: '0', width: '794px', height: '1123px', border: '0' });
   document.body.appendChild(frame);
   try {
     const doc = frame.contentDocument;
-    if (!doc) throw new Error('Could not prepare the invoice.');
+    if (!doc) throw new Error('Could not prepare the document.');
     doc.open();
-    doc.write(invoiceHtml(invoice));
+    doc.write(html);
     doc.close();
     await Promise.all(Array.from(doc.images).map((image) => (image.complete ? Promise.resolve() : new Promise<void>((resolve) => {
       image.onload = () => resolve();
@@ -252,7 +321,11 @@ export async function buildInvoicePdf(invoice: StoreInvoice) {
   }
 }
 
-export async function downloadInvoicePdf(invoice: StoreInvoice) {
-  const pdf = await buildInvoicePdf(invoice);
-  pdf.save(invoiceFileName(invoice));
+export async function downloadHtmlPdf(html: string, fileName: string) {
+  const pdf = await pdfFromHtml(html);
+  pdf.save(fileName);
 }
+
+export const buildInvoicePdf = (invoice: StoreInvoice) => pdfFromHtml(invoiceHtml(invoice));
+
+export const downloadInvoicePdf = (invoice: StoreInvoice) => downloadHtmlPdf(invoiceHtml(invoice), invoiceFileName(invoice));

@@ -776,9 +776,17 @@ export default function AdminStorePage() {
               <input type="checkbox" checked={draft.hardCopyEnabled} onChange={(event) => setDraft((prev) => ({ ...prev, hardCopyEnabled: event.target.checked }))} />
               Hard copy
             </label>
-            {draft.hardCopyEnabled ? (
+            {draft.hardCopyEnabled && editingId ? (
+              <div className="grid gap-1 rounded-xl border border-border bg-background px-4 py-3 text-sm sm:col-span-3">
+                <span className="font-medium text-foreground">Hard copies in stock: {draft.hardCopyStock || 0}</span>
+                <span className="text-xs text-muted-foreground">
+                  Stock changes with sales and deliveries. To add copies from the printer, record damaged copies or set a shelf count, use{' '}
+                  <a href="/admin/store/inventory" className="font-medium text-primary underline">Book inventory</a>, so every change is kept on the book&apos;s stock card.
+                </span>
+              </div>
+            ) : draft.hardCopyEnabled ? (
               <label className="grid gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm sm:col-span-3">
-                <span className="font-medium text-foreground">Number of hard copies in stock</span>
+                <span className="font-medium text-foreground">Opening stock: hard copies on hand now</span>
                 <input
                   type="number"
                   min="0"

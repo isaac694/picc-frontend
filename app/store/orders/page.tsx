@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { apiFetch, resolveMediaImageUrl } from '@/lib/api';
 import { itemKindLabel, money, receiptDate, type StoreOrder } from '@/lib/store-receipt';
 import { INVOICE_STATUS_LABEL, invoiceDate, type StoreInvoice } from '@/lib/store-invoice';
+import { QUOTATION_STATUS_LABEL, type StoreQuotation } from '@/lib/store-documents';
 import { cn } from '@/lib/utils';
 
 const STORE_TOKEN_KEY = 'store_token';
@@ -30,6 +31,7 @@ export default function MyOrdersPage() {
   const [checked, setChecked] = useState(false);
   const [orders, setOrders] = useState<PortalOrder[]>([]);
   const [invoices, setInvoices] = useState<StoreInvoice[]>([]);
+  const [quotations, setQuotations] = useState<StoreQuotation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -54,6 +56,9 @@ export default function MyOrdersPage() {
       const invoiceResponse = await apiFetch('/api/store/my-invoices', { headers: { Authorization: `Bearer ${authToken}` }, cache: 'no-store' });
       const invoiceData = await invoiceResponse.json().catch(() => null);
       setInvoices(invoiceResponse.ok && Array.isArray(invoiceData?.invoices) ? invoiceData.invoices : []);
+      const quotationResponse = await apiFetch('/api/store/my-quotations', { headers: { Authorization: `Bearer ${authToken}` }, cache: 'no-store' });
+      const quotationData = await quotationResponse.json().catch(() => null);
+      setQuotations(quotationResponse.ok && Array.isArray(quotationData?.quotations) ? quotationData.quotations : []);
     } catch {
       setError('Unable to load your orders right now.');
     } finally {
@@ -135,8 +140,36 @@ export default function MyOrdersPage() {
 
               <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
                 <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-[#087989]" /> My quotations</h2>
+                  <Button asChild size="sm" variant="outline" className="rounded-md"><Link href="/store/request-quote">Request a quote</Link></Button>
+                </header>
+                {quotations.length ? (
+                  <ul className="divide-y divide-slate-100">
+                    {quotations.map((quotation) => (
+                      <li key={quotation.quotationNumber}>
+                        <Link href={`/store/quotation/${encodeURIComponent(quotation.accessToken)}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
+                          <span>
+                            <span className="block font-mono text-sm font-semibold">{quotation.quotationNumber}</span>
+                            <span className="text-xs text-slate-500">
+                              {quotation.items.length} {quotation.items.length === 1 ? 'title' : 'titles'} · {invoiceDate(quotation.issueDate)}
+                            </span>
+                          </span>
+                          <span className="text-right text-sm">
+                            <span className="block font-semibold">{money(quotation.total || 0, quotation.currency)}</span>
+                            <span className="text-xs text-slate-500">{QUOTATION_STATUS_LABEL[quotation.status]}{quotation.invoiceNumber ? ` · ${quotation.invoiceNumber}` : ''}</span>
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-4 py-4 text-sm text-slate-500">Buying for a school, church or group? Request a quote and it will appear here.</p>
+                )}
+              </section>
+
+              <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
                   <h2 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-[#087989]" /> My invoices</h2>
-                  <Button asChild size="sm" variant="outline" className="rounded-md"><Link href="/store/request-invoice">Request an invoice</Link></Button>
                 </header>
                 {invoices.length ? (
                   <ul className="divide-y divide-slate-100">
@@ -158,7 +191,7 @@ export default function MyOrdersPage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="px-4 py-4 text-sm text-slate-500">Buying for a school, church or group? Request an invoice and it will appear here.</p>
+                  <p className="px-4 py-4 text-sm text-slate-500">When you accept a quotation, Hope Publishing House sends your invoice and it appears here.</p>
                 )}
               </section>
 

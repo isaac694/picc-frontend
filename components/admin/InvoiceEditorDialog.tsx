@@ -10,6 +10,7 @@ import { apiFetch } from '@/lib/api';
 import { codeFromScan } from '@/lib/book-labels';
 import { money } from '@/lib/store-receipt';
 import { invoiceTotals, type AdminInvoice } from '@/lib/store-invoice';
+import type { AdminQuotation } from '@/lib/store-documents';
 
 type FoundBook = { productId: string; barcode: string | null; title: string; author?: string | null; price: number };
 type EditorLine = { key: string; productId: string | null; title: string; isbnEdition: string; quantity: number; unitPrice: number };
@@ -22,27 +23,44 @@ const nextKey = () => `line-${(keySeed += 1)}`;
 const dateInput = (value?: string | null) => (value ? new Date(value).toISOString().slice(0, 10) : '');
 const inDays = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 
-export type InvoiceDefaults = { paymentInstructions: string | null; termsDays: number };
+export type InvoiceDefaults = { paymentInstructions: string | null; termsDays: number; quotationTerms?: string | null; quotationValidDays?: number };
+
+/** The fields the editor reads from an invoice or a quotation. */
+export type EditableDocument = Pick<AdminInvoice, 'id' | 'billToName' | 'billToAddress' | 'billToContact' | 'billToEmail' | 'items' | 'discount' | 'delivery' | 'customerReference'> & {
+  status: string;
+  invoiceNumber?: string | null;
+  quotationNumber?: string;
+  orderReference?: string | null;
+  amountPaid?: number;
+  dueDate?: string | null;
+  validUntil?: string | null;
+  paymentInstructions?: string | null;
+  terms?: string | null;
+};
 
 /**
- * Creates a counter invoice, or edits one (including a customer's request before it is issued).
- * Books come from scanning a label, typing a barcode or searching by title; staff can also type a free line.
+ * Creates or edits a counter invoice or quotation. Books come from scanning a label, typing a barcode
+ * or searching by title; staff can also type a free line, and set their own prices, discount and delivery.
+ * Mount it fresh (with a new `key`) each time it opens; it starts from `invoice`, or a blank document.
  */
-/** Mount it fresh (with a new `key`) each time it opens; it starts from `invoice`, or a blank counter invoice. */
-export default function InvoiceEditorDialog({
+export default function InvoiceEditorDialog<Saved = AdminInvoice | AdminQuotation>({
+  kind = 'invoice',
   invoice,
   defaults,
   headers,
   onClose,
   onSaved,
 }: {
-  invoice: AdminInvoice | null;
+  kind?: 'invoice' | 'quotation';
+  invoice: EditableDocument | null;
   defaults: InvoiceDefaults | null;
   headers: () => Record<string, string>;
   onClose: () => void;
-  onSaved: (invoice: AdminInvoice, emailedTo: string | null) => void;
+  onSaved: (document: Saved, emailedTo: string | null) => void;
 }) {
   const editing = Boolean(invoice);
+  const isQuote = kind === 'quotation';
+  const number = invoice?.invoiceNumber || invoice?.quotationNumber || '';
   const [lines, setLines] = useState<EditorLine[]>(() =>
     (invoice?.items || []).map((line) => ({ key: nextKey(), productId: line.productId || null, title: line.title, isbnEdition: line.isbnEdition || '', quantity: line.quantity, unitPrice: line.unitPrice })),
   );
@@ -56,8 +74,14 @@ export default function InvoiceEditorDialog({
   const [billToEmail, setBillToEmail] = useState(invoice?.billToEmail || '');
   const [discount, setDiscount] = useState(invoice?.discount ? String(invoice.discount) : '');
   const [delivery, setDelivery] = useState(invoice?.delivery ? String(invoice.delivery) : '');
-  const [dueDate, setDueDate] = useState(() => (invoice ? dateInput(invoice.dueDate) : inDays(defaults?.termsDays ?? 14)));
-  const [paymentInstructions, setPaymentInstructions] = useState(invoice?.paymentInstructions || defaults?.paymentInstructions || '');
+  // An invoice's due date, or how long a quotation's prices hold.
+  const [dueDate, setDueDate] = useState(() => (invoice
+    ? dateInput(isQuote ? invoice.validUntil : invoice.dueDate)
+    : inDays(isQuote ? defaults?.quotationValidDays ?? 30 : defaults?.termsDays ?? 14)));
+  // Payment instructions on an invoice, quotation terms on a quotation.
+  const [paymentInstructions, setPaymentInstructions] = useState(
+    (isQuote ? invoice?.terms ?? defaults?.quotationTerms : invoice?.paymentInstructions || defaults?.paymentInstructions) || '',
+  );
   const [sendEmail, setSendEmail] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -120,10 +144,12 @@ export default function InvoiceEditorDialog({
     if (lines.some((line) => !line.title.trim())) return adminErrorToast('Give every line a title.');
     if (!billToName.trim()) return adminErrorToast('Enter the name or organisation to bill.');
     if (billToEmail.trim() && !EMAIL_PATTERN.test(billToEmail.trim())) return adminErrorToast('Enter a valid email address, or leave it empty.');
-    if (invoice && invoice.amountPaid > totals.total) return adminErrorToast(`The customer has already paid ${money(invoice.amountPaid)}, more than this total.`);
+    if ((Number(discount) || 0) > totals.subtotal) return adminErrorToast(`The discount cannot be more than the subtotal (${money(totals.subtotal)}).`);
+    if (invoice?.amountPaid && invoice.amountPaid > totals.total) return adminErrorToast(`The customer has already paid ${money(invoice.amountPaid)}, more than this total.`);
     setSaving(true);
     try {
-      const response = await apiFetch(editing ? `/api/admin/store/invoices/${encodeURIComponent(invoice!.id)}` : '/api/admin/store/invoices', {
+      const path = isQuote ? '/api/admin/store/quotations' : '/api/admin/store/invoices';
+      const response = await apiFetch(editing ? `${path}/${encodeURIComponent(invoice!.id)}` : path, {
         method: editing ? 'PUT' : 'POST',
         headers: headers(),
         body: JSON.stringify({
@@ -133,8 +159,7 @@ export default function InvoiceEditorDialog({
           billToEmail: billToEmail.trim(),
           discount: Number(discount) || 0,
           delivery: Number(delivery) || 0,
-          dueDate: dueDate || null,
-          paymentInstructions: paymentInstructions.trim(),
+          ...(isQuote ? { validUntil: dueDate || null, terms: paymentInstructions.trim() } : { dueDate: dueDate || null, paymentInstructions: paymentInstructions.trim() }),
           sendEmail: !editing && sendEmail && Boolean(billToEmail.trim()),
           items: lines.map((line) => ({
             ...(line.productId ? { productId: line.productId } : { title: line.title.trim() }),
@@ -145,8 +170,8 @@ export default function InvoiceEditorDialog({
         }),
       });
       const data = await response.json().catch(() => null);
-      if (!response.ok) return adminErrorToast(data?.error || 'Unable to save this invoice.');
-      onSaved(data.invoice, data.emailedTo || null);
+      if (!response.ok) return adminErrorToast(data?.error || `Unable to save this ${kind}.`);
+      onSaved(isQuote ? data.quotation : data.invoice, data.emailedTo || null);
     } finally {
       setSaving(false);
     }
@@ -157,11 +182,13 @@ export default function InvoiceEditorDialog({
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
         <form onSubmit={save} className="space-y-5">
           <DialogHeader>
-            <DialogTitle>{editing ? `Edit ${invoice!.invoiceNumber}` : 'New invoice'}</DialogTitle>
+            <DialogTitle>{editing ? `Edit ${number}` : isQuote ? 'New quotation' : 'New invoice'}</DialogTitle>
             <DialogDescription>
-              {editing && invoice!.status === 'requested'
-                ? 'Check the books and prices, add any discount or delivery, then save and issue it.'
-                : 'Scan or search books to add them. Invoices do not take copies out of stock until you record the sale.'}
+              {isQuote
+                ? 'Scan or search books to add them. A quotation holds no stock; turn it into an invoice when the customer accepts.'
+                : editing && invoice!.status === 'requested'
+                  ? 'Check the books and prices, add any discount or delivery, then save and issue it.'
+                  : 'Scan or search books to add them. Copies leave stock when they are delivered or when the invoice is fully paid, whichever comes first.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -258,7 +285,7 @@ export default function InvoiceEditorDialog({
           </section>
 
           <section className="grid gap-3 sm:grid-cols-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#087989] sm:col-span-2">Bill to</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#087989] sm:col-span-2">{isQuote ? 'Quotation for' : 'Bill to'}</p>
             <label className={`${labelClass} sm:col-span-2`}>Name / Organisation *
               <input value={billToName} onChange={(event) => setBillToName(event.target.value)} maxLength={191} className={`${inputClass} mt-1`} required />
             </label>
@@ -273,8 +300,8 @@ export default function InvoiceEditorDialog({
             </label>
             <p className="text-xs text-muted-foreground sm:col-span-2">
               {invoice
-                ? <>Customer reference <span className="font-mono text-foreground">{invoice.customerReference || '—'}</span> · Order ref. <span className="font-mono text-foreground">{invoice.orderReference || '—'}</span></>
-                : 'The customer reference and order reference are generated when the invoice is issued. A returning customer (same email or phone) keeps their customer reference.'}
+                ? <>Customer reference <span className="font-mono text-foreground">{invoice.customerReference || '—'}</span>{isQuote ? null : <> · Order ref. <span className="font-mono text-foreground">{invoice.orderReference || '—'}</span></>}</>
+                : `The references are generated when the ${kind} is saved. A returning customer (same email or phone) keeps their customer reference.`}
             </p>
           </section>
 
@@ -286,26 +313,26 @@ export default function InvoiceEditorDialog({
               <label className={labelClass}>Delivery (MWK)
                 <input type="number" min={0} step="any" value={delivery} onChange={(event) => setDelivery(event.target.value)} className={`${inputClass} mt-1`} />
               </label>
-              <label className={labelClass}>Due date
+              <label className={labelClass}>{isQuote ? 'Valid until' : 'Due date'}
                 <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className={`${inputClass} mt-1`} />
               </label>
-              <label className={`${labelClass} sm:col-span-3`}>Payment instructions
+              <label className={`${labelClass} sm:col-span-3`}>{isQuote ? 'Quotation terms' : 'Payment instructions'}
                 <textarea
                   value={paymentInstructions}
                   onChange={(event) => setPaymentInstructions(event.target.value)}
                   rows={3}
                   maxLength={2000}
-                  placeholder="Bank name, account name and number, mobile money number, and what to quote as the reference"
+                  placeholder={isQuote ? 'How long prices hold, availability, delivery and how to accept' : 'Bank name, account name and number, mobile money number, and what to quote as the reference'}
                   className="mt-1 w-full rounded-md border border-border bg-background px-2.5 py-2 text-sm text-foreground"
                 />
-                <span className="mt-1 block text-[11px]">The next invoice starts with what you enter here.</span>
+                <span className="mt-1 block text-[11px]">The next {kind} starts with what you enter here.</span>
               </label>
             </div>
             <dl className="h-fit space-y-1.5 rounded-lg bg-muted/50 p-3 text-sm">
               <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="tabular-nums">{money(totals.subtotal)}</dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Discount</dt><dd className="tabular-nums">− {money(totals.discount)}</dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Delivery</dt><dd className="tabular-nums">{money(totals.delivery)}</dd></div>
-              <div className="flex justify-between border-t border-border pt-1.5 font-semibold"><dt>Invoice total</dt><dd className="tabular-nums">{money(totals.total)}</dd></div>
+              <div className="flex justify-between border-t border-border pt-1.5 font-semibold"><dt>{isQuote ? 'Total quoted' : 'Invoice total'}</dt><dd className="tabular-nums">{money(totals.total)}</dd></div>
               {invoice?.amountPaid ? (
                 <div className="flex justify-between text-muted-foreground"><dt>Already paid</dt><dd className="tabular-nums">{money(invoice.amountPaid)}</dd></div>
               ) : null}
@@ -323,7 +350,7 @@ export default function InvoiceEditorDialog({
               <Button type="button" variant="outline" onClick={onClose}>Close</Button>
               <Button type="submit" disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {editing ? 'Save changes' : `Issue invoice · ${money(totals.total)}`}
+                {editing ? 'Save changes' : `${isQuote ? 'Save quotation' : 'Issue invoice'} · ${money(totals.total)}`}
               </Button>
             </div>
           </DialogFooter>

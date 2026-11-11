@@ -1090,9 +1090,9 @@ export default function StorePage() {
               <Package className="h-4 w-4" />
               My Orders
             </button>
-            <Link href="/store/request-invoice" className="inline-flex items-center gap-2 hover:text-slate-950">
+            <Link href="/store/request-quote" className="inline-flex items-center gap-2 hover:text-slate-950">
               <FileText className="h-4 w-4" />
-              Request invoice
+              Request quote
             </Link>
             {storeUser && (
               <button type="button" onClick={clearStoreSession} className="hover:text-slate-950">
@@ -1650,8 +1650,8 @@ export default function StorePage() {
                       <Button className="mt-5 w-full rounded-none bg-[#05944f] py-6 text-sm font-black uppercase tracking-[0.18em] text-white hover:bg-[#047d43]" onClick={() => setCheckoutStep('checkout')}>Checkout</Button>
                     )}
                     {checkoutStep === 'cart' && cartMode === 'hard' && activeCart.length > 0 && (
-                      <Link href="/store/request-invoice" className="mt-3 flex w-full items-center justify-center gap-2 border border-[#123747] py-3 text-xs font-bold uppercase tracking-[0.16em] text-[#123747] hover:bg-[#123747]/5">
-                        <FileText className="h-4 w-4" /> Request an invoice instead
+                      <Link href="/store/request-quote" className="mt-3 flex w-full items-center justify-center gap-2 border border-[#123747] py-3 text-xs font-bold uppercase tracking-[0.16em] text-[#123747] hover:bg-[#123747]/5">
+                        <FileText className="h-4 w-4" /> Get a quotation instead
                       </Link>
                     )}
                     {checkoutStep === 'cart' && (
