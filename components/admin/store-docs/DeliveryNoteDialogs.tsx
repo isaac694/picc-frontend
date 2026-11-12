@@ -22,9 +22,9 @@ export type DeliverySaved = {
   collectionError?: string | null;
 };
 
-type CollectState = { amount: string; method: string; reference: string };
+export type CollectState = { amount: string; method: string; reference: string };
 
-function readCollection(collect: CollectState, balance: number) {
+export function readCollection(collect: CollectState, balance: number) {
   const amount = Number(collect.amount) || 0;
   if (amount < 0) return { error: 'Enter a valid amount.' };
   if (amount > balance) return { error: `The invoice balance is ${money(balance)}. Collect that amount or less.` };
@@ -33,7 +33,7 @@ function readCollection(collect: CollectState, balance: number) {
 }
 
 /** Money handed over with the books, with what the invoice balance becomes. */
-function CollectFields({ collect, onChange, balance }: { collect: CollectState; onChange: (next: CollectState) => void; balance: number }) {
+export function CollectFields({ collect, onChange, balance }: { collect: CollectState; onChange: (next: CollectState) => void; balance: number }) {
   const amount = Math.min(balance, Math.max(0, Number(collect.amount) || 0));
   return (
     <fieldset className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">

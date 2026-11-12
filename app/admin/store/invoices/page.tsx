@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 const TABS = [
   { key: 'invoices', label: 'Invoices', icon: FileText, hint: 'Record payments, mark invoices paid and send books out.' },
   { key: 'quotations', label: 'Quotations', icon: FileSignature, hint: 'Quotes from the website and the counter; turn an accepted one into an invoice.' },
-  { key: 'delivery', label: 'Delivery notes', icon: Truck, hint: 'Books sent out against invoices, who signed for them and money collected.' },
+  { key: 'delivery', label: 'Delivery notes', icon: Truck, hint: 'Write a delivery note like an invoice or quotation, or deliver an invoice; who signed and money collected.' },
   { key: 'reports', label: 'Reports', icon: BarChart3, hint: 'What was invoiced, collected and is still owed, with deliveries and quotations.' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -115,7 +115,7 @@ function StoreDocuments() {
           }}
         />
       ) : null}
-      {tab === 'delivery' ? <DeliveryNotesPanel headers={headers} period={period} onOpenInvoices={() => goTo('invoices')} /> : null}
+      {tab === 'delivery' ? <DeliveryNotesPanel headers={headers} period={period} defaults={defaults} onOpenInvoices={() => goTo('invoices')} /> : null}
       {tab === 'reports' ? <DocumentReportsPanel headers={headers} period={period} /> : null}
     </div>
   );

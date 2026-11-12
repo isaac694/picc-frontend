@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Banknote, BookOpen, CheckCircle2, Clock, FileText, PackageCheck, Printer, RefreshCw, Search, Truck, XCircle } from 'lucide-react';
+import { Banknote, BookOpen, CheckCircle2, Clock, FilePlus2, FileText, PackageCheck, Printer, RefreshCw, Search, Truck, XCircle } from 'lucide-react';
+import InvoiceEditorDialog, { type InvoiceDefaults } from '@/components/admin/InvoiceEditorDialog';
 import { KpiCard } from '@/components/admin/DashboardBits';
 import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toast';
 import { Button } from '@/components/ui/button';
@@ -9,11 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { apiFetch } from '@/lib/api';
 import { periodLabel, periodParams, withParams, type Period } from '@/lib/admin-reports';
 import { money } from '@/lib/store-receipt';
-import { invoiceDate } from '@/lib/store-invoice';
+import { invoiceDate, type AdminInvoice } from '@/lib/store-invoice';
 import { printDeliveryNote, type DeliveryNote } from '@/lib/store-documents';
 import { cn } from '@/lib/utils';
 import { inputClass, labelClass } from './bits';
-import { ConfirmDeliveryDialog, DeliveryNoteViewDialog, DeliveryStatusPill, type DeliverySaved } from './DeliveryNoteDialogs';
+import { ConfirmDeliveryDialog, DeliveryNoteViewDialog, DeliveryStatusPill, NewDeliveryNoteDialog, type DeliverySaved } from './DeliveryNoteDialogs';
 import { stockMessage } from './InvoicesPanel';
 
 type Summary = { count: number; dispatched: number; delivered: number; copies: number; value: number; collected: number };
@@ -24,7 +25,7 @@ const FILTERS = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-export default function DeliveryNotesPanel({ headers, period, onOpenInvoices }: { headers: () => Record<string, string>; period: Period; onOpenInvoices: () => void }) {
+export default function DeliveryNotesPanel({ headers, period, defaults, onOpenInvoices }: { headers: () => Record<string, string>; period: Period; defaults: InvoiceDefaults | null; onOpenInvoices: () => void }) {
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
@@ -36,6 +37,8 @@ export default function DeliveryNotesPanel({ headers, period, onOpenInvoices }: 
   const [cancelling, setCancelling] = useState<DeliveryNote | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [delivering, setDelivering] = useState<AdminInvoice | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,6 +82,21 @@ export default function DeliveryNotesPanel({ headers, period, onOpenInvoices }: 
     if (result.stock) parts.push(stockMessage(result.stock).trim());
     if (result.collectionError) parts.push(`The money was NOT recorded: ${result.collectionError}`);
     (result.collectionError || result.stock?.error ? adminErrorToast : adminSuccessToast)(parts.join(' '));
+    void load();
+  };
+
+  /** A new delivery note was saved, from scratch (with its invoice) or from an existing invoice. */
+  const created = (result: DeliverySaved & { invoiceCreated?: boolean }) => {
+    setCreating(false);
+    setDelivering(null);
+    const note = result.deliveryNote;
+    const parts = [`${note.deliveryNoteNumber} saved: ${note.totalCopies} ${note.totalCopies === 1 ? 'copy' : 'copies'} to ${note.deliverToName}.`];
+    if (result.invoiceCreated) parts.push(`Invoice ${result.invoice.invoiceNumber} raised for ${money(result.invoice.total)}.`);
+    if (note.amountCollected > 0) parts.push(`${money(note.amountCollected)} collected; balance ${money(result.invoice.balanceDue)}.`);
+    if (result.stock) parts.push(stockMessage(result.stock).trim());
+    if (result.collectionError) parts.push(`The money was NOT recorded: ${result.collectionError}`);
+    (result.collectionError || result.stock?.error ? adminErrorToast : adminSuccessToast)(parts.join(' '));
+    setViewing(note);
     void load();
   };
 
@@ -140,7 +158,8 @@ export default function DeliveryNotesPanel({ headers, period, onOpenInvoices }: 
         </form>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" className="h-9" onClick={() => void load()} disabled={loading} aria-label="Refresh"><RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} /></Button>
-          <Button size="sm" variant="outline" className="h-9" onClick={onOpenInvoices} title="Delivery notes are made from an invoice"><Truck className="h-4 w-4" /> Deliver an invoice</Button>
+          <Button size="sm" variant="outline" className="h-9" onClick={onOpenInvoices}><FileText className="h-4 w-4" /> Invoices</Button>
+          <Button size="sm" className="h-9" onClick={() => setCreating(true)}><FilePlus2 className="h-4 w-4" /> New delivery note</Button>
         </div>
       </div>
 
@@ -159,7 +178,7 @@ export default function DeliveryNotesPanel({ headers, period, onOpenInvoices }: 
           </thead>
           <tbody>
             {notes.length === 0 ? (
-              <tr><td colSpan={7} className="px-3 py-10 text-center text-muted-foreground">{loading ? 'Loading…' : 'No delivery notes here. Open an invoice and choose Delivery note to send books out.'}</td></tr>
+              <tr><td colSpan={7} className="px-3 py-10 text-center text-muted-foreground">{loading ? 'Loading…' : 'No delivery notes here. Choose New delivery note to send books out.'}</td></tr>
             ) : notes.map((note) => (
               <tr key={note.id} className={cn('border-t border-border/60 align-top', note.status === 'cancelled' && 'text-muted-foreground')}>
                 <td className="px-3 py-2">
@@ -188,6 +207,23 @@ export default function DeliveryNotesPanel({ headers, period, onOpenInvoices }: 
           </tbody>
         </table>
       </div>
+
+      {creating ? (
+        <InvoiceEditorDialog<DeliverySaved & { invoiceCreated?: boolean }>
+          key="new-delivery"
+          kind="delivery"
+          invoice={null}
+          defaults={defaults}
+          headers={headers}
+          onClose={() => setCreating(false)}
+          onSaved={created}
+          onPickInvoice={(invoice) => {
+            setCreating(false);
+            setDelivering(invoice);
+          }}
+        />
+      ) : null}
+      {delivering ? <NewDeliveryNoteDialog key={delivering.id} invoice={delivering} headers={headers} onClose={() => setDelivering(null)} onSaved={created} /> : null}
 
       <DeliveryNoteViewDialog note={viewing} onClose={() => setViewing(null)} actions={viewing ? actions(viewing) : null} />
 
