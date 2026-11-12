@@ -158,7 +158,10 @@ export function deliveryNoteHtml(note: DeliveryNote, origin = window.location.or
       <td>${escapeHtml(line?.isbnEdition || '')}</td>
       <td class="right">${line ? escapeHtml(line.qtyOrdered) : ''}</td>
       <td class="right">${line ? `<strong>${escapeHtml(line.qtyDelivered)}</strong>` : ''}</td>
+      <td class="right">${line ? documentAmount(line.unitPrice) : ''}</td>
+      <td class="right">${line ? documentAmount(line.unitPrice * line.qtyDelivered) : ''}</td>
     </tr>`).join('');
+  const deliveredValue = note.items.reduce((sum, line) => sum + line.unitPrice * line.qtyDelivered, 0);
   const ref = [note.invoiceNumber, note.orderReference].filter(Boolean).join(' / ');
   const collected = Number(note.amountCollected || 0) > 0
     ? `<div class="totalrow"><span>Amount Collected on Delivery</span><strong>MWK ${documentAmount(note.amountCollected)}${note.collectionMethod ? ` · ${escapeHtml(note.collectionMethod)}` : ''}${note.collectionReference ? ` · ${escapeHtml(note.collectionReference)}` : ''}</strong></div>`
@@ -181,11 +184,12 @@ export function deliveryNoteHtml(note: DeliveryNote, origin = window.location.or
     ${field('Invoice / Order Ref.', ref)}
   </div>
   <table class="items">
-    <colgroup><col style="width:5%"><col style="width:45%"><col style="width:22%"><col style="width:14%"><col style="width:14%"></colgroup>
-    <thead><tr><th>#</th><th>Book Title</th><th>ISBN / Edition</th><th class="right">Qty Ordered</th><th class="right">Qty Delivered</th></tr></thead>
+    <colgroup><col style="width:5%"><col style="width:31%"><col style="width:16%"><col style="width:10%"><col style="width:10%"><col style="width:13%"><col style="width:15%"></colgroup>
+    <thead><tr><th>#</th><th>Book Title</th><th>ISBN / Edition</th><th class="right">Qty Ordered</th><th class="right">Qty Delivered</th><th class="right">Unit Price (MWK)</th><th class="right">Amount (MWK)</th></tr></thead>
     <tbody>${body}</tbody>
   </table>
   <div class="totalrow"><span>Total Copies Delivered</span><strong>${escapeHtml(note.totalCopies)}</strong></div>
+  <div class="totalrow"><span>Value of Books Delivered (at invoice prices, before any invoice discount)</span><strong>MWK ${documentAmount(deliveredValue)}</strong></div>
   ${collected}
   <div class="remarks">
     <span class="label">Delivery Remarks</span>

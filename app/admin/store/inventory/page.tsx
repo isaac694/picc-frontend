@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
-  AlertTriangle, Boxes, ClipboardList, Download, FileSpreadsheet, FileText, History, Loader2, PackagePlus, PackageX, Printer, RefreshCw, Search, SlidersHorizontal, Wallet, XCircle,
+  AlertTriangle, BarChart3, Boxes, ClipboardList, Clock3, Download, FileSpreadsheet, FileText, History, Loader2, PackagePlus, PackageX, Printer, RefreshCw, Search, SlidersHorizontal, Wallet, XCircle,
 } from 'lucide-react';
 import AdminLoginCard from '@/components/admin/AdminLoginCard';
 import { KpiCard } from '@/components/admin/DashboardBits';
 import PeriodFilter from '@/components/admin/PeriodFilter';
 import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toast';
 import { AdjustStockDialog, ReceiveStockDialog, StockCardDialog } from '@/components/admin/inventory/InventoryDialogs';
+import RestockReportPanel from '@/components/admin/inventory/RestockReportPanel';
 import { inputClass, labelClass, Pill, type Tone } from '@/components/admin/store-docs/bits';
 import { DocumentPreview } from '@/components/store/InvoicePreview';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,7 @@ import { apiFetch } from '@/lib/api';
 import { printHtml } from '@/lib/book-labels';
 import { downloadReport, periodLabel, periodParams, periodSlug, withParams, type Period } from '@/lib/admin-reports';
 import {
-  INVENTORY_STATUS_LABEL, receiptHtml, reorderListHtml, type InventoryBook, type InventoryStatus, type InventorySummary, type StockMovement, type StockReceipt,
+  daysAgoText, INVENTORY_STATUS_LABEL, receiptHtml, reorderListHtml, timeOfDay, type InventoryBook, type InventoryStatus, type InventorySummary, type StockMovement, type StockReceipt,
 } from '@/lib/book-inventory';
 import { downloadHtmlPdf, documentAmount, invoiceDate } from '@/lib/store-invoice';
 import { money, receiptDate } from '@/lib/store-receipt';
@@ -32,7 +33,7 @@ const FILTERS = [
   { value: 'out', label: 'Out of stock' },
 ] as const;
 type Filter = (typeof FILTERS)[number]['value'];
-type Tab = 'stock' | 'restocks' | 'movements';
+type Tab = 'stock' | 'restocks' | 'report' | 'movements';
 
 export default function BookInventoryPage() {
   const { token, email, password, loginError, setEmail, setPassword, handleLogin } = useAdminAuth();
@@ -56,6 +57,8 @@ export default function BookInventoryPage() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [movementReason, setMovementReason] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  // Bumped after every load, so the restock report reloads when stock changes.
+  const [reloadKey, setReloadKey] = useState(0);
 
   const headers = useCallback(() => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }), [token]);
 
@@ -85,6 +88,7 @@ export default function BookInventoryPage() {
       }
     } finally {
       setLoading(false);
+      setReloadKey((key) => key + 1);
     }
   }, [token, period, headers, tab, movementReason]);
 
@@ -120,11 +124,11 @@ export default function BookInventoryPage() {
         columns: [
           { key: 'title', label: 'Book' }, { key: 'barcode', label: 'Barcode' }, { key: 'stock', label: 'In stock' }, { key: 'committed', label: 'Promised' }, { key: 'free', label: 'Free to sell' },
           { key: 'reorderLevel', label: 'Reorder level' }, { key: 'soldRecently', label: `Sold ${velocityDays} days` }, { key: 'suggestedReorder', label: 'Suggested order' },
-          { key: 'averageCost', label: 'Average cost' }, { key: 'valueAtCost', label: 'Value at cost' }, { key: 'price', label: 'Price' }, { key: 'valueAtPrice', label: 'Value at price' }, { key: 'status', label: 'Status' },
+          { key: 'lastRestock', label: 'Last restocked' }, { key: 'averageCost', label: 'Average cost' }, { key: 'valueAtCost', label: 'Value at cost' }, { key: 'price', label: 'Price' }, { key: 'valueAtPrice', label: 'Value at price' }, { key: 'status', label: 'Status' },
         ],
         rows: shown.map((book) => ({
           title: book.title, barcode: book.barcode || '', stock: String(book.stock), committed: String(book.committed), free: String(book.free), reorderLevel: String(book.reorderLevel),
-          soldRecently: String(book.soldRecently), suggestedReorder: String(book.suggestedReorder), averageCost: book.averageCost === null ? '' : documentAmount(book.averageCost),
+          soldRecently: String(book.soldRecently), suggestedReorder: String(book.suggestedReorder), lastRestock: book.lastRestock ? receiptDate(book.lastRestock.at) : 'Never', averageCost: book.averageCost === null ? '' : documentAmount(book.averageCost),
           valueAtCost: book.valueAtCost === null ? '' : documentAmount(book.valueAtCost), price: documentAmount(book.price), valueAtPrice: documentAmount(book.valueAtPrice), status: INVENTORY_STATUS_LABEL[book.status],
         })),
         summary: summary ? [
@@ -210,7 +214,7 @@ export default function BookInventoryPage() {
       </div>
 
       <nav className="flex gap-1 overflow-x-auto rounded-xl border border-border/60 bg-card p-1" aria-label="Inventory">
-        {([['stock', 'Stock', Boxes], ['restocks', 'Restocks', PackagePlus], ['movements', 'Stock movements', History]] as const).map(([key, label, Icon]) => (
+        {([['stock', 'Stock', Boxes], ['restocks', 'Restocks', PackagePlus], ['report', 'Restock report', BarChart3], ['movements', 'Stock movements', History]] as const).map(([key, label, Icon]) => (
           <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={cn('flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium', tab === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}>
             <Icon className="h-4 w-4" /> {label}
           </button>
@@ -218,7 +222,7 @@ export default function BookInventoryPage() {
       </nav>
 
       <div className="rounded-xl border border-border/60 bg-card p-3">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">{tab === 'stock' ? 'Period for the received / out columns' : 'Period'}</p>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">{tab === 'stock' ? 'Period for the received / out columns' : tab === 'report' ? 'Period for the restock timeline and totals (last restock dates cover all time)' : 'Period'}</p>
         <PeriodFilter value={period} onChange={setPeriod} />
         {tab === 'stock' && summary ? (
           <p className="mt-2 text-xs text-muted-foreground">{periodLabel(period)}: {summary.received} copies received ({money(summary.receivedCost)}), {summary.copiesOut} sold or delivered, {summary.adjusted >= 0 ? '+' : ''}{summary.adjusted} adjusted.</p>
@@ -255,6 +259,7 @@ export default function BookInventoryPage() {
                   <th className="px-3 py-2 text-right font-medium">Reorder at</th>
                   <th className="px-3 py-2 text-right font-medium">Sold {velocityDays}d</th>
                   <th className="px-3 py-2 text-right font-medium">Lasts</th>
+                  <th className="px-3 py-2 font-medium">Last restocked</th>
                   <th className="px-3 py-2 text-right font-medium">Value at cost</th>
                   <th className="px-3 py-2 font-medium">Status</th>
                   <th className="px-3 py-2" />
@@ -262,7 +267,7 @@ export default function BookInventoryPage() {
               </thead>
               <tbody>
                 {shown.length === 0 ? (
-                  <tr><td colSpan={10} className="px-3 py-10 text-center text-muted-foreground">{loading ? 'Loading…' : 'No books here.'}</td></tr>
+                  <tr><td colSpan={11} className="px-3 py-10 text-center text-muted-foreground">{loading ? 'Loading…' : 'No books here.'}</td></tr>
                 ) : shown.map((book) => (
                   <tr key={book.productId} className="border-t border-border/60 align-top">
                     <td className="px-3 py-2">
@@ -277,6 +282,15 @@ export default function BookInventoryPage() {
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">{book.soldRecently}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right text-xs text-muted-foreground">{book.daysOfCover === null ? '—' : `${book.daysOfCover} days`}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-xs">
+                      {book.lastRestock ? (
+                        <>
+                          <span className="font-medium text-foreground">{invoiceDate(book.lastRestock.at)}</span>
+                          <span className="ml-1 inline-flex items-center gap-0.5 text-muted-foreground"><Clock3 className="h-3 w-3" />{timeOfDay(book.lastRestock.at)}</span>
+                          <p className={cn('text-[11px]', (book.daysSinceLastRestock ?? 0) > 90 ? 'text-rose-700 dark:text-rose-300' : 'text-muted-foreground')}>{daysAgoText(book.daysSinceLastRestock)} · {book.lastRestock.quantity} copies</p>
+                        </>
+                      ) : <span className="text-muted-foreground">Never</span>}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{book.valueAtCost === null ? <span className="text-xs text-muted-foreground">no cost</span> : money(book.valueAtCost)}</td>
                     <td className="px-3 py-2">
                       <Pill tone={TONES[book.status]}>{INVENTORY_STATUS_LABEL[book.status]}</Pill>
@@ -325,7 +339,7 @@ export default function BookInventoryPage() {
                   <tr key={receipt.id} className={cn('border-t border-border/60 align-top', receipt.cancelledAt && 'text-muted-foreground line-through')}>
                     <td className="px-3 py-2">
                       <button type="button" className="font-mono text-xs font-semibold text-primary hover:underline" onClick={() => setViewingReceipt(receipt)}>{receipt.receiptNumber}</button>
-                      <p className="text-[11px] text-muted-foreground">{invoiceDate(receipt.receivedAt)}{receipt.createdBy ? ` · ${receipt.createdBy}` : ''}</p>
+                      <p className="text-[11px] text-muted-foreground">{receiptDate(receipt.receivedAt)}{receipt.createdBy ? ` · ${receipt.createdBy}` : ''}</p>
                     </td>
                     <td className="px-3 py-2">{receipt.supplier || '—'}<p className="text-[11px] text-muted-foreground">{receipt.supplierReference}</p></td>
                     <td className="max-w-[280px] px-3 py-2 text-xs">{receipt.lines.map((line) => `${line.title} ×${line.quantity}`).join(', ')}</td>
@@ -340,6 +354,19 @@ export default function BookInventoryPage() {
             </table>
           </div>
         </>
+      ) : null}
+
+      {tab === 'report' ? (
+        <RestockReportPanel
+          headers={headers}
+          period={period}
+          reloadKey={reloadKey}
+          onOpenReceipt={setViewingReceipt}
+          onRestock={(productId) => {
+            const book = books.find((entry) => entry.productId === productId);
+            if (book) setReceiving([{ book, quantity: book.suggestedReorder || undefined }]);
+          }}
+        />
       ) : null}
 
       {tab === 'movements' ? (
@@ -414,7 +441,7 @@ export default function BookInventoryPage() {
             <>
               <DialogHeader>
                 <DialogTitle>{viewingReceipt.receiptNumber}</DialogTitle>
-                <DialogDescription>{viewingReceipt.supplier || 'Supplier not given'} · {invoiceDate(viewingReceipt.receivedAt)} · {viewingReceipt.totalCopies} copies · {money(viewingReceipt.totalCost)}</DialogDescription>
+                <DialogDescription>{viewingReceipt.supplier || 'Supplier not given'} · {receiptDate(viewingReceipt.receivedAt)} · {viewingReceipt.totalCopies} copies · {money(viewingReceipt.totalCost)}</DialogDescription>
               </DialogHeader>
               <div className="flex flex-wrap gap-1.5">
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => printHtml(receiptHtml(viewingReceipt), viewingReceipt.receiptNumber)}><Printer className="h-3.5 w-3.5" /> Print</Button>

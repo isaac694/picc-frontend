@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Loader2, PackagePlus, Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { adminErrorToast } from '@/components/admin/admin-toast';
-import { inputClass, labelClass, SumRows, todayInput } from '@/components/admin/store-docs/bits';
+import { inputClass, labelClass, SumRows } from '@/components/admin/store-docs/bits';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { apiFetch } from '@/lib/api';
@@ -36,7 +36,12 @@ export function ReceiveStockDialog({
   const [search, setSearch] = useState('');
   const [supplier, setSupplier] = useState('');
   const [supplierReference, setSupplierReference] = useState('');
-  const [receivedAt, setReceivedAt] = useState(todayInput());
+  // Now, in the browser's own time, as a datetime-local value.
+  const [opened] = useState(() => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  });
+  const [receivedAt, setReceivedAt] = useState(opened);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -65,7 +70,7 @@ export function ReceiveStockDialog({
         method: 'POST',
         headers: headers(),
         body: JSON.stringify({
-          supplier: supplier.trim(), supplierReference: supplierReference.trim(), receivedAt, note: note.trim(),
+          supplier: supplier.trim(), supplierReference: supplierReference.trim(), receivedAt: receivedAt ? new Date(receivedAt).toISOString() : null, note: note.trim(),
           lines: lines.map((line) => ({ productId: line.productId, quantity: Number(line.quantity), unitCost: line.unitCost.trim() === '' ? null : Number(line.unitCost) })),
         }),
       });
@@ -133,8 +138,8 @@ export function ReceiveStockDialog({
             <label className={labelClass}>Their invoice or delivery note no.
               <input value={supplierReference} onChange={(event) => setSupplierReference(event.target.value)} maxLength={120} className={inputClass} />
             </label>
-            <label className={labelClass}>Date received
-              <input type="date" value={receivedAt} onChange={(event) => setReceivedAt(event.target.value)} required className={inputClass} />
+            <label className={labelClass}>Date &amp; time received
+              <input type="datetime-local" value={receivedAt} max={opened} onChange={(event) => setReceivedAt(event.target.value)} required className={inputClass} />
             </label>
             <label className={labelClass}>Note
               <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} placeholder="Boxes, condition, anything short" className={inputClass} />

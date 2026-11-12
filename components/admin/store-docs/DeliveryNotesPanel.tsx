@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Banknote, BookOpen, CheckCircle2, Clock, FilePlus2, FileText, PackageCheck, Printer, RefreshCw, Search, Truck, XCircle } from 'lucide-react';
+import { Banknote, BookOpen, CheckCircle2, Clock, FilePlus2, FileText, PackageCheck, Pencil, RefreshCw, Search, Truck, XCircle } from 'lucide-react';
 import InvoiceEditorDialog, { type InvoiceDefaults } from '@/components/admin/InvoiceEditorDialog';
 import { KpiCard } from '@/components/admin/DashboardBits';
 import { adminErrorToast, adminSuccessToast } from '@/components/admin/admin-toast';
@@ -11,10 +11,10 @@ import { apiFetch } from '@/lib/api';
 import { periodLabel, periodParams, withParams, type Period } from '@/lib/admin-reports';
 import { money } from '@/lib/store-receipt';
 import { invoiceDate, type AdminInvoice } from '@/lib/store-invoice';
-import { printDeliveryNote, type DeliveryNote } from '@/lib/store-documents';
+import type { DeliveryNote } from '@/lib/store-documents';
 import { cn } from '@/lib/utils';
 import { inputClass, labelClass } from './bits';
-import { ConfirmDeliveryDialog, DeliveryNoteViewDialog, DeliveryStatusPill, NewDeliveryNoteDialog, type DeliverySaved } from './DeliveryNoteDialogs';
+import { ConfirmDeliveryDialog, DeliveryNoteViewDialog, DeliveryStatusPill, EditDeliveryNoteDialog, NewDeliveryNoteDialog, type DeliveryEdited, type DeliverySaved } from './DeliveryNoteDialogs';
 import { stockMessage } from './InvoicesPanel';
 
 type Summary = { count: number; dispatched: number; delivered: number; copies: number; value: number; collected: number };
@@ -38,6 +38,7 @@ export default function DeliveryNotesPanel({ headers, period, defaults, onOpenIn
   const [cancelReason, setCancelReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<DeliveryNote | null>(null);
   const [delivering, setDelivering] = useState<AdminInvoice | null>(null);
 
   const load = useCallback(async () => {
@@ -100,6 +101,14 @@ export default function DeliveryNotesPanel({ headers, period, defaults, onOpenIn
     void load();
   };
 
+  const edited = (result: DeliveryEdited) => {
+    setEditing(null);
+    replace(result.deliveryNote);
+    const moved = result.stockMoved;
+    adminSuccessToast(`${result.deliveryNote.deliveryNoteNumber} updated.${moved > 0 ? ` ${moved} more ${moved === 1 ? 'copy' : 'copies'} out of stock.` : moved < 0 ? ` ${-moved} ${moved === -1 ? 'copy' : 'copies'} back in stock.` : ''}`);
+    void load();
+  };
+
   const submitCancel = async (event: FormEvent) => {
     event.preventDefault();
     if (!cancelling) return;
@@ -128,7 +137,9 @@ export default function DeliveryNotesPanel({ headers, period, defaults, onOpenIn
           <Banknote className="h-3.5 w-3.5" /> Money collected
         </Button>
       ) : null}
-      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => printDeliveryNote(note)}><Printer className="h-3.5 w-3.5" /> Print</Button>
+      {note.status !== 'cancelled' ? (
+        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setEditing(note)}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+      ) : null}
       {note.status !== 'cancelled' && note.amountCollected === 0 ? (
         <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive" onClick={() => { setCancelling(note); setCancelReason(''); }}><XCircle className="h-3.5 w-3.5" /> Cancel</Button>
       ) : null}
@@ -199,6 +210,7 @@ export default function DeliveryNotesPanel({ headers, period, defaults, onOpenIn
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap justify-end gap-1">
                     {note.status === 'dispatched' ? <Button size="sm" className="h-8 text-xs" onClick={() => void openConfirm(note)}><PackageCheck className="h-3.5 w-3.5" /> Received</Button> : null}
+                    {note.status !== 'cancelled' ? <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Edit ${note.deliveryNoteNumber}`} onClick={() => setEditing(note)}><Pencil className="h-4 w-4" /></Button> : null}
                     <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Open ${note.deliveryNoteNumber}`} onClick={() => setViewing(note)}><FileText className="h-4 w-4" /></Button>
                   </div>
                 </td>
@@ -224,6 +236,8 @@ export default function DeliveryNotesPanel({ headers, period, defaults, onOpenIn
         />
       ) : null}
       {delivering ? <NewDeliveryNoteDialog key={delivering.id} invoice={delivering} headers={headers} onClose={() => setDelivering(null)} onSaved={created} /> : null}
+
+      {editing ? <EditDeliveryNoteDialog key={editing.id} note={editing} headers={headers} onClose={() => setEditing(null)} onSaved={edited} /> : null}
 
       <DeliveryNoteViewDialog note={viewing} onClose={() => setViewing(null)} actions={viewing ? actions(viewing) : null} />
 

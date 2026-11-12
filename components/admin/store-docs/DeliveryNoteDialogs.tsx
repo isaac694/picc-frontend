@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Download, Loader2, Printer, Truck } from 'lucide-react';
 import { adminErrorToast } from '@/components/admin/admin-toast';
 import { DocumentPreview } from '@/components/store/InvoicePreview';
@@ -363,6 +363,194 @@ export function DeliveryNoteViewDialog({ note, onClose, actions }: { note: Deliv
             <DocumentPreview render={render} title={`Delivery note ${note.deliveryNoteNumber}`} />
           </>
         ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export type DeliveryEdited = { deliveryNote: DeliveryNote; invoice: AdminInvoice; stockMoved: number };
+
+/**
+ * Corrects a delivery note: where it went, dates, driver, remarks and who signed. While no money has been
+ * collected on it the copies can change too, up to what the invoice still has to deliver; stock moves by
+ * the difference.
+ */
+export function EditDeliveryNoteDialog({
+  note,
+  headers,
+  onClose,
+  onSaved,
+}: {
+  note: DeliveryNote;
+  headers: () => Record<string, string>;
+  onClose: () => void;
+  onSaved: (result: DeliveryEdited) => void;
+}) {
+  const dateOnly = (value: string | null) => (value ? new Date(value).toISOString().slice(0, 10) : '');
+  const copiesLocked = note.amountCollected > 0;
+  const [deliverToName, setDeliverToName] = useState(note.deliverToName);
+  const [deliverToAddress, setDeliverToAddress] = useState(note.deliverToAddress || '');
+  const [deliverToContact, setDeliverToContact] = useState(note.deliverToContact || '');
+  const [deliveryDate, setDeliveryDate] = useState(dateOnly(note.deliveryDate));
+  const [deliveredByName, setDeliveredByName] = useState(note.deliveredByName || '');
+  const [remarks, setRemarks] = useState(note.remarks || '');
+  const [receivedByName, setReceivedByName] = useState(note.receivedByName || '');
+  const [receivedAt, setReceivedAt] = useState(dateOnly(note.receivedAt));
+  const [quantities, setQuantities] = useState<number[]>(() => note.items.map((line) => line.qtyDelivered));
+  // How many of each line this note may carry: what the invoice still owes plus what this note already has.
+  const [room, setRoom] = useState<number[] | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (copiesLocked) return;
+    let alive = true;
+    void (async () => {
+      const response = await apiFetch(`/api/admin/store/invoices/${encodeURIComponent(note.invoiceId)}`, { headers: headers(), cache: 'no-store' });
+      const data = await response.json().catch(() => null);
+      if (!alive || !response.ok) return;
+      const invoice = data.invoice as AdminInvoice;
+      setRoom(note.items.map((line) => (invoice.fulfilment?.lines[line.line]?.remaining ?? 0) + line.qtyDelivered));
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [copiesLocked, note.invoiceId, note.items, headers]);
+
+  const copies = quantities.reduce((sum, quantity) => sum + quantity, 0);
+  const value = note.items.reduce((sum, line, index) => sum + quantities[index] * line.unitPrice, 0);
+  const change = copies - note.totalCopies;
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!deliverToName.trim()) return adminErrorToast('Enter who the books are delivered to.');
+    if (!deliveryDate) return adminErrorToast('Enter the delivery date.');
+    if (note.status === 'delivered' && !receivedByName.trim()) return adminErrorToast('Enter the name of the person who received the books.');
+    if (copies === 0) return adminErrorToast('A delivery note needs at least one copy. Cancel it instead if nothing went.');
+    setSaving(true);
+    try {
+      const response = await apiFetch(`/api/admin/store/delivery-notes/${encodeURIComponent(note.id)}`, {
+        method: 'PUT',
+        headers: headers(),
+        body: JSON.stringify({
+          deliverToName: deliverToName.trim(),
+          deliverToAddress: deliverToAddress.trim(),
+          deliverToContact: deliverToContact.trim(),
+          deliveryDate,
+          deliveredByName: deliveredByName.trim(),
+          remarks: remarks.trim(),
+          receivedByName: receivedByName.trim(),
+          receivedAt: receivedAt || null,
+          ...(copiesLocked ? {} : { items: note.items.map((line, index) => ({ line: line.line, qtyDelivered: quantities[index] })) }),
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) return adminErrorToast(data?.error || 'Unable to save the delivery note.');
+      onSaved(data);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
+        <form onSubmit={save} className="space-y-5">
+          <DialogHeader>
+            <DialogTitle>Edit {note.deliveryNoteNumber}</DialogTitle>
+            <DialogDescription>
+              For {note.invoiceNumber}.{' '}
+              {copiesLocked
+                ? `Money (${money(note.amountCollected)}) was collected on this delivery, so its copies are fixed; void that payment first to change them.`
+                : 'Changing the copies moves stock by the difference, and the invoice shows what is still to deliver.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-x-auto rounded-lg border border-border/60">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-1.5 font-medium">Book title</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Ordered</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Unit price</th>
+                  <th className="w-28 px-2 py-1.5 font-medium">Delivered</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {note.items.map((line, index) => {
+                  const max = room?.[index] ?? line.qtyDelivered;
+                  return (
+                    <tr key={line.line}>
+                      <td className="px-2 py-1.5 font-medium">{line.title}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{line.qtyOrdered}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{money(line.unitPrice)}</td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          max={max}
+                          value={quantities[index]}
+                          disabled={copiesLocked || !room}
+                          onChange={(event) => {
+                            const next = Math.min(max, Math.max(0, Math.floor(Number(event.target.value) || 0)));
+                            setQuantities((current) => current.map((quantity, position) => (position === index ? next : quantity)));
+                          }}
+                          className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm disabled:opacity-60"
+                          aria-label={`Copies of ${line.title} delivered`}
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{money(quantities[index] * line.unitPrice)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            <strong className="text-foreground">{copies}</strong> {copies === 1 ? 'copy' : 'copies'} worth {money(value)}.
+            {change > 0 ? ` ${change} more ${change === 1 ? 'copy leaves' : 'copies leave'} stock.` : null}
+            {change < 0 ? ` ${-change} ${change === -1 ? 'copy comes' : 'copies come'} off this note (back into stock unless the invoice is already paid).` : null}
+          </p>
+
+          <section className="grid gap-3 sm:grid-cols-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#087989] sm:col-span-2">Deliver to</p>
+            <label className={`${labelClass} sm:col-span-2`}>Name / Organisation
+              <input value={deliverToName} onChange={(event) => setDeliverToName(event.target.value)} maxLength={191} required className={inputClass} />
+            </label>
+            <label className={`${labelClass} sm:col-span-2`}>Address
+              <input value={deliverToAddress} onChange={(event) => setDeliverToAddress(event.target.value)} maxLength={500} className={inputClass} />
+            </label>
+            <label className={labelClass}>Contact
+              <input value={deliverToContact} onChange={(event) => setDeliverToContact(event.target.value)} maxLength={80} className={inputClass} />
+            </label>
+            <label className={labelClass}>Delivery date
+              <input type="date" value={deliveryDate} onChange={(event) => setDeliveryDate(event.target.value)} required className={inputClass} />
+            </label>
+            <label className={labelClass}>Delivered by
+              <input value={deliveredByName} onChange={(event) => setDeliveredByName(event.target.value)} maxLength={191} className={inputClass} />
+            </label>
+            {note.status === 'delivered' ? (
+              <>
+                <label className={labelClass}>Received by
+                  <input value={receivedByName} onChange={(event) => setReceivedByName(event.target.value)} maxLength={191} required className={inputClass} />
+                </label>
+                <label className={labelClass}>Date received
+                  <input type="date" value={receivedAt} onChange={(event) => setReceivedAt(event.target.value)} className={inputClass} />
+                </label>
+              </>
+            ) : null}
+            <label className={`${labelClass} sm:col-span-2`}>Delivery remarks
+              <textarea value={remarks} onChange={(event) => setRemarks(event.target.value)} rows={2} maxLength={2000} className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground" />
+            </label>
+          </section>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Close</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Save changes
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
