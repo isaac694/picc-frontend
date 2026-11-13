@@ -30,6 +30,7 @@ export const ADMIN_PAGE = {
   MINISTRIES: 'MINISTRIES',
   NEWS: 'NEWS',
   MEMBERSHIP: 'MEMBERSHIP',
+  FORM_MANAGEMENT: 'FORM_MANAGEMENT',
 } as const;
 
 export type AdminPageKey = (typeof ADMIN_PAGE)[keyof typeof ADMIN_PAGE];
@@ -86,6 +87,7 @@ export const ADMIN_PAGE_OPTIONS: Array<{ key: AdminPageKey; label: string }> = [
   { key: ADMIN_PAGE.WEBSITE_ADS, label: 'Ads Management' },
   { key: ADMIN_PAGE.NEWS, label: 'News' },
   { key: ADMIN_PAGE.MEMBERSHIP, label: 'Membership register' },
+  { key: ADMIN_PAGE.FORM_MANAGEMENT, label: 'Form management' },
 ];
 
 export const MINISTRY_ADMIN_OPTIONS = [

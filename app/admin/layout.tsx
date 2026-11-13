@@ -52,6 +52,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/news': { title: 'News', subtitle: 'Write, activate, deactivate and feature church and ministry news.' },
   '/admin/membership/dashboard': { title: 'Membership dashboard', subtitle: 'Membership statistics from the register.' },
   '/admin/membership/fields': { title: 'Membership fields', subtitle: 'Choose the details recorded for each member.' },
+  '/admin/form-management': { title: 'Form management', subtitle: 'Set up the fields on admin forms, such as the HR create vacancy form.' },
   '/admin/membership': { title: 'Membership register', subtitle: 'Add, edit, search and download member records.' },
   '/admin/sermons/dashboard': { title: 'Sermon analytics', subtitle: 'How many people watch and listen to sermons.' },
   '/admin/store/merchandise/stats': { title: 'Branded item statistics', subtitle: 'Sales, revenue and stock for every branded item.' },
@@ -106,6 +107,7 @@ const pathToAdminPage = (pathname: string | null) => {
   if (path.startsWith('/admin/locations')) return ADMIN_PAGE.LOCATIONS_PAGE;
   if (path.startsWith('/admin/prayerlines')) return ADMIN_PAGE.PRAYERLINES;
   if (path.startsWith('/admin/membership')) return ADMIN_PAGE.MEMBERSHIP;
+  if (path.startsWith('/admin/form-management')) return ADMIN_PAGE.FORM_MANAGEMENT;
   return null;
 };
 

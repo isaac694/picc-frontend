@@ -16,6 +16,16 @@ export type Vacancy = {
   responsibilities: string[];
   documents: string[];
   portalConfig?: PortalConfig | null;
+  /** Answers to the custom fields HR added in Form management > HR form. */
+  customDetails: VacancyCustomDetail[];
+};
+
+/** A custom vacancy field as the careers pages show it. */
+export type VacancyCustomDetail = {
+  key: string;
+  label: string;
+  type: string;
+  value: string | number | boolean | string[];
 };
 
 /** Public list: GET /api/hr/vacancies → { vacancies: ApiVacancy[] } */
@@ -41,6 +51,7 @@ export type ApiVacancy = {
   createdAt?: string;
   updatedAt?: string;
   portalConfig?: PortalConfig | null;
+  customFieldDetails?: unknown;
 };
 
 export type HrVacanciesListResponse = {
@@ -64,6 +75,19 @@ function firstText(...values: Array<string | undefined>) {
 
 function firstList(...values: Array<string[] | undefined>) {
   return values.find((value) => Array.isArray(value) && value.length) || [];
+}
+
+function parseCustomDetails(value: unknown): VacancyCustomDetail[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    .map((item) => ({
+      key: String(item.key || ''),
+      label: String(item.label || ''),
+      type: String(item.type || 'text'),
+      value: Array.isArray(item.value) ? item.value.map(String) : (item.value as VacancyCustomDetail['value']),
+    }))
+    .filter((item) => item.key && item.label && item.value !== undefined && item.value !== null);
 }
 
 function isPublicOpenVacancy(vacancy: ApiVacancy): boolean {
@@ -92,6 +116,7 @@ function mergeVacancyPayload(detail: ApiVacancy, portal: ApiVacancy, portalConfi
       detail.documents,
     ),
     portalConfig: portalConfig || portal.portalConfig || detail.portalConfig,
+    customFieldDetails: detail.customFieldDetails ?? portal.customFieldDetails,
   } satisfies ApiVacancy;
 }
 
@@ -121,6 +146,7 @@ export function normalizeVacancy(vacancy: ApiVacancy): Vacancy {
       return document.label || document.name || document.description || 'Required document';
     }),
     portalConfig,
+    customDetails: parseCustomDetails(vacancy.customFieldDetails),
   };
 }
 

@@ -19,6 +19,7 @@ import {
   Megaphone,
   Menu,
   BarChart3,
+  ClipboardList,
   IdCard,
   SlidersHorizontal,
   MessageSquareText,
@@ -287,6 +288,10 @@ export default function AdminSidebar() {
 
     if (canAccessRight(user, ADMIN_ACCESS_RIGHT.USER_LIST)) {
       settings.push({ label: 'User Management', href: '/admin/users', icon: Users });
+    }
+
+    if (canAccessAdminPage(user, ADMIN_PAGE.FORM_MANAGEMENT)) {
+      settings.push({ label: 'Form Management', href: '/admin/form-management', icon: ClipboardList });
     }
 
     const ministryEvents = [

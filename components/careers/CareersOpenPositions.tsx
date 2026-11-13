@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Briefcase, CalendarDays, Clock, GraduationCap, Loader2, MapPin } from 'lucide-react';
 import CareerApplyButton from '@/components/careers/CareerApplyButton';
 import { loadPublicVacanciesFromApi, type Vacancy } from '@/app/careers/vacancies';
+import { detailText, shortDetails, VacancyCustomDetailCards, VacancyCustomDetailSections } from '@/components/careers/VacancyCustomDetails';
 
 export default function CareersOpenPositions() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
@@ -95,7 +96,14 @@ export default function CareersOpenPositions() {
               ) : (
                 vacancies.map((item) => (
                   <tr key={item.id || item.slug || item.title} className="hover:bg-slate-50/80">
-                    <td className="px-6 py-5 font-semibold text-primary">{item.title}</td>
+                    <td className="px-6 py-5">
+                      <p className="font-semibold text-primary">{item.title}</p>
+                      {shortDetails(item.customDetails).length ? (
+                        <p className="mt-1 max-w-xs text-xs text-slate-500">
+                          {shortDetails(item.customDetails).map((detail) => `${detail.label}: ${detailText(detail)}`).join(' · ')}
+                        </p>
+                      ) : null}
+                    </td>
                     <td className="px-6 py-5">{item.department}</td>
                     <td className="px-6 py-5">{item.location}</td>
                     <td className="px-6 py-5">{item.type}</td>
@@ -164,6 +172,7 @@ export default function CareersOpenPositions() {
                   <p className="text-sm text-slate-600">{featured.closingDate}</p>
                 </div>
               </div>
+              <VacancyCustomDetailCards details={featured.customDetails} />
             </div>
 
             {featured.requirements.length > 0 ? (
@@ -177,6 +186,12 @@ export default function CareersOpenPositions() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            ) : null}
+
+            {featured.customDetails.length ? (
+              <div className="mt-8">
+                <VacancyCustomDetailSections details={featured.customDetails} />
               </div>
             ) : null}
 

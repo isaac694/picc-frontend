@@ -368,7 +368,10 @@ export function DeliveryNoteViewDialog({ note, onClose, actions }: { note: Deliv
   );
 }
 
-export type DeliveryEdited = { deliveryNote: DeliveryNote; invoice: AdminInvoice; stockMoved: number };
+/** The backend's MAX_QUANTITY per document line. */
+const MAX_LINE_COPIES = 5000;
+
+export type DeliveryEdited ={ deliveryNote: DeliveryNote; invoice: AdminInvoice; stockMoved: number };
 
 /**
  * Corrects a delivery note: where it went, dates, driver, remarks and who signed. While no money has been
@@ -397,28 +400,37 @@ export function EditDeliveryNoteDialog({
   const [receivedByName, setReceivedByName] = useState(note.receivedByName || '');
   const [receivedAt, setReceivedAt] = useState(dateOnly(note.receivedAt));
   const [quantities, setQuantities] = useState<number[]>(() => note.items.map((line) => line.qtyDelivered));
+  const [prices, setPrices] = useState<string[]>(() => note.items.map((line) => String(line.unitPrice)));
   // How many of each line this note may carry: what the invoice still owes plus what this note already has.
   const [room, setRoom] = useState<number[] | null>(null);
+  // The invoice behind the note: its prices are fixed once it is paid and recorded as a sale.
+  const [invoice, setInvoice] = useState<AdminInvoice | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (copiesLocked) return;
     let alive = true;
     void (async () => {
       const response = await apiFetch(`/api/admin/store/invoices/${encodeURIComponent(note.invoiceId)}`, { headers: headers(), cache: 'no-store' });
       const data = await response.json().catch(() => null);
       if (!alive || !response.ok) return;
-      const invoice = data.invoice as AdminInvoice;
-      setRoom(note.items.map((line) => (invoice.fulfilment?.lines[line.line]?.remaining ?? 0) + line.qtyDelivered));
+      const loaded = data.invoice as AdminInvoice;
+      setInvoice(loaded);
+      setRoom(note.items.map((line) => (loaded.fulfilment?.lines[line.line]?.remaining ?? 0) + line.qtyDelivered));
     })();
     return () => {
       alive = false;
     };
-  }, [copiesLocked, note.invoiceId, note.items, headers]);
+  }, [note.invoiceId, note.items, headers]);
 
+  const pricesLocked = !invoice || Boolean(invoice.saleReference) || invoice.status === 'cancelled';
+  const priceAt = (index: number) => {
+    const parsed = Number(prices[index]);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : note.items[index].unitPrice;
+  };
   const copies = quantities.reduce((sum, quantity) => sum + quantity, 0);
-  const value = note.items.reduce((sum, line, index) => sum + quantities[index] * line.unitPrice, 0);
+  const value = note.items.reduce((sum, _line, index) => sum + quantities[index] * priceAt(index), 0);
   const change = copies - note.totalCopies;
+  const pricesChanged = note.items.some((line, index) => priceAt(index) !== line.unitPrice);
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -426,6 +438,8 @@ export function EditDeliveryNoteDialog({
     if (!deliveryDate) return adminErrorToast('Enter the delivery date.');
     if (note.status === 'delivered' && !receivedByName.trim()) return adminErrorToast('Enter the name of the person who received the books.');
     if (copies === 0) return adminErrorToast('A delivery note needs at least one copy. Cancel it instead if nothing went.');
+    const badPrice = note.items.find((_line, index) => prices[index].trim() === '' || !(Number(prices[index]) >= 0));
+    if (badPrice) return adminErrorToast(`Enter a valid unit price for ${badPrice.title}.`);
     setSaving(true);
     try {
       const response = await apiFetch(`/api/admin/store/delivery-notes/${encodeURIComponent(note.id)}`, {
@@ -440,7 +454,11 @@ export function EditDeliveryNoteDialog({
           remarks: remarks.trim(),
           receivedByName: receivedByName.trim(),
           receivedAt: receivedAt || null,
-          ...(copiesLocked ? {} : { items: note.items.map((line, index) => ({ line: line.line, qtyDelivered: quantities[index] })) }),
+          items: note.items.map((line, index) => ({
+            line: line.line,
+            ...(copiesLocked ? {} : { qtyDelivered: quantities[index] }),
+            ...(pricesLocked ? {} : { unitPrice: priceAt(index) }),
+          })),
         }),
       });
       const data = await response.json().catch(() => null);
@@ -461,7 +479,10 @@ export function EditDeliveryNoteDialog({
               For {note.invoiceNumber}.{' '}
               {copiesLocked
                 ? `Money (${money(note.amountCollected)}) was collected on this delivery, so its copies are fixed; void that payment first to change them.`
-                : 'Changing the copies moves stock by the difference, and the invoice shows what is still to deliver.'}
+                : 'Changing the copies moves stock by the difference, and the invoice shows what is still to deliver.'}{' '}
+              {invoice?.saleReference
+                ? `${note.invoiceNumber} is paid and recorded as a sale, so its prices are fixed.`
+                : 'Changing a unit price changes it on the invoice too, and its total.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -471,19 +492,39 @@ export function EditDeliveryNoteDialog({
                 <tr>
                   <th className="px-2 py-1.5 font-medium">Book title</th>
                   <th className="px-2 py-1.5 text-right font-medium">Ordered</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Unit price</th>
+                  <th className="w-32 px-2 py-1.5 font-medium">Unit price</th>
                   <th className="w-28 px-2 py-1.5 font-medium">Delivered</th>
                   <th className="px-2 py-1.5 text-right font-medium">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
                 {note.items.map((line, index) => {
-                  const max = room?.[index] ?? line.qtyDelivered;
+                  const left = room?.[index] ?? line.qtyDelivered;
+                  // An open invoice grows to bill extra copies; a paid one only has what is left to deliver.
+                  const max = pricesLocked ? left : MAX_LINE_COPIES;
+                  const orderedAfter = Math.max(line.qtyOrdered, line.qtyOrdered - left + quantities[index]);
                   return (
                     <tr key={line.line}>
                       <td className="px-2 py-1.5 font-medium">{line.title}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{line.qtyOrdered}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{money(line.unitPrice)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">
+                        {orderedAfter}
+                        {orderedAfter > line.qtyOrdered ? <span className="block text-[10px] text-amber-700 dark:text-amber-300">was {line.qtyOrdered}</span> : null}
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={prices[index]}
+                          disabled={pricesLocked}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            setPrices((current) => current.map((price, position) => (position === index ? next : price)));
+                          }}
+                          className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm disabled:opacity-60"
+                          aria-label={`Unit price of ${line.title}`}
+                        />
+                      </td>
                       <td className="px-2 py-1.5">
                         <input
                           type="number"
@@ -499,7 +540,7 @@ export function EditDeliveryNoteDialog({
                           aria-label={`Copies of ${line.title} delivered`}
                         />
                       </td>
-                      <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{money(quantities[index] * line.unitPrice)}</td>
+                      <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{money(quantities[index] * priceAt(index))}</td>
                     </tr>
                   );
                 })}
@@ -510,6 +551,10 @@ export function EditDeliveryNoteDialog({
             <strong className="text-foreground">{copies}</strong> {copies === 1 ? 'copy' : 'copies'} worth {money(value)}.
             {change > 0 ? ` ${change} more ${change === 1 ? 'copy leaves' : 'copies leave'} stock.` : null}
             {change < 0 ? ` ${-change} ${change === -1 ? 'copy comes' : 'copies come'} off this note (back into stock unless the invoice is already paid).` : null}
+            {pricesChanged ? ` New prices update ${note.invoiceNumber} and its total.` : null}
+            {room && note.items.some((line, index) => quantities[index] > room[index])
+              ? ` More copies than ${note.invoiceNumber} ordered: its quantities and total go up to bill them.`
+              : null}
           </p>
 
           <section className="grid gap-3 sm:grid-cols-2">

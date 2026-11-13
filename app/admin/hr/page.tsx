@@ -35,13 +35,20 @@ import {
 } from '@/lib/hr-application-review';
 import {
   defaultRequiredDocuments,
-  EMPLOYMENT_TYPES,
   parseRequiredDocuments,
   serializeRequiredDocuments,
-  VACANCY_STATUSES,
-  validateVacancyForm,
+  validateRequiredDocumentFields,
   type VacancyRequiredDocument,
 } from '@/lib/hr-vacancy';
+import {
+  columnFor,
+  DEFAULT_VACANCY_FIELDS,
+  HR_VACANCY_FIELDS_ENDPOINT,
+  parseHrFormFields,
+  validateFieldValue,
+  type CustomFieldValue,
+  type HrFormField,
+} from '@/lib/hr-form';
 
 type VacancyStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'ARCHIVED';
 type ApplicationStatus = 'SUBMITTED' | 'UNDER_REVIEW' | 'SHORTLISTED' | 'REJECTED' | 'HIRED' | 'WITHDRAWN';
@@ -100,12 +107,29 @@ type HrVacancy = {
   responsibilities: string[];
   requirements: string[];
   requiredDocuments: VacancyRequiredDocument[];
+  customFields: Record<string, CustomFieldValue>;
   status: VacancyStatus;
   closesAt?: string;
   applications?: HrApplication[];
 };
 
-const EMPTY_FORM = {
+type VacancyForm = {
+  title: string;
+  department: string;
+  location: string;
+  employmentType: string;
+  summary: string;
+  description: string;
+  responsibilities: string[];
+  requirements: string[];
+  requiredDocuments: VacancyRequiredDocument[];
+  status: VacancyStatus;
+  closesAt: string;
+  /** Answers to the custom fields added in Settings > Form management > HR form. */
+  customFields: Record<string, CustomFieldValue>;
+};
+
+const EMPTY_FORM: VacancyForm = {
   title: '',
   department: '',
   location: '',
@@ -115,8 +139,41 @@ const EMPTY_FORM = {
   responsibilities: [] as string[],
   requirements: [] as string[],
   requiredDocuments: defaultRequiredDocuments(),
-  status: 'OPEN' as VacancyStatus,
+  status: 'OPEN',
   closesAt: '',
+  customFields: {},
+};
+
+/** A field's current value: fields that fill a vacancy property read it, the rest live in customFields. */
+const fieldValue = (form: VacancyForm, field: HrFormField): unknown => {
+  const column = columnFor(field);
+  return column ? form[column] : form.customFields[field.key];
+};
+
+const withFieldValue = (form: VacancyForm, field: HrFormField, value: CustomFieldValue): VacancyForm => {
+  const column = columnFor(field);
+  return column
+    ? { ...form, [column]: value }
+    : { ...form, customFields: { ...form.customFields, [field.key]: value } };
+};
+
+/** Errors keyed by field key (and document keys), checked against the fields set up in Form management. */
+function validateVacancyForm(form: VacancyForm, fields: HrFormField[]): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const field of fields) {
+    const message = validateFieldValue(field, fieldValue(form, field));
+    if (message) errors[field.key] = message;
+  }
+  return { ...errors, ...validateRequiredDocumentFields(form.requiredDocuments) };
+}
+
+const parseCustomFields = (value: unknown): Record<string, CustomFieldValue> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(([, entry]) => (
+      ['string', 'number', 'boolean'].includes(typeof entry) || Array.isArray(entry)
+    )).map(([key, entry]) => [key, Array.isArray(entry) ? entry.map(String) : entry as CustomFieldValue]),
+  );
 };
 
 const normalizeVacancy = (value: unknown): HrVacancy | null => {
@@ -138,6 +195,7 @@ const normalizeVacancy = (value: unknown): HrVacancy | null => {
     responsibilities: Array.isArray(item.responsibilities) ? item.responsibilities.map(String) : [],
     requirements: Array.isArray(item.requirements) ? item.requirements.map(String) : [],
     requiredDocuments: parseRequiredDocuments(item.requiredDocuments),
+    customFields: parseCustomFields(item.customFields),
     status: (item.status as VacancyStatus) || 'DRAFT',
     closesAt: typeof item.closesAt === 'string' ? item.closesAt : undefined,
     applications: Array.isArray(item.applications) ? item.applications as HrApplication[] : [],
@@ -248,6 +306,92 @@ function RichTextEditor({
   );
 }
 
+const selectClass = 'h-10 w-full rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-destructive';
+
+/** One field of the Create vacancy form, drawn from its Form management settings. */
+function VacancyFormField({
+  field,
+  value,
+  onChange,
+  error,
+}: {
+  field: HrFormField;
+  value: unknown;
+  onChange: (value: CustomFieldValue) => void;
+  error?: string;
+}) {
+  const label = `${field.label}${field.isRequired ? ' *' : ''}`;
+  const placeholder = field.placeholder ? examplePlaceholder(field.placeholder) : undefined;
+  const text = value === undefined || value === null ? '' : String(value);
+  const help = field.helpText && field.type !== 'list' ? <p className="text-xs text-muted-foreground">{field.helpText}</p> : null;
+
+  if (field.type === 'richtext') {
+    return (
+      <div className="space-y-1 md:col-span-2">
+        <RichTextEditor label={label} value={text} onChange={onChange} placeholder={placeholder} invalid={Boolean(error)} error={error} />
+        {help}
+      </div>
+    );
+  }
+
+  if (field.type === 'list') {
+    return (
+      <section className={`rounded-2xl border border-border/70 bg-background/60 p-4 ${field.width === 'half' ? '' : 'md:col-span-2'}`}>
+        <VacancyArrayEditor
+          label={label}
+          description={field.helpText || 'Add each item on its own.'}
+          value={Array.isArray(value) ? value.map(String) : []}
+          onChange={onChange}
+          placeholder={field.placeholder.replace(/^e\.g\.\s*/i, '') || 'Add an item'}
+          error={error}
+        />
+      </section>
+    );
+  }
+
+  if (field.type === 'checkbox') {
+    return (
+      <div className={`space-y-1 ${field.width === 'half' ? '' : 'md:col-span-2'}`}>
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <Checkbox checked={value === true} onCheckedChange={(checked) => onChange(checked === true)} aria-invalid={Boolean(error)} />
+          {label}
+        </label>
+        {help}
+        <FieldError message={error} />
+      </div>
+    );
+  }
+
+  let control;
+  if (field.type === 'select') {
+    // Keep a value saved before its choice was removed, so editing a vacancy never changes it silently.
+    const options = Array.from(new Set([...field.options, text].filter(Boolean)));
+    const isStatus = columnFor(field) === 'status';
+    control = (
+      <select className={selectClass} value={text} aria-invalid={Boolean(error)} onChange={(event) => onChange(event.target.value)}>
+        {field.isRequired && text ? null : <option value="">Choose…</option>}
+        {options.map((option) => (
+          <option key={option} value={option}>{isStatus ? option.replaceAll('_', ' ') : option}</option>
+        ))}
+      </select>
+    );
+  } else if (field.type === 'textarea') {
+    control = <Textarea rows={3} value={text} aria-invalid={Boolean(error)} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />;
+  } else {
+    const inputType = field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text';
+    control = <Input type={inputType} step={field.type === 'number' ? 'any' : undefined} value={text} aria-invalid={Boolean(error)} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />;
+  }
+
+  return (
+    <div className={`space-y-2 ${field.width === 'half' ? '' : 'md:col-span-2'}`}>
+      <Label>{label}</Label>
+      {control}
+      {help}
+      <FieldError message={error} />
+    </div>
+  );
+}
+
 export default function AdminHrPage() {
   const { token } = useAdminAuth();
   const [vacancies, setVacancies] = useState<HrVacancy[]>([]);
@@ -288,7 +432,26 @@ export default function AdminHrPage() {
   );
   const selectedCount = selectedApplicationIds.length;
   const allVisibleSelected = applications.length > 0 && selectedCount === applications.length;
-  const vacancyErrors = showVacancyErrors ? validateVacancyForm(form) : {};
+  // The Create vacancy fields from Settings > Form management > HR form. The built-in layout is used
+  // until they load, or if they cannot be loaded.
+  const [formFields, setFormFields] = useState<HrFormField[]>(DEFAULT_VACANCY_FIELDS);
+  const activeFormFields = useMemo(() => formFields.filter((field) => field.isActive), [formFields]);
+  const vacancyErrors = showVacancyErrors ? validateVacancyForm(form, activeFormFields) : {};
+
+  const fetchFormFields = async () => {
+    if (!token) return;
+    try {
+      const response = await apiFetch(`${HR_VACANCY_FIELDS_ENDPOINT}?active=1`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      if (!response.ok) return;
+      const fields = parseHrFormFields(await response.json());
+      if (fields.length) setFormFields(fields);
+    } catch {
+      // Keep the built-in layout.
+    }
+  };
 
   const fetchVacancies = async () => {
     if (!token) return;
@@ -315,6 +478,7 @@ export default function AdminHrPage() {
 
   useEffect(() => {
     fetchVacancies();
+    void fetchFormFields();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -417,7 +581,7 @@ export default function AdminHrPage() {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
 
-  const vacancyToForm = (vacancy: HrVacancy) => ({
+  const vacancyToForm = (vacancy: HrVacancy): VacancyForm => ({
     title: vacancy.title,
     department: vacancy.department,
     location: vacancy.location,
@@ -429,13 +593,16 @@ export default function AdminHrPage() {
     requiredDocuments: vacancy.requiredDocuments.length ? vacancy.requiredDocuments : defaultRequiredDocuments(),
     status: vacancy.status,
     closesAt: vacancy.closesAt ? vacancy.closesAt.slice(0, 10) : '',
+    customFields: vacancy.customFields,
   });
 
   const openCreate = () => {
     setEditing(null);
     setShowVacancyErrors(false);
-    setForm({ ...EMPTY_FORM, requiredDocuments: defaultRequiredDocuments() });
+    setForm({ ...EMPTY_FORM, requiredDocuments: defaultRequiredDocuments(), customFields: {} });
     setDialogOpen(true);
+    // Pick up changes made in Form management since the page loaded.
+    void fetchFormFields();
   };
 
   const openEdit = async (vacancy: HrVacancy) => {
@@ -443,6 +610,7 @@ export default function AdminHrPage() {
     setShowVacancyErrors(false);
     setForm(vacancyToForm(vacancy));
     setDialogOpen(true);
+    void fetchFormFields();
 
     if (!token) return;
     try {
@@ -463,7 +631,7 @@ export default function AdminHrPage() {
   const saveVacancy = async () => {
     if (!token) return;
     setShowVacancyErrors(true);
-    const vacancyErrors = validateVacancyForm(form);
+    const vacancyErrors = validateVacancyForm(form, activeFormFields);
     const firstError = Object.values(vacancyErrors)[0];
     if (firstError) {
       adminErrorToast(firstError);
@@ -473,18 +641,37 @@ export default function AdminHrPage() {
     setSaving(true);
     try {
       const requiredDocuments = serializeRequiredDocuments(form.requiredDocuments);
-      const body = {
+      // Vacancy properties that a shown field fills. The rest are left out: a new vacancy leaves them empty
+      // (without a Job title field the backend names it from the first short answer; without Status it is
+      // a draft), and an edit keeps what was saved.
+      const shown = new Set<string>(activeFormFields.flatMap((field) => columnFor(field) ?? []));
+      const trimList = (items: string[]) => items.map((item) => item.trim()).filter(Boolean);
+      const columns: Record<string, unknown> = {
         title: form.title.trim(),
+        status: form.status,
         department: form.department.trim(),
         location: form.location.trim(),
         employmentType: form.employmentType.trim() || 'Full-time',
         summary: form.summary.trim(),
         description: form.description.trim(),
-        responsibilities: form.responsibilities.map((item) => item.trim()).filter(Boolean),
-        requirements: form.requirements.map((item) => item.trim()).filter(Boolean),
+        responsibilities: trimList(form.responsibilities),
+        requirements: trimList(form.requirements),
+        closesAt: form.closesAt ? `${form.closesAt}T23:59:59.000Z` : null,
+      };
+      const customFields = Object.fromEntries(
+        activeFormFields
+          .filter((field) => !columnFor(field))
+          .map((field) => {
+            const value = form.customFields[field.key];
+            if (field.type === 'list') return [field.key, trimList(Array.isArray(value) ? value.map(String) : [])];
+            if (field.type === 'checkbox') return [field.key, value === true];
+            return [field.key, typeof value === 'string' ? value.trim() : value ?? ''];
+          }),
+      );
+      const body = {
+        ...Object.fromEntries(Object.entries(columns).filter(([key]) => shown.has(key))),
         requiredDocuments,
-        status: form.status,
-        closesAt: form.closesAt ? `${form.closesAt}T23:59:59.000Z` : undefined,
+        customFields,
       };
 
       const response = await apiFetch(editing ? `/api/admin/hr/vacancies/${editing.id}` : '/api/admin/hr/vacancies', {
@@ -880,129 +1067,23 @@ export default function AdminHrPage() {
           <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-5">
             <section className="space-y-4 rounded-2xl border border-border/70 bg-muted/20 p-5">
               <div>
-                <h3 className="text-base font-semibold">Role details</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Core information shown on the careers portal.</p>
+                <h3 className="text-base font-semibold">Vacancy details</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Shown on the careers portal. The fields here are set up in Settings &gt; Form management &gt; HR form.
+                </p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Job title *</Label>
-                  <Input
-                    value={form.title}
-                    aria-invalid={Boolean(vacancyErrors.title)}
-                    onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                    placeholder={examplePlaceholder('Communications Officer')}
+                {activeFormFields.map((field) => (
+                  <VacancyFormField
+                    key={field.id}
+                    field={field}
+                    value={fieldValue(form, field)}
+                    onChange={(value) => setForm((current) => withFieldValue(current, field, value))}
+                    error={vacancyErrors[field.key]}
                   />
-                  <FieldError message={vacancyErrors.title} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Department *</Label>
-                  <Input
-                    value={form.department}
-                    aria-invalid={Boolean(vacancyErrors.department)}
-                    onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))}
-                    placeholder={examplePlaceholder('Human Resources')}
-                  />
-                  <FieldError message={vacancyErrors.department} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Location *</Label>
-                  <Input
-                    value={form.location}
-                    aria-invalid={Boolean(vacancyErrors.location)}
-                    onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
-                    placeholder={examplePlaceholder('Lilongwe')}
-                  />
-                  <FieldError message={vacancyErrors.location} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Employment type *</Label>
-                  <select
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-destructive"
-                    value={form.employmentType}
-                    aria-invalid={Boolean(vacancyErrors.employmentType)}
-                    onChange={(e) => setForm((p) => ({ ...p, employmentType: e.target.value }))}
-                  >
-                    {Array.from(new Set([...EMPLOYMENT_TYPES, form.employmentType].filter(Boolean))).map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                  <FieldError message={vacancyErrors.employmentType} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status *</Label>
-                  <select
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-destructive"
-                    value={form.status}
-                    aria-invalid={Boolean(vacancyErrors.status)}
-                    onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as VacancyStatus }))}
-                  >
-                    {VACANCY_STATUSES.map((status) => (
-                      <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>
-                    ))}
-                  </select>
-                  <FieldError message={vacancyErrors.status} />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Closing date *</Label>
-                  <Input
-                    type="date"
-                    value={form.closesAt}
-                    aria-invalid={Boolean(vacancyErrors.closesAt)}
-                    onChange={(e) => setForm((p) => ({ ...p, closesAt: e.target.value }))}
-                  />
-                  <FieldError message={vacancyErrors.closesAt} />
-                </div>
+                ))}
               </div>
             </section>
-
-            <section className="space-y-4 rounded-2xl border border-border/70 bg-muted/20 p-5">
-              <div>
-                <h3 className="text-base font-semibold">Description</h3>
-                <p className="mt-1 text-sm text-muted-foreground">A short summary for listings and a full description for the vacancy page.</p>
-              </div>
-              <div className="space-y-2">
-                <Label>Short summary *</Label>
-                <Textarea
-                  rows={3}
-                  value={form.summary}
-                  aria-invalid={Boolean(vacancyErrors.summary)}
-                  onChange={(e) => setForm((p) => ({ ...p, summary: e.target.value }))}
-                  placeholder={examplePlaceholder('We are hiring a Communications Officer to support media relations.')}
-                />
-                <FieldError message={vacancyErrors.summary} />
-              </div>
-              <RichTextEditor
-                label="Full description *"
-                value={form.description}
-                onChange={(description) => setForm((p) => ({ ...p, description }))}
-                placeholder={examplePlaceholder('Describe the role, who it reports to, and what success looks like.')}
-                invalid={Boolean(vacancyErrors.description)}
-                error={vacancyErrors.description}
-              />
-            </section>
-
-            <div className="grid gap-5 lg:grid-cols-2">
-              <section className="rounded-2xl border border-border/70 bg-muted/20 p-5">
-                <VacancyArrayEditor
-                  label="Responsibilities *"
-                  description="Add each responsibility on its own."
-                  value={form.responsibilities}
-                  onChange={(responsibilities) => setForm((p) => ({ ...p, responsibilities }))}
-                  placeholder="Prepare reports for leadership"
-                  error={vacancyErrors.responsibilities}
-                />
-              </section>
-              <section className="rounded-2xl border border-border/70 bg-muted/20 p-5">
-                <VacancyArrayEditor
-                  label="Requirements *"
-                  description="Add each qualification or requirement on its own."
-                  value={form.requirements}
-                  onChange={(requirements) => setForm((p) => ({ ...p, requirements }))}
-                  placeholder="Degree or diploma in Communications"
-                  error={vacancyErrors.requirements}
-                />
-              </section>
-            </div>
 
             <VacancyDocumentsEditor
               value={form.requiredDocuments}

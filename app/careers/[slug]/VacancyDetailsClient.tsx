@@ -7,6 +7,7 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import CareerApplyButton from '@/components/careers/CareerApplyButton';
 import VacancyPortalView from '@/components/careers/VacancyPortalView';
+import { VacancyCustomDetailCards, VacancyCustomDetailSections } from '@/components/careers/VacancyCustomDetails';
 import { apiFetch } from '@/lib/api';
 import { collectFields } from '@/lib/hr-portal';
 import { normalizeVacancy, type Vacancy } from '../vacancies';
@@ -88,6 +89,7 @@ export default function VacancyDetailsClient({ slug, initialVacancy }: { slug: s
                     </div>
                   );
                 })}
+                <VacancyCustomDetailCards details={vacancy.customDetails} />
               </div>
               <div className="mt-10">
                 <VacancyPortalView
@@ -97,6 +99,11 @@ export default function VacancyDetailsClient({ slug, initialVacancy }: { slug: s
                   responsibilities={vacancy.responsibilities}
                 />
               </div>
+              {vacancy.customDetails.length ? (
+                <div className="mt-10">
+                  <VacancyCustomDetailSections details={vacancy.customDetails} />
+                </div>
+              ) : null}
             </article>
 
             <aside className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm lg:sticky lg:top-24 lg:self-start">
