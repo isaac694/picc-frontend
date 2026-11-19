@@ -18,6 +18,11 @@ export type Vacancy = {
   portalConfig?: PortalConfig | null;
   /** Answers to the custom fields HR added in Form management > HR form. */
   customDetails: VacancyCustomDetail[];
+  /**
+   * Every shown field on the HR form (built-in ones included, under the label HR gave them), in form
+   * order. Null when the backend does not send it yet; the pages then fall back to fixed headings.
+   */
+  formDetails: VacancyCustomDetail[] | null;
 };
 
 /** A custom vacancy field as the careers pages show it. */
@@ -25,6 +30,8 @@ export type VacancyCustomDetail = {
   key: string;
   label: string;
   type: string;
+  /** The vacancy property the field fills (department, closesAt, ...), or null for an extra detail. */
+  column?: string | null;
   value: string | number | boolean | string[];
 };
 
@@ -52,6 +59,7 @@ export type ApiVacancy = {
   updatedAt?: string;
   portalConfig?: PortalConfig | null;
   customFieldDetails?: unknown;
+  formDetails?: unknown;
 };
 
 export type HrVacanciesListResponse = {
@@ -66,6 +74,8 @@ function formatDate(value?: string) {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    // UTC: closing dates are saved as the end of the chosen day in UTC; local time would shift them.
+    timeZone: 'UTC',
   }).format(date);
 }
 
@@ -85,6 +95,7 @@ function parseCustomDetails(value: unknown): VacancyCustomDetail[] {
       key: String(item.key || ''),
       label: String(item.label || ''),
       type: String(item.type || 'text'),
+      column: item.column ? String(item.column) : null,
       value: Array.isArray(item.value) ? item.value.map(String) : (item.value as VacancyCustomDetail['value']),
     }))
     .filter((item) => item.key && item.label && item.value !== undefined && item.value !== null);
@@ -117,6 +128,7 @@ function mergeVacancyPayload(detail: ApiVacancy, portal: ApiVacancy, portalConfi
     ),
     portalConfig: portalConfig || portal.portalConfig || detail.portalConfig,
     customFieldDetails: detail.customFieldDetails ?? portal.customFieldDetails,
+    formDetails: detail.formDetails ?? portal.formDetails,
   } satisfies ApiVacancy;
 }
 
@@ -147,6 +159,7 @@ export function normalizeVacancy(vacancy: ApiVacancy): Vacancy {
     }),
     portalConfig,
     customDetails: parseCustomDetails(vacancy.customFieldDetails),
+    formDetails: Array.isArray(vacancy.formDetails) ? parseCustomDetails(vacancy.formDetails) : null,
   };
 }
 

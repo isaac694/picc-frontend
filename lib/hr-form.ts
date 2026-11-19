@@ -112,11 +112,14 @@ export type CustomFieldValue = string | number | boolean | string[];
 
 const textFromHtml = (value: string) => value.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
+/** Paragraph and formatted-text fields both use the formatting editor, so their values may be HTML. */
+const isFormattedType = (type: HrFieldType) => type === 'richtext' || type === 'textarea';
+
 /** Whether a value counts as filled in for its field type. */
 export function hasValue(type: HrFieldType, value: unknown): boolean {
   if (type === 'checkbox') return value === true;
   if (type === 'list') return Array.isArray(value) && value.some((item) => String(item).trim());
-  if (type === 'richtext') return Boolean(textFromHtml(String(value ?? '')));
+  if (isFormattedType(type)) return Boolean(textFromHtml(String(value ?? '')));
   return Boolean(String(value ?? '').trim());
 }
 
@@ -129,7 +132,7 @@ export function validateFieldValue(field: HrFormField, value: unknown): string |
     if (!field.isRequired) return null;
     return field.type === 'list' ? `Add at least one entry for ${field.label}.` : `${field.label} is required.`;
   }
-  const text = field.type === 'richtext' ? textFromHtml(String(value ?? '')) : String(value ?? '').trim();
+  const text = isFormattedType(field.type) ? textFromHtml(String(value ?? '')) : String(value ?? '').trim();
   const column = columnFor(field);
   if (column === 'title' && text.length < 3) return 'Enter at least 3 characters.';
   if ((column === 'summary' || column === 'description') && text.length < 10) return 'Enter at least 10 characters.';

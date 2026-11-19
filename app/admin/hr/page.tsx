@@ -298,7 +298,7 @@ function RichTextEditor({
           data-placeholder={placeholder}
           aria-invalid={invalid}
           onInput={(event) => onChange(event.currentTarget.innerHTML)}
-          className="prose prose-sm min-h-44 max-w-none px-4 py-3 text-sm outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] dark:prose-invert"
+          className="vacancy-rich min-h-44 max-w-none px-4 py-3 text-sm outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] dark:prose-invert"
         />
       </div>
       <FieldError message={error} />
@@ -307,6 +307,21 @@ function RichTextEditor({
 }
 
 const selectClass = 'h-10 w-full rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-destructive';
+
+const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * Text saved before a field had the formatting editor is plain, with line breaks; show it in the editor
+ * as paragraphs so the breaks are kept. Text that is already HTML is left as it is.
+ */
+function plainTextToHtml(value: string) {
+  if (!value.trim() || /<\/?[a-z][^>]*>/i.test(value)) return value;
+  return value
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
 
 /** One field of the Create vacancy form, drawn from its Form management settings. */
 function VacancyFormField({
@@ -325,10 +340,11 @@ function VacancyFormField({
   const text = value === undefined || value === null ? '' : String(value);
   const help = field.helpText && field.type !== 'list' ? <p className="text-xs text-muted-foreground">{field.helpText}</p> : null;
 
-  if (field.type === 'richtext') {
+  // Paragraph fields get the same toolbar (heading, bold, italic, underline, bullets) as formatted text.
+  if (field.type === 'richtext' || field.type === 'textarea') {
     return (
       <div className="space-y-1 md:col-span-2">
-        <RichTextEditor label={label} value={text} onChange={onChange} placeholder={placeholder} invalid={Boolean(error)} error={error} />
+        <RichTextEditor label={label} value={plainTextToHtml(text)} onChange={onChange} placeholder={placeholder} invalid={Boolean(error)} error={error} />
         {help}
       </div>
     );
@@ -375,8 +391,6 @@ function VacancyFormField({
         ))}
       </select>
     );
-  } else if (field.type === 'textarea') {
-    control = <Textarea rows={3} value={text} aria-invalid={Boolean(error)} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />;
   } else {
     const inputType = field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text';
     control = <Input type={inputType} step={field.type === 'number' ? 'any' : undefined} value={text} aria-invalid={Boolean(error)} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />;

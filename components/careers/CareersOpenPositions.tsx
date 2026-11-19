@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Briefcase, CalendarDays, Clock, GraduationCap, Loader2, MapPin } from 'lucide-react';
+import { GraduationCap, Loader2 } from 'lucide-react';
 import CareerApplyButton from '@/components/careers/CareerApplyButton';
 import { loadPublicVacanciesFromApi, type Vacancy } from '@/app/careers/vacancies';
-import { detailText, shortDetails, VacancyCustomDetailCards, VacancyCustomDetailSections } from '@/components/careers/VacancyCustomDetails';
+import { detailText, shortDetails, VacancyFullDetails } from '@/components/careers/VacancyCustomDetails';
 
 export default function CareersOpenPositions() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
@@ -36,8 +36,6 @@ export default function CareersOpenPositions() {
       cancelled = true;
     };
   }, []);
-
-  const featured = vacancies[0];
 
   return (
     <>
@@ -133,81 +131,41 @@ export default function CareersOpenPositions() {
         </div>
       </div>
 
-      {!isLoading && featured ? (
-        <div className="mt-10">
-          <article className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-secondary/15 px-4 py-2 text-sm font-semibold text-primary">
-              <GraduationCap className="h-4 w-4 text-secondary" />
-              Featured Vacancy
-            </div>
-            <h3 className="text-2xl font-bold text-primary md:text-3xl">{featured.title}</h3>
-            <p className="mt-4 leading-relaxed text-muted-foreground">{featured.summary}</p>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
-                <Briefcase className="mt-0.5 h-5 w-5 text-secondary" />
-                <div>
-                  <p className="text-sm font-semibold text-primary">Department</p>
-                  <p className="text-sm text-slate-600">{featured.department}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
-                <MapPin className="mt-0.5 h-5 w-5 text-secondary" />
-                <div>
-                  <p className="text-sm font-semibold text-primary">Location</p>
-                  <p className="text-sm text-slate-600">{featured.location}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
-                <Clock className="mt-0.5 h-5 w-5 text-secondary" />
-                <div>
-                  <p className="text-sm font-semibold text-primary">Employment Type</p>
-                  <p className="text-sm text-slate-600">{featured.type}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
-                <CalendarDays className="mt-0.5 h-5 w-5 text-secondary" />
-                <div>
-                  <p className="text-sm font-semibold text-primary">Closing Date</p>
-                  <p className="text-sm text-slate-600">{featured.closingDate}</p>
-                </div>
-              </div>
-              <VacancyCustomDetailCards details={featured.customDetails} />
-            </div>
-
-            {featured.requirements.length > 0 ? (
-              <div className="mt-8">
-                <h4 className="text-lg font-bold text-primary">Minimum Requirements</h4>
-                <ul className="mt-4 space-y-3 text-slate-600">
-                  {featured.requirements.map((requirement) => (
-                    <li key={requirement} className="flex gap-3">
-                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-secondary" />
-                      <span>{requirement}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
-            {featured.customDetails.length ? (
-              <div className="mt-8">
-                <VacancyCustomDetailSections details={featured.customDetails} />
-              </div>
-            ) : null}
-
-            <Link
-              href={`/careers/${featured.slug || featured.id}`}
-              className="mt-8 inline-flex rounded-xl bg-secondary px-5 py-3 font-semibold text-secondary-foreground transition-colors hover:bg-secondary/90"
+      {!isLoading && vacancies.length ? (
+        <div className="mt-10 space-y-10">
+          {vacancies.map((vacancy, index) => (
+            <article
+              key={vacancy.id || vacancy.slug || vacancy.title}
+              id={vacancy.slug || vacancy.id}
+              className="scroll-mt-24 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
             >
-              View Full Details
-            </Link>
-            <CareerApplyButton
-              vacancyIdOrSlug={featured.id || featured.slug}
-              title={featured.title}
-              portalConfig={featured.portalConfig}
-              className="ml-3 mt-8 inline-flex rounded-xl border border-secondary px-5 py-3 font-semibold text-primary transition-colors hover:bg-secondary/10"
-            />
-          </article>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-secondary/15 px-4 py-2 text-sm font-semibold text-primary">
+                <GraduationCap className="h-4 w-4 text-secondary" />
+                {index === 0 ? 'Featured Vacancy' : 'Open Position'}
+              </div>
+              <h3 className="text-2xl font-bold text-primary md:text-3xl">{vacancy.title}</h3>
+              <p className="mt-4 leading-relaxed text-muted-foreground">{vacancy.summary}</p>
+
+              <div className="mt-8">
+                <VacancyFullDetails vacancy={vacancy} />
+              </div>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  href={`/careers/${vacancy.slug || vacancy.id}`}
+                  className="inline-flex rounded-xl bg-secondary px-5 py-3 font-semibold text-secondary-foreground transition-colors hover:bg-secondary/90"
+                >
+                  View Full Details
+                </Link>
+                <CareerApplyButton
+                  vacancyIdOrSlug={vacancy.id || vacancy.slug}
+                  title={vacancy.title}
+                  portalConfig={vacancy.portalConfig}
+                  className="inline-flex rounded-xl border border-secondary px-5 py-3 font-semibold text-primary transition-colors hover:bg-secondary/10"
+                />
+              </div>
+            </article>
+          ))}
         </div>
       ) : null}
     </>

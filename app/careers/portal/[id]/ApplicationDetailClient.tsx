@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { apiFetch } from '@/lib/api';
 import { adminErrorToast } from '@/components/admin/admin-toast';
 import ApplicantAuthPanel from '@/components/careers/ApplicantAuthPanel';
-import VacancyPortalView from '@/components/careers/VacancyPortalView';
+import { VacancyFullDetails } from '@/components/careers/VacancyCustomDetails';
+import { normalizeVacancy, type ApiVacancy } from '@/app/careers/vacancies';
 import {
   applicantAuthHeaders,
   getApplicant,
@@ -63,6 +64,9 @@ type VacancyDetail = {
   requirements?: string[];
   responsibilities?: string[];
   portalConfig?: PortalConfig | null;
+  closesAt?: string;
+  customFieldDetails?: unknown;
+  formDetails?: unknown;
 };
 
 export default function ApplicationDetailClient({ id, vacancyId }: { id: string; vacancyId?: string }) {
@@ -96,7 +100,10 @@ export default function ApplicationDetailClient({ id, vacancyId }: { id: string;
         description: portalVacancy.description || adminVacancy.description || publicVacancy.description,
         requirements: portalVacancy.requirements || adminVacancy.requirements || publicVacancy.requirements,
         responsibilities: portalVacancy.responsibilities || adminVacancy.responsibilities || publicVacancy.responsibilities,
-        portalConfig,
+        portalConfig: normalizePortalConfig(portalConfig),
+        // Only the public route sends the HR form's labels for each field.
+        formDetails: publicVacancy.formDetails,
+        customFieldDetails: publicVacancy.customFieldDetails,
       });
     }
   };
@@ -173,44 +180,13 @@ export default function ApplicationDetailClient({ id, vacancyId }: { id: string;
                 ) : null}
                 <ApplicantProfileView profile={profile} />
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Department</p>
-                  <p className="mt-1 text-sm">{vacancy?.department || application.vacancy?.department || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Location</p>
-                  <p className="mt-1 text-sm">{vacancy?.location || application.vacancy?.location || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Employment type</p>
-                  <p className="mt-1 text-sm">{vacancy?.employmentType || '-'}</p>
+              <div>
+                <h2 className="font-semibold text-primary">Vacancy details</h2>
+                <div className="mt-4">
+                  {/* Every field on the HR vacancy form, under the labels HR gave them. */}
+                  <VacancyFullDetails vacancy={normalizeVacancy({ ...application.vacancy, ...vacancy } as ApiVacancy)} />
                 </div>
               </div>
-              {vacancy?.portalConfig || vacancy?.description || (vacancy?.requirements || []).length ? (
-                <div>
-                  <h2 className="font-semibold text-primary">Vacancy details</h2>
-                  <div className="mt-4">
-                    {normalizePortalConfig(vacancy?.portalConfig) ? (
-                      <VacancyPortalView
-                        portalConfig={normalizePortalConfig(vacancy?.portalConfig)}
-                        description={vacancy?.description}
-                        requirements={vacancy?.requirements}
-                        responsibilities={vacancy?.responsibilities}
-                      />
-                    ) : (
-                      <div className="space-y-4 text-slate-600">
-                        {vacancy?.description ? <div dangerouslySetInnerHTML={{ __html: vacancy.description }} /> : null}
-                        {(vacancy?.requirements || []).length ? (
-                          <ul className="list-disc pl-5">
-                            {(vacancy?.requirements || []).map((item) => <li key={item}>{item}</li>)}
-                          </ul>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : null}
               {application.reviewNotes ? (
                 <div>
                   <h2 className="font-semibold text-primary">Review notes</h2>

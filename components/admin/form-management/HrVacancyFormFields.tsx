@@ -191,6 +191,10 @@ export default function HrVacancyFormFields() {
             The fields HR fill in when they create or edit a vacancy, in this order. Every field can be renamed, retyped, reordered, hidden or deleted; Reset brings back the default fields.
             Required documents are set on each vacancy and are not part of this form.
           </p>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">This order is also the order on the careers pages.</span>{' '}
+            Use the arrows to choose what vacancy visitors see first. Paragraph and formatted-text fields have a toolbar for headings, bold, italic, underline and bullets.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={reset} className="gap-2"><RotateCcw className="h-4 w-4" /> Reset to default fields</Button>

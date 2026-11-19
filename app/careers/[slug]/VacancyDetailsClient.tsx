@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Briefcase, CalendarDays, Clock, FileText, MapPin } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import CareerApplyButton from '@/components/careers/CareerApplyButton';
-import VacancyPortalView from '@/components/careers/VacancyPortalView';
-import { VacancyCustomDetailCards, VacancyCustomDetailSections } from '@/components/careers/VacancyCustomDetails';
+import { VacancyFullDetails } from '@/components/careers/VacancyCustomDetails';
 import { apiFetch } from '@/lib/api';
 import { collectFields } from '@/lib/hr-portal';
 import { normalizeVacancy, type Vacancy } from '../vacancies';
@@ -49,13 +48,6 @@ export default function VacancyDetailsClient({ slug, initialVacancy }: { slug: s
     ? fileFields.map((field) => `${field.label || field.key}${field.required ? ' (required)' : ''}`)
     : vacancy.documents;
 
-  const details = [
-    { label: 'Department', value: vacancy.department, icon: Briefcase },
-    { label: 'Location', value: vacancy.location, icon: MapPin },
-    { label: 'Employment Type', value: vacancy.type, icon: Clock },
-    { label: 'Closing Date', value: vacancy.closingDate, icon: CalendarDays },
-  ];
-
   return (
     <main className="min-h-screen bg-stone-50">
       <Navigation />
@@ -76,34 +68,7 @@ export default function VacancyDetailsClient({ slug, initialVacancy }: { slug: s
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-[1.35fr_0.65fr]">
             <article className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {details.map((detail) => {
-                  const Icon = detail.icon;
-                  return (
-                    <div key={detail.label} className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
-                      <Icon className="mt-0.5 h-5 w-5 text-secondary" />
-                      <div>
-                        <p className="text-sm font-semibold text-primary">{detail.label}</p>
-                        <p className="text-sm text-slate-600">{detail.value}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-                <VacancyCustomDetailCards details={vacancy.customDetails} />
-              </div>
-              <div className="mt-10">
-                <VacancyPortalView
-                  portalConfig={vacancy.portalConfig}
-                  description={vacancy.description}
-                  requirements={vacancy.requirements}
-                  responsibilities={vacancy.responsibilities}
-                />
-              </div>
-              {vacancy.customDetails.length ? (
-                <div className="mt-10">
-                  <VacancyCustomDetailSections details={vacancy.customDetails} />
-                </div>
-              ) : null}
+              <VacancyFullDetails vacancy={vacancy} />
             </article>
 
             <aside className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm lg:sticky lg:top-24 lg:self-start">
