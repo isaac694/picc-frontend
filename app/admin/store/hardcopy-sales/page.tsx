@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Camera, CheckCircle2, Download, FilePlus2, FileSpreadsheet, FileText, Loader2, Mail, Printer, RefreshCw, ScanLine, Search, Share2, XCircle } from 'lucide-react';
 import ReceiptShareDialog from '@/components/admin/ReceiptShareDialog';
@@ -21,6 +21,7 @@ import { downloadReceiptPdf, money, printReceipt, receiptDate, REFERENCE_HINTS, 
 import { cn } from '@/lib/utils';
 
 type LookedUpBook = { title: string; author: string | null; price: number; hardCopyStock: number; available: boolean; barcode: string };
+type SuggestedBook = LookedUpBook & { productId: string; barcode: string | null };
 type BasketLine = LookedUpBook & { quantity: number };
 type Summary = { orders: number; copies: number; paidTotal: number; pendingTotal: number; byMethod: Array<{ method: string; total: number }> };
 
@@ -43,6 +44,11 @@ export default function HardcopySalesPage() {
   const [code, setCode] = useState('');
   const [basket, setBasket] = useState<BasketLine[]>([]);
   const [lookupError, setLookupError] = useState('');
+  const [suggestions, setSuggestions] = useState<SuggestedBook[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlighted, setHighlighted] = useState(-1);
+  const [searchingBooks, setSearchingBooks] = useState(false);
+  const suggestRequest = useRef(0);
   const [scanning, setScanning] = useState(false);
   const [buyerName, setBuyerName] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
@@ -96,19 +102,17 @@ export default function HardcopySalesPage() {
 
   const headers = useCallback(() => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }), [token]);
 
-  // Each scan adds the book to the basket; scanning the same book again adds another copy.
-  const lookUp = useCallback(async (value: string) => {
-    const cleaned = codeFromScan(value);
-    setCode(cleaned);
-    setLookupError('');
-    if (!cleaned) return;
-    const response = await apiFetch(`/api/store/scan/${encodeURIComponent(cleaned)}`);
-    const data = await response.json().catch(() => null);
-    if (!response.ok) {
-      setLookupError(data?.error || 'No book matches that code.');
-      return;
-    }
-    const found: LookedUpBook = data.book;
+  const closeSuggestions = () => {
+    suggestRequest.current += 1; // ignore any search still on its way
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setHighlighted(-1);
+    setSearchingBooks(false);
+  };
+
+  // Adding the same book again adds another copy. Books without a printed barcode are sold by product id.
+  const addToBasket = useCallback((book: LookedUpBook | SuggestedBook) => {
+    const found: LookedUpBook = { ...book, barcode: book.barcode || ('productId' in book ? book.productId : '') };
     setBasket((current) => {
       const existing = current.find((line) => line.barcode === found.barcode);
       if (existing) {
@@ -117,7 +121,53 @@ export default function HardcopySalesPage() {
       return [...current, { ...found, quantity: 1 }];
     });
     setCode('');
+    setLookupError('');
+    closeSuggestions();
   }, []);
+
+  // Scanners type the code and press Enter; a typed title that matches several books lists them to pick from.
+  const lookUp = useCallback(async (value: string) => {
+    const cleaned = codeFromScan(value);
+    setCode(cleaned);
+    setLookupError('');
+    if (!cleaned) return;
+    closeSuggestions();
+    const response = await apiFetch(`/api/store/scan/${encodeURIComponent(cleaned)}`);
+    const data = await response.json().catch(() => null);
+    if (response.status === 409 && Array.isArray(data?.books)) {
+      setSuggestions(data.books);
+      setShowSuggestions(true);
+      setHighlighted(0);
+      return;
+    }
+    if (!response.ok) {
+      setLookupError(data?.error || 'No book matches that code.');
+      return;
+    }
+    addToBasket(data.book);
+  }, [addToBasket]);
+
+  // Search as the attendant types a title, author or code.
+  useEffect(() => {
+    const term = code.trim();
+    if (term.length < 2) return; // the input's onChange clears the list
+    const request = ++suggestRequest.current;
+    const timer = setTimeout(async () => {
+      if (request !== suggestRequest.current) return;
+      setSearchingBooks(true);
+      try {
+        const response = await apiFetch(`/api/store/scan-search?q=${encodeURIComponent(term)}`);
+        const data = await response.json().catch(() => null);
+        if (request !== suggestRequest.current) return;
+        setSuggestions(Array.isArray(data?.books) ? data.books : []);
+        setShowSuggestions(true);
+        setHighlighted(-1);
+      } finally {
+        if (request === suggestRequest.current) setSearchingBooks(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [code]);
 
   const setLineQuantity = (barcode: string, quantity: number) =>
     setBasket((current) => current.map((line) => (line.barcode === barcode ? { ...line, quantity: Math.min(50, Math.max(1, quantity)) } : line)));
@@ -146,6 +196,12 @@ export default function HardcopySalesPage() {
   useEffect(() => {
     void loadOrders();
   }, [loadOrders]);
+
+  // Filter the orders as the attendant types, without pressing Enter.
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const recordSale = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -349,22 +405,80 @@ export default function HardcopySalesPage() {
         <form onSubmit={recordSale} className="space-y-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm">
           <h2 className="flex items-center gap-2 text-sm font-semibold"><ScanLine className="h-4 w-4 text-primary" /> New counter sale</h2>
           <div className="flex gap-2">
-            <input
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              onKeyDown={(event) => {
-                // Counter scanners type the code and press Enter.
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  void lookUp(code);
-                }
-              }}
-              placeholder="Scan or type a barcode to add a book, e.g. HB12345678"
-              autoFocus
-              className="h-10 flex-1 rounded-md border border-border bg-background px-3 font-mono text-sm"
-              aria-label="Book barcode"
-            />
-            <Button type="button" variant="outline" onClick={() => void lookUp(code)}><Search className="h-4 w-4" /></Button>
+            <div className="relative flex-1">
+              <input
+                value={code}
+                onChange={(event) => {
+                  setCode(event.target.value);
+                  setLookupError('');
+                  if (event.target.value.trim().length < 2) closeSuggestions();
+                }}
+                onFocus={() => suggestions.length && setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                onKeyDown={(event) => {
+                  const open = showSuggestions && suggestions.length > 0;
+                  if (event.key === 'ArrowDown' && open) {
+                    event.preventDefault();
+                    setHighlighted((index) => (index + 1) % suggestions.length);
+                  } else if (event.key === 'ArrowUp' && open) {
+                    event.preventDefault();
+                    setHighlighted((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
+                  } else if (event.key === 'Escape' && open) {
+                    event.preventDefault();
+                    setShowSuggestions(false);
+                  } else if (event.key === 'Enter') {
+                    // A highlighted suggestion wins; otherwise this is a scanner (or typed code) pressing Enter.
+                    event.preventDefault();
+                    if (open && highlighted >= 0) addToBasket(suggestions[highlighted]);
+                    else void lookUp(code);
+                  }
+                }}
+                placeholder="Type a book title, author or code, or scan a label"
+                autoFocus
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={showSuggestions && suggestions.length > 0}
+                aria-controls="book-suggestions"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 pr-9 text-sm"
+                aria-label="Find a book"
+              />
+              {searchingBooks ? <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" /> : null}
+              {showSuggestions && code.trim().length >= 2 ? (
+                <ul id="book-suggestions" role="listbox" className="absolute left-0 right-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-lg">
+                  {suggestions.length === 0 ? (
+                    <li className="px-3 py-2 text-sm text-muted-foreground">{searchingBooks ? 'Searching…' : 'No books match. Check the spelling or scan the label.'}</li>
+                  ) : suggestions.map((book, index) => {
+                    const inBasket = basket.find((line) => line.barcode === (book.barcode || book.productId));
+                    return (
+                      <li
+                        key={book.productId}
+                        role="option"
+                        aria-selected={index === highlighted}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onMouseEnter={() => setHighlighted(index)}
+                        onClick={() => addToBasket(book)}
+                        className={cn('flex cursor-pointer items-center justify-between gap-3 px-3 py-2', index === highlighted ? 'bg-muted' : 'hover:bg-muted/60')}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{book.title}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {[book.author, book.barcode || book.productId].filter(Boolean).join(' · ')}
+                            {inBasket ? ` · ${inBasket.quantity} in sale` : ''}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-semibold">{money(book.price)}</p>
+                          <p className={cn('text-xs', book.hardCopyStock > 0 ? 'text-muted-foreground' : 'text-destructive')}>
+                            {book.hardCopyStock > 0 ? `${book.hardCopyStock} in stock` : 'Out of stock'}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+            </div>
+            <Button type="button" variant="outline" onClick={() => void lookUp(code)} aria-label="Find book"><Search className="h-4 w-4" /></Button>
             <Button type="button" variant="outline" onClick={() => setScanning((value) => !value)} aria-label="Scan with camera"><Camera className="h-4 w-4" /></Button>
           </div>
           {scanning ? (
@@ -509,7 +623,7 @@ export default function HardcopySalesPage() {
         <div className="flex flex-col gap-2 sm:flex-row">
           <form className="relative flex-1" onSubmit={(event) => { event.preventDefault(); setQuery(search.trim()); }}>
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Receipt, buyer, book or reference, then Enter" className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search receipt, buyer, book or reference" className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm" />
           </form>
           <select value={channel} onChange={(event) => setChannel(event.target.value)} className="h-9 rounded-md border border-border bg-background px-2 text-sm" aria-label="Channel">
             <option value="">Scans and counter</option>

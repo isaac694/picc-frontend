@@ -10,7 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { adminErrorToast } from '@/components/admin/admin-toast';
 import { StorePaymentsTabs } from '@/components/admin/payments/PaymentsSectionTabs';
 import { StoreBookPerformance, type BookPerformance } from '@/components/admin/payments/StoreBookPerformance';
+import BestSellersPanel from '@/components/admin/BestSellersPanel';
+import PeriodFilter from '@/components/admin/PeriodFilter';
 import { formatAdminDate, formatMoney, paymentStatusBadgeClass } from '@/lib/admin-payments';
+import { DETAILED_PERIOD_PRESETS, type Period } from '@/lib/admin-reports';
 
 type StoreKpis = {
   total: number;
@@ -48,6 +51,9 @@ export default function StoreDashboardPage() {
   const [kpis, setKpis] = useState<StoreKpis | null>(null);
   const [recent, setRecent] = useState<RecentPurchase[]>([]);
   const [bookStats, setBookStats] = useState<BookPerformance | null>(null);
+  // The best sellers have their own period, finer than the days dropdown above.
+  const [bestSellerPeriod, setBestSellerPeriod] = useState<Period>({ preset: 'month' });
+  const [bestSellerRefresh, setBestSellerRefresh] = useState(0);
 
   const fetchDashboard = useCallback(async () => {
     if (!token) return;
@@ -128,7 +134,7 @@ export default function StoreDashboardPage() {
               ))}
             </select>
           </label>
-          <Button variant="outline" size="sm" onClick={() => void fetchDashboard()} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => { void fetchDashboard(); setBestSellerRefresh((value) => value + 1); }} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -161,6 +167,16 @@ export default function StoreDashboardPage() {
           {formatRows.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No data yet.</p> : null}
         </ChartCard>
       </div>
+
+      {token ? (
+        <div className="space-y-2">
+          <div className="rounded-lg border border-border/60 bg-card p-3 shadow-sm">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Best sellers for</p>
+            <PeriodFilter value={bestSellerPeriod} onChange={setBestSellerPeriod} presets={DETAILED_PERIOD_PRESETS} />
+          </div>
+          <BestSellersPanel token={token} period={bestSellerPeriod} refreshKey={bestSellerRefresh} />
+        </div>
+      ) : null}
 
       <StoreBookPerformance data={bookStats} loading={loading} />
 

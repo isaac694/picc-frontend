@@ -30,6 +30,7 @@ export default function BookLaunchOrderPage() {
   const [loadError, setLoadError] = useState('');
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
+  const [email, setEmail] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [medium, setMedium] = useState('');
   const [error, setError] = useState('');
@@ -56,7 +57,7 @@ export default function BookLaunchOrderPage() {
       const response = await apiFetch(`/api/book-launch-forms/${encodeURIComponent(slug)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), contact: contact.trim(), quantity, medium: medium || undefined }),
+        body: JSON.stringify({ name: name.trim(), contact: contact.trim(), email: email.trim() || undefined, quantity, medium: medium || undefined }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
@@ -103,7 +104,7 @@ export default function BookLaunchOrderPage() {
                 <CheckCircle2 className="mx-auto h-12 w-12 text-[#39D98A]" />
                 <h2 className="mt-4 text-xl font-semibold">Order received</h2>
                 <p className="mt-2 text-white/70">{done.quantity} cop{done.quantity === 1 ? 'y' : 'ies'}{done.amount ? ` · ${money(done.amount)}` : ''}. The bookshop team will contact you about payment and collection.</p>
-                <button type="button" onClick={() => { setDone(null); setName(''); setContact(''); setQuantity(1); }} className="mt-6 text-sm font-semibold underline">Place another order</button>
+                <button type="button" onClick={() => { setDone(null); setName(''); setContact(''); setEmail(''); setQuantity(1); }} className="mt-6 text-sm font-semibold underline">Place another order</button>
               </div>
             ) : !launch.formEnabled ? (
               <p className="px-6 py-10 text-center text-white/70">Orders for this book launch are closed. Please visit the Hope Bookshop.</p>
@@ -117,6 +118,10 @@ export default function BookLaunchOrderPage() {
                 <label className="block text-xs uppercase tracking-[0.2em] text-white/70">
                   Phone number
                   <input value={contact} onChange={(event) => setContact(event.target.value)} required type="tel" autoComplete="tel" placeholder="0991 234 567" className={inputClass} />
+                </label>
+                <label className="block text-xs uppercase tracking-[0.2em] text-white/70">
+                  Email <span className="normal-case tracking-normal text-white/50">(optional, for your receipt)</span>
+                  <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="you@example.com" className={inputClass} />
                 </label>
                 <div className="flex items-center justify-between rounded-xl border border-white/10 px-4 py-3">
                   <span className="text-xs uppercase tracking-[0.2em] text-white/70">Copies</span>
